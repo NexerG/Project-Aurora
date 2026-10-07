@@ -81,16 +81,19 @@ namespace ArctisAurora.Core.UI
                 paletteName = "print",
                 alpha = 0f
             };
-            foreach (Control entry in document.blocks)
+            foreach (NoteNode entry in document.blocks)
             {
-                if (entry is TableControl table)
+                if (entry is NoteTable model)
                 {
+                    TableControl table = new TableControl(model);
                     table.ApplyLayout(document.layout);
                     view.AddChild(table.Hosted());
                     continue;
                 }
-                ((BlockControl)entry).ApplyLayout(document.layout);
-                view.AddChild(entry);
+                BlockControl block = new BlockControl((NoteBlock)entry);
+                block.StartEffects();
+                block.ApplyLayout(document.layout);
+                view.AddChild(block);
             }
 
             DrawRecorder recorder = new DrawRecorder();

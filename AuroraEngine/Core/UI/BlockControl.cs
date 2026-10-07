@@ -187,38 +187,48 @@ namespace ArctisAurora.Core.UI
     // the styles scheme says what that looks like.
     public class BlockControl : TextRunControl
     {
-        public TextStyleType stylingType = TextStyleType.Text;
-        public TextAlignment alignment;
+        // the block this control shows
+        public readonly NoteBlock note;
+
+        public BlockControl() : this(new NoteBlock()) { }
+
+        public BlockControl(NoteBlock note) : base(note.run)
+        {
+            this.note = note;
+        }
+
+        public TextStyleType stylingType { get => note.stylingType; set => note.stylingType = value; }
+        public TextAlignment alignment { get => note.alignment; set => note.alignment = value; }
 
         // first-line indent and the gap above the block, px; a null gap takes the layout's block spacing
-        public float firstIndent;
-        public float? spaceBefore;
+        public float firstIndent { get => note.firstIndent; set => note.firstIndent = value; }
+        public float? spaceBefore { get => note.spaceBefore; set => note.spaceBefore = value; }
 
         // a break before the block, the page style its page takes, and the running-head marks it sets; null leaves a mark as it was
-        public PageBreak pageBreak;
-        public string? pageStyle;
-        public string? markLeft;
-        public string? markRight;
+        public PageBreak pageBreak { get => note.pageBreak; set => note.pageBreak = value; }
+        public string? pageStyle { get => note.pageStyle; set => note.pageStyle = value; }
+        public string? markLeft { get => note.markLeft; set => note.markLeft = value; }
+        public string? markRight { get => note.markRight; set => note.markRight = value; }
 
         // the footnote or float this block is part of; null in the flow
-        public PageInsert? insert;
+        public PageInsert? insert { get => note.insert; set => note.insert = value; }
 
         // a code block's fence language; null when none was named
-        public string? language;
+        public string? language { get => note.language; set => note.language = value; }
 
         // a code block that wraps its lines; .xml only, so Markdown code never wraps
-        public bool codeWrap;
+        public bool codeWrap { get => note.codeWrap; set => note.codeWrap = value; }
 
         // list item state
-        public ListKind listKind;
-        public int listLevel;
-        public bool isChecked;
+        public ListKind listKind { get => note.listKind; set => note.listKind = value; }
+        public int listLevel { get => note.listLevel; set => note.listLevel = value; }
+        public bool isChecked { get => note.isChecked; set => note.isChecked = value; }
 
         // the item's own marker; null takes the layout's for its level
-        public ListMarker? listMarker;
+        public ListMarker? listMarker { get => note.listMarker; set => note.listMarker = value; }
 
         // the number this item restarts its list at; null counts on from the item above
-        public int? listStart;
+        public int? listStart { get => note.listStart; set => note.listStart = value; }
 
         // what the document resolved for this item: the marker and its number in its list
         public ListMarker shownMarker { get; internal set; } = ListMarker.Disc;
@@ -235,9 +245,6 @@ namespace ArctisAurora.Core.UI
         private const float codeInset = 10f;
         private const float ruleWeight = 1f;
         private DocumentLayout? layout;
-
-        // pre-palette block ink, dropped from runs at load
-        private const string legacyInkHex = "#2C2B26";
 
         // the character a picture span covers
         public const string PictureChar = "￼";
@@ -451,113 +458,45 @@ namespace ArctisAurora.Core.UI
         // Load: the run's text joins the block's string and its style becomes the next span.
         public void AppendRun(Run run)
         {
-            string slice = run.image != null || run.math != null || run.sheet != null ? PictureChar : run.text ?? string.Empty;
-
-            spans.Add(new StyleSpan
-            {
-                count = slice.Length,
-                style = run.Style,
-                colorHex = string.Equals(run.colorHex, legacyInkHex, StringComparison.OrdinalIgnoreCase) ? null : run.colorHex,
-                fontName = run.fontName,
-                fontSize = run.fontSizeAuthored ? run.fontSize : 0,
-                gradient = run.gradient,
-                effect = run.effect,
-                strikethrough = run.strikethrough,
-                underline = run.underline,
-                highlightHex = run.highlightHex,
-                stylingType = run.stylingType,
-                fontSizeAuthored = run.fontSizeAuthored,
-                imageSource = run.image,
-                imageWidth = run.width,
-                imageHeight = run.height,
-                wrap = run.image != null ? run.wrap : PictureWrap.Inline,
-                imageX = run.image != null ? run.x : 0f,
-                imageY = run.image != null ? run.y : 0f,
-                imageRotation = run.image != null ? run.rotation : 0f,
-                collision = run.image != null ? run.collision : PictureCollision.Box,
-                mathSource = run.image == null ? run.math : null,
-                mathDisplay = run.image == null && run.math != null && run.display,
-                sheetRef = run.image == null && run.math == null ? run.sheet : null,
-                spaceWidth = run.image == null && run.math == null && run.sheet == null ? run.space : 0f,
-                note = run.note
-            });
+            string before = data.text;
+            note.AppendRun(run);
             if (run.effect != null) RestartEffect();
+            Edited(before);
+        }
 
-            text += slice;
+        // Starts the text effects a freshly built view of loaded spans carries.
+        internal void StartEffects()
+        {
+            if (spans.Exists(span => span.effect != null)) RestartEffect();
         }
 
         #region ---- text and spans ----
-        // Inserts text at a character offset. A boundary belongs to the span after it, which is the
-        // run the outgoing stack's caret normalization put a caret in.
         public void InsertText(int offset, string insert)
         {
-            if (string.IsNullOrEmpty(insert)) return;
-
-            int index = SpanForInsert(offset);
-            if (!Typable(spans[index])) index = TextSpanBeside(index, offset);
-
-            CollectionsMarshal.AsSpan(spans)[index].count += insert.Length;
-
-            text = (text ?? string.Empty).Insert(offset, insert);
+            string before = data.text;
+            data.InsertText(offset, insert);
+            Edited(before);
         }
 
         public void RemoveText(int offset, int count)
         {
-            if (count <= 0) return;
-
-            int end = offset + count;
-            int start = 0;
-
-            for (int i = 0; i < spans.Count; i++)
-            {
-                ref StyleSpan span = ref CollectionsMarshal.AsSpan(spans)[i];
-                int spanEnd = start + span.count;
-
-                int cut = Math.Min(spanEnd, end) - Math.Max(start, offset);
-                if (cut > 0) span.count -= cut;
-                start = spanEnd;
-            }
-
-            text = (text ?? string.Empty).Remove(offset, count);
-            DropEmptySpans();
+            string before = data.text;
+            data.RemoveText(offset, count);
+            Edited(before);
         }
 
         // Keeps [0..offset) and returns a detached block of the same styling holding the rest.
         public BlockControl SplitAt(int offset)
         {
-            string whole = text ?? string.Empty;
-            BlockControl tail = new BlockControl
+            string before = data.text;
+            BlockControl tail = new BlockControl(note.SplitAt(offset))
             {
-                stylingType = stylingType,
-                alignment = alignment,
-                firstIndent = firstIndent,
-                spaceBefore = spaceBefore,
-                insert = insert,
-                language = language,
-                codeWrap = codeWrap,
-                listKind = listKind,
-                listLevel = listLevel,
-                listMarker = listMarker,
                 fontName = fontName,
                 fontSize = fontSize,
                 lineHeight = lineHeight
             };
             tail.CopyPaint(this);
-
-            StyleSpan carried = StyleAt(offset);
-            carried.count = 0;
-
-            int index = SplitSpanAt(offset);
-            tail.spans.Clear();
-            for (int i = index; i < spans.Count; i++)
-                tail.spans.Add(spans[i]);
-            spans.RemoveRange(index, spans.Count - index);
-
-            tail.text = whole[offset..];
-            text = whole[..offset];
-
-            if (spans.Count == 0) spans.Add(carried);
-            if (tail.spans.Count == 0) tail.spans.Add(carried);
+            Edited(before);
 
             return tail;
         }
@@ -568,62 +507,16 @@ namespace ArctisAurora.Core.UI
             AppendSpans(tail.spans, tail.text ?? string.Empty);
         }
 
-        // One block's content as data, for an edit record that has to put it back.
-        public BlockSnapshot Snapshot() => SliceSnapshot(0, Length);
+        public BlockSnapshot Snapshot() => note.Snapshot();
 
-        // The part of this block a range covers, and nothing else.
-        public BlockSnapshot SliceSnapshot(int from, int to)
-        {
-            BlockSnapshot snapshot = new BlockSnapshot
-            {
-                stylingType = stylingType,
-                alignment = alignment,
-                firstIndent = firstIndent,
-                spaceBefore = spaceBefore,
-                pageBreak = pageBreak,
-                pageStyle = pageStyle,
-                markLeft = markLeft,
-                markRight = markRight,
-                insert = insert,
-                language = language,
-                codeWrap = codeWrap,
-                listKind = listKind,
-                listLevel = listLevel,
-                listMarker = listMarker,
-                listStart = listStart,
-                isChecked = isChecked,
-                text = (text ?? string.Empty)[from..to]
-            };
-
-            int start = 0;
-            foreach (StyleSpan span in spans)
-            {
-                int spanEnd = start + span.count;
-                int covered = Math.Min(spanEnd, to) - Math.Max(start, from);
-                if (covered > 0)
-                {
-                    StyleSpan cut = span;
-                    cut.count = covered;
-                    snapshot.spans.Add(cut);
-                }
-                start = spanEnd;
-            }
-
-            if (snapshot.spans.Count == 0)
-                snapshot.spans.Add(new StyleSpan { count = 0, style = style });
-
-            return snapshot;
-        }
+        public BlockSnapshot SliceSnapshot(int from, int to) => note.SliceSnapshot(from, to);
 
         // Puts a captured slice back, styles and all.
         public void InsertSlice(int offset, BlockSnapshot slice)
         {
-            int index = SplitSpanAt(offset);
-            spans.InsertRange(index, slice.spans);
-            text = (text ?? string.Empty).Insert(offset, slice.text);
-
-            DropEmptySpans();
-            MergeSpans();
+            string before = data.text;
+            data.InsertSpans(offset, slice.spans, slice.text);
+            Edited(before);
         }
 
         public void AppendSlice(BlockSnapshot slice) => AppendSpans(slice.spans, slice.text);
@@ -631,47 +524,14 @@ namespace ArctisAurora.Core.UI
         // Replaces everything this block holds.
         public void Restore(BlockSnapshot snapshot)
         {
-            stylingType = snapshot.stylingType;
-            alignment = snapshot.alignment;
-            firstIndent = snapshot.firstIndent;
-            spaceBefore = snapshot.spaceBefore;
-            pageBreak = snapshot.pageBreak;
-            pageStyle = snapshot.pageStyle;
-            markLeft = snapshot.markLeft;
-            markRight = snapshot.markRight;
-            insert = snapshot.insert;
-            language = snapshot.language;
-            codeWrap = snapshot.codeWrap;
-            listKind = snapshot.listKind;
-            listLevel = snapshot.listLevel;
-            listMarker = snapshot.listMarker;
-            listStart = snapshot.listStart;
-            isChecked = snapshot.isChecked;
-            spans.Clear();
-            spans.AddRange(snapshot.spans);
-            text = snapshot.text;
+            note.Restore(snapshot);
             InvalidateLayout();
         }
 
         // Takes another block's kind and leaves the text alone.
         internal void TakeKind(BlockSnapshot kind)
         {
-            stylingType = kind.stylingType;
-            alignment = kind.alignment;
-            firstIndent = kind.firstIndent;
-            spaceBefore = kind.spaceBefore;
-            pageBreak = kind.pageBreak;
-            pageStyle = kind.pageStyle;
-            markLeft = kind.markLeft;
-            markRight = kind.markRight;
-            insert = kind.insert;
-            language = kind.language;
-            codeWrap = kind.codeWrap;
-            listKind = kind.listKind;
-            listLevel = kind.listLevel;
-            listMarker = kind.listMarker;
-            listStart = kind.listStart;
-            isChecked = kind.isChecked;
+            note.TakeKind(kind);
             InvalidateLayout();
         }
 
@@ -682,255 +542,40 @@ namespace ArctisAurora.Core.UI
             return block;
         }
 
-        // The style the character before an offset carries, which is what a caret there takes.
-        public StyleSpan StyleAt(int offset)
-        {
-            int start = 0;
-            foreach (StyleSpan span in spans)
-            {
-                int spanEnd = start + span.count;
-                if (offset < spanEnd || spanEnd == Length) return span.AsText();
-                start = spanEnd;
-            }
-            return spans[^1].AsText();
-        }
+        public StyleSpan StyleAt(int offset) => data.StyleAt(offset);
 
-        // Whether every span over a character range passes a test.
-        public bool AllSpans(int start, int end, Func<StyleSpan, bool> test)
-        {
-            int at = 0;
-            foreach (StyleSpan span in spans)
-            {
-                int spanEnd = at + span.count;
-                if (spanEnd > start && at < end && !test(span)) return false;
-                at = spanEnd;
-            }
-            return true;
-        }
+        public bool AllSpans(int start, int end, Func<StyleSpan, bool> test) => data.AllSpans(start, end, test);
 
-        // Restyles a character range: a boundary is cut at each end, every span between takes the
-        // delta, and what the change made identical folds back together.
         public void StyleRange(int start, int end, StyleDelta delta)
         {
             if (end <= start) return;
 
-            SplitSpanAt(end);
-            int first = SplitSpanAt(start);
-
-            int at = start;
-            for (int i = first; i < spans.Count && at < end; i++)
-            {
-                ref StyleSpan span = ref CollectionsMarshal.AsSpan(spans)[i];
-                int spanEnd = i == spans.Count - 1 ? Length : at + span.count;
-
-                if (spanEnd <= end) delta.Apply(ref span);
-                at = spanEnd;
-            }
-
-            MergeSpans();
+            data.StyleRange(start, end, delta);
             InvalidateLayout();
         }
 
         private void AppendSpans(List<StyleSpan> add, string slice)
         {
-            spans.AddRange(add);
-            text = (text ?? string.Empty) + slice;
-
-            DropEmptySpans();
-            MergeSpans();
+            string before = data.text;
+            data.AppendSpans(add, slice);
+            Edited(before);
         }
 
-        private int SpanForInsert(int offset)
-        {
-            int start = 0;
-            for (int i = 0; i < spans.Count; i++)
-            {
-                int spanEnd = start + spans[i].count;
-                if (offset == start && i > 0) return i;
-                if (offset < spanEnd) return i;
-                start = spanEnd;
-            }
-            return spans.Count - 1;
-        }
-
-        // Gives the picture at an offset another's size, wrap and offset.
         public void SetPicture(int offset, StyleSpan picture)
         {
-            int start = 0;
-            for (int i = 0; i < spans.Count; i++)
-            {
-                if (offset == start && spans[i].IsPicture && spans[i].count > 0)
-                {
-                    ref StyleSpan span = ref CollectionsMarshal.AsSpan(spans)[i];
-                    span.imageWidth = picture.imageWidth;
-                    span.imageHeight = picture.imageHeight;
-                    span.wrap = picture.wrap;
-                    span.imageX = picture.imageX;
-                    span.imageY = picture.imageY;
-                    span.imageRotation = picture.imageRotation;
-                    span.collision = picture.collision;
-                    InvalidateLayout();
-                    return;
-                }
-                start += spans[i].count;
-            }
+            if (data.SetPicture(offset, picture)) InvalidateLayout();
         }
 
         public void SetMath(int offset, string source)
         {
-            int start = 0;
-            for (int i = 0; i < spans.Count; i++)
-            {
-                if (offset == start && spans[i].IsMath && spans[i].count > 0)
-                {
-                    CollectionsMarshal.AsSpan(spans)[i].mathSource = source;
-                    InvalidateLayout();
-                    return;
-                }
-                start += spans[i].count;
-            }
+            if (data.SetMath(offset, source)) InvalidateLayout();
         }
 
-        // The text span on the picture's side the offset touches, made empty in its style when there is none.
-        private int TextSpanBeside(int picture, int offset)
-        {
-            int start = 0;
-            for (int i = 0; i < picture; i++) start += spans[i].count;
+        public int SplitSpanAt(int offset) => data.SplitSpanAt(offset);
 
-            if (offset <= start)
-            {
-                if (picture > 0 && Typable(spans[picture - 1])) return picture - 1;
-                spans.Insert(picture, ZeroText(spans[picture]));
-                return picture;
-            }
-
-            if (picture + 1 < spans.Count && Typable(spans[picture + 1])) return picture + 1;
-            spans.Insert(picture + 1, ZeroText(spans[picture]));
-            return picture + 1;
-        }
-
-        // Text typed into it stays text: not a picture, formula, sheet link or spacer.
-        private static bool Typable(StyleSpan span) => !span.IsObject && span.spaceWidth == 0f;
-
-        private static StyleSpan ZeroText(StyleSpan picture)
-        {
-            StyleSpan text = picture.AsText();
-            text.count = 0;
-            return text;
-        }
-
-        // Makes a span boundary fall exactly on an offset and returns the index that starts there.
-        // An offset already on one splits nothing, which is what keeps a repeated edit from shredding
-        // a block into one span per character.
-        public int SplitSpanAt(int offset)
-        {
-            int start = 0;
-            for (int i = 0; i < spans.Count; i++)
-            {
-                ref StyleSpan span = ref CollectionsMarshal.AsSpan(spans)[i];
-                int spanEnd = start + span.count;
-
-                if (offset == start) return i;
-                if (offset < spanEnd)
-                {
-                    StyleSpan right = span;
-                    right.count = spanEnd - offset;
-                    span.count = offset - start;
-
-                    spans.Insert(i + 1, right);
-                    return i + 1;
-                }
-                start = spanEnd;
-            }
-            return spans.Count;
-        }
-
-        // Folds neighbours nothing distinguishes back into one, so a document does not accumulate a
-        // span boundary per edit.
-        public void MergeSpans()
-        {
-            for (int i = spans.Count - 1; i > 0; i--)
-                if (SameStyle(spans[i - 1], spans[i]))
-                {
-                    CollectionsMarshal.AsSpan(spans)[i - 1].count += spans[i].count;
-                    spans.RemoveAt(i);
-                }
-        }
-
-        private void DropEmptySpans()
-        {
-            for (int i = spans.Count - 1; i >= 0; i--)
-                if (spans[i].count == 0 && spans.Count > 1) spans.RemoveAt(i);
-
-            if (spans.Count == 1 && spans[0].count == 0 && spans[0].IsObject) spans[0] = spans[0].AsText();
-        }
-
-        private static bool SameStyle(StyleSpan a, StyleSpan b) =>
-            !a.IsObject && !b.IsObject
-            && a.style == b.style
-            && a.colorHex == b.colorHex
-            && a.gradient == b.gradient
-            && a.effect == b.effect
-            && a.fontName == b.fontName
-            && a.fontSize == b.fontSize
-            && a.strikethrough == b.strikethrough
-            && a.underline == b.underline
-            && a.highlightHex == b.highlightHex
-            && a.stylingType == b.stylingType
-            && a.fontSizeAuthored == b.fontSizeAuthored
-            && a.spaceWidth == b.spaceWidth
-            && a.note == b.note;
+        public void MergeSpans() => data.MergeSpans();
         #endregion
 
-        // Save: the spans cut back into runs. The last span absorbs whatever is left of the string,
-        // so its count is read off the text rather than trusted.
-        public List<Run> Runs()
-        {
-            string whole = text ?? string.Empty;
-            List<Run> runs = new List<Run>(spans.Count);
-            int start = 0;
-
-            for (int i = 0; i < spans.Count; i++)
-            {
-                int count = i == spans.Count - 1
-                    ? whole.Length - start
-                    : Math.Clamp(spans[i].count, 0, whole.Length - start);
-                if (count < 0) count = 0;
-
-                StyleSpan span = spans[i];
-                runs.Add(new Run
-                {
-                    text = span.IsObject ? string.Empty : whole.Substring(start, count),
-                    image = span.imageSource,
-                    math = span.mathSource,
-                    display = span.mathDisplay,
-                    sheet = span.sheetRef,
-                    space = span.spaceWidth,
-                    note = span.note,
-                    width = span.imageWidth,
-                    height = span.imageHeight,
-                    wrap = span.wrap,
-                    x = span.imageX,
-                    y = span.imageY,
-                    rotation = span.imageRotation,
-                    collision = span.collision,
-                    bold = span.style == FontStyle.Bold || span.style == FontStyle.BoldItalic,
-                    italic = span.style == FontStyle.Italic || span.style == FontStyle.BoldItalic,
-                    strikethrough = span.strikethrough,
-                    underline = span.underline,
-                    highlightHex = span.highlightHex,
-                    colorHex = span.colorHex,
-                    gradient = span.gradient,
-                    effect = span.effect,
-                    fontName = span.fontName,
-                    fontSize = span.fontSizeAuthored ? span.fontSize : 0,
-                    fontSizeAuthored = span.fontSizeAuthored,
-                    stylingType = span.stylingType
-                });
-                start += count;
-            }
-
-            return runs;
-        }
+        public List<Run> Runs() => data.Runs();
     }
 }

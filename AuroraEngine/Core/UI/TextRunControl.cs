@@ -167,7 +167,8 @@ namespace ArctisAurora.Core.UI
         private uint _paint = Palettes.Inline(Vector3.One);
 
         // authored text
-        public readonly List<StyleSpan> spans = new List<StyleSpan>();
+        public readonly TextRunData data;
+        public List<StyleSpan> spans => data.spans;
         public FontStyle style = FontStyle.Regular;
         public float lineHeight = 1.5f;
 
@@ -176,8 +177,12 @@ namespace ArctisAurora.Core.UI
 
         protected virtual bool Wraps => true;
 
-        public TextRunControl()
+        public TextRunControl() : this(new TextRunData()) { }
+
+        // A run laid out over string and spans that live elsewhere.
+        protected TextRunControl(TextRunData data)
         {
+            this.data = data;
             _fontAsset = ResolveFont(fontName);
             role = PaletteRole.Ink;
             kind = VulkanControlType.MTSDFControl;
@@ -186,14 +191,20 @@ namespace ArctisAurora.Core.UI
         [A_XSDElementProperty("Text", "UI", "The string this run lays out.")]
         public string text
         {
-            get => field;
+            get => data.text;
             set
             {
-                if (field == value) return;
-                field = value;
+                if (data.text == value) return;
+                data.text = value;
                 InvalidateLayout();
             }
-        } = string.Empty;
+        }
+
+        // Re-measures when an edit through data changed the string.
+        protected void Edited(string before)
+        {
+            if (data.text != before) InvalidateLayout();
+        }
 
         [A_XSDElementProperty("FontSize", "UI", "Type size in design-space pixels.")]
         public int fontSize
@@ -1006,7 +1017,7 @@ namespace ArctisAurora.Core.UI
         // The measured lines, in this run's own space. Null until the first measure.
         public IReadOnlyList<TextLine> Lines => _layout?.lines;
 
-        public int Length => (text ?? string.Empty).Length;
+        public int Length => data.Length;
 
         // The picture under a design-space point, or -1.
         public int PictureAt(Vector2 point)

@@ -7,12 +7,11 @@ using System.Xml.Linq;
 
 namespace ArctisAurora.Core.UI
 {
-    // The note model, and the on-disk format. The blocks are the controls the document view shows —
-    // there is no second copy to edit.
+    // The note model, and the on-disk format.
     [A_XSDType("Document", "UI")]
     public class RichTextDocument
     {
-        public List<Control> blocks = new List<Control>();
+        public NoteNode[] blocks = Array.Empty<NoteNode>();
 
         // Absent until the note is named. Nothing derives it from the file, so a note that has never
         // been named reads as unnamed however many times it is saved.

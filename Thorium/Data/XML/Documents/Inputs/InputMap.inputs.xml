@@ -52,6 +52,13 @@
 		<Press />
 	</Keybind>
 
+	<!-- Ctrl+Shift+Z binds are declared ahead of their Ctrl+Z binds -->
+	<Keybind Trigger="Z" Action="Text.Redo">
+		<Modifier Key="LeftControl" />
+		<Modifier Key="LeftShift" />
+		<Press />
+	</Keybind>
+
 	<Keybind Trigger="Z" Action="Text.Undo">
 		<Modifier Key="LeftControl" />
 		<Press />
@@ -221,6 +228,12 @@
 		<Press />
 	</Keybind>
 
+	<Keybind Trigger="Z" Action="Sheet.Redo">
+		<Modifier Key="LeftControl" />
+		<Modifier Key="LeftShift" />
+		<Press />
+	</Keybind>
+
 	<Keybind Trigger="Z" Action="Sheet.Undo">
 		<Modifier Key="LeftControl" />
 		<Press />
@@ -232,6 +245,12 @@
 	</Keybind>
 
 	<Keybind Trigger="Delete" Action="Planner.Delete">
+		<Press />
+	</Keybind>
+
+	<Keybind Trigger="Z" Action="Planner.Redo">
+		<Modifier Key="LeftControl" />
+		<Modifier Key="LeftShift" />
 		<Press />
 	</Keybind>
 

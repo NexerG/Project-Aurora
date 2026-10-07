@@ -116,11 +116,17 @@ The stack hangs off `DocumentEditSession`, so it is per open note. Tabs already 
 3. The mutation primitive on `DocumentControl` records what it is about to do — the data it is about to destroy, and the branch it took — then does it.
 4. The scope closes, the step lands on the undo stack, and the redo list is cleared.
 5. Ctrl+Z pops a step and runs its records in reverse, so the caret restore that stands belongs to the first record made.
-6. Ctrl+Y pops from the redo list and runs the same records forward, replaying the original primitives.
+6. Ctrl+Y or Ctrl+Shift+Z pops from the redo list and runs the same records forward, replaying the original primitives.
 
 ## Data / XML formats
 
 ```xml
+<Keybind Trigger="Z" Action="Text.Redo">
+	<Modifier Key="LeftControl" />
+	<Modifier Key="LeftShift" />
+	<Press />
+</Keybind>
+
 <Keybind Trigger="Z" Action="Text.Undo">
 	<Modifier Key="LeftControl" />
 	<Press />
@@ -132,7 +138,7 @@ The stack hangs off `DocumentEditSession`, so it is per open note. Tabs already 
 </Keybind>
 ```
 
-`<Press/>` rather than `<Repeat/>`: the repeat rate is 10 ms, and with a step per keypress a held Ctrl+Z would burn a hundred steps a second. `Ctrl+Shift+Z` as a second redo bind works only if it is declared ahead of `Ctrl+Z`, because [[INPUT]] evaluates modified binds in list order and only shadows the later, less specific one — so it is left out rather than made order-dependent.
+`<Press/>` rather than `<Repeat/>`: the repeat rate is 10 ms, and with a step per keypress a held Ctrl+Z would burn a hundred steps a second. `Ctrl+Shift+Z`, the second redo bind, is declared ahead of `Ctrl+Z`, because [[INPUT]] evaluates modified binds in list order and only shadows the later, less specific one.
 
 ## Known gaps
 

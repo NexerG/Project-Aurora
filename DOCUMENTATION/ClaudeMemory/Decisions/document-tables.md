@@ -8,7 +8,7 @@
   `StackPanelControl` of `BlockControl`s; Enter in a cell is the ordinary `SplitBlock`, landing in the cell.
 - Each table sits in a horizontal-only `ScrollableControl` built by `DocumentEditorControl.LoadDocument`; a
   table wider than the page scrolls sideways. The caret scroll also calls the table viewport's `ScrollIntoView`.
-- `RichTextDocument.blocks` is `List<Control>` — a `BlockControl` or a `TableControl`.
+- `RichTextDocument.blocks` was `List<Control>` — a `BlockControl` or a `TableControl`. Superseded by [[note-model]] N1 (2026-10-07): it is `NoteNode[]` (`NoteBlock` or `NoteTable`); a table's widths, rules, cell rules and cells live on `NoteTable`/`NoteCell` and `TableControl(NoteTable)` is the build path.
 - `DocumentControl.Blocks()` flattens: note blocks and every cell's blocks, in reading order. `DocumentAddress`
   keeps its shape; the flat index covers cells. `CaretAtPoint`/`LastBlock` iterate `Blocks()`.
 - Guards: `DeleteSelection` refuses a range whose blocks do not share one parent (`OneContainer`);
@@ -78,7 +78,7 @@ logged `desired stale` otherwise), and the base had to stop stretching a cell in
 
 ## Column spans, borders, merge and split (2026-10-06)
 - XML: `<Cell ColumnSpan="n">` and `<Table Borders="false">`, read and written by `DocumentXml`; absent = span 1 / borders true.
-- `GridListControl`: internal `ColumnSpan(Control)`, `SetColumnSpan(Control, int)`. `TableControl`: public `showBorders` (default true); `AddRow(cells, List<int>? spans = null)`; `CellBlocks(row, column)` finds the cell covering that grid position; borders honour spans and `showBorders`.
+- `GridListControl`: internal `ColumnSpan(Control)`, `SetColumnSpan(Control, int)`. `TableControl`: public `showBorders` (default true); `AddRow(cells, List<int>? spans = null)` (since [[note-model]] N1 a private `AddRow(NoteCell[])`); `CellBlocks(row, column)` finds the cell covering that grid position; borders honour spans and `showBorders`.
 - No placeholder cells behind a spanning cell; cells are found by grid position. `ReadTable`'s padding still fills a row whose spans sum to fewer than the columns.
 - `DocumentControl`: `InsertTableColumn`/`DeleteTableColumn` are span-aware; new `MergeTableCellRight()`, `SplitTableCell()`; private helpers `Covering`, `Span`, `SetSpan`, `EmptyCell`.
 - `TextInputActions`: `Table.MergeRight` (`MergeCellRight`), `Table.Split` (`SplitCell`). `Note.menu.xml` Table submenu: "Merge cell right", "Split cell".
@@ -99,7 +99,7 @@ The caret's cell absorbs the next cell in its row, blocks appended, an empty sid
 
 ## Rules, alignment and padding (L7g, 2026-10-06)
 - XML: `<Table Align Padding="across down">`, `<Column RuleLeft RuleRight>` (Plain|Double), `<Cell RuleAbove RuleBelow>` ("Kind" or "Kind widthPx"; kinds Plain, Double, Heavy, Light, Cmid), `<Cell TrimAbove TrimBelow>` (Left|Right|Both). Read and written by `DocumentXml` (`ReadCellRules`, `ReadRule`, `ReadPadding`, `WriteRule`).
-- `TableControl`: public `alignment` (`TextAlignment`), `cellRules` (`Dictionary<StackPanelControl, CellRules>`), `leftRules`/`rightRules` (`TableRule[]` per column), `cellPadding` (`Vector2?`, null = the 6 px `cellInset`), `ApplyInsets()`; enums `TableRule`, `RuleTrim`; struct `CellRules`. `ArrangeCore` narrows and moves the grid by `alignment`; `ArrangeRules` draws the rules in `PaletteRole.Ink`, at least 1 px, zoom-scaled, touching segments joined into one line, vertical rules split at page gaps.
+- `TableControl`: public `alignment` (`TextAlignment`), `cellRules` (`Dictionary<StackPanelControl, CellRules>` — since [[note-model]] N1 gone: `NoteCell.rules`, found through `CellOf`), `leftRules`/`rightRules` (`TableRule[]` per column, the model's arrays), `cellPadding` (`Vector2?`, null = the 6 px `cellInset`), `ApplyInsets()`; enums `TableRule`, `RuleTrim`; struct `CellRules`. `ArrangeCore` narrows and moves the grid by `alignment`; `ArrangeRules` draws the rules in `PaletteRole.Ink`, at least 1 px, zoom-scaled, touching segments joined into one line, vertical rules split at page gaps.
 - Rules are drawn at LaTeX's weights: arrayRule 0.4 pt, doubleRuleSep 2 pt, heavy 0.08 em, light 0.05 em, cmid 0.03 em, booktabs rule seps 0.4 ex above and 0.65 ex below, ex = 0.430555 em (Latin Modern's x-height, not the cell font's).
 - Edits: `DocumentControl.SplitTableCell` copies Rule* attributes to the new cells (Left trim stays on the first piece, Right trim moves to the last). A new row or column has no rules, deleting drops its rules, merge keeps the left cell's.
 - Why it exists: LaTeX tabulars with exact rules, centring and `\tabcolsep` ([[latex-editor]], L7g-F1 to L7g-F3).

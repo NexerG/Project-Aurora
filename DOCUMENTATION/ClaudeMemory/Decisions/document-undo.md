@@ -113,12 +113,12 @@ decision 7): a rebuilt block has no `arrangedRect` until the next layout pass, a
 reads a zero rect as "above the viewport". `Undo` and `Redo` now request a deferred scroll like every
 other editing path — see [[document-caret-scrolling]].
 
-### 9. `Ctrl+Y` for redo, and `<Press/>` rather than `<Repeat/>`
+### 9. `Ctrl+Y` and `Ctrl+Shift+Z` for redo, and `<Press/>` rather than `<Repeat/>`
 
-`Ctrl+Shift+Z` works, but only if it is declared **before** `Ctrl+Z` in the XML: `InputHandler.Update`
-processes both in pass 0 in list order, and `IsShadowed` only skips the *later*, less specific bind.
-Declared the other way round both fire and undo is immediately redone. Left out rather than made
-order-dependent.
+`Ctrl+Shift+Z` must be declared **before** `Ctrl+Z` in the XML: `InputHandler.Update` processes both in
+pass 0 in list order, and `IsShadowed` only skips the *later*, less specific bind. Declared the other
+way round both fire and undo is immediately redone. `InputMap.inputs.xml` puts each editor's
+(`Text`, `Sheet`, `Planner`) `Ctrl+Shift+Z` bind directly above its `Ctrl+Z` bind.
 
 `<Repeat/>` fires at `KeyRepeat.Rate`, 0.03s, so holding Ctrl+Z would burn some thirty granular steps
 a second.

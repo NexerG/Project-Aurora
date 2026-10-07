@@ -151,6 +151,7 @@ ArctisAurora.Core.UI -> AuroraEngine/Core/UI/MenuButtonControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/MenuScreen.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/NoteActions.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/NoteFormats.cs
+ArctisAurora.Core.UI -> AuroraEngine/Core/UI/NoteModel.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/NoteNameWindow.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/NotePropertiesControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/Palettes.cs
@@ -201,6 +202,7 @@ ArctisAurora.Core.UI -> AuroraEngine/Core/UI/TextBoxControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/TextInputActions.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/TextMeasurer.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/TextRunControl.cs
+ArctisAurora.Core.UI -> AuroraEngine/Core/UI/TextRunData.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/TitleBarControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/UIActions.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/UIData.cs
@@ -289,6 +291,7 @@ Thorium.Editor -> Thorium/Editor/Decorations.cs
 Thorium.Editor -> Thorium/Editor/VaultsWindow.cs
 Thorium.Editor.CustomControls -> Thorium/Editor/CustomControls/VaultBrowserControl.cs
 Thorium.Tests -> Thorium/Tests/LatinModernTests.cs
+Thorium.Tests -> Thorium/Tests/NoteModelTests.cs
 Thorium.Tests -> Thorium/Tests/PaletteTests.cs
 Thorium.Tests -> Thorium/Tests/PlannerTests.cs
 Thorium.Tests -> Thorium/Tests/SheetTests.cs

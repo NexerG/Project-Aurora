@@ -296,22 +296,21 @@ namespace ArctisAurora.Tests
         // Shows a note of tableCount tables, then measures it still or with the page width flipping every tick.
         private static IEnumerator<int> MeasureTables(TestContext t, bool relayout)
         {
-            RichTextDocument document = new RichTextDocument();
+            RichTextDocument document = new RichTextDocument { blocks = new NoteNode[tableCount] };
             for (int i = 0; i < tableCount; i++)
             {
-                TableControl table = new TableControl(Enumerable.Repeat(150f, tableSide).ToList());
+                NoteTable table = new NoteTable(Enumerable.Repeat(150f, tableSide).ToArray()) { rows = new NoteCell[tableSide][] };
                 for (int r = 0; r < tableSide; r++)
                 {
-                    List<List<BlockControl>> cells = new List<List<BlockControl>>();
+                    table.rows[r] = new NoteCell[tableSide];
                     for (int c = 0; c < tableSide; c++)
                     {
-                        BlockControl cell = new BlockControl();
+                        NoteBlock cell = new NoteBlock();
                         cell.AppendRun(new Run { text = $"Cell {r},{c}" });
-                        cells.Add(new List<BlockControl> { cell });
+                        table.rows[r][c] = new NoteCell { blocks = [cell] };
                     }
-                    table.AddRow(cells);
                 }
-                document.blocks.Add(table);
+                document.blocks[i] = table;
             }
 
             DocumentEditorControl editor = new DocumentEditorControl
@@ -408,12 +407,12 @@ namespace ArctisAurora.Tests
                 builder.Append("The quick brown fox jumps over the lazy dog while every line of the note wraps again. ");
             string paragraph = builder.ToString(0, blockChars);
 
-            RichTextDocument document = new RichTextDocument();
+            RichTextDocument document = new RichTextDocument { blocks = new NoteNode[blockCount] };
             for (int i = 0; i < blockCount; i++)
             {
-                BlockControl block = new BlockControl();
+                NoteBlock block = new NoteBlock();
                 block.AppendRun(new Run { text = paragraph });
-                document.blocks.Add(block);
+                document.blocks[i] = block;
             }
 
             DocumentEditorControl editor = new DocumentEditorControl
@@ -425,8 +424,9 @@ namespace ArctisAurora.Tests
             t.Show(editor);
             editor.LoadDocument(document);
 
-            BlockControl first = (BlockControl)document.blocks[0];
-            ((DocumentControl)first.parent).SetCaret(first, first.Length);
+            DocumentControl content = editor.children.OfType<DocumentControl>().First();
+            BlockControl first = content.Blocks()[0];
+            content.SetCaret(first, first.Length);
             editor.FocusCaret();
             return editor;
         }

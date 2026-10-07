@@ -58,7 +58,7 @@ All-day times are written `yyyy-MM-dd`, timed ones `yyyy-MM-ddTHH:mm`. A planner
 
 Click a bar on the Gantt chart to select it; the selected bar is outlined in Ink. Drag the middle of a bar to move it, or drag near an edge to resize it. The edge zone is the smaller of 6 pixels and a third of the bar inside the bar, and 6 pixels outside it; over an edge the cursor becomes a horizontal resize. A drag snaps by the delta rather than by the edge: to the hour on Hour zoom for a timed ticket, to the day otherwise, so a timed ticket moved on Day zoom keeps its time of day. A resize keeps at least one unit. A whole drag is one undo step, "Move ticket" or "Resize ticket". Double-click a bar to edit it.
 
-"+ Ticket" in the toolbar opens the ticket popup for a new ticket. The new ticket is called "New ticket", lasts today as an all-day ticket, is created by the current user, and goes last in the selected ticket's category, or in the first category when nothing is selected. Delete removes the selected ticket. Ctrl+Z and Ctrl+Y undo and redo, and Ctrl+S saves.
+"+ Ticket" in the toolbar opens the ticket popup for a new ticket. The new ticket is called "New ticket", lasts today as an all-day ticket, is created by the current user, and goes last in the selected ticket's category, or in the first category when nothing is selected. Delete removes the selected ticket. Ctrl+Z undoes, Ctrl+Y or Ctrl+Shift+Z redoes, and Ctrl+S saves.
 
 The ticket popup has a name box, a category dropdown, start and end boxes, an assignees box, a colour picker, the creator ("Created by") and an Apply button. Dates are `yyyy-MM-dd` for an all-day ticket, with the end shown as the last day, and `yyyy-MM-dd HH:mm` for a timed one; two dates make the ticket all-day, and a time in either box makes it timed. A box that cannot be read keeps its value, and an end at or before the start becomes one day or one hour after it. Assignees are comma-separated names. Enter in any box or Apply applies all fields as one undo step; Esc or a click outside cancels. Changing the category puts the ticket last in the new one. The category list opens over the popup without closing it. There is no Tab between the boxes yet.
 
@@ -288,7 +288,7 @@ The view, zoom and scroll are kept with the session, so a restored tab opens whe
 
 ## Keys
 
-Delete removes the selected ticket, Ctrl+Z undoes, Ctrl+Y redoes and Ctrl+S saves. They are second binds beside the sheet and text ones and do nothing unless a planner holds the active control.
+Delete removes the selected ticket, Ctrl+Z undoes, Ctrl+Y or Ctrl+Shift+Z redoes and Ctrl+S saves. They are second binds beside the sheet and text ones and do nothing unless a planner holds the active control.
 
 ## Related
 - [[Sheet Editor]] — the editor the planner is built like

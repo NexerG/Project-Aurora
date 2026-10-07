@@ -1361,6 +1361,9 @@ namespace ArctisAurora.Core.UI
                 MarkTreeOrderDirty();
                 cell.InvalidateLayout();
                 ListsChanged();
+
+                NoteCell model = ((TableControl)cell.parent).CellOf(cell);
+                model.blocks = Inserted(model.blocks, Array.IndexOf(model.blocks, after.note) + 1, block.note);
                 return;
             }
 
@@ -1370,15 +1373,29 @@ namespace ArctisAurora.Core.UI
             InvalidateLayout();
             ListsChanged();
 
-            document.blocks.Insert(document.blocks.IndexOf(after) + 1, block);
+            document.blocks = Inserted(document.blocks, Array.IndexOf(document.blocks, after.note) + 1, block.note);
         }
 
         // Destroy detaches from the child list itself; the model list is the other place it lives.
         private void RemoveBlock(BlockControl block)
         {
-            document.blocks.Remove(block);
+            if (block.parent is StackPanelControl cell && cell.parent is TableControl table)
+            {
+                NoteCell model = table.CellOf(cell);
+                model.blocks = Removed(model.blocks, block.note);
+            }
+            else document.blocks = Removed(document.blocks, block.note);
+
             block.Destroy();
             ListsChanged();
+        }
+
+        private static T[] Inserted<T>(T[] array, int at, T item) => [.. array.AsSpan(0, at), item, .. array.AsSpan(at)];
+
+        private static T[] Removed<T>(T[] array, T item)
+        {
+            int at = Array.IndexOf(array, item);
+            return at < 0 ? array : [.. array.AsSpan(0, at), .. array.AsSpan(at + 1)];
         }
 
         // Every block in reading order, a table's cells included.
@@ -3366,13 +3383,13 @@ namespace ArctisAurora.Core.UI
 
             BlockControl block = caretBlock;
             DocumentAddress caretBefore = AddressOf(block, caretOffset);
-            int index = document.blocks.IndexOf(block) + 1;
-            if (index == document.blocks.Count) SplitBlockAt(AddressOf(block, block.Length));
+            int index = Array.IndexOf(document.blocks, block.note) + 1;
+            if (index == document.blocks.Length) SplitBlockAt(AddressOf(block, block.Length));
 
             TableControl table = PutTable(index, false, DocumentXml.NewTable(rows, columns, width))!;
             BlockControl first = table.CellBlocks(0, 0)[0];
             SetCaret(first, 0);
-            undo?.Push(new TableEdit(this, index, null, DocumentXml.WriteTable(table), caretBefore, AddressOf(first, 0)));
+            undo?.Push(new TableEdit(this, index, null, DocumentXml.WriteTable(table.model), caretBefore, AddressOf(first, 0)));
             return true;
         }
 
@@ -3429,7 +3446,7 @@ namespace ArctisAurora.Core.UI
         // The last column deletes the table.
         internal bool DeleteTableColumn()
         {
-            if (CaretTable() is { widths.Count: 1 }) return DeleteTable();
+            if (CaretTable() is { widths.Length: 1 }) return DeleteTable();
 
             return ChangeTable((xml, row, column) =>
             {
@@ -3449,7 +3466,7 @@ namespace ArctisAurora.Core.UI
         internal bool MergeTableCellRight()
         {
             if (caretBlock?.parent is not StackPanelControl caretCell || caretCell.parent is not TableControl table
-                || caretCell.gridColumn + table.ColumnSpan(caretCell) >= table.widths.Count) return false;
+                || caretCell.gridColumn + table.ColumnSpan(caretCell) >= table.widths.Length) return false;
 
             return ChangeTable((xml, row, column) =>
             {
@@ -3489,12 +3506,12 @@ namespace ArctisAurora.Core.UI
         // Refused when the note would be left with no paragraph to hold the caret.
         internal bool DeleteTable()
         {
-            if (CaretTable() is not TableControl table || !document.blocks.Any(b => b is BlockControl)) return false;
+            if (CaretTable() is not TableControl table || !document.blocks.Any(b => b is NoteBlock)) return false;
 
-            int index = document.blocks.IndexOf(table);
+            int index = Array.IndexOf(document.blocks, table.model);
             int flat = Blocks().IndexOf(table.CellBlocks(0, 0)[0]);
             DocumentAddress caretBefore = AddressOf(caretBlock, caretOffset);
-            XElement before = DocumentXml.WriteTable(table);
+            XElement before = DocumentXml.WriteTable(table.model);
             PutTable(index, true, null);
 
             List<BlockControl> blocks = Blocks();
@@ -3511,7 +3528,7 @@ namespace ArctisAurora.Core.UI
 
             DocumentAddress caret = caretBlock != null ? AddressOf(caretBlock, caretOffset) : default;
             using (editor.BeginStep("Resize column"))
-                undo?.Push(new TableEdit(this, document.blocks.IndexOf(table), before, DocumentXml.WriteTable(table), caret, caret));
+                undo?.Push(new TableEdit(this, Array.IndexOf(document.blocks, table.model), before, DocumentXml.WriteTable(table.model), caret, caret));
             editor.MarkDirty();
         }
 
@@ -3521,11 +3538,11 @@ namespace ArctisAurora.Core.UI
         {
             if (caretBlock?.parent is not StackPanelControl cell || cell.parent is not TableControl table) return false;
 
-            int index = document.blocks.IndexOf(table);
+            int index = Array.IndexOf(document.blocks, table.model);
             int line = cell.children.OfType<BlockControl>().ToList().IndexOf(caretBlock);
             int offset = caretOffset;
             DocumentAddress caretBefore = AddressOf(caretBlock, caretOffset);
-            XElement before = DocumentXml.WriteTable(table);
+            XElement before = DocumentXml.WriteTable(table.model);
             XElement edited = new XElement(before);
 
             (int row, int column, bool keep) = change(edited, cell.gridRow, cell.gridColumn);
@@ -3534,31 +3551,32 @@ namespace ArctisAurora.Core.UI
             List<BlockControl> lines = rebuilt.CellBlocks(row, column);
             BlockControl landing = lines[keep ? Math.Min(line, lines.Count - 1) : 0];
             SetCaret(landing, keep ? offset : 0);
-            undo?.Push(new TableEdit(this, index, before, DocumentXml.WriteTable(rebuilt), caretBefore, AddressOf(landing, caretOffset)));
+            undo?.Push(new TableEdit(this, index, before, DocumentXml.WriteTable(rebuilt.model), caretBefore, AddressOf(landing, caretOffset)));
             return true;
         }
 
         // Takes the table at a note-level index out when present, and builds one from xml there.
         private TableControl? PutTable(int index, bool present, XElement? xml)
         {
-            if (present && document.blocks[index] is TableControl old)
+            if (present && document.blocks[index] is NoteTable old)
             {
-                document.blocks.RemoveAt(index);
-                old.parent.Destroy();
+                Control view = ViewOf(old);
+                document.blocks = Removed(document.blocks, old);
+                view.parent.Destroy();
             }
 
             TableControl? table = null;
             if (xml != null)
             {
-                table = DocumentXml.ReadTable(xml);
+                table = new TableControl(DocumentXml.ReadTable(xml));
                 table.ApplyLayout(document.layout);
                 ScrollableControl viewport = table.Hosted();
-                int at = index < document.blocks.Count
-                    ? children.IndexOf(Hosting(document.blocks[index]))
-                    : children.IndexOf(Hosting(document.blocks[index - 1])) + 1;
+                int at = index < document.blocks.Length
+                    ? children.IndexOf(Hosting(ViewOf(document.blocks[index])))
+                    : children.IndexOf(Hosting(ViewOf(document.blocks[index - 1]))) + 1;
                 children.Insert(at, viewport);
                 viewport.parent = this;
-                document.blocks.Insert(index, table);
+                document.blocks = Inserted(document.blocks, index, table.model);
             }
 
             MarkTreeOrderDirty();
@@ -3569,6 +3587,18 @@ namespace ArctisAurora.Core.UI
 
         // A note-level entry as it sits among the children: a block itself, a table its viewport.
         private static Entity Hosting(Control entry) => entry is TableControl table ? table.parent : entry;
+
+        // The control showing a note-level entry.
+        internal Control ViewOf(NoteNode node)
+        {
+            foreach (Entity child in children)
+            {
+                if (child is BlockControl block && block.note == node) return block;
+                if (TableIn(child) is TableControl table && table.model == node) return table;
+            }
+
+            return null!;
+        }
 
         private static List<XElement> Named(XElement parent, string name) =>
             parent.Elements().Where(e => e.Name.LocalName == name).ToList();

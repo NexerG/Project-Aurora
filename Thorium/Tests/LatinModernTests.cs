@@ -320,7 +320,7 @@ namespace Thorium.Tests
             editor.LoadPath(path);
             File.Delete(path);
             yield return 2;
-            IReadOnlyList<TextLine> lines = ((BlockControl)editor.session.document.blocks[0]).Lines;
+            IReadOnlyList<TextLine> lines = ((BlockControl)Views(editor)[0]).Lines;
             t.Check(lines.Count > 2 && lines.Any(l => l.hyphen > 0f), $"some line of {lines.Count} ends at a hyphen");            yield return t.Golden("Page", editor);
         }
 
@@ -332,7 +332,7 @@ namespace Thorium.Tests
             yield return 2;
 
             RichTextDocument first = editor.preview.activeDocument;
-            t.Check(first != null && first.blocks.Count == 60, $"the preview is typeset on open: {first?.blocks.Count}");
+            t.Check(first != null && first.blocks.Length == 60, $"the preview is typeset on open: {first?.blocks.Length}");
             editor.preview.SetScrollOffset(new Vector2(0f, 200f));
             yield return 1;
             float scrolled = editor.preview.GetScrollOffset().Y;
@@ -347,7 +347,7 @@ namespace Thorium.Tests
             yield return 1;
 
             RichTextDocument second = editor.preview.activeDocument;
-            string text = ((BlockControl)second.blocks[0]).text;
+            string text = ((NoteBlock)second.blocks[0]).run.text;
             t.Check(!ReferenceEquals(second, first) && text.StartsWith("Paragraph 1Z"), $"recompiled after the pause: {text}");
             t.Check(scrolled > 0f && Math.Abs(editor.preview.GetScrollOffset().Y - scrolled) < 0.5f,
                 $"the preview keeps its scroll: {scrolled} → {editor.preview.GetScrollOffset().Y}");
@@ -370,7 +370,7 @@ namespace Thorium.Tests
             if (rows.Count > 0) yield return t.Click(rows[0]);
             yield return 1;
             DocumentControl content = Content(editor.source);
-            int index = editor.source.session.document.blocks.IndexOf(content.caretBlock);
+            int index = Array.IndexOf(editor.source.session.document.blocks, content.caretBlock?.note);
             t.Check(index == 3 && content.caretOffset == "Text with ".Length,
                 $"the row puts the source caret at the error: block {index}, offset {content.caretOffset}");
 
@@ -384,19 +384,19 @@ namespace Thorium.Tests
                 "\\documentclass{article}\n\\begin{document}\nFirst paragraph.\n\nSecond\nparagraph.\n\\end{document}\n");
             yield return 30;
 
-            BlockControl second = (BlockControl)editor.preview.activeDocument.blocks[1];
+            BlockControl second = (BlockControl)Views(editor.preview)[1];
             LayoutRect r = second.arrangedRect;
             Vector2 at = new Vector2(r.x + 4f, r.y + r.height * 0.5f);
             yield return t.Click(second, at);
             yield return 1;
             DocumentControl content = Content(editor.source);
-            int index = editor.source.session.document.blocks.IndexOf(content.caretBlock);
+            int index = Array.IndexOf(editor.source.session.document.blocks, content.caretBlock?.note);
             t.Check(index != 4, $"a single click leaves the source caret: block {index}");
 
             yield return t.Click(second, at);
             yield return t.Click(second, at);
             yield return 1;
-            index = editor.source.session.document.blocks.IndexOf(content.caretBlock);
+            index = Array.IndexOf(editor.source.session.document.blocks, content.caretBlock?.note);
             t.Check(index == 4 && content.caretOffset == 0, $"a double click on the second paragraph goes to its source line: block {index}, offset {content.caretOffset}");
 
             t.Show(new StackPanelControl());
@@ -419,13 +419,13 @@ namespace Thorium.Tests
                 """);
             for (int i = 0; i < 12; i++) yield return 1;
 
-            List<BlockControl> blocks = editor.preview.activeDocument.blocks.OfType<BlockControl>().ToList();
+            List<BlockControl> blocks = Views(editor.preview).OfType<BlockControl>().ToList();
             string Plain(BlockControl b) => b.text.Replace("­", "").Replace(' ', ' ');
             BlockControl first = blocks.First(b => Plain(b).Contains("See page"));
             BlockControl second = blocks.First(b => Plain(b).Contains("Back to page"));
             t.Check(Plain(first).EndsWith("See page 2.") && Plain(second).EndsWith("Back to page 1."),
                 $"\\pageref takes its label's page once the preview is laid out: '{Plain(first)[^12..]}' '{Plain(second)[^16..]}'");
-            t.Check(editor.preview.PageAt(editor.preview.activeDocument.blocks.IndexOf(second), 0) == 2, "\\newpage puts Results on page 2");
+            t.Check(editor.preview.PageAt(Array.IndexOf(editor.preview.activeDocument.blocks, second.note), 0) == 2, "\\newpage puts Results on page 2");
 
             BlockControl results = blocks.First(b => Plain(b).Contains("Results"));
             editor.preview.SetScrollOffset(new Vector2(120f, results.arrangedRect.y - editor.preview.arrangedRect.y - 260f));
@@ -450,9 +450,9 @@ namespace Thorium.Tests
                 """);
             yield return 4;
 
-            List<BlockControl> blocks = editor.preview.activeDocument.blocks.OfType<BlockControl>().ToList();
+            List<BlockControl> blocks = Views(editor.preview).OfType<BlockControl>().ToList();
             BlockControl second = blocks.Last(b => b.insert?.footnote != null);
-            t.Check(blocks.Count(b => b.insert?.footnote != null) == 2 && editor.preview.PageAt(editor.preview.activeDocument.blocks.IndexOf(second), 0) == 1,
+            t.Check(blocks.Count(b => b.insert?.footnote != null) == 2 && editor.preview.PageAt(Array.IndexOf(editor.preview.activeDocument.blocks, second.note), 0) == 1,
                 "both footnotes are on page 1");
             editor.preview.SetScrollOffset(new Vector2(120f, second.arrangedRect.Bottom - editor.preview.arrangedRect.y - 420f));
             yield return 2;
@@ -504,7 +504,7 @@ namespace Thorium.Tests
             editor.LoadPath(path);
             yield return 2;
 
-            List<Control> blocks = editor.session.document.blocks;
+            List<Control> blocks = Views(editor);
             int top = blocks.FindIndex(b => b is BlockControl { insert.placement: "t" });
             int page = blocks.FindIndex(b => b is BlockControl { insert.placement: "p" });
             int heading = blocks.FindIndex(b => b is BlockControl { insert: null });
@@ -672,6 +672,11 @@ namespace Thorium.Tests
         }
 
         private static DocumentControl Content(DocumentEditorControl editor) =>
-            (DocumentControl)((BlockControl)editor.session.document.blocks[0]).parent;
+            editor.children.OfType<DocumentControl>().First();
+
+        // The controls showing a note's entries, in note order: blocks, and tables out of their viewports.
+        private static List<Control> Views(DocumentEditorControl editor) => Content(editor).children.OfType<Control>()
+            .Select(c => c is ScrollableControl viewport && viewport.children.Count > 0 && viewport.children[0] is TableControl table ? table : c)
+            .Where(c => c is BlockControl or TableControl).ToList();
     }
 }

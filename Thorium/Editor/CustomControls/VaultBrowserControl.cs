@@ -190,12 +190,10 @@ namespace Thorium.Editor.CustomControls
         {
             string path = FreePath(folder, name, ".md");
 
-            RichTextDocument document = new RichTextDocument { name = Path.GetFileNameWithoutExtension(path) };
-            BlockControl block = new BlockControl();
+            NoteBlock block = new NoteBlock();
             block.AppendRun(new Run());
-            document.blocks.Add(block);
+            RichTextDocument document = new RichTextDocument { name = Path.GetFileNameWithoutExtension(path), blocks = [block] };
             document.Save(path);
-            block.Destroy();
 
             Expand(folder);
             Rebuild();

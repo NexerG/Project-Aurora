@@ -25,6 +25,8 @@
           <xs:enumeration value="Tex.FloatPage" />
           <xs:enumeration value="Tex.Pdf.Structure" />
           <xs:enumeration value="Tex.Pdf.Text" />
+          <xs:enumeration value="NoteModel.SaveIsStable" />
+          <xs:enumeration value="NoteModel.LoadHeadless" />
           <xs:enumeration value="Palette.SetCrossfades" />
           <xs:enumeration value="Planner.XmlRoundTrip" />
           <xs:enumeration value="Planner.GanttGeometry" />
