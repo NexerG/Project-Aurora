@@ -209,6 +209,20 @@ genuinely has none. Nothing re-derives the style afterwards; GLFW only rewrites 
 `WM_NCHITTEST` is deliberately not handled — the frame is gone, so there is no non-client band to
 hit, and resizing is `WindowFrameControl`'s grips ([[window-frame-resize]]).
 
+## Double-click toggles maximize, on the second press (2026-10-07)
+
+`TitleBarControl.OnPointerPress` checks `keyTracker.GetState(MouseLeft).tapCount == 2` before
+`DragByCaption` and calls `WindowActions.MaximizeRestore(RenderWindow)` (internal overload, same split
+as `Close`) instead of starting the OS move loop.
+
+- **On the press, not the release** — Windows' own behaviour (`WM_NCLBUTTONDBLCLK` is a down).
+- **Rejected: `OnPointerTap` with `tapCount == 2`** — consistent with other controls and keeps
+  `_sameTargetTap`, but the second press would already be in the OS loop; any motion on a maximized
+  window drag-restores it, then the tap re-maximizes.
+- Cost: the press reads the tracker, not the `Tap` phase, so there is no same-target check — a click
+  on a title-bar button followed quickly by one on the empty bar counts as a double-click.
+- `Keys` is qualified `EngineWork.Keys` in that file — it also imports `Silk.NET.GLFW`.
+
 ## Still open
 
 - **No hover or press feedback** on the buttons — they are the `ButtonControl` default grey

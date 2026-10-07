@@ -263,7 +263,7 @@ namespace ArctisAurora.Core.UI
         {
             if (e.tapCount != 2 || e.button != PointerEvent.leftButton || !InPreview(e.target)) return false;
 
-            int index = preview.CaretBlock != null ? preview.activeDocument.blocks.IndexOf(preview.CaretBlock) : -1;
+            int index = preview.CaretBlock != null ? Array.IndexOf(preview.activeDocument.blocks, preview.CaretBlock.note) : -1;
             if (index >= 0 && index < blockLines.Count && blockLines[index] > 0) source.GoTo(blockLines[index] - 1, 0);
             return false;
         }

@@ -88,12 +88,12 @@ namespace ArctisAurora.Core.Diagnostics
                 builder.Append("The quick brown fox jumps over the lazy dog while every line of the note wraps again. ");
             string paragraph = builder.ToString(0, blockChars);
 
-            document = new RichTextDocument();
+            document = new RichTextDocument { blocks = new NoteNode[blockCount] };
             for (int i = 0; i < blockCount; i++)
             {
-                BlockControl block = new BlockControl();
+                NoteBlock block = new NoteBlock();
                 block.AppendRun(new Run { text = paragraph });
-                document.blocks.Add(block);
+                document.blocks[i] = block;
             }
 
             DocumentEditorControl editor = new DocumentEditorControl
@@ -106,12 +106,13 @@ namespace ArctisAurora.Core.Diagnostics
             Engine.primary.ui.uiRoot = root;
             editor.LoadDocument(document);
 
-            BlockControl first = (BlockControl)document.blocks[0];
-            ((DocumentControl)first.parent).SetCaret(first, first.Length);
+            DocumentControl content = editor.children.OfType<DocumentControl>().First();
+            BlockControl first = content.Blocks()[0];
+            content.SetCaret(first, first.Length);
             editor.FocusCaret();
 
             AGlfwWindow._glfw.GetWindowSize(Engine.primary.os.handle, out startWidth, out startHeight);
-            Log.Info($"scenario — {document.blocks.OfType<BlockControl>().Sum(b => b.Length)} chars in {blockCount} blocks, window {startWidth}x{startHeight}");
+            Log.Info($"scenario — {document.blocks.OfType<NoteBlock>().Sum(b => b.run.Length)} chars in {blockCount} blocks, window {startWidth}x{startHeight}");
         }
 
         public override void OnTick()
@@ -177,7 +178,7 @@ namespace ArctisAurora.Core.Diagnostics
             {
                 if (dumpTree) UITreeDump.Dump("settings");
                 AGlfwWindow._glfw.GetWindowSize(Engine.primary.os.handle, out int width, out int height);
-                Log.Info($"scenario done — {document.blocks.OfType<BlockControl>().Sum(b => b.Length)} chars, window {width}x{height}");
+                Log.Info($"scenario done — {document.blocks.OfType<NoteBlock>().Sum(b => b.run.Length)} chars, window {width}x{height}");
                 Engine.Post(Shutdown.Request);
             }
         }

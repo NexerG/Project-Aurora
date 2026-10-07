@@ -22,6 +22,13 @@ namespace ArctisAurora.Core.UI
             if (e.button != PointerEvent.leftButton || window == null)
                 return base.OnPointerPress(e);
 
+            if (InputHandler.instance.keyTracker.GetState(EngineWork.Keys.MouseLeft)?.tapCount == 2)
+            {
+                WindowActions.MaximizeRestore(window);
+                base.OnPointerPress(e);
+                return true;
+            }
+
             window.os.DragByCaption(Pump);
 
             // The OS loop consumes the button-up that ends it, so GLFW never reports one and the

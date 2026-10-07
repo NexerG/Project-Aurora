@@ -30,6 +30,11 @@ namespace ArctisAurora.Core.UI
             RenderWindow window = Acting();
             if (window == null) return;
 
+            MaximizeRestore(window);
+        }
+
+        internal static void MaximizeRestore(RenderWindow window)
+        {
             WindowHandle* handle = window.os.handle;
             if (AGlfwWindow._glfw.GetWindowAttrib(handle, WindowAttributeGetter.Maximized))
                 AGlfwWindow._glfw.RestoreWindow(handle);

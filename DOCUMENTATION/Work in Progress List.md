@@ -149,7 +149,8 @@ This file holds **open work**. A landed entry moves to [[Changelog]]; one that s
 		- [ ] formula string literals, AND/OR/COUNT, absolute refs + fill-down → `sheets`
 		- [ ] link cache file in the vault for references (user's idea, not designed) — would cover the undo-after-insert gap → `sheets`
 		- [ ] delete rows/columns (insert exists; delete does not) → `sheets`
-	- [ ] **workspace tabs** — Blender-style tabs across the top switching Notes / Sheets / Board
+	- [ ] **workspace tabs** — Blender-style tabs across the top switching Notes / Sheets / Board — blocked on the note data model (workspace remake planned; same note in several workspaces/panes)
+	- [ ] **note data model (user, 2026-10-07)** — N0 (`TextRunData`) and N1 (`NoteBlock`/`NoteTable` model, load/save through it) landed 2026-10-07; N2–N4 open (edits to model, several views, gated virtualization) → `ClaudeMemory/Context/note-model-plan.md`
 	- [ ] **planner (user, 2026-10-07)** — `*.planner.xml`, one file shown as Gantt, board and calendar; F0, P1–P4, PC, C2 landed (Gantt editable, board draggable, categories, assignee chips, calendar view, attachments and follows links); follow-ups below → `ClaudeMemory/Context/planner-plan.md`
 		- [ ] **planner F0–P4 NOT GUI-verified (2026-10-07)** — vault browser menus, open/rename/delete, tab restore, zoom; P2 bar drag, popup, menu, keys; P3 real card drag; P4 "+ Category", category popup (typing, picker, Delete), row/column double clicks, category menus, many-assignee chips, one-tick board lag; test-, golden-, shot-verified only → `planner`
 		- [ ] **planner popup: Tab between boxes** — no `Planner.Tab` bind → `planner`

@@ -84,10 +84,10 @@ the name it already has is a no-op rather than a "Name 2".
 
 ## Deliberately out
 
-- **Two views of one note.** `RichTextDocument.blocks` holds `Block` controls that are the same
+- **Two views of one note.** `RichTextDocument.blocks` held `Block` controls that were the same
   objects `DocumentControl` parents as children, and an entity has one parent — so a second view
-  re-parents the blocks out of the first and blanks it. Real multi-view is blocked on the UI
-  data/visualization split. `Open in new tab` was dropped for this reason (user, 2026-08-21).
+  re-parents the blocks out of the first and blanks it. Since [[note-model]] N1 (2026-10-07) `blocks`
+  is `NoteNode[]`; real multi-view is note-model N3. Until then this stays out. `Open in new tab` was dropped for this reason (user, 2026-08-21).
 - **Folder rename.** `Directory.Move` invalidates the path of every open tab beneath it.
 - **`[A_XSDType]` on `EditableLabelControl`.** Nothing authors it in XML; it is built by
   `FileBrowserControl.AddRow`.
@@ -102,3 +102,4 @@ the name it already has is a no-op rather than a "Name 2".
   an open edit does this, a folder toggle included.
 - `RichTextDocument`'s class comment still claims editing mutates a working copy. It does not — the
   control tree is the model, as `DocumentEditSession`'s own comment says. Pre-existing, left alone.
+  Since [[note-model]] N1 (2026-10-07) the model is `NoteNode`s, not the control tree; the controls read and write it directly, so there is still no working copy.

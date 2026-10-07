@@ -90,6 +90,8 @@ copy"; that was written when the model was plain data and the view was separate.
 character, twice — against a ceiling [[text-layout-one-measurer]] already records as leaned on
 (~56.7k controls on the 400-block note, past `UIModule`'s 50,000).
 
+Update ([[note-model]] N1, 2026-10-07): the model is no longer the control tree — `RichTextDocument.blocks` is `NoteNode[]` and the controls read and write it directly. The session is still not a working copy, because there is no second copy.
+
 So: revert is a reload from disk. Undo, when it comes, is an edit log over the live tree.
 
 **No dirty flag.** Nothing displays one and Ctrl+S rewriting an unchanged file is harmless.

@@ -806,7 +806,6 @@ namespace Thorium.Tests
             RichTextDocument document = DocumentXml.Parse(written);
             string xml = DocumentXml.ToXml(document).ToString();
             t.Check(xml.Contains("StylingType=\"Rule\"") && xml.Contains("Language=\"py\""), "rules and languages save to XML");
-            DestroyBlocks(document);
             yield return 0;
         }
 
@@ -871,8 +870,7 @@ namespace Thorium.Tests
             t.Check(p[3].listLevel == 1, "Tab outside code still nests a list item");
 
             RichTextDocument saved = DocumentXml.Parse(DocumentXml.ToXml(editor.session.document));
-            t.Check(((BlockControl)saved.blocks[0]).text == "a\t", "a tab survives an XML save");
-            DestroyBlocks(saved);
+            t.Check(((NoteBlock)saved.blocks[0]).run.text == "a\t", "a tab survives an XML save");
             t.Show(new StackPanelControl());
         }
 
@@ -967,7 +965,6 @@ namespace Thorium.Tests
             string path = Path.Combine(Path.GetTempPath(), $"aurora-view-{Guid.NewGuid():N}.xml");
             RichTextDocument fixture = Paragraphs(Enumerable.Repeat(words, 60).ToArray());
             DocumentXml.Save(fixture, path);
-            DestroyBlocks(fixture);
 
             DocumentEditorControl first = NewEditor();
             t.Show(first);
@@ -1021,7 +1018,6 @@ namespace Thorium.Tests
             string md = MarkdownFormat.Write(DocumentXml.ToXml(document));
             t.Check(md.Contains("ListMarkers: [Decimal, LowerAlpha]") && md.Contains("ReadOnly: true") && md.Contains("PageGap: 40") && !md.Contains("PageWidth"),
                 $"they write back, PageGap is the user's own key, paper width only rides a Custom size: {md.Replace('\n', '|')}");
-            DestroyBlocks(document);
             yield return 0;
         }
 
@@ -1063,7 +1059,6 @@ namespace Thorium.Tests
                 string path = Path.Combine(Path.GetTempPath(), $"aurora-scope-{Guid.NewGuid():N}.xml");
                 RichTextDocument note = Paragraphs(text);
                 DocumentXml.Save(note, path);
-                DestroyBlocks(note);
                 return Path.GetFullPath(path);
             }
 
@@ -1334,7 +1329,6 @@ namespace Thorium.Tests
             t.Check(runs.Any(r => (string?)r.Attribute("Math") == "x^2" && r.Attribute("Display") == null)
                 && runs.Any(r => (string?)r.Attribute("Math") == @"\frac{a}{b}" && (bool?)r.Attribute("Display") == true),
                 "note XML keeps a formula's source and display flag");
-            DestroyBlocks(fixture);
 
             string md = "a $x^2$ b\n$$\n\\frac{a}{b}\n$$\ninline $$y$$ too";
             XElement read = MarkdownFormat.Read(md, "n");
@@ -1668,8 +1662,6 @@ namespace Thorium.Tests
             DocumentXml.Save(fixture, path);
             editor.LoadPath(path);
             File.Delete(path);
-            foreach (Control entry in fixture.blocks)
-                entry.Destroy();
 
             Content(editor).SetCaret(Paragraphs(editor)[0], 0);
             editor.FocusCaret();
@@ -1679,10 +1671,15 @@ namespace Thorium.Tests
             DocumentXml.Parse(new XElement("Document", texts.Select(Block)));
 
         private static List<BlockControl> Paragraphs(DocumentEditorControl editor) =>
-            editor.session.document.blocks.OfType<BlockControl>().ToList();
+            Views(Content(editor)).OfType<BlockControl>().ToList();
 
         private static DocumentControl Content(DocumentEditorControl editor) =>
-            (DocumentControl)Paragraphs(editor)[0].parent;
+            editor.children.OfType<DocumentControl>().First();
+
+        // The controls showing a note's entries, in note order: blocks, and tables out of their viewports.
+        private static List<Control> Views(DocumentControl content) => content.children.OfType<Control>()
+            .Select(c => c is ScrollableControl viewport && viewport.children.Count > 0 && viewport.children[0] is TableControl table ? table : c)
+            .Where(c => c is BlockControl or TableControl).ToList();
 
         // Just inside a block's right edge, which resolves to the end of its last line.
         private static Vector2 EndOf(BlockControl block) =>
@@ -1701,7 +1698,7 @@ namespace Thorium.Tests
             yield return t.Type("x");
             t.Check(Blocks(table, 0).Count == 2, "Enter in a cell adds a second line to it");
             t.Check(Cell(table, 0, 1).text == "x", "typing lands on the cell's new line");
-            t.Check(document.blocks.Count == 3, "the note's own blocks are untouched");
+            t.Check(document.blocks.Length == 3, "the note's own blocks are untouched");
 
             yield return t.Key(Keys.Z, Keys.LeftControl);
             yield return t.Key(Keys.Z, Keys.LeftControl);
@@ -1860,14 +1857,14 @@ namespace Thorium.Tests
 
             TextInputActions.InsertTable();
             yield return 2;
-            TableControl? table = document.blocks.ElementAtOrDefault(1) as TableControl;
-            t.Check(document.blocks.Count == 3 && table != null && document.blocks[2] is BlockControl,
+            TableControl? table = Views(Content(editor)).ElementAtOrDefault(1) as TableControl;
+            t.Check(document.blocks.Length == 3 && table != null && document.blocks[2] is NoteBlock,
                 "a table goes after the last paragraph, with a paragraph kept after it");
             if (table == null) yield break;
 
             PageLayout page = editor.Page!;
             float text = page.SizePx().X - (page.marginLeft + page.marginRight) * PageLayout.PxPerMm;
-            t.Check(table.RowCount == 3 && table.widths.Count == 3, "the default table is 3x3");
+            t.Check(table.RowCount == 3 && table.widths.Length == 3, "the default table is 3x3");
             t.Check(table.widths.All(w => w == MathF.Floor(text / 3f)), "its columns split the text width evenly");
             t.Check(Content(editor).caretBlock == Cell(table, 0), "the caret lands in the first cell");
             XElement inserted = DocumentXml.ToXml(document);
@@ -1893,7 +1890,7 @@ namespace Thorium.Tests
             yield return 2;
 
             TextInputActions.InsertTable();
-            t.Check(!editor.session.document.blocks.OfType<TableControl>().Any(), "a Markdown note refuses a table");
+            t.Check(!editor.session.document.blocks.OfType<NoteTable>().Any(), "a Markdown note refuses a table");
             t.Show(new StackPanelControl());
         }
 
@@ -1911,7 +1908,7 @@ namespace Thorium.Tests
                 ("column left", TextInputActions.InsertColumnLeft, s => s.widths.SequenceEqual(new[] { 120f, 160f, 160f }) && Cell(s, 1).text == "" && Cell(s, 2).text == "r0c1"),
                 ("column right", TextInputActions.InsertColumnRight, s => s.widths.SequenceEqual(new[] { 120f, 160f, 160f }) && Cell(s, 1).text == "r0c1" && Cell(s, 2).text == ""),
                 ("row delete", TextInputActions.DeleteRow, s => s.RowCount == 1 && Cell(s, 0).text == "r1c0"),
-                ("column delete", TextInputActions.DeleteColumn, s => s.widths.Count == 1 && Cell(s, 0).text == "r0c0")
+                ("column delete", TextInputActions.DeleteColumn, s => s.widths.Length == 1 && Cell(s, 0).text == "r0c0")
             };
 
             foreach ((string name, Action command, Func<TableControl, bool> shape) in commands)
@@ -1919,7 +1916,7 @@ namespace Thorium.Tests
                 XElement before = DocumentXml.ToXml(document);
                 command();
                 yield return 2;
-                TableControl changed = (TableControl)document.blocks[1];
+                TableControl changed = (TableControl)Views(content)[1];
                 t.Check(shape(changed), $"{name}: the table has its new shape");
                 XElement after = DocumentXml.ToXml(document);
 
@@ -1928,22 +1925,22 @@ namespace Thorium.Tests
                 yield return t.Key(Keys.Y, Keys.LeftControl);
                 t.Check(XNode.DeepEquals(DocumentXml.ToXml(document), after), $"{name}: redo rebuilds the same table");
                 yield return t.Key(Keys.Z, Keys.LeftControl);
-                content.SetCaret(Cell((TableControl)document.blocks[1], 1), 2);
+                content.SetCaret(Cell((TableControl)Views(content)[1], 1), 2);
             }
 
             TextInputActions.InsertRowAbove();
             yield return 2;
             yield return t.Type("x");
-            TableControl shifted = (TableControl)document.blocks[1];
+            TableControl shifted = (TableControl)Views(content)[1];
             t.Check(Cell(shifted, 3).text == "r0xc1", "typing after a row insert lands in the caret's own cell");
             yield return t.Key(Keys.Z, Keys.LeftControl);
             t.Check(Cell(shifted, 3).text == "r0c1", "undoing the typing finds the cell by its new flat address");
 
             TextInputActions.DeleteTable();
             yield return 2;
-            t.Check(document.blocks.Count == 2 && content.caretBlock == document.blocks[1], "Delete table leaves the caret on the paragraph after it");
+            t.Check(document.blocks.Length == 2 && content.caretBlock == Views(content)[1], "Delete table leaves the caret on the paragraph after it");
             yield return t.Key(Keys.Z, Keys.LeftControl);
-            t.Check(document.blocks[1] is TableControl { RowCount: 3 }, "undo brings the table back");
+            t.Check(Views(content)[1] is TableControl { RowCount: 3 }, "undo brings the table back");
             t.Show(new StackPanelControl());
         }
 
@@ -1956,12 +1953,12 @@ namespace Thorium.Tests
 
             yield return t.Key(Keys.Tab);
             yield return t.Type("x");
-            TableControl grown = (TableControl)document.blocks[1];
+            TableControl grown = (TableControl)Views(content)[1];
             t.Check(grown.RowCount == 3 && Cell(grown, 4).text == "x", "Tab past the last cell adds a row and moves into it");
 
             yield return t.Key(Keys.Z, Keys.LeftControl);
             yield return t.Key(Keys.Z, Keys.LeftControl);
-            t.Check(((TableControl)document.blocks[1]).RowCount == 2, "undo takes the row back out");
+            t.Check(((TableControl)Views(content)[1]).RowCount == 2, "undo takes the row back out");
             t.Show(new StackPanelControl());
         }
 
@@ -2010,12 +2007,12 @@ namespace Thorium.Tests
             LayoutRect at = grip.arrangedRect;
             yield return t.Drag(grip, new System.Numerics.Vector2(at.x + at.width * 0.5f + 60f, at.y + at.height * 0.5f));
             yield return 2;
-            TableControl resized = (TableControl)document.blocks[1];
+            TableControl resized = (TableControl)Views(content)[1];
             t.Check(resized.widths[0] == 180f && resized.widths[1] == 160f, "dragging the first column's edge widens it alone");
             yield return t.Golden("Resized", (Control)resized.parent);
 
             yield return t.Key(Keys.Z, Keys.LeftControl);
-            t.Check(((TableControl)document.blocks[1]).widths[0] == 120f, "one undo puts the width back");
+            t.Check(((TableControl)Views(content)[1]).widths[0] == 120f, "one undo puts the width back");
             t.Show(new StackPanelControl());
         }
 
@@ -2083,11 +2080,11 @@ namespace Thorium.Tests
 
             (string name, int caret, Action command, Func<TableControl, bool> shape)[] commands =
             {
-                ("column right inside the span", 2, TextInputActions.InsertColumnRight, s => s.widths.Count == 4 && Span(0) == 3 && s.Cells().Count == 6
+                ("column right inside the span", 2, TextInputActions.InsertColumnRight, s => s.widths.Length ==4 && Span(0) == 3 && s.Cells().Count == 6
                     && Cell(s, 1).text == "r0c2" && Cell(s, 3).text == ""),
-                ("column left of the span", 0, TextInputActions.InsertColumnLeft, s => s.widths.Count == 4 && Cell(s, 0).text == "" && Span(1) == 2
+                ("column left of the span", 0, TextInputActions.InsertColumnLeft, s => s.widths.Length ==4 && Cell(s, 0).text == "" && Span(1) == 2
                     && Cell(s, 1).text == "wide"),
-                ("column delete inside the span", 3, TextInputActions.DeleteColumn, s => s.widths.Count == 2 && Span(0) == 1
+                ("column delete inside the span", 3, TextInputActions.DeleteColumn, s => s.widths.Length ==2 && Span(0) == 1
                     && Cell(s, 0).text == "wide" && Cell(s, 1).text == "r0c2" && Cell(s, 2).text == "r1c0" && Cell(s, 3).text == "r1c2"),
                 ("merge right", 2, TextInputActions.MergeCellRight, s => s.Cells().Count == 4 && Span(2) == 2
                     && Blocks(s, 2).Select(b => b.text).SequenceEqual(new[] { "r1c0", "r1c1" })),
@@ -2096,12 +2093,12 @@ namespace Thorium.Tests
 
             foreach ((string name, int caret, Action command, Func<TableControl, bool> shape) in commands)
             {
-                content.SetCaret(Cell((TableControl)document.blocks[1], caret), 0);
+                content.SetCaret(Cell((TableControl)Views(content)[1], caret), 0);
                 string at = content.caretBlock!.text;
                 XElement before = DocumentXml.ToXml(document);
                 command();
                 yield return 2;
-                TableControl changed = (TableControl)document.blocks[1];
+                TableControl changed = (TableControl)Views(content)[1];
                 t.Check(shape(changed), $"{name}: the table has its new shape");
                 if (!name.Contains("delete")) t.Check(content.caretBlock?.text == at, $"{name}: the caret stays in its cell");
                 yield return t.Key(Keys.Z, Keys.LeftControl);
@@ -2111,7 +2108,7 @@ namespace Thorium.Tests
             foreach ((string name, int caret, Action command) in new (string, int, Action)[]
                 { ("merge on a row's last cell", 1, TextInputActions.MergeCellRight), ("split on a single cell", 2, TextInputActions.SplitCell) })
             {
-                content.SetCaret(Cell((TableControl)document.blocks[1], caret), 0);
+                content.SetCaret(Cell((TableControl)Views(content)[1], caret), 0);
                 XElement before = DocumentXml.ToXml(document);
                 command();
                 yield return 2;
@@ -2149,7 +2146,7 @@ namespace Thorium.Tests
                 content.zoom = zoom;
                 content.InvalidateLayout();
                 yield return 2;
-                table = (TableControl)document.blocks[1];
+                table = (TableControl)Views(content)[1];
                 List<StackPanelControl> cells = table.Cells();
                 float em = cells[0].children.OfType<BlockControl>().First().fontSize * zoom;
                 List<LayoutRect> lines = table.children.OfType<PanelControl>()
@@ -2187,7 +2184,7 @@ namespace Thorium.Tests
             yield return 2;
 
             IEnumerable<XElement> Row(int row) => DocumentXml.ToXml(document).Descendants().Where(e => e.Name.LocalName == "Row").ElementAt(row).Elements();
-            content.SetCaret(Cell((TableControl)document.blocks[1], 3), 0);
+            content.SetCaret(Cell((TableControl)Views(content)[1], 3), 0);
             XElement before = DocumentXml.ToXml(document);
             TextInputActions.SplitCell();
             yield return 2;
@@ -2198,7 +2195,7 @@ namespace Thorium.Tests
             yield return t.Key(Keys.Z, Keys.LeftControl);
             t.Check(XNode.DeepEquals(DocumentXml.ToXml(document), before), "undo restores the merged cell's rules");
 
-            content.SetCaret(Cell((TableControl)document.blocks[1], 0), 0);
+            content.SetCaret(Cell((TableControl)Views(content)[1], 0), 0);
             TextInputActions.InsertRowBelow();
             yield return 2;
             t.Check(Row(1).All(c => c.Attribute("RuleAbove") == null && c.Attribute("RuleBelow") == null)
@@ -2236,16 +2233,14 @@ namespace Thorium.Tests
             DocumentXml.Save(fixture, path);
             editor.LoadPath(path);
             File.Delete(path);
-            foreach (Control entry in fixture.blocks)
-                entry.Destroy();
 
             document = editor.session.document;
-            BlockControl first = (BlockControl)document.blocks[0];
-            DocumentControl content = (DocumentControl)first.parent;
+            DocumentControl content = Content(editor);
+            BlockControl first = (BlockControl)Views(content)[0];
             content.SetCaret(first, 0);
             editor.FocusCaret();
 
-            table = (TableControl)document.blocks[1];
+            table = (TableControl)Views(content)[1];
             return content;
         }
 
@@ -2335,24 +2330,21 @@ namespace Thorium.Tests
                     new XElement("Block", RunX("a"), PictureRun(picture, ("Width", "120")))));
                 string path = Path.Combine(dir, "note" + extension);
                 fixture.Save(path);
-                DestroyBlocks(fixture);
 
                 string written = File.ReadAllText(path);
                 t.Check(written.Contains(extension == ".md" ? "![|120](attachments/my%20pic.png)" : "Image=\"attachments/my pic.png\""),
                     $"{extension} writes the picture relative to the note: {written}");
 
                 RichTextDocument back = RichTextDocument.Load(path);
-                StyleSpan? span = back.blocks.OfType<BlockControl>().First().spans.Where(s => s.IsPicture).Cast<StyleSpan?>().FirstOrDefault();
+                StyleSpan? span = back.blocks.OfType<NoteBlock>().First().run.spans.Where(s => s.IsPicture).Cast<StyleSpan?>().FirstOrDefault();
                 t.Check(span is { count: 1, imageWidth: 120f } && string.Equals(span.Value.imageSource, picture, StringComparison.OrdinalIgnoreCase),
                     $"{extension} reads it back as the same picture span");
-                DestroyBlocks(back);
             }
 
             RichTextDocument plain = DocumentXml.Parse(new XElement("Document",
                 new XElement("Block", RunX("a"), PictureRun(picture))));
             string txt = Path.Combine(dir, "note.txt");
             plain.Save(txt);
-            DestroyBlocks(plain);
             t.Check(File.ReadAllText(txt) == "a", "plain text drops the picture");
 
             Directory.Delete(dir, true);
@@ -2496,17 +2488,15 @@ namespace Thorium.Tests
                     RunX("a"), PictureRun(picture, ("Width", "100"), ("Wrap", "Square"), ("X", "10"), ("Y", "20")))));
                 string path = Path.Combine(dir, "note" + extension);
                 fixture.Save(path);
-                DestroyBlocks(fixture);
 
                 string written = File.ReadAllText(path);
                 t.Check(extension == ".xml" || written.Contains("data-wrap=\"square\" data-x=\"10\" data-y=\"20\""),
                     $"Markdown writes a floating picture as <img>: {written}");
 
                 RichTextDocument back = RichTextDocument.Load(path);
-                StyleSpan read = back.blocks.OfType<BlockControl>().First().spans.First(s => s.IsPicture);
+                StyleSpan read = back.blocks.OfType<NoteBlock>().First().run.spans.First(s => s.IsPicture);
                 t.Check(read.wrap == PictureWrap.Square && read.imageX == 10f && read.imageY == 20f && read.imageWidth == 100f,
                     $"{extension} reads the wrap and offset back");
-                DestroyBlocks(back);
             }
 
             Directory.Delete(dir, true);
@@ -2664,7 +2654,6 @@ namespace Thorium.Tests
                         ("Rotation", "45"), ("Collision", "Shape")), RunX("b"))));
                 string path = Path.Combine(dir, "note" + extension);
                 fixture.Save(path);
-                DestroyBlocks(fixture);
 
                 string written = File.ReadAllText(path);
                 if (extension == ".md")
@@ -2673,11 +2662,10 @@ namespace Thorium.Tests
                         $".md writes a turned picture as <img> with its turn and collision: {written}");
 
                 RichTextDocument back = RichTextDocument.Load(path);
-                List<StyleSpan> spans = back.blocks.OfType<BlockControl>().SelectMany(b => b.spans.Where(s => s.IsPicture)).ToList();
+                List<StyleSpan> spans = back.blocks.OfType<NoteBlock>().SelectMany(b => b.run.spans.Where(s => s.IsPicture)).ToList();
                 t.Check(spans.Count == 2 && spans[0] is { wrap: PictureWrap.Inline, imageRotation: 30f, imageWidth: 120f }
                         && spans[1] is { wrap: PictureWrap.Square, imageRotation: 45f, collision: PictureCollision.Shape, imageX: 10f, imageY: 5f },
                     $"{extension} reads back the turn, the wrap and the collision");
-                DestroyBlocks(back);
             }
 
             Directory.Delete(dir, true);
@@ -2866,12 +2854,6 @@ namespace Thorium.Tests
         }
 
         private static int PictureCount(BlockControl block) => block.spans.Count(s => s.IsPicture && s.count > 0);
-
-        private static void DestroyBlocks(RichTextDocument document)
-        {
-            foreach (Control entry in document.blocks)
-                entry.Destroy();
-        }
         #endregion
     }
 }

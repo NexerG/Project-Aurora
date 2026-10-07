@@ -47,22 +47,24 @@ namespace ArctisAurora.Core.UI
             RichTextDocument document = new RichTextDocument();
             XmlReflection.ApplyAttributes(root, document, tolerant: true);
 
+            List<NoteNode> blocks = new List<NoteNode>();
             foreach (XElement element in root.Elements())
                 switch (element.Name.LocalName)
                 {
                     case "DocumentLayout": ReadLayout(element, document.layout); break;
-                    case "Block": document.blocks.Add(ReadBlock(element)); break;
-                    case "Table": document.blocks.Add(ReadTable(element)); break;
+                    case "Block": blocks.Add(ReadBlock(element)); break;
+                    case "Table": blocks.Add(ReadTable(element)); break;
                     case "Footnote":
-                    case "Float": document.blocks.AddRange(ReadInsert(element)); break;
+                    case "Float": blocks.AddRange(ReadInsert(element)); break;
                     default: throw new Exception($"Unknown document element '{element.Name.LocalName}'.");
                 }
 
+            document.blocks = blocks.ToArray();
             return document;
         }
 
         // A <Footnote Id> or <Float Kind Placement>: its blocks and tables, sharing one PageInsert.
-        private static IEnumerable<Control> ReadInsert(XElement element)
+        private static IEnumerable<NoteNode> ReadInsert(XElement element)
         {
             PageInsert insert = element.Name.LocalName == "Footnote"
                 ? new PageInsert { footnote = (string?)element.Attribute("Id") ?? "" }
@@ -71,12 +73,12 @@ namespace ArctisAurora.Core.UI
                 switch (child.Name.LocalName)
                 {
                     case "Block":
-                        BlockControl block = ReadBlock(child);
+                        NoteBlock block = ReadBlock(child);
                         block.insert = insert;
                         yield return block;
                         break;
                     case "Table":
-                        TableControl table = ReadTable(child);
+                        NoteTable table = ReadTable(child);
                         table.insert = insert;
                         yield return table;
                         break;
@@ -125,9 +127,9 @@ namespace ArctisAurora.Core.UI
         // A block carries few attributes of its own; everything else about it is its runs. Read by
         // name rather than through ApplyAttributes, which would also apply every control attribute
         // the block inherits and a note has no business carrying.
-        private static BlockControl ReadBlock(XElement element)
+        private static NoteBlock ReadBlock(XElement element)
         {
-            BlockControl block = new BlockControl();
+            NoteBlock block = new NoteBlock();
 
             XAttribute styling = element.Attribute("StylingType");
             if (styling != null && Enum.TryParse(styling.Value, true, out TextStyleType type))
@@ -163,37 +165,41 @@ namespace ArctisAurora.Core.UI
             }
 
             // A block with no runs still needs one span, or it can hold neither a caret nor a style.
-            if (block.spans.Count == 0) block.AppendRun(new Run());
+            if (block.run.spans.Count == 0) block.AppendRun(new Run());
 
             return block;
         }
 
         // <Column Width>s, then <Row>s of <Cell>s of <Block>s; a row wider than the columns adds columns.
-        internal static TableControl ReadTable(XElement element)
+        internal static NoteTable ReadTable(XElement element)
         {
             List<float> widths = new List<float>();
             foreach (XElement column in element.Elements().Where(e => e.Name.LocalName == "Column"))
                 widths.Add((float?)column.Attribute("Width") ?? defaultColumnWidth);
 
-            List<(List<List<BlockControl>> cells, List<int> spans)> rows = new List<(List<List<BlockControl>>, List<int>)>();
-            Dictionary<(int row, int column), CellRules> rules = new Dictionary<(int, int), CellRules>();
+            List<List<NoteCell>> rows = new List<List<NoteCell>>();
             foreach (XElement row in element.Elements().Where(e => e.Name.LocalName == "Row"))
             {
-                List<List<BlockControl>> cells = new List<List<BlockControl>>();
-                List<int> spans = new List<int>();
+                List<NoteCell> cells = new List<NoteCell>();
+                int spanned = 0;
                 foreach (XElement cell in row.Elements().Where(e => e.Name.LocalName == "Cell"))
                 {
+                    NoteCell read = new NoteCell
+                    {
+                        span = Math.Max(1, (int?)cell.Attribute("ColumnSpan") ?? 1),
+                        blocks = cell.Elements().Where(e => e.Name.LocalName == "Block").Select(ReadBlock).ToArray()
+                    };
                     if (cell.Attribute("RuleAbove") != null || cell.Attribute("RuleBelow") != null)
-                        rules[(rows.Count, spans.Sum())] = ReadCellRules(cell);
-                    cells.Add(cell.Elements().Where(e => e.Name.LocalName == "Block").Select(ReadBlock).ToList());
-                    spans.Add(Math.Max(1, (int?)cell.Attribute("ColumnSpan") ?? 1));
+                        read.rules = ReadCellRules(cell);
+                    cells.Add(read);
+                    spanned += read.span;
                 }
 
-                while (widths.Count < spans.Sum()) widths.Add(defaultColumnWidth);
-                rows.Add((cells, spans));
+                while (widths.Count < spanned) widths.Add(defaultColumnWidth);
+                rows.Add(cells);
             }
 
-            TableControl table = new TableControl(widths)
+            NoteTable table = new NoteTable(widths.ToArray())
             {
                 showBorders = (bool?)element.Attribute("Borders") ?? true,
                 spaceBefore = (float?)element.Attribute("SpaceBefore"),
@@ -201,8 +207,7 @@ namespace ArctisAurora.Core.UI
                 pageBreak = ReadPageBreak(element),
                 cellPadding = ReadPadding((string?)element.Attribute("Padding"))
             };
-            foreach ((List<List<BlockControl>> cells, List<int> spans) in rows)
-                table.AddRow(cells, spans);
+            table.rows = rows.Select(cells => Fit(cells, table.widths.Length)).ToArray();
 
             List<XElement> columns = element.Elements().Where(e => e.Name.LocalName == "Column").ToList();
             for (int c = 0; c < columns.Count; c++)
@@ -210,11 +215,30 @@ namespace ArctisAurora.Core.UI
                 table.leftRules[c] = ReadRule((string?)columns[c].Attribute("RuleLeft")).kind;
                 table.rightRules[c] = ReadRule((string?)columns[c].Attribute("RuleRight")).kind;
             }
-            foreach (StackPanelControl cell in table.Cells())
-                if (rules.TryGetValue((cell.gridRow, cell.gridColumn), out CellRules found)) table.cellRules[cell] = found;
-            table.ApplyInsets();
 
             return table;
+        }
+
+        // A row's cells clamped to the columns, a short row filled with empty cells, every cell holding a block.
+        private static NoteCell[] Fit(List<NoteCell> cells, int columns)
+        {
+            List<NoteCell> fitted = new List<NoteCell>();
+            for (int c = 0, i = 0; c < columns; i++)
+            {
+                NoteCell cell = i < cells.Count ? cells[i] : new NoteCell();
+                cell.span = Math.Clamp(cell.span, 1, columns - c);
+                c += cell.span;
+
+                if (cell.blocks.Length == 0)
+                {
+                    NoteBlock empty = new NoteBlock();
+                    empty.AppendRun(new Run());
+                    cell.blocks = [empty];
+                }
+                fitted.Add(cell);
+            }
+
+            return fitted.ToArray();
         }
 
         private static CellRules ReadCellRules(XElement cell)
@@ -306,9 +330,9 @@ namespace ArctisAurora.Core.UI
 
             XElement? group = null;
             PageInsert? grouped = null;
-            foreach (Control entry in document.blocks)
+            foreach (NoteNode entry in document.blocks)
             {
-                PageInsert? insert = entry is TableControl t ? t.insert : ((BlockControl)entry).insert;
+                PageInsert? insert = entry.insert;
                 if (insert != grouped)
                 {
                     grouped = insert;
@@ -317,13 +341,13 @@ namespace ArctisAurora.Core.UI
                         : new XElement(ns + "Float", new XAttribute("Kind", insert.floatKind ?? "figure"), new XAttribute("Placement", insert.placement));
                     if (group != null) root.Add(group);
                 }
-                (group ?? root).Add(entry is TableControl table ? WriteTable(ns, table) : WriteBlock(ns, (BlockControl)entry));
+                (group ?? root).Add(entry is NoteTable table ? WriteTable(ns, table) : WriteBlock(ns, (NoteBlock)entry));
             }
 
             return root;
         }
 
-        private static XElement WriteBlock(XNamespace ns, BlockControl block)
+        private static XElement WriteBlock(XNamespace ns, NoteBlock block)
         {
             XElement element = new XElement(ns + "Block");
             if (block.stylingType != TextStyleType.Text)
@@ -357,13 +381,13 @@ namespace ArctisAurora.Core.UI
             if (block.listStart.HasValue)
                 element.SetAttributeValue("Start", block.listStart.Value);
 
-            foreach (Run run in block.Runs())
+            foreach (Run run in block.run.Runs())
                 element.Add(WriteScalars(ns + "Run", run));
 
             return element;
         }
 
-        internal static XElement WriteTable(TableControl table) => WriteTable(XSDGenerator.NamespaceFor("UI"), table);
+        internal static XElement WriteTable(NoteTable table) => WriteTable(XSDGenerator.NamespaceFor("UI"), table);
 
         // A table of empty cells, every column one width.
         internal static XElement NewTable(int rows, int columns, float width)
@@ -375,7 +399,7 @@ namespace ArctisAurora.Core.UI
                     Enumerable.Range(0, columns).Select(_ => new XElement(ns + "Cell")))));
         }
 
-        private static XElement WriteTable(XNamespace ns, TableControl table)
+        private static XElement WriteTable(XNamespace ns, NoteTable table)
         {
             XElement element = new XElement(ns + "Table");
             if (!table.showBorders) element.SetAttributeValue("Borders", "false");
@@ -383,7 +407,7 @@ namespace ArctisAurora.Core.UI
             if (table.alignment != TextAlignment.Left) element.SetAttributeValue("Align", table.alignment.ToString());
             if (table.pageBreak != PageBreak.None) element.SetAttributeValue("PageBreak", table.pageBreak.ToString());
             if (table.cellPadding is Vector2 pad) element.SetAttributeValue("Padding", $"{Format(pad.X)} {Format(pad.Y)}");
-            for (int c = 0; c < table.widths.Count; c++)
+            for (int c = 0; c < table.widths.Length; c++)
             {
                 XElement column = new XElement(ns + "Column", new XAttribute("Width", Format(table.widths[c])));
                 if (table.leftRules[c] != TableRule.None) column.SetAttributeValue("RuleLeft", table.leftRules[c].ToString());
@@ -391,27 +415,26 @@ namespace ArctisAurora.Core.UI
                 element.Add(column);
             }
 
-            XElement row = null;
-            foreach (StackPanelControl cell in table.Cells())
+            foreach (NoteCell[] cells in table.rows)
             {
-                if (cell.gridColumn == 0)
-                {
-                    row = new XElement(ns + "Row");
-                    element.Add(row);
-                }
+                XElement row = new XElement(ns + "Row");
+                element.Add(row);
 
-                XElement written = new XElement(ns + "Cell");
-                if (table.ColumnSpan(cell) > 1) written.SetAttributeValue("ColumnSpan", table.ColumnSpan(cell));
-                if (table.cellRules.TryGetValue(cell, out CellRules rules))
+                foreach (NoteCell cell in cells)
                 {
-                    if (rules.above != TableRule.None) written.SetAttributeValue("RuleAbove", WriteRule(rules.above, rules.aboveWidth));
-                    if (rules.aboveTrim != RuleTrim.None) written.SetAttributeValue("TrimAbove", rules.aboveTrim.ToString());
-                    if (rules.below != TableRule.None) written.SetAttributeValue("RuleBelow", WriteRule(rules.below, rules.belowWidth));
-                    if (rules.belowTrim != RuleTrim.None) written.SetAttributeValue("TrimBelow", rules.belowTrim.ToString());
+                    XElement written = new XElement(ns + "Cell");
+                    if (cell.span > 1) written.SetAttributeValue("ColumnSpan", cell.span);
+                    if (cell.rules is CellRules rules)
+                    {
+                        if (rules.above != TableRule.None) written.SetAttributeValue("RuleAbove", WriteRule(rules.above, rules.aboveWidth));
+                        if (rules.aboveTrim != RuleTrim.None) written.SetAttributeValue("TrimAbove", rules.aboveTrim.ToString());
+                        if (rules.below != TableRule.None) written.SetAttributeValue("RuleBelow", WriteRule(rules.below, rules.belowWidth));
+                        if (rules.belowTrim != RuleTrim.None) written.SetAttributeValue("TrimBelow", rules.belowTrim.ToString());
+                    }
+                    foreach (NoteBlock block in cell.blocks)
+                        written.Add(WriteBlock(ns, block));
+                    row.Add(written);
                 }
-                foreach (Entity entry in cell.children)
-                    if (entry is BlockControl block) written.Add(WriteBlock(ns, block));
-                row.Add(written);
             }
 
             return element;

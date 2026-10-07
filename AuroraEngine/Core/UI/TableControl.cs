@@ -24,31 +24,34 @@ namespace ArctisAurora.Core.UI
     // A table in a note: fixed-width columns of cells, each cell a stack of blocks.
     public class TableControl : GridListControl
     {
+        // the table this control shows, and the model cell behind each view cell
+        public readonly NoteTable model;
+        private readonly Dictionary<StackPanelControl, NoteCell> cellOf = new Dictionary<StackPanelControl, NoteCell>();
+
         // column widths in design pixels, before zoom
-        public readonly List<float> widths;
+        public float[] widths => model.widths;
 
         // cell borders, laid over the cells
-        public bool showBorders = true;
+        public bool showBorders { get => model.showBorders; set => model.showBorders = value; }
         private readonly List<PanelControl> borders = new List<PanelControl>();
 
         // the gap above the table, px; null takes the layout's block spacing
-        public float? spaceBefore;
+        public float? spaceBefore { get => model.spaceBefore; set => model.spaceBefore = value; }
 
         // where a table narrower than the note sits; Justify is Left
-        public TextAlignment alignment;
+        public TextAlignment alignment { get => model.alignment; set => model.alignment = value; }
 
         // LaTeX rules: along cell tops and bottoms, down column edges; drawn whether or not the borders are
-        public readonly Dictionary<StackPanelControl, CellRules> cellRules = new Dictionary<StackPanelControl, CellRules>();
-        public readonly TableRule[] leftRules;
-        public readonly TableRule[] rightRules;
+        public TableRule[] leftRules => model.leftRules;
+        public TableRule[] rightRules => model.rightRules;
         private readonly List<PanelControl> ruleLines = new List<PanelControl>();
 
         // the cell inset across and down, px; null = cellInset all round
-        public Vector2? cellPadding;
+        public Vector2? cellPadding { get => model.cellPadding; set => model.cellPadding = value; }
 
         // a break before the table, and the float it is part of; null in the flow
-        public PageBreak pageBreak;
-        public PageInsert? insert;
+        public PageBreak pageBreak { get => model.pageBreak; set => model.pageBreak = value; }
+        public PageInsert? insert { get => model.insert; set => model.insert = value; }
 
         // column edges, one per column, over the borders
         private readonly List<ColumnGrip> grips = new List<ColumnGrip>();
@@ -78,46 +81,46 @@ namespace ArctisAurora.Core.UI
         private const float belowRuleSep = 0.65f;
         private const float exPerEm = 0.430555f;
 
-        public TableControl(List<float> widths)
+        public TableControl(NoteTable model)
         {
-            this.widths = widths;
-            leftRules = new TableRule[widths.Count];
-            rightRules = new TableRule[widths.Count];
+            this.model = model;
             foreach (float width in widths)
                 columnDefinitions.Add(new ColumnDefinition { sizeMode = GridSizeMode.Fixed, value = width });
+            foreach (NoteCell[] row in model.rows)
+                AddRow(row);
+            ApplyInsets();
         }
 
-        // Appends a row, one block list per cell spanning spans[i] columns; a cell given none gets an empty block.
-        public void AddRow(List<List<BlockControl>> cells, List<int>? spans = null)
+        // Appends a view row over a model row, one cell per model cell.
+        private void AddRow(NoteCell[] cells)
         {
             int row = rowDefinitions.Count;
             rowDefinitions.Add(new RowDefinition { sizeMode = GridSizeMode.Auto });
 
-            for (int c = 0, i = 0; c < widths.Count; i++)
+            int c = 0;
+            foreach (NoteCell source in cells)
             {
-                int span = Math.Clamp(spans != null && i < spans.Count ? spans[i] : 1, 1, widths.Count - c);
                 StackPanelControl cell = new StackPanelControl
                 {
                     gridRow = (short)row,
                     gridColumn = (short)c,
                     margin = new Thickness(cellInset * zoom)
                 };
-                c += span;
+                c += source.span;
 
-                List<BlockControl> blocks = i < cells.Count ? cells[i] : new List<BlockControl>();
-                if (blocks.Count == 0)
+                foreach (NoteBlock note in source.blocks)
                 {
-                    BlockControl empty = new BlockControl();
-                    empty.AppendRun(new Run());
-                    blocks.Add(empty);
-                }
-
-                foreach (BlockControl block in blocks)
+                    BlockControl block = new BlockControl(note);
+                    block.StartEffects();
                     cell.AddChild(block);
+                }
                 AddChild(cell);
-                if (span > 1) SetColumnSpan(cell, span);
+                cellOf[cell] = source;
+                if (source.span > 1) SetColumnSpan(cell, source.span);
             }
         }
+
+        internal NoteCell CellOf(StackPanelControl cell) => cellOf[cell];
 
         // The table inside the sideways scroller a note holds it in.
         public ScrollableControl Hosted()
@@ -176,7 +179,7 @@ namespace ArctisAurora.Core.UI
             if (changed)
             {
                 zoom = value;
-                for (int c = 0; c < widths.Count; c++)
+                for (int c = 0; c < widths.Length; c++)
                     columnDefinitions[c].value = widths[c] * zoom;
                 InvalidateLayout();
             }
@@ -212,7 +215,7 @@ namespace ArctisAurora.Core.UI
             float[] bottom = new float[rowDefinitions.Count];
             foreach (StackPanelControl cell in cells)
             {
-                if (!cellRules.TryGetValue(cell, out CellRules r)) continue;
+                if (cellOf[cell].rules is not CellRules r) continue;
                 float em = Em(cell);
                 int row = cell.gridRow;
                 if (r.above != TableRule.None)
@@ -314,7 +317,7 @@ namespace ArctisAurora.Core.UI
             List<LayoutRect> across = new List<LayoutRect>();
             foreach (StackPanelControl cell in Cells())
             {
-                if (!cellRules.TryGetValue(cell, out CellRules r)) continue;
+                if (cellOf[cell].rules is not CellRules r) continue;
                 LayoutRect box = Box(cell);
                 float em = Em(cell);
                 if (r.above != TableRule.None)
@@ -328,7 +331,7 @@ namespace ArctisAurora.Core.UI
 
             LayoutRect rect = arrangedRect;
             float x = rect.x + padding.left;
-            for (int c = 0; c < widths.Count; c++)
+            for (int c = 0; c < widths.Length; c++)
             {
                 float right = x + columnDefinitions[c].resolvedSize;
                 if (leftRules[c] != TableRule.None) Down(ref used, x, false, leftRules[c]);
@@ -389,7 +392,7 @@ namespace ArctisAurora.Core.UI
         {
             List<StackPanelControl> cells = Cells();
             LayoutRect rect = arrangedRect;
-            for (int c = 0; c < widths.Count && c < cells.Count; c++)
+            for (int c = 0; c < widths.Length && c < cells.Count; c++)
                 Grip(c).Arrange(new LayoutRect(Box(cells[c]).Right - gripWidth * 0.5f, rect.y, gripWidth, rect.height));
         }
 
@@ -417,7 +420,7 @@ namespace ArctisAurora.Core.UI
             {
                 LayoutRect box = Box(cells[i]);
                 int row = cells[i].gridRow;
-                bool lastColumn = cells[i].gridColumn + ColumnSpan(cells[i]) == widths.Count;
+                bool lastColumn = cells[i].gridColumn + ColumnSpan(cells[i]) == widths.Length;
 
                 Border(used++).Arrange(new LayoutRect(box.x, box.y, box.width, borderWidth));
                 Border(used++).Arrange(new LayoutRect(box.x, box.y, borderWidth, box.height));
@@ -467,7 +470,7 @@ namespace ArctisAurora.Core.UI
             resizeColumn = column;
             resizeGrab = x;
             resizeWidth = widths[column];
-            resizeBefore = DocumentXml.WriteTable(this);
+            resizeBefore = DocumentXml.WriteTable(model);
         }
 
         // Sized from where the grab started, in design pixels.

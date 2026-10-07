@@ -636,13 +636,11 @@ namespace Thorium.Tests
 
             RichTextDocument document = DocumentXml.Parse(new XElement("Document",
                 new XElement("Block", new XElement("Run", new XAttribute("Text", "a ")), new XElement("Run", new XAttribute("Sheet", cell)))));
-            BlockControl block = document.blocks.OfType<BlockControl>().First();
-            t.Check(block.text == "a " + BlockControl.PictureChar && block.spans.Any(span => span.IsSheet && span.sheetRef == cell),
+            NoteBlock block = document.blocks.OfType<NoteBlock>().First();
+            t.Check(block.run.text == "a " + BlockControl.PictureChar && block.run.spans.Any(span => span.IsSheet && span.sheetRef == cell),
                 "a Sheet run loads as one object character");
             t.Check(DocumentXml.ToXml(document).Descendants().Any(run => run.Name.LocalName == "Run" && (string?)run.Attribute("Sheet") == cell),
                 "and saves as a Sheet run");
-            foreach (Control entry in document.blocks)
-                entry.Destroy();
 
             t.Check(SheetLinks.Parse("Budget.sheet.xml#My page!B3:A1", out string file, out string page, out int top, out int left, out int bottom, out int right)
                 && file == "Budget.sheet.xml" && page == "My page" && (top, left, bottom, right) == (0, 0, 2, 1), "a reference parses, its range ordered");
@@ -1672,9 +1670,9 @@ namespace Thorium.Tests
         }
 
         private static List<BlockControl> NoteBlocks(DocumentEditorControl editor) =>
-            editor.session.document.blocks.OfType<BlockControl>().ToList();
+            NoteContent(editor).children.OfType<BlockControl>().ToList();
 
-        private static DocumentControl NoteContent(DocumentEditorControl editor) => (DocumentControl)NoteBlocks(editor)[0].parent;
+        private static DocumentControl NoteContent(DocumentEditorControl editor) => editor.children.OfType<DocumentControl>().First();
 
         private static string TempFolder()
         {

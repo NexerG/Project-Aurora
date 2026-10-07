@@ -160,9 +160,11 @@ Why: [[ui-palettes]].
   each line's `left` across its `TextLine.room` after `MeasureBlock`/`LayoutAround` [[markdown-blocks-and-alignment]].
   Both pass `_layout` as `MeasureBlock`'s `reuse`, so `Lines` is the same list and the same `TextLine`s after a
   remeasure [[large-note-measure-cost]], and a rewrap re-breaks `_layout`'s kept advances [[rewrap-advance-cache]].
+  Holds `data` (a `TextRunData`); `text`, `spans` and `Length` forward to it; `Edited(before)` (protected) re-measures when an edit through `data` changed the string [[note-model]].
   XML `Text`, `FontSize`, `FontName`. **`MeasureCore`
   returns the last `desired` while the run is clean and its wrap width unchanged** — anything `BuildRuns` reads
   must invalidate layout, which is why `colorHex` does. Why: [[ui-engine-stack]] § landing 4, § landing 6c.
+- **TextRunData** (no XML, sealed class) — a run's string and spans as plain data, no control: `text`, `spans`, `Length`; `InsertText`, `RemoveText`, `InsertSpans`, `AppendSpans`, `StyleAt`, `AllSpans`, `StyleRange` (no invalidation), `SetPicture`/`SetMath` (return true when a span starts there), `SplitSpanAt`, `MergeSpans`, `Runs()`; private `SpanForInsert`, `TextSpanBeside`, `Typable`, `ZeroText`, `DropEmptySpans`, `SameStyle`. Held by `TextRunControl.data`; `LabelControl` and `TextBoxControl.FieldLine` each own a private one. N0 of the note model — N1 adds `NoteBlock` over it [[note-model]].
 - **LabelControl** `<Label>` · TextRunControl — read-only text, one line: overrides `Wraps` false, so
   overflow is cut at the box unless `ClipToBounds="false"`. Old `LabelControl`.
 - **TextBoxControl** `<TextBox>` · ContainerControl, `IContext`, `IClipboardTarget` — single-line field with caret and
@@ -185,14 +187,14 @@ Why: [[ui-palettes]].
   `padding.left`, marker sync and size), `MeasureCore` (wraps inside the indent), `ArrangeCore` (shape `IconControl`
   centred in the indent, number `LabelControl` right-aligned, or `CheckBoxControl`), `AppendRun`, `Runs()` (both carry `Run.sheet`, the `Sheet` attribute of a sheet link). Also
   declares `ListMarker` and `ListMarkers` (`Format`, `ShapeIcon`, `IsNumbered`) [[list-markers]]. Region `text and spans`:
-  `InsertText`, `RemoveText`, `SplitAt`, `AppendBlock`, `Snapshot`/`SliceSnapshot`/`Restore`/`From`,
-  `InsertSlice`/`AppendSlice`, `StyleAt`, `StyleRange`, `SplitSpanAt`, `MergeSpans`. `firstIndent` (px; the `FirstLineIndent` override = `firstIndent * textZoom`) and `spaceBefore` (float?, null = the layout's block spacing) are copied in `SplitAt`, `SliceSnapshot`, `Restore`, `TakeKind` and carried by `BlockSnapshot`; `Typable` (private) keeps text typed beside a spacer in a text span, never the spacer. A boundary belongs to the
+  `SplitAt`, `Snapshot`/`SliceSnapshot`/`Restore`/`TakeKind` are block-level wrappers over `NoteBlock`'s; `InsertText`, `RemoveText`, `AppendBlock`,
+  `InsertSlice`/`AppendSlice`, `StyleAt`, `AllSpans`, `StyleRange`, `SetPicture`, `SetMath`, `SplitSpanAt`, `MergeSpans`, `Runs` are now same-signature forwarders to `data` that do the invalidation. `firstIndent` (px; the `FirstLineIndent` override = `firstIndent * textZoom`) and `spaceBefore` (float?, null = the layout's block spacing) are copied in `SplitAt`, `SliceSnapshot`, `Restore`, `TakeKind` and carried by `BlockSnapshot`; `Typable` (private) keeps text typed beside a spacer in a text span, never the spacer. A boundary belongs to the
   span **after** it — except a picture span, which never grows: `TextSpanBeside`. `PictureChar` is U+FFFC;
   `SetPicture`. `alignment`, `language` (code fence), `codeWrap` (a Code block wraps only with it; `Wraps`), `TakeKind`;
   the checkbox finds its editor through `Editor()`, any depth; `ApplyLayout` also sets `fontName` from the style
   scheme and insets a Code block both sides; `Emit` draws a Code block's `SubField` ground per line, or a `Rule`'s
   `Line` stroke instead of text; `FontFor` gives a Code span the Code font [[markdown-blocks-and-alignment]].
-  Replaces `Block`/`ContentBlock` + `TextRun`.
+  Replaces `Block`/`ContentBlock` + `TextRun`. Holds `note` (`public readonly NoteBlock`; `note.run` is its `data`); ctors `BlockControl()` (own new `NoteBlock`) and `BlockControl(NoteBlock)`; the 16 block fields (`stylingType` … `listStart`) are properties forwarding to `note`; `AppendRun`, `SplitAt`, `Snapshot`, `SliceSnapshot`, `Restore`, `TakeKind` wrap `note`'s and do the view work (font/paint onto a split tail, invalidate, restart an effect); `internal StartEffects()` restarts text effects on a freshly built view; `legacyInkHex` lives on `NoteBlock`; `PictureChar` stays here [[note-model]].
 - **Run** `<Run>` — a run as the file writes it; exists at load and save only. `Text`, `Bold`, `Italic`,
   `Strikethrough`, `Underline`, `ColorHex`, `HighlightHex`, `ControlColor`, `Gradient`, `FontName`, `FontSize`, `FontSizeAuthored`,
   `StylingType`, `Image`, `Width`, `Height`.
@@ -224,17 +226,17 @@ Why: [[ui-palettes]].
   `CaretSlot`, `StyleDelta`, `CaretStyle` and `PageBands`. `header` — one control at the top margin of page 1,
   `Paginate` starts below it. `MeasureCore` skips the blocks while the paper is unchanged, and passes
   `Paginate(paper, from, to)` the changed block range so it resumes and stops early;
-  `CollectChildren` draws only the pages and blocks the clip touches. Old `DocumentControl`. [[document-pages]], [[note-properties]], [[ui-draw-list]]
+  `CollectChildren` draws only the pages and blocks the clip touches. `InsertBlockAfter`/`RemoveBlock` also update the model (`document.blocks`, or the cell's `NoteCell.blocks` through `TableControl.CellOf`; private static `Inserted<T>`/`Removed<T>` array helpers); `PutTable` builds `new TableControl(DocumentXml.ReadTable(xml))` and places it via `internal ViewOf(NoteNode)` (linear scan of the top-level children); `InsertTable`, `DeleteTable`, `RecordTableResize`, `ChangeTable` find the table through `Array.IndexOf(document.blocks, …model)` [[note-model]]. Old `DocumentControl`. [[document-pages]], [[note-properties]], [[ui-draw-list]]
 - **TableControl** (no XML; `<Table>` in a note) · GridListControl — a note's table: Fixed columns from
-  `widths` × zoom, Auto rows, each cell a vertical `StackPanelControl` of `BlockControl`s. `AddRow`, `Cells`,
+  `widths` × zoom, Auto rows, each cell a vertical `StackPanelControl` of `BlockControl`s. `Cells`,
   `AppendBlocks` (feeds `DocumentControl.Blocks`), `StepCell`, `SetZoom`, `ApplyLayout`; region `pages`
   (`FirstRowHeight`, `Paginate` — page pushes written into `gapAfter`, zeroed again in `MeasureCore`); borders
   are `PanelControl`s appended to `children` past the cell assignments, and so are the column grips (nested
   private `ColumnGrip`, one per column on its right edge; region `column resize`: `BeginResize`/`Resize`/`EndResize`
-  → `DocumentControl.RecordTableResize`). `RowCount`, `CellBlocks(row, column)` (finds the cell covering that grid position); `showBorders` (default true; borders honour spans and the flag); `AddRow(cells, spans)`; `alignment` (`TextAlignment`; `ArrangeCore` narrows and moves the grid for centred/right), `cellRules`/`leftRules`/`rightRules` (exact rules, drawn by private `ArrangeRules`, which joins touching segments), `cellPadding` + `ApplyInsets` (from `ApplyLayout`, `SetZoom`, `ReadTable`); column spans via `GridListControl.ColumnSpan`/`SetColumnSpan`. Lives inside the horizontal
-  `ScrollableControl` that `Hosted()` builds, for both `LoadDocument` and `DocumentControl.PutTable`. [[document-tables]]
+  → `DocumentControl.RecordTableResize`). `RowCount`, `CellBlocks(row, column)` (finds the cell covering that grid position); `showBorders` (default true; borders honour spans and the flag); private `AddRow(NoteCell[])`; `alignment` (`TextAlignment`; `ArrangeCore` narrows and moves the grid for centred/right), `leftRules`/`rightRules` (the model's arrays; exact rules, drawn by private `ArrangeRules`, which joins touching segments), `internal CellOf(StackPanelControl)` → `NoteCell` (replaces the old `cellRules` dictionary; a cell's rules are `NoteCell.rules`), `cellPadding` + `ApplyInsets` (from `ApplyLayout`, `SetZoom`, `ReadTable`); column spans via `GridListControl.ColumnSpan`/`SetColumnSpan`. Lives inside the horizontal
+  `ScrollableControl` that `Hosted()` builds, for both `LoadDocument` and `DocumentControl.PutTable`. Holds `model` (`public readonly NoteTable`): ctor `TableControl(NoteTable)` builds the rows from it, then `ApplyInsets`; `widths` (`float[]`) is `model.widths`, and `showBorders`, `spaceBefore`, `alignment`, `cellPadding`, `pageBreak`, `insert` forward to it; a column drag writes `model.widths` and its undo XML is `DocumentXml.WriteTable(model)` [[note-model]]. [[document-tables]]
 - **DocumentEditorControl** `<DocumentEditor>` · ScrollableControl, `IContext`, `IClipboardTarget` — one open note. Subscribes to `SheetBook.changed` (`BookChanged` → `RefreshSheetLinks`; `OnDestroy` unsubscribes); `PasteLink` (step "Paste link"), `RenameSheetLinks`.
-  `Source`/`LoadPath`/`LoadDocument` (builds the properties header for `.md`/`.xml`), `Save` (refreshes it),
+  `Source`/`LoadPath`/`LoadDocument` (builds a `BlockControl`/`TableControl` per model entry, `StartEffects` on blocks; builds the properties header for `.md`/`.xml`; `SetLayout` walks the view's children, `PageAt` goes through `ViewOf`), `Save` (refreshes it),
   `needsNaming`, `FocusCaret`; regions `styling` (forwards under a `BeginStep`; also `SetAlignment` — `.xml` only, `CanAlign`, `InsertRule`, `InsertFormula`/`EditFormula` (open a `FormulaPopup`, whose static `open` and `PasteLink()` insert a `\sheet{ref}` cell reference into its source box — [[sheets]]), `SetChecked`, `ShiftListLevel`,
   `Page`/`SetPage`, and the non-undoable `SetPalette`/`ApplyPalette`, `SetLayout`, `SetFrontmatterValue`, `SetReadOnly`;
   every edit path checks `Writable`), `ViewState`/`RestoreView` (`SessionTab`; scroll applied at the first Arrange through
@@ -253,17 +255,18 @@ Why: [[ui-palettes]].
   `PressColorHex`, `IdleInkColorHex`, `ActiveInkColorHex`, `SeparatorColorHex`, `FieldColorHex`. Old
   `DocumentToolbarControl`, [[document-format-bar]], [[armed-style-at-the-caret]] (old).
 - **TexEditorControl** — the LaTeX split view: source editor plus read-only preview, debounced `Recompile` ([[latex-editor]]). L7d: after layout `ResolvePages()` reads each label's page through `DocumentEditorControl.PageAt` and re-shows the tree (`Show(tree)`) when a `\pageref` number changed, at most twice (`pageReloads`); state `compiledAt`, `pageTree`, `pageRefs` (from `TexLowering.PageRefs`). Costs a one-frame "??" per recompile that has `\pageref`.
-- **RichTextDocument** `<Document>` — the model: `blocks`, `name`, `layout`, `palette`, `created`, `modified`,
+- **RichTextDocument** `<Document>` — the model: `blocks` (`NoteNode[]`, not controls), `name`, `layout`, `palette`, `created`, `modified`,
   `frontmatter`; `extensions`, `Load` (fills `created` from disk), `Save` (switch on the extension), `Stamp`.
   **DocumentEditSession** — the open file: `path`, `undo`, `isDirty`, `MarkDirty`, `Repath`, `Save` (stamps
   `modified` when dirty).
+- **NoteNode** (abstract), **NoteBlock**, **NoteCell**, **NoteTable** (no XML, `NoteModel.cs`) — the note's data, no controls; N1 of the note model [[note-model]]. `NoteNode`: `spaceBefore`, `pageBreak`, `insert`. `NoteBlock : NoteNode` (sealed): `run` (readonly `TextRunData`), `stylingType`, `alignment`, `firstIndent`, `pageStyle`, `markLeft`/`markRight`, `language`, `codeWrap`, `listKind`/`listLevel`/`isChecked`/`listMarker`/`listStart`, `legacyInkHex`; `AppendRun(Run)`, `SplitAt(offset)`, `Snapshot`/`SliceSnapshot`/`Restore`/`TakeKind`, static `From(BlockSnapshot)`. `NoteCell`: `span` (1), `rules` (`CellRules?`), `blocks` (`NoteBlock[]`). `NoteTable : NoteNode`: `widths` (`float[]`), `leftRules`/`rightRules`, `rows` (`NoteCell[][]`), `showBorders`, `alignment`, `cellPadding`; ctor `NoteTable(float[] widths)`. Arrays except `TextRunData.spans`.
 - **NotePropertiesControl** (no XML) · StackPanelControl — the header's rows: dates, palette dropdown, layout
   fields, List markers, Read only, a Markdown note's other frontmatter keys (`UserValue`: checkbox for true/false,
   field + Open for a link via static `openLink`; × `Remove`), and an "Add property" row (`AddProperty`). `Refresh`
   (posted after add/remove); swallows presses and taps; takes no active control. [[note-properties]]
 - **Frontmatter** (static) — `Split`, `Entries` (`Entry`: key, value, editable, list, line, count), `Get`, `Set`
   (a block list writes back as one, `ListLines`).
-- **DocumentXml** — `Load`/`Parse(XElement)` build blocks from a `<Document>` tree, `ToXml`/`Save` write one;
+- **DocumentXml** — `Load`/`Parse(XElement)` build the model (`NoteNode[]`, no controls) from a `<Document>` tree, `ToXml`/`Save` write one from it; `ReadBlock → NoteBlock`, `ReadTable → NoteTable` (internal), `ReadInsert → IEnumerable<NoteNode>`, `WriteTable(NoteTable)`, private `Fit(cells, columns)` (clamps spans, fills short rows and empty cells);
   the block level is written by hand. Since 6d no XSD type declares `"Document"`/`"Block"`/`"Run"`, so a
   note's `schemaLocation` validates nothing. [../Patterns/document-xml-persistence.md](../Patterns/document-xml-persistence.md)
 - **NoteFormats.cs** — `MarkdownFormat` and `PlainTextFormat`: `Read(text, name) → XElement`,

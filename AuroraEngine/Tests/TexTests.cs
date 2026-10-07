@@ -41,11 +41,9 @@ namespace ArctisAurora.Tests
                 File.WriteAllBytes(from, bytes);
 
                 RichTextDocument document = RichTextDocument.Load(from);
-                bool latex = document.blocks.OfType<BlockControl>().All(b => b.stylingType == TextStyleType.Code && b.language == "latex");
+                bool latex = document.blocks.OfType<NoteBlock>().All(b => b.stylingType == TextStyleType.Code && b.language == "latex");
                 document.Save(to);
                 byte[] back = File.ReadAllBytes(to);
-                foreach (Control block in document.blocks)
-                    block.Destroy();
                 File.Delete(from);
                 File.Delete(to);
 
@@ -459,9 +457,7 @@ namespace ArctisAurora.Tests
             string want = string.Concat(expected.Select(b => b.ToString(SaveOptions.DisableFormatting)));
             t.Check(body == want, $"blocks and runs: {body}");
             RichTextDocument parsed = DocumentXml.Parse(document);
-            t.Check(parsed.blocks.Count == 3, "the tree parses as a note");
-            foreach (Control block in parsed.blocks)
-                block.Destroy();
+            t.Check(parsed.blocks.Length == 3, "the tree parses as a note");
             yield break;
         }
 
@@ -718,11 +714,9 @@ namespace ArctisAurora.Tests
             t.Check(string.Join(",", lines) == "1,2", $"the table is one block at its \\begin line: {string.Join(",", lines)}");
 
             RichTextDocument parsed = DocumentXml.Parse(document);
-            TableControl control = (TableControl)parsed.blocks[1];
-            t.Check(!control.showBorders && control.ColumnSpan(control.Cells()[2]) == 2, "it parses as a borderless table with a merged cell");
+            NoteTable control = (NoteTable)parsed.blocks[1];
+            t.Check(!control.showBorders && control.rows.SelectMany(r => r).ElementAt(2).span == 2, "it parses as a borderless table with a merged cell");
             t.Check(table.Attribute("Align") == null && control.alignment == TextAlignment.Left, "a tabular in a justified paragraph sits left");
-            foreach (Control block in parsed.blocks)
-                block.Destroy();
 
             string Aligned(string body)
             {
@@ -750,8 +744,8 @@ namespace ArctisAurora.Tests
             t.Check(bottom.All(c => (string?)c.Attribute("RuleBelow") == "Double"), "\\hline\\hline under the last row is a double rule");
 
             XElement centred = TexLowering.Compile($"\\begin{{center}}{tabular}\\end{{center}}", out _);
-            TableControl table2 = DocumentXml.Parse(centred).blocks.OfType<TableControl>().Single();
-            t.Check(DocumentXml.WriteTable(table2).Attribute("Align")?.Value == "Center", "Align round-trips");
+            TableControl table2 = new TableControl(DocumentXml.Parse(centred).blocks.OfType<NoteTable>().Single());
+            t.Check(DocumentXml.WriteTable(table2.model).Attribute("Align")?.Value == "Center", "Align round-trips");
             Vector2 desired = table2.Measure(new Vector2(1000f, float.PositiveInfinity));
             table2.Arrange(new LayoutRect(0f, 0f, 1000f, desired.Y));
             StackPanelControl first = table2.Cells()[0];
@@ -1008,8 +1002,6 @@ namespace ArctisAurora.Tests
             List<XElement> blocks = written.Elements().Where(e => e.Name.LocalName == "Block").ToList();
             t.Check((string?)blocks[1].Attribute("Indent") == "30" && (string?)blocks[1].Attribute("SpaceBefore") == "40"
                 && blocks[1].Elements().Any(r => (string?)r.Attribute("Space") == "25"), "Indent, SpaceBefore and Space round-trip through .xml");
-            foreach (Control block in parsed.blocks)
-                block.Destroy();
 
             string path = Path.Combine(Path.GetTempPath(), $"aurora-tex-{Guid.NewGuid():N}.xml");
             source.Save(path);
@@ -1023,7 +1015,7 @@ namespace ArctisAurora.Tests
             File.Delete(path);
             yield return 2;
 
-            List<BlockControl> p = editor.session.document.blocks.OfType<BlockControl>().ToList();
+            List<BlockControl> p = Content(editor).children.OfType<BlockControl>().ToList();
             float zoom = p[1].Lines[0].left / 30f;
             float gap = p[1].arrangedRect.y - (p[0].arrangedRect.y + p[0].arrangedRect.height);
             float plain = p[2].arrangedRect.y - (p[1].arrangedRect.y + p[1].arrangedRect.height);
@@ -1071,7 +1063,7 @@ namespace ArctisAurora.Tests
             File.Delete(path);
             yield return 2;
 
-            IReadOnlyList<TextLine> lines = ((BlockControl)editor.session.document.blocks[0]).Lines;
+            IReadOnlyList<TextLine> lines = ((BlockControl)View(editor, 0)).Lines;
             int display = lines.ToList().FindIndex(l => l.segments.Count > 0 && l.segments[0].runIndex == 1);
             t.Check(display > 1, $"the text wraps onto two lines or more before the display: display on line {display} of {lines.Count}");
             if (display > 1)
@@ -1104,10 +1096,15 @@ namespace ArctisAurora.Tests
             return editor;
         }
 
+        private static DocumentControl Content(DocumentEditorControl editor) => editor.children.OfType<DocumentControl>().First();
+
+        // The control showing a note-level entry.
+        private static Control View(DocumentEditorControl editor, int block) => Content(editor).ViewOf(editor.session.document.blocks[block]);
+
         // Each sheet's head and foot labels, page by page, in SlotPlace order.
         private static List<string[]> Margins(DocumentEditorControl editor)
         {
-            DocumentControl content = (DocumentControl)((Control)editor.session.document.blocks[0]).parent;
+            DocumentControl content = Content(editor);
             return content.children.OfType<PanelControl>().Where(p => p.children.Count == 1 && p.children[0] is ContainerControl)
                 .Select(p => ((Control)p.children[0]).children.OfType<LabelControl>().Select(l => l.text).ToArray()).ToList();
         }
@@ -1217,14 +1214,12 @@ namespace ArctisAurora.Tests
                 && (string?)written[1].Attribute("PageStyle") == "empty" && (string?)written[2].Attribute("PageBreak") == "Clear"
                 && (string?)written[3].Attribute("PageBreak") == "Page" && written[0].Attribute("PageBreak") == null,
                 "PageBreak, PageStyle and the marks round-trip through .xml, tables' breaks too");
-            foreach (Control block in parsed.blocks)
-                block.Destroy();
 
             DocumentEditorControl editor = ShowDocument(t, document);
             yield return 2;
             t.Check(editor.PageAt(0, 0) == 1 && editor.PageAt(1, 0) == 2 && editor.PageAt(2, 0) == 3 && editor.PageAt(3, 0) == 4,
                 $"each break starts a new page: {editor.PageAt(0, 0)} {editor.PageAt(1, 0)} {editor.PageAt(2, 0)} {editor.PageAt(3, 0)}");
-            List<BlockControl> blocks = editor.session.document.blocks.OfType<BlockControl>().ToList();
+            List<BlockControl> blocks = Content(editor).children.OfType<BlockControl>().ToList();
             BlockSnapshot snapshot = blocks[1].Snapshot();
             BlockControl tail = blocks[1].SplitAt(6);
             t.Check(tail.pageBreak == PageBreak.None && tail.markRight == null && tail.pageStyle == null
@@ -1260,7 +1255,7 @@ namespace ArctisAurora.Tests
             t.Check(MathF.Abs(((float?)document.Descendants("Page").Single().Attribute("FootnoteSkip") ?? 0f) - 9f * 25.4f / 72.27f) < 0.01f, "\\skip\\footins is the page's footnote skip");
 
             RichTextDocument parsed = DocumentXml.Parse(document);
-            List<BlockControl> blocks = parsed.blocks.OfType<BlockControl>().ToList();
+            List<NoteBlock> blocks = parsed.blocks.OfType<NoteBlock>().ToList();
             t.Check(blocks.Count == 4 && blocks[0].insert == null && blocks[1].insert?.footnote == "1" && blocks[2].insert?.footnote == "2" && blocks[3].insert == null,
                 "a <Footnote> reads as its blocks with one PageInsert");
             XElement written = DocumentXml.ToXml(parsed);
@@ -1269,11 +1264,8 @@ namespace ArctisAurora.Tests
                 "footnotes and their anchors round-trip through .xml");
 
             BlockSnapshot snapshot = blocks[1].Snapshot();
-            BlockControl tail = blocks[1].SplitAt(3);
+            NoteBlock tail = blocks[1].SplitAt(3);
             t.Check(tail.insert == blocks[1].insert && snapshot.insert == blocks[1].insert, "Enter in a footnote makes another block of it; a snapshot keeps it");
-            tail.Destroy();
-            foreach (Control block in parsed.blocks)
-                block.Destroy();
             yield break;
         }
 
@@ -1301,7 +1293,7 @@ namespace ArctisAurora.Tests
             DocumentEditorControl editor = ShowDocument(t, document);
             yield return 2;
 
-            List<Control> blocks = editor.session.document.blocks;
+            List<Control> blocks = Enumerable.Range(0, editor.session.document.blocks.Length).Select(i => View(editor, i)).ToList();
             BlockControl a = (BlockControl)blocks[1], b = (BlockControl)blocks[3], filled = (BlockControl)blocks[4], c = (BlockControl)blocks[5], z = (BlockControl)blocks[6];
             t.Check(editor.PageAt(1, 0) == 1 && editor.PageAt(3, 0) == 1, $"footnotes a and b sit on their anchors' page: {editor.PageAt(1, 0)} {editor.PageAt(3, 0)}");
             t.Check(b.arrangedRect.y >= a.arrangedRect.Bottom - 0.5f, "two footnotes on a page stack in anchor order");
@@ -1326,8 +1318,8 @@ namespace ArctisAurora.Tests
                 Para("before"), Para("anchor", "h"), Note("h", string.Join(" ", Enumerable.Repeat("note text here", 40))));
             editor = ShowDocument(t, huge);
             yield return 2;
-            BlockControl anchor = (BlockControl)editor.session.document.blocks[1];
-            BlockControl over = (BlockControl)editor.session.document.blocks[2];
+            BlockControl anchor = (BlockControl)View(editor, 1);
+            BlockControl over = (BlockControl)View(editor, 2);
             t.Check(over.arrangedRect.y >= anchor.arrangedRect.Bottom, $"a footnote taller than the page starts below its anchor's line: {over.arrangedRect.y} vs {anchor.arrangedRect.Bottom}");
             t.Show(new StackPanelControl());
         }
@@ -1362,14 +1354,12 @@ namespace ArctisAurora.Tests
                 $"the class size sets the float separations: {Mm("FloatSep")} {Mm("TextFloatSep")} {Mm("InTextSep")}");
 
             RichTextDocument parsed = DocumentXml.Parse(document);
-            List<Control> blocks = parsed.blocks;
-            PageInsert? figure = (blocks[1] as BlockControl)?.insert;
-            t.Check(figure is { floatKind: "figure", placement: "!t" } && (blocks[2] as BlockControl)?.insert == figure && (blocks[3] as BlockControl)?.insert == null,
+            NoteNode[] blocks = parsed.blocks;
+            PageInsert? figure = (blocks[1] as NoteBlock)?.insert;
+            t.Check(figure is { floatKind: "figure", placement: "!t" } && (blocks[2] as NoteBlock)?.insert == figure && (blocks[3] as NoteBlock)?.insert == null,
                 "a <Float> reads as its blocks with one PageInsert");
             XElement written = DocumentXml.ToXml(parsed);
             t.Check(written.Elements().Count(e => e.Name.LocalName == "Float") == 2, "floats round-trip through .xml");
-            foreach (Control block in parsed.blocks)
-                block.Destroy();
             yield break;
         }
 
@@ -1389,7 +1379,7 @@ namespace ArctisAurora.Tests
             XElement Document(string mode, params XElement[] content) => new XElement("Document",
                 new XElement("DocumentLayout", new XAttribute("BlockSpacing", "0"),
                     new XElement("Page", new XAttribute("Mode", mode), new XAttribute("Size", "A6"))), content);
-            LayoutRect Rect(DocumentEditorControl e, int block) => e.session.document.blocks[block].arrangedRect;
+            LayoutRect Rect(DocumentEditorControl e, int block) => View(e, block).arrangedRect;
             string Span(DocumentEditorControl e, int block) => $"{Rect(e, block).y:0.#}..{Rect(e, block).Bottom:0.#}";
 
             DocumentEditorControl editor = ShowDocument(t, Document("Paged", Para("a"), Float("ht"), Para("b")));
@@ -1401,13 +1391,13 @@ namespace ArctisAurora.Tests
             yield return 2;
             t.Check(editor.PageAt(2, 0) == 1 && Rect(editor, 3).Bottom < Rect(editor, 0).y && Rect(editor, 4).y >= Rect(editor, 1).Bottom - 0.5f,
                 $"t: a float met mid-page goes to that page's top and the text above it moves down: float {Span(editor, 2)} {Span(editor, 3)}, a {Span(editor, 0)}, b {Span(editor, 1)}, c {Span(editor, 4)}");
-            Control? header = ((DocumentControl)editor.session.document.blocks[0].parent).header;
+            Control? header = Content(editor).header;
             t.Check(header != null && Rect(editor, 2).y >= header.arrangedRect.Bottom - 0.5f,
                 $"a top float on the first page sits under the note's header: float {Rect(editor, 2).y}, header ends {header?.arrangedRect.Bottom}");
 
             editor = ShowDocument(t, Document("Paged", Para("a", anchor: "n"), new XElement("Footnote", new XAttribute("Id", "n"), Para("note")), Float("b"), Para("c")));
             yield return 2;
-            DocumentControl content = (DocumentControl)editor.session.document.blocks[0].parent;
+            DocumentControl content = Content(editor);
             PanelControl sheet = content.children.OfType<PanelControl>().First(p => p.children.Count == 1 && p.children[0] is ContainerControl);
             float textBottom = sheet.arrangedRect.Bottom - 25.4f * PageLayout.PxPerMm * content.zoom;
             t.Check(editor.PageAt(2, 0) == 1 && MathF.Abs(Rect(editor, 3).Bottom - textBottom) < 1f && Rect(editor, 1).Bottom <= Rect(editor, 2).y && Rect(editor, 4).Bottom < Rect(editor, 1).y,
@@ -1418,7 +1408,7 @@ namespace ArctisAurora.Tests
             yield return 2;
             t.Check(editor.PageAt(1, 0) == 2 && editor.PageAt(3, 0) == 3, $"a float too tall for a text page waits for a page of floats; the next figure may not pass it: {editor.PageAt(1, 0)} {editor.PageAt(3, 0)}");
             t.Check(editor.PageAt(5, 0) == 1 && Rect(editor, 6).Bottom < Rect(editor, 0).y, $"a table is not held back by a waiting figure: page {editor.PageAt(5, 0)}");
-            BlockControl text = (BlockControl)editor.session.document.blocks[7];
+            BlockControl text = (BlockControl)View(editor, 7);
             t.Check(editor.PageAt(8, 0) > 2 && Enumerable.Range(0, text.Length).All(i => editor.PageAt(7, i) != 2), "no text goes on a page of floats");
 
             editor = ShowDocument(t, Document("Paged", Para("a"), Float("p", 10f), Para("b", "Clear"), Para("c")));
@@ -1480,8 +1470,6 @@ namespace ArctisAurora.Tests
             XElement page = DocumentXml.ToXml(parsed).Descendants().Single(e => e.Name.LocalName == "Page");
             t.Check(page.Elements().Count(e => e.Name.LocalName == "PageStyle") == 2 && (string?)page.Attribute("Style") == "heads"
                 && page.Elements().First().Elements().Count() == 2, "page styles and their slots round-trip through .xml");
-            foreach (Control block in parsed.blocks)
-                block.Destroy();
 
             DocumentEditorControl editor = ShowDocument(t, document);
             yield return 2;

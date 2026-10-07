@@ -85,6 +85,8 @@ the edit site, and it matches the recorded "the model is the control tree" decis
 `document.blocks` silently stale for the whole session for any other reader, and the vault browser
 and undo are both going to be readers. Explicit sync fails loudly instead.
 
+**Superseded in part ([[note-model]] N1, 2026-10-07):** `document.blocks` now holds `NoteNode`s, not the controls, so they are no longer "same objects, two lists"; `InsertBlockAfter`/`RemoveBlock` still update both, as model and view.
+
 The duplication itself is the P0 model-as-controls decision showing through again, and it goes away
 with [[ui-data-control-split]], not here.
 

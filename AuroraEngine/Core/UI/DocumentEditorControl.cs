@@ -121,17 +121,20 @@ namespace ArctisAurora.Core.UI
                 content.header = expander;
             }
 
-            foreach (Control entry in document.blocks)
+            foreach (NoteNode entry in document.blocks)
             {
-                if (entry is TableControl table)
+                if (entry is NoteTable model)
                 {
+                    TableControl table = new TableControl(model);
                     table.ApplyLayout(document.layout);
                     content.AddChild(table.Hosted());
                     continue;
                 }
 
-                ((BlockControl)entry).ApplyLayout(document.layout);
-                content.AddChild(entry);
+                BlockControl block = new BlockControl((NoteBlock)entry);
+                block.StartEffects();
+                block.ApplyLayout(document.layout);
+                content.AddChild(block);
             }
 
             ApplyPalette();
@@ -418,7 +421,7 @@ namespace ArctisAurora.Core.UI
         // The note's page format.
         public PageLayout? Page => activeDocument?.layout.Page;
 
-        public int? PageAt(int block, int offset) => content?.PageAt(activeDocument.blocks[block], offset);
+        public int? PageAt(int block, int offset) => content?.PageAt(content.ViewOf(activeDocument.blocks[block]), offset);
 
         public void SetPage(PageLayout page)
         {
@@ -472,10 +475,10 @@ namespace ArctisAurora.Core.UI
 
             activeDocument.layout = layout;
             content.blockSpacing = layout.blockSpacing;
-            foreach (Control entry in activeDocument.blocks)
+            foreach (Entity child in content.children)
             {
-                if (entry is TableControl table) table.ApplyLayout(layout);
-                else ((BlockControl)entry).ApplyLayout(layout);
+                if (child is BlockControl block) block.ApplyLayout(layout);
+                else if (child is ScrollableControl viewport && viewport.children.Count > 0 && viewport.children[0] is TableControl table) table.ApplyLayout(layout);
             }
             content.ListsChanged();
             MarkDirty();

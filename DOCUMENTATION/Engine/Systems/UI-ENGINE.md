@@ -404,6 +404,8 @@ A dragged tab is previewed in a small floating window that sits centred under th
 
 > The preview's framing is worked out once, when the drag starts, and handed to its window as plain data. The render thread may not ask a control for its layout — that lives in a pool only the main thread may touch — so anything the renderer needs from a control has to be copied out for it first.
 
+The title bar does not claim a drag at all: a left press hands the move to the operating system, which is where snapping and drag-to-restore come from. A second press inside the double-click window maximizes the window, or restores it when it already is, and starts no move — it acts on the press, as Windows' own title bars do, so a maximized window is never pulled out of its maximized state on the way to being toggled.
+
 ## Splits and scrolling
 
 A splitter is a button that resizes the sibling ahead of it. It has no idea what a pane is — it looks at the stack it sits in, takes the control before it and the control after it, and writes sizes onto them. That is the whole design, and it is why a splitter dropped anywhere else is inert rather than broken: with no stack for a parent, there is no sibling ahead, and it simply does nothing.
