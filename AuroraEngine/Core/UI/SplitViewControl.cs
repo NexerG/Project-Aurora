@@ -14,7 +14,7 @@ namespace ArctisAurora.Core.UI
         }
 
         // grip thickness and the floor a dragged pane stops at
-        private const float gripThickness = 5f;
+        private const float gripThickness = 3f;
         private const float paneMinimum = 120f;
 
         public SplitViewControl()
@@ -116,6 +116,7 @@ namespace ArctisAurora.Core.UI
             pane.name = source.name;
             pane.tabHeight = source.tabHeight;
             pane.tabWidth = source.tabWidth;
+            pane.minTabWidth = source.minTabWidth;
             pane.CopyPaint(source);
             pane.tabColorHex = source.tabColorHex;
             pane.activeTabColorHex = source.activeTabColorHex;
@@ -125,7 +126,9 @@ namespace ArctisAurora.Core.UI
             pane.gripHoverColorHex = source.gripHoverColorHex;
             pane.gripPressColorHex = source.gripPressColorHex;
             pane.tearOffDocument = source.tearOffDocument;
+            pane.stickyDocument = source.stickyDocument;
             pane.tabContextMenu = source.tabContextMenu;
+            pane.newButton = source.newButton;
             pane.contextMenu = source.contextMenu;
 
             return pane;

@@ -108,7 +108,7 @@ This is the same shape a cut or a paste wants, and paste will be the first thing
 
 ### History ownership
 
-The stack hangs off `DocumentEditSession`, so it is per open note. Tabs already give two live sessions and a global stack would let Ctrl+Z in one tab reach the note in another. An editor with no session hands back a default scope, which discards whatever is pushed into it.
+The stack hangs off `DocumentEditSession`, so it is per open note. Tabs already give two live sessions and a global stack would let Ctrl+Z in one tab reach the note in another. Two views of the same note share one session (`NoteSessions`), so they share one history: Ctrl+Z in either undoes the last edit made in both. An editor with no session hands back a default scope, which discards whatever is pushed into it.
 
 ## Lifecycle / Flow
 1. A keybind reaches `TextInputActions`, which resolves the focused `DocumentEditorControl` the same way every other text action does.

@@ -7,7 +7,7 @@
 
 ## Decisions
 
-### 1. The splitter resizes the pane *before* it, and nothing else
+### 1. The splitter resizes the pane *before* it, and nothing else (one exception since 2026-10-08: `grabNext`, see [[workspaces]])
 
 Dragging writes `preferredWidth` (or `preferredHeight`) on the previous sibling. The pane after it
 carries `WidthStar="1"` and `StackPanelControl.Arrange` already gives a star child whatever main-axis

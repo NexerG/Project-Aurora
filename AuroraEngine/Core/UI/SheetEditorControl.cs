@@ -13,7 +13,7 @@ namespace ArctisAurora.Core.UI
     {
         public SheetDocument document { get; private set; } = null!;
         public string? path { get; private set; }
-        public bool unsaved { get; private set; }
+        public bool unsaved => document.unsaved;
         public UndoStack undo => document.undo;
 
         bool IFileEditor.isDirty => unsaved;
@@ -51,14 +51,43 @@ namespace ArctisAurora.Core.UI
 
         public SheetPage page => sheet!.page;
 
+        // formula bar: the active cell's address and its text
+        private const float formulaBarHeight = 24f;
+        private readonly LabelControl cellName;
+        private readonly TextBoxControl formula;
+
+        // the tab-row tools, built the first time a tab asks
+        private TabToolsControl? sheetTools;
+        public Control tools => sheetTools ??= BuildTools();
+
         public SheetEditorControl()
         {
             horizontalAlignment = HorizontalAlignment.Stretch;
             verticalAlignment = VerticalAlignment.Stretch;
             PaintOr(null, PaletteRole.Surface);
 
+            StackPanelControl bar = new StackPanelControl
+            {
+                orientation = Orientation.Horizontal,
+                Spacing = 6f,
+                preferredHeight = formulaBarHeight,
+                horizontalAlignment = HorizontalAlignment.Stretch,
+                padding = new Thickness(3f, 6f, 3f, 6f),
+                edgeThickness = new Thickness(0f, 0f, 1f, 0f),
+                edgeRole = PaletteRole.Line
+            };
+            cellName = new LabelControl { preferredWidth = 44f, fontSize = 12, role = PaletteRole.Ink, verticalPosition = 0.5f };
+            formula = new TextBoxControl { widthStar = 1f, fontSize = 12, role = PaletteRole.Field };
+            formula.onCommit = value => { CommitFormula(value); if (sheet != null) UIEngine.SetActiveControl(sheet); };
+            formula.onCancel = () => { SyncFormula(); if (sheet != null) UIEngine.SetActiveControl(sheet); };
+            formula.onBlur = () => CommitFormula(formula.text);
+            bar.AddChild(cellName);
+            bar.AddChild(new LabelControl { text = "fx", fontSize = 12, role = PaletteRole.MutedInk, verticalPosition = 0.5f });
+            bar.AddChild(formula);
+
             scroller = new Scroller(this);
             strip = new SheetPageStripControl(this);
+            AddChild(bar);
             AddChild(scroller);
             AddChild(strip);
             SheetBook.changed += BookChanged;
@@ -67,6 +96,7 @@ namespace ArctisAurora.Core.UI
         public override void OnDestroy()
         {
             SheetBook.changed -= BookChanged;
+            sheetTools?.Destroy();
             base.OnDestroy();
         }
 
@@ -101,6 +131,7 @@ namespace ArctisAurora.Core.UI
             scroller.SetScrollOffset(Vector2.Zero);
             if (active) UIEngine.SetActiveControl(sheet);
             strip.Sync();
+            SyncFormula();
         }
 
         #region ---- file ----
@@ -109,7 +140,7 @@ namespace ArctisAurora.Core.UI
             if (editing) sheet!.field.Commit();
             if (path == null) return;
             document.Save(path);
-            unsaved = false;
+            document.unsaved = false;
         }
 
         public void Repath(string newPath, string name)
@@ -121,7 +152,7 @@ namespace ArctisAurora.Core.UI
         // Cells changed somewhere in the vault: this file's own edits make it unsaved.
         private void BookChanged(SheetDocument? edited)
         {
-            if (ReferenceEquals(edited, document)) unsaved = true;
+            if (ReferenceEquals(edited, document)) document.unsaved = true;
             if (sheet == null || destroyed) return;
 
             int index = document.pages.IndexOf(sheet.page);
@@ -139,6 +170,7 @@ namespace ArctisAurora.Core.UI
             }
             sheet.CellsChanged();
             strip.Sync();
+            SyncFormula();
         }
 
         public void Undo()
@@ -164,6 +196,20 @@ namespace ArctisAurora.Core.UI
         {
             if (editing) sheet!.field.Commit();
             Record("Add page", new SheetPageEdit(document, document.pages.Count, SheetPage.Blank(FreePageName()), true));
+            ShowPage(document.pages.Count - 1);
+        }
+
+        // A CSV file as a new page named after it, shown after; one undo step.
+        public void ImportPage(string csvPath)
+        {
+            if (editing) sheet!.field.Commit();
+            SheetPage page = SheetCsv.Load(csvPath).pages[0];
+            string name = page.name.Trim();
+            if (name.Length == 0 || name.Contains('!') || document.pages.Exists(other => other.name.Equals(name, StringComparison.OrdinalIgnoreCase)))
+                name = FreePageName();
+            page.name = name;
+
+            Record("Import CSV", new SheetPageEdit(document, document.pages.Count, page, true));
             ShowPage(document.pages.Count - 1);
         }
 
@@ -278,6 +324,7 @@ namespace ArctisAurora.Core.UI
 
             sheet?.InvalidateLayout();
             RequestScrollToActive();
+            SyncFormula();
         }
 
         public void Move(int rows, int columns, bool extend) => Select(activeRow + rows, activeColumn + columns, extend);
@@ -406,6 +453,84 @@ namespace ArctisAurora.Core.UI
                 edit.Redo();
                 undo.Push(edit);
             }
+        }
+        #endregion
+
+        #region ---- tools and formula bar ----
+        private TabToolsControl BuildTools()
+        {
+            TabToolsControl row = new TabToolsControl();
+            row.Icon("bold", _ => On(SheetActions.Bold));
+            row.Separator();
+            row.Text("Format", owner => TabToolsControl.Drop(owner, new List<ContextMenuEntry>
+            {
+                new ContextMenuButton("General", () => On(SheetActions.FormatGeneral)),
+                new ContextMenuButton("Number", () => On(SheetActions.FormatNumber)),
+                new ContextMenuButton("Percent", () => On(SheetActions.FormatPercent)),
+                new ContextMenuButton("Currency", () => On(SheetActions.FormatCurrency))
+            }), true);
+            row.Text("Fill", owner => TabToolsControl.Drop(owner, DocumentToolbarControl.highlightOptions
+                .Select(option => (ContextMenuEntry)new ContextMenuButton(option.caption, () => On(() => SetFill(option.hex))))
+                .ToList()), true);
+            row.Separator();
+            row.Text("Paste link", _ => On(() => PasteLink()));
+            row.Separator();
+            row.Text("Sum", _ => On(AutoSum));
+            return row;
+        }
+
+        // Writes =SUM() of the unbroken run of numbers above the active cell, or left of it when there are none above.
+        public void AutoSum()
+        {
+            if (editing || sheet == null) return;
+
+            string? range = NumberRun(-1, 0) ?? NumberRun(0, -1);
+            if (range == null) return;
+            Write("Sum", new List<(int, int, string?)> { (activeRow, activeColumn, "=SUM(" + range + ")") });
+        }
+
+        // The run of numbers starting beside the active cell and walking one way, as A1:A4; null when that neighbour is not a number.
+        private string? NumberRun(int rowStep, int columnStep)
+        {
+            int nearRow = activeRow + rowStep, nearColumn = activeColumn + columnStep;
+            if (!IsNumber(nearRow, nearColumn)) return null;
+
+            int farRow = nearRow, farColumn = nearColumn;
+            while (IsNumber(farRow + rowStep, farColumn + columnStep))
+            {
+                farRow += rowStep;
+                farColumn += columnStep;
+            }
+            return SheetDocument.Address(farRow, farColumn) + ":" + SheetDocument.Address(nearRow, nearColumn);
+        }
+
+        private bool IsNumber(int row, int column) =>
+            row >= 0 && column >= 0 && SheetBook.calc.Value(sheet!.page, row, column).kind == SheetValueKind.Number;
+
+        // Gives this sheet's grid the active control, then acts, so a pane's tools act on their own sheet.
+        internal void On(Action action)
+        {
+            if (sheet != null && !editing) UIEngine.SetActiveControl(sheet);
+            action();
+        }
+
+        public void FocusFormula()
+        {
+            if (sheet != null && !editing) UIEngine.SetActiveControl(formula);
+        }
+
+        private void SyncFormula()
+        {
+            if (sheet == null || formula.isEditing) return;
+
+            cellName.text = SheetDocument.Address(activeRow, activeColumn);
+            formula.text = Layer.Get(activeRow, activeColumn) ?? string.Empty;
+        }
+
+        private void CommitFormula(string value)
+        {
+            if (sheet == null || editing) return;
+            Write("Edit cell", new List<(int, int, string?)> { (activeRow, activeColumn, value) });
         }
         #endregion
 

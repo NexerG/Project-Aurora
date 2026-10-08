@@ -59,14 +59,21 @@ namespace ArctisAurora.Core.UI
         {
             SheetBook.changed -= BookChanged;
             if (activeDocument != null) activeDocument.changed -= NoteChanged;
+            ReleaseSession();
+            noteTools?.Destroy();
             base.OnDestroy();
         }
+
+        // the tab-row tools, built the first time a tab asks
+        private NoteToolsControl? noteTools;
+        public Control tools => noteTools ??= new NoteToolsControl(this);
 
         private void BookChanged(SheetDocument? edited) => content?.RefreshSheetLinks();
 
         private void NoteChanged(NoteChange change)
         {
             if (change.kind == NoteChangeKind.Palette) ApplyPalette();
+            else if (change.kind is NoteChangeKind.Properties or NoteChangeKind.ReadOnly && session?.lead != content) properties?.Refresh();
         }
 
         [A_XSDElementProperty("Source", "UI", "Engine-XML note file to load into the editor.")]
@@ -87,10 +94,18 @@ namespace ArctisAurora.Core.UI
         public void LoadPath(string nameOrPath)
         {
             string path = Path.GetFullPath(Path.IsPathRooted(nameOrPath) ? nameOrPath : Paths.Doc(nameOrPath));
-            RichTextDocument document = RichTextDocument.Load(path);
+            ReleaseSession();
 
-            session = new DocumentEditSession(document, path);
-            LoadDocument(document);
+            session = NoteSessions.Open(path);
+            LoadDocument(session.document);
+        }
+
+        private void ReleaseSession()
+        {
+            if (session == null) return;
+            if (session.lead == content) session.lead = null;
+            NoteSessions.Close(session);
+            session = null;
         }
 
         public void LoadDocument(RichTextDocument document)
@@ -109,14 +124,16 @@ namespace ArctisAurora.Core.UI
             {
                 blockSpacing = document.layout.blockSpacing,
                 page = document.layout.Page,
-                zoom = DocumentZoom,
+                zoom = zoomOverride ?? DocumentZoom,
                 document = document,
                 caretColorHex = caretColorHex,
                 selectionColorHex = selectionColorHex,
                 undo = session?.undo,
+                session = session,
                 alpha = 0f
             };
             AddChild(content);
+            if (session != null && session.lead == null) session.lead = content;
 
             string extension = Extension;
             content.plainText = extension is ".txt" or ".tex";
@@ -152,6 +169,23 @@ namespace ArctisAurora.Core.UI
         {
             session?.Save();
             properties?.Refresh();
+            onSaved?.Invoke();
+        }
+
+        // Runs after every save of this editor's note.
+        public Action? onSaved;
+
+        // This editor's zoom in place of the document zoom setting, or null to follow it.
+        public float? zoomOverride
+        {
+            get => field;
+            set
+            {
+                field = value;
+                if (content == null) return;
+                content.zoom = value ?? DocumentZoom;
+                content.InvalidateLayout();
+            }
         }
 
         public void Repath(string newPath, string name)
@@ -205,13 +239,7 @@ namespace ArctisAurora.Core.UI
         #region ---- history ----
         // Every path that changes the document ends here, so the close paths can tell an edited note
         // from one that was only opened.
-        public void MarkDirty()
-        {
-            session?.MarkDirty();
-            onEdited?.Invoke();
-        }
-
-        public Action? onEdited;
+        public void MarkDirty() => session?.MarkDirty();
 
         // One user action's worth of edits. A note with no session has no history, and the default
         // scope discards what is pushed into it.
@@ -296,6 +324,30 @@ namespace ArctisAurora.Core.UI
 
             using (BeginStep("Alignment"))
                 if (content.SetBlockAlignment(alignment)) MarkDirty();
+        }
+
+        public void ToggleBullets()
+        {
+            if (!Writable) return;
+
+            using (BeginStep("Bulleted list"))
+                if (content.ToggleBullets()) MarkDirty();
+        }
+
+        public void ToggleNumbers()
+        {
+            if (!Writable) return;
+
+            using (BeginStep("Numbered list"))
+                if (content.ToggleList(ListKind.Bullet, ListMarker.Decimal)) MarkDirty();
+        }
+
+        public void ToggleTasks()
+        {
+            if (!Writable) return;
+
+            using (BeginStep("Task list"))
+                if (content.ToggleList(ListKind.Task, null)) MarkDirty();
         }
 
         public void InsertRule()
@@ -509,7 +561,7 @@ namespace ArctisAurora.Core.UI
             {
                 if (editor.content == null) return;
 
-                editor.content.zoom = DocumentZoom;
+                editor.content.zoom = editor.zoomOverride ?? DocumentZoom;
                 editor.content.InvalidateLayout();
                 editor.RequestScrollToCaret();
                 return;
@@ -794,29 +846,59 @@ namespace ArctisAurora.Core.UI
         // Saves the picture beside the note under attachments/ and puts it in at the caret.
         public bool PasteImage(Image<Rgba32> image)
         {
-            if (content == null || session == null) return false;
-            if (!Writable) return true;
+            string? folder = AttachmentsFolder("paste");
+            if (folder == null) return content != null && session != null;
+
+            string file = Path.Combine(folder, $"{Path.GetFileNameWithoutExtension(session!.path)} {DateTime.Now:yyyyMMdd-HHmmss}.png");
+            image.SaveAsPng(file);
+            PutPicture(file, "Paste picture");
+            return true;
+        }
+
+        // Copies a picture file beside the note under attachments/, unchanged, and puts it in at the caret.
+        public bool InsertPictureFile(string source)
+        {
+            string? folder = AttachmentsFolder("insert");
+            if (folder == null || !File.Exists(source)) return false;
+
+            string file = Path.Combine(folder, Path.GetFileName(source));
+            if (!string.Equals(Path.GetFullPath(source), Path.GetFullPath(file), StringComparison.OrdinalIgnoreCase))
+            {
+                string stem = Path.GetFileNameWithoutExtension(source), extension = Path.GetExtension(source);
+                for (int n = 2; File.Exists(file); n++)
+                    file = Path.Combine(folder, $"{stem} ({n}){extension}");
+                File.Copy(source, file);
+            }
+            return PutPicture(file, "Insert picture");
+        }
+
+        // The note's attachments folder, made if missing; null when the note cannot take a picture.
+        private string? AttachmentsFolder(string verb)
+        {
+            if (content == null || session == null || !Writable) return null;
             if (Extension is ".txt" or ".tex")
             {
-                Log.Info($"a plain text note cannot hold a picture; paste refused.");
-                return true;
+                Log.Info($"a plain text note cannot hold a picture; {verb} refused.");
+                return null;
             }
 
             string folder = Path.Combine(Path.GetDirectoryName(session.path)!, "attachments");
             Directory.CreateDirectory(folder);
-            string file = Path.Combine(folder, $"{Path.GetFileNameWithoutExtension(session.path)} {DateTime.Now:yyyyMMdd-HHmmss}.png");
-            image.SaveAsPng(file);
+            return folder;
+        }
 
-            bool pasted;
-            using (BeginStep("Paste picture"))
-                pasted = content.PasteImage(file);
+        private bool PutPicture(string file, string label)
+        {
+            bool put;
+            using (BeginStep(label))
+                put = content.PasteImage(file);
 
-            if (pasted)
+            if (put)
             {
                 MarkDirty();
                 RequestScrollToCaret();
             }
-            return true;
+            return put;
         }
         #endregion
 
@@ -1020,7 +1102,10 @@ namespace ArctisAurora.Core.UI
         #region ---- focus ----
         public void OnContextAdded(string context)
         {
-            if (context == "ActiveControl") content?.FocusCaret();
+            if (context != "ActiveControl") return;
+
+            content?.FocusCaret();
+            if (session != null && content != null) session.lead = content;
         }
 
         // Raised only when the context went somewhere outside the editor.

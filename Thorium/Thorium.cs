@@ -30,6 +30,7 @@ namespace Thorium
             SheetBook.findSheet = VaultBrowserControl.FindSheet;
             SheetBook.vaultSheets = VaultBrowserControl.VaultSheets;
             SheetBook.vaultNotes = VaultBrowserControl.VaultNotes;
+            TabViewControl.newPressed += VaultBrowserControl.NewInPane;
             // prepare level
 
             // One-shot atlas bake — this is the set currently in Data/Fonts/arial.

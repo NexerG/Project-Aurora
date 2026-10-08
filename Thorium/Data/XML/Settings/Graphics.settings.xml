@@ -12,6 +12,7 @@
        choose, and the write root is where their choices land. -->
   <Graphics>
     <VSync Scope="App"/>
+    <WindowSetting OnClose="Ask"/>
   </Graphics>
 
 </UserSettings>

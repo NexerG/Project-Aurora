@@ -3,6 +3,7 @@ using ArctisAurora.Core.Registry;
 using ArctisAurora.Core.UI;
 using ArctisAurora.EngineWork;
 using Microsoft.VisualBasic.FileIO;
+using System.Numerics;
 using System.Xml.Linq;
 
 namespace Thorium.Editor.CustomControls
@@ -13,7 +14,7 @@ namespace Thorium.Editor.CustomControls
     {
         // control names in UI.ui.xml
         private const string browserName = "Browser";
-        private const string tabsName = "Tabs";
+        private const string filterName = "VaultFilter";
 
         // context declared in Contexts/Thorium.contexts.xml
         private const string tabsContext = "ActiveTabViewer";
@@ -24,20 +25,71 @@ namespace Thorium.Editor.CustomControls
         private const string noteMenu = "vault-note";
         private const string csvMenu = "vault-csv";
 
+        // the shown workspace's kind, which picks the files listed
+        private WorkspaceKind filtered;
+
+        // the pane whose + was pressed, which the next file made opens in
+        private static TabViewControl? pendingPane;
+        private const string paneNewMenu = "pane-new";
+
         public VaultBrowserControl()
         {
             contextMenu = vaultMenu;
             Rebuild();
             Context.changed += OnContextChanged;
             TabViewControl.activeChanged += OnActiveTabChanged;
+            WorkspaceControl.changed += OnWorkspaceChanged;
         }
 
         public override void OnDestroy()
         {
             Context.changed -= OnContextChanged;
             TabViewControl.activeChanged -= OnActiveTabChanged;
+            WorkspaceControl.changed -= OnWorkspaceChanged;
             base.OnDestroy();
         }
+
+        #region ---- workspace filter ----
+        private void OnWorkspaceChanged(WorkspaceControl workspace)
+        {            Control? root = Engine.primary?.ui?.uiRoot;
+            if (root == null || !ReferenceEquals(workspace, WorkspaceControl.In(root))) return;
+
+            Control top = this;
+            while (top.parent is Control up) top = up;
+            if (!ReferenceEquals(top, root)) return;
+
+            WorkspaceKind kind = workspace.shown?.kind ?? WorkspaceKind.General;
+            if (kind == filtered) return;
+
+            filtered = kind;
+            if (root.FindByName(filterName) is LabelControl label) label.text = FilterName(kind);
+            Rebuild();
+        }
+
+        private static bool Shows(WorkspaceKind kind, string path)
+        {
+            bool sheet = SheetDocument.IsSheet(path) || SheetCsv.IsCsv(path);
+            bool planner = PlannerDocument.IsPlanner(path);
+            bool tex = Path.GetExtension(path).Equals(".tex", StringComparison.OrdinalIgnoreCase);
+            return kind switch
+            {
+                WorkspaceKind.Docs => !sheet && !planner && !tex,
+                WorkspaceKind.Sheets => sheet,
+                WorkspaceKind.LaTeX => tex,
+                WorkspaceKind.Manager or WorkspaceKind.Calendar => planner,
+                _ => true
+            };
+        }
+
+        private static string FilterName(WorkspaceKind kind) => kind switch
+        {
+            WorkspaceKind.Docs => "Notes",
+            WorkspaceKind.Sheets => "Sheets",
+            WorkspaceKind.LaTeX => "LaTeX",
+            WorkspaceKind.Manager or WorkspaceKind.Calendar => "Plans",
+            _ => "All files"
+        };
+        #endregion
 
         #region ---- current note ----
         private void OnContextChanged(string name, object? value)
@@ -59,14 +111,19 @@ namespace Thorium.Editor.CustomControls
             KnownVaults.Resolve(SettingsRegistry.Get<ThoriumSettings>().vault.path);
 
         protected override bool Accepts(FileObject file) =>
-            RichTextDocument.extensions.Contains(Path.GetExtension(file.path).ToLowerInvariant()) || SheetCsv.IsCsv(file.path);
+            (RichTextDocument.extensions.Contains(Path.GetExtension(file.path).ToLowerInvariant()) || SheetCsv.IsCsv(file.path))
+            && Shows(filtered, file.path);
 
         protected override string DisplayName(FileObject file) =>
             file.type == FileObject.FileType.Directory ? file.name
             : SheetCsv.IsCsv(file.path) ? Path.GetFileName(file.path)
             : BaseName(file.path);
 
-        protected override void Activate(FileObject file) => Open(file.path);
+        protected override void Activate(FileObject file)
+        {
+            pendingPane = null;
+            Open(file.path);
+        }
 
         protected override void Rename(FileObject file, string newName) => RenameNote(file.path, newName);
 
@@ -125,6 +182,13 @@ namespace Thorium.Editor.CustomControls
             browser?.NewPlanner(browser.RootPath);
         }
 
+        [A_XSDActionDependency("Tex.New", "UI", "Creates a LaTeX document at the vault root and opens it")]
+        public static void NewTex()
+        {
+            VaultBrowserControl browser = Browser();
+            browser?.NewTex(browser.RootPath);
+        }
+
         [A_XSDActionDependency("Planners.NewHere", "UI", "Creates a planner beside the entry the menu was opened on")]
         public static void NewPlannerHere()
         {
@@ -138,14 +202,22 @@ namespace Thorium.Editor.CustomControls
         public static void FromCsv()
         {
             FileRowControl row = MenuRow();
-            if (row != null && SheetCsv.IsCsv(row.file.path)) Browser()?.SheetFromCsv(row.file, false);
+            if (row != null && SheetCsv.IsCsv(row.file.path)) Browser()?.SheetFromCsv(row.file.path, false);
         }
 
         [A_XSDActionDependency("Sheets.ConvertCsv", "UI", "Turns the CSV the menu was opened on into a sheet, sends the CSV to the recycle bin and opens the sheet")]
         public static void ConvertCsv()
         {
             FileRowControl row = MenuRow();
-            if (row != null && SheetCsv.IsCsv(row.file.path)) Browser()?.SheetFromCsv(row.file, true);
+            if (row != null && SheetCsv.IsCsv(row.file.path)) Browser()?.SheetFromCsv(row.file.path, true);
+        }
+
+        [A_XSDActionDependency("Sheets.ConvertOpenCsv", "UI", "Turns the CSV in the focused tab into a sheet, sends the CSV to the recycle bin and opens the sheet")]
+        public static void ConvertOpenCsv()
+        {
+            TabItemControl? item = TabViewControl.focused?.activeItem;
+            if (item != null && TabViewControl.FileEditorOf(item) is SheetEditorControl { document.isCsv: true, path: string path })
+                Browser()?.SheetFromCsv(path, true);
         }
 
         [A_XSDActionDependency("Notes.Rename", "UI", "Turns the name of the note the menu was opened on into a field")]
@@ -214,6 +286,19 @@ namespace Thorium.Editor.CustomControls
             Open(path);
         }
 
+        private void NewTex(string folder) =>
+            NoteNameWindow.Ask(UIEngine.WindowOf(this), "Untitled", name => CreateTex(folder, name), null, null);
+
+        private void CreateTex(string folder, string name)
+        {
+            string path = FreePath(folder, name, ".tex");
+            File.WriteAllText(path, "\\documentclass{article}\n\n\\begin{document}\n\n\\end{document}\n");
+
+            Expand(folder);
+            Rebuild();
+            Open(path);
+        }
+
         private void NewPlanner(string folder) =>
             NoteNameWindow.Ask(UIEngine.WindowOf(this), "Untitled", name => CreatePlanner(folder, name), null, null);
 
@@ -228,16 +313,16 @@ namespace Thorium.Editor.CustomControls
         }
 
         // The loaded copy, so edits not yet saved to the CSV come along; replacing deletes the CSV and its tab.
-        private void SheetFromCsv(FileObject file, bool replace)
+        private void SheetFromCsv(string csv, bool replace)
         {
-            string path = FreePath(file.parent.path, BaseName(file.path), SheetDocument.extension);
-            SheetBook.Get(file.path).Save(path);
+            string path = FreePath(Path.GetDirectoryName(csv)!, BaseName(csv), SheetDocument.extension);
+            SheetBook.Get(csv).Save(path);
             WriteName(path, BaseName(path));
             if (replace)
             {
-                SheetBook.Renamed(file.path, path, VaultSheets());
-                SheetLinks.Renamed(file.path, path, VaultNotes());
-                DeleteFile(file.path);
+                SheetBook.Renamed(csv, path, VaultSheets());
+                SheetLinks.Renamed(csv, path, VaultNotes());
+                DeleteFile(csv);
             }
             SheetBook.Created();
 
@@ -297,30 +382,53 @@ namespace Thorium.Editor.CustomControls
                 SheetBook.Renamed(path, target, VaultSheets());
                 SheetLinks.Renamed(path, target, VaultNotes());
             }
+            if (PlannerDocument.IsPlanner(target)) PlannerBook.Renamed(Path.GetFullPath(path), target);
 
             VaultBrowserControl? browser = Engine.primary.ui.uiRoot.FindByName(browserName) as VaultBrowserControl;
             browser?.Rebuild();
             browser?.FollowFocusedTab();
         }
 
-        // Focuses the note wherever it is already open, and only opens a tab when it is not.
+        // Focuses the note wherever it is on screen, and only opens a tab when it is not. A note open
+        // in a hidden workspace gets a second view in the shown one.
         private static void Open(string notePath)
         {
-            TabItemControl already = TabViewControl.FindOpenDocument(notePath, out TabViewControl owner);
-            if (already != null)
+            foreach ((TabItemControl already, TabViewControl owner) in TabViewControl.FindOpenDocuments(notePath))
             {
+                if (!Shown(owner)) continue;
                 owner.SetActive(already);
                 UIEngine.WindowOf(owner)?.Focus();
                 return;
             }
 
-            TabViewControl tabs = FocusedTabs()
-                ?? Engine.primary.ui.uiRoot.FindByName(tabsName) as TabViewControl;
+            TabViewControl? pending = pendingPane;
+            pendingPane = null;
+            TabViewControl tabs = (pending?.parent != null ? pending : null) ?? FocusedTabs() ?? ShownTabs();
             if (tabs == null) return;
 
             TabItemControl tab = BuildTab(notePath);
+            if (ShownKind() == WorkspaceKind.Calendar && TabViewControl.FileEditorOf(tab) is PlannerEditorControl planner)
+                planner.ShowView(PlannerView.Calendar);
             tabs.AddChild(tab);
             tabs.SetActive(tab);
+        }
+
+        // A pane's +: a file of its workspace's kind, or a menu of kinds in a General workspace.
+        public static void NewInPane(TabViewControl view, Control button)
+        {
+            pendingPane = view;
+            switch (WorkspacePageControl.Of(view)?.kind ?? WorkspaceKind.General)
+            {
+                case WorkspaceKind.Docs: New(); break;
+                case WorkspaceKind.Sheets: NewSheet(); break;
+                case WorkspaceKind.LaTeX: NewTex(); break;
+                case WorkspaceKind.Manager:
+                case WorkspaceKind.Calendar: NewPlanner(); break;
+                default:
+                    if (ContextMenus.Get(paneNewMenu) is ContextMenu menu)
+                        ContextMenus.Open(menu.entries, button, new Vector2(button.arrangedRect.x, button.arrangedRect.Bottom));
+                    break;
+            }
         }
 
         // Opens the first note in tree order.
@@ -438,8 +546,21 @@ namespace Thorium.Editor.CustomControls
         private static TabViewControl FocusedTabs()
         {
             TabViewControl view = Context.Get<TabViewControl>(tabsContext);
-            return view != null && UIEngine.WindowOf(view) == Engine.primary ? view : null;
+            return view != null && UIEngine.WindowOf(view) == Engine.primary && Shown(view) ? view : null;
         }
+
+        // The first pane of the primary's shown workspace.
+        private static TabViewControl? ShownTabs() =>
+            WorkspaceControl.In(Engine.primary.ui.uiRoot)?.shown is WorkspacePageControl page
+                ? TabViewControl.TabViews(page).FirstOrDefault()
+                : null;
+
+        private static WorkspaceKind ShownKind() =>
+            WorkspaceControl.In(Engine.primary.ui.uiRoot)?.shown?.kind ?? WorkspaceKind.General;
+
+        // Whether a view is in the workspace on screen in its window.
+        private static bool Shown(TabViewControl view) =>
+            WorkspacePageControl.Of(view) is not WorkspacePageControl page || page.isShown;
 
         // One tab holding one note, for whichever view is going to take it. Loaded before the tab is
         // built, so the caption can come from the note's own name.

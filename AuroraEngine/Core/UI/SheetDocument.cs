@@ -22,6 +22,7 @@ namespace ArctisAurora.Core.UI
 
         // one history per file, whichever tab edits it
         public readonly UndoStack undo = new UndoStack();
+        public bool unsaved;
 
         // a CSV file, and how it was written, kept for writing it back
         public bool isCsv;

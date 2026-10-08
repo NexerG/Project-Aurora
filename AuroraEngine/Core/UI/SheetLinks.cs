@@ -275,7 +275,7 @@ namespace ArctisAurora.Core.UI
         {
             foreach (string note in notes)
             {
-                foreach ((TabItemControl item, TabViewControl _) in TabViewControl.FindOpenDocuments(note))
+                if (TabViewControl.FindOpenDocument(note, out _) is TabItemControl item)
                     TabViewControl.EditorOf(item)?.RenameSheetLinks(rename);
                 RewriteFile(note, rename);
             }

@@ -621,6 +621,7 @@ namespace ArctisAurora.Core.UI
 
         // the open note's history, assigned by the editor; null until a session exists
         internal UndoStack undo;
+        internal DocumentEditSession? session;
 
         // a .txt note, which takes no Markdown as it is typed
         internal bool plainText;
@@ -3004,6 +3005,37 @@ namespace ArctisAurora.Core.UI
             return true;
         }
 
+        // Makes the selected paragraphs a bulleted list, or text again when the caret's paragraph is one.
+        public bool ToggleBullets() => ToggleList(ListKind.Bullet, null);
+
+        // Makes the selected paragraphs a list of the kind, numbered when the marker is, or text again when the
+        // caret's paragraph already is that list.
+        public bool ToggleList(ListKind kind, ListMarker? marker)
+        {
+            if (caretBlock == null) return false;
+
+            int first, last;
+            if (OrderedSelection(out DocumentAddress from, out DocumentAddress to))
+            {
+                first = from.block;
+                last = to.block;
+            }
+            else first = last = Blocks().IndexOf(caretBlock);
+
+            if (first < 0 || last < 0) return false;
+
+            bool already = caretBlock.listKind == kind && (marker == null
+                || ListMarkers.IsNumbered(caretBlock.listMarker ?? ListMarker.Disc) == ListMarkers.IsNumbered(marker.Value));
+            List<BlockSnapshot> before = SnapshotBlocks(first, last);
+            document.ChangeBlocks(first, last, b =>
+            {
+                b.listKind = already ? ListKind.None : kind;
+                b.listMarker = already ? null : marker;
+            });
+            undo?.Push(new BlockStateEdit(document, first, before, SnapshotBlocks(first, last)));
+            return true;
+        }
+
         // Restyles the selected range; with nothing selected the style is armed for the next
         // character instead. False either way when nothing was written.
         public bool ApplyStyle(StyleDelta delta)
@@ -3153,9 +3185,42 @@ namespace ArctisAurora.Core.UI
             base.OnDestroy();
         }
 
+        // Where another view's change moves the caret, the anchor and a text drag's press. A selected
+        // picture or formula the change touches collapses onto the caret.
+        private bool MapAddress(NoteChange change, out DocumentAddress caretTo, out DocumentAddress anchorTo, out DocumentAddress pressTo)
+        {
+            DocumentAddress caretAt = AddressOf(caretBlock, caretOffset);
+            caretTo = anchorTo = pressTo = default;
+            if (caretAt.block < 0) return false;
+
+            DocumentAddress anchorAt = anchor.Equals(Focus) ? caretAt : AddressOf(anchor.block, anchor.offset);
+            caretTo = change.Map(caretAt);
+            anchorTo = change.Map(anchorAt);
+            if (textDragging) pressTo = change.Map(AddressOf(textDragPress.block, textDragPress.offset));
+
+            bool moves = change.kind != NoteChangeKind.Spans;
+            if (!HasSelection || !(SelectedPicture(out _, out _) || SelectedMath(out _, out _))) return moves;
+
+            int selected = Math.Min(caretAt.block, anchorAt.block);
+            bool touched = change.kind switch
+            {
+                NoteChangeKind.Table => true,
+                NoteChangeKind.Text or NoteChangeKind.Spans or NoteChangeKind.Kind or NoteChangeKind.Inserted or NoteChangeKind.Removed =>
+                    (selected >= change.first && selected < change.first + change.count)
+                    || (change.kind is NoteChangeKind.Inserted or NoteChangeKind.Removed && selected == change.at.block),
+                _ => false
+            };
+            if (touched) anchorTo = caretTo;
+            return moves || touched;
+        }
+
         // Brings the controls in line with a change the model made.
         private void OnNoteChanged(NoteChange change)
         {
+            bool follows = session == null || session.lead == null || session.lead == this;
+            DocumentAddress caretTo = default, anchorTo = default, pressTo = default;
+            bool remap = !follows && caretBlock != null && MapAddress(change, out caretTo, out anchorTo, out pressTo);
+
             if (change.kind is NoteChangeKind.Inserted or NoteChangeKind.Removed or NoteChangeKind.Table) caretIndex = -1;
 
             switch (change.kind)
@@ -3224,7 +3289,22 @@ namespace ArctisAurora.Core.UI
                     break;
             }
 
-            if (change.caret is not DocumentAddress caretAt) return;
+            if (remap)
+            {
+                if (!Resolve(caretTo, out BlockControl block, out int offset))
+                {
+                    caretTo = new DocumentAddress(Blocks().Count - 1, int.MaxValue);
+                    Resolve(caretTo, out block, out offset);
+                }
+                caretBlock = block;
+                caretOffset = offset;
+                caretIndex = block != null ? caretTo.block : -1;
+                anchor = Resolve(anchorTo, out BlockControl anchorBlock, out int anchorOffset) ? new CaretSlot(anchorBlock, anchorOffset) : Focus;
+                if (textDragging && Resolve(pressTo, out BlockControl pressBlock, out int pressOffset)) textDragPress = new CaretSlot(pressBlock, pressOffset);
+                InvalidateArrange();
+            }
+
+            if (!follows || change.caret is not DocumentAddress caretAt) return;
             if (change.anchor is DocumentAddress anchorAt) Select(anchorAt, caretAt);
             else CaretTo(caretAt);
         }

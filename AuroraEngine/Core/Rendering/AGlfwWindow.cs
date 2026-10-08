@@ -1,8 +1,11 @@
-﻿using ArctisAurora.Core.Registry;
+﻿using ArctisAurora.Core.Filing.Serialization;
+using ArctisAurora.Core.Registry;
 using ArctisAurora.Core.Testing;
 using ArctisAurora.Core.UI;
 using Silk.NET.Core.Native;
 using Silk.NET.GLFW;
+using SixLabors.ImageSharp.PixelFormats;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using Silk.NET.Vulkan;
 using Silk.NET.Vulkan.Extensions.KHR;
@@ -31,6 +34,10 @@ namespace ArctisAurora.EngineWork.Rendering
         // only applies them per window, and the hover paths ask for a shape far more often than the
         // shape changes.
         private static readonly Dictionary<CursorShape, IntPtr> cursors = new Dictionary<CursorShape, IntPtr>();
+
+        // app icon images and the pinned pixels they point into
+        private static Silk.NET.GLFW.Image[]? _appIcons;
+        private static readonly List<byte[]> _appIconPixels = new List<byte[]>();
 
         internal readonly RenderWindow owner;
 
@@ -68,6 +75,30 @@ namespace ArctisAurora.EngineWork.Rendering
             return scale;
         }
 
+        // Every size under Icons/app, loaded once; empty when the host ships none.
+        internal static Silk.NET.GLFW.Image[] AppIcons()
+        {
+            if (_appIcons != null) return _appIcons;
+            List<Silk.NET.GLFW.Image> icons = new List<Silk.NET.GLFW.Image>();
+            foreach (string file in VirtualFileSystem.EnumerateAll("Icons/app", "*.png"))
+            {
+                using SixLabors.ImageSharp.Image<Rgba32> image = SixLabors.ImageSharp.Image.Load<Rgba32>(file);
+                byte[] pixels = GC.AllocateUninitializedArray<byte>(image.Width * image.Height * 4, pinned: true);
+                image.CopyPixelDataTo(pixels);
+                _appIconPixels.Add(pixels);
+                icons.Add(new Silk.NET.GLFW.Image { Width = image.Width, Height = image.Height, Pixels = (byte*)Unsafe.AsPointer(ref pixels[0]) });
+            }
+            return _appIcons = icons.ToArray();
+        }
+
+        private void SetAppIcon()
+        {
+            Silk.NET.GLFW.Image[] icons = AppIcons();
+            if (icons.Length == 0) return;
+            fixed (Silk.NET.GLFW.Image* first = icons)
+                _glfw.SetWindowIcon(handle, icons.Length, first);
+        }
+
         internal void CreateWindow()
         {
             // hints are sticky until reset, and the ghost window sets several this one must not keep
@@ -83,6 +114,7 @@ namespace ArctisAurora.EngineWork.Rendering
 
             RoundCorners();
             AllowSnapping();
+            SetAppIcon();
             UpdateWindowSize(ref windowSize);
             SetResizeCallback(WindwoResizeCallback);
             SetCloseCallback(WindowCloseCallback);
@@ -105,6 +137,7 @@ namespace ArctisAurora.EngineWork.Rendering
 
             RoundCorners();
             AllowSnapping();
+            SetAppIcon();
             _glfw.SetWindowPos(handle, x, y);
             UpdateWindowSize(ref windowSize);
             SetResizeCallback(WindwoResizeCallback);
@@ -296,6 +329,8 @@ namespace ArctisAurora.EngineWork.Rendering
 
         internal void Hide() => _glfw.HideWindow(handle);
 
+        internal void SetFloating(bool floating) => _glfw.SetWindowAttrib(handle, WindowAttributeSetter.Floating, floating);
+
         internal void DestroyWindow()
         {
             _glfw.DestroyWindow(handle);
@@ -407,6 +442,23 @@ namespace ArctisAurora.EngineWork.Rendering
                     return true;
             }
             return false;
+        }
+
+        // The work area of the monitor under a screen point; the primary's when none holds it.
+        internal static (int x, int y, int width, int height) WorkAreaAt(int x, int y)
+        {
+            Monitor** monitors = _glfw.GetMonitors(out int count);
+            for (int i = 0; i < count; i++)
+            {
+                _glfw.GetMonitorWorkarea(monitors[i], out int mx, out int my, out int mw, out int mh);
+                _glfw.GetMonitorPos(monitors[i], out int px, out int py);
+                VideoMode* mode = _glfw.GetVideoMode(monitors[i]);
+                if (x >= px && x < px + mode->Width && y >= py && y < py + mode->Height)
+                    return (mx, my, mw, mh);
+            }
+
+            _glfw.GetMonitorWorkarea(_glfw.GetPrimaryMonitor(), out int wx, out int wy, out int ww, out int wh);
+            return (wx, wy, ww, wh);
         }
 
         // Where a window of this size sits centred on the primary monitor, for one whose saved

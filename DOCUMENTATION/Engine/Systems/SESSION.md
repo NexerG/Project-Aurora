@@ -46,7 +46,7 @@ The consequence worth knowing: the panes and tabs an application authors are its
 | --- | --- | --- |
 | `Session` | `SessionScope` list | every partition that has been recorded |
 | `SessionScope` | `Key`, `SessionWindow` list | one host-defined partition — a vault, in Thorium |
-| `SessionWindow` | `Document`, `Primary`, `X`, `Y`, `Width`, `Height`, `Maximized`, one `SessionPane` | one OS window, its restore rect, and its arrangement |
+| `SessionWindow` | `Document`, `Primary`, `X`, `Y`, `Width`, `Height`, `Maximized`, `Pinned`, one `SessionPane` | one OS window, its restore rect, whether it is kept above other windows, and its arrangement; a sticky note restores as one because its `Document` is the sticky window |
 | `SessionPane` | `Orientation`, `Size`, `Active`, `SessionTab` list, `SessionPane` list | a split when it holds panes, a leaf when it holds tabs |
 | `SessionTab` | `Path`, `CaretBlock`, `CaretOffset`, `AnchorBlock`, `AnchorOffset`, `TopBlock`, `TopOffset`, `TopDelta`, `ScrollX`, `PropertiesOpen` | one note that was open, and where the reader was in it |
 

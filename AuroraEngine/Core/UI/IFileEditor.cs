@@ -15,5 +15,8 @@ namespace ArctisAurora.Core.UI
         SessionTab ViewState();
 
         void RestoreView(SessionTab view);
+
+        // The tool group shown on the pane's tab row while this editor's tab is active.
+        Control? tools => null;
     }
 }

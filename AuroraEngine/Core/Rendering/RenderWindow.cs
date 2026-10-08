@@ -61,6 +61,12 @@ namespace ArctisAurora.EngineWork.Rendering
         // a control that lives in another window, and is skipped by everything that walks trees.
         public bool isGhost;
 
+        // kept above every other window
+        public bool pinned;
+
+        // hidden by the host and skipped by Draw until shown again
+        public volatile bool hidden;
+
         // lifecycle handshake — main creates and destroys the OS window, the render thread owns every
         // Vulkan object, so each side flags the other rather than reaching across
         internal volatile bool gpuReady;

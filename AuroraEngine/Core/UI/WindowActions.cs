@@ -42,6 +42,24 @@ namespace ArctisAurora.Core.UI
                 AGlfwWindow._glfw.MaximizeWindow(handle);
         }
 
+        [A_XSDActionDependency("Window.TogglePin", "UI", "Keeps the window above every other window, or stops keeping it there")]
+        public static void TogglePin()
+        {
+            RenderWindow window = Acting();
+            if (window == null) return;
+
+            Pin(window, !window.pinned);
+        }
+
+        // Sets the on-top state and lights the control named "pin" when there is one.
+        internal static void Pin(RenderWindow window, bool pinned)
+        {
+            window.pinned = pinned;
+            window.os.SetFloating(pinned);
+            if (window.ui.uiRoot?.FindByName("pin") is Control pin)
+                pin.role = pinned ? PaletteRole.Accent : PaletteRole.MutedInk;
+        }
+
         // The main window closing is the application closing, so it goes through the shutdown
         // sequence; any other window settles its own notes and goes on its own.
         [A_XSDActionDependency("Window.Close", "UI", "Closes the window, or ends the application when it is the main one")]
@@ -57,7 +75,7 @@ namespace ArctisAurora.Core.UI
         {
             if (window == Engine.primary)
             {
-                Shutdown.Request();
+                Background.Close();
                 return;
             }
 

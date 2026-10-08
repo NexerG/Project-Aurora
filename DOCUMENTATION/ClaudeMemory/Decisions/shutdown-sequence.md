@@ -80,7 +80,7 @@ the application impossible to quit. **Worth revisiting** — it means a failed s
 
 ### 6. Per-window close keeps its own chain
 
-`Window.Close` on `Engine.primary` goes through `Shutdown.Request()`; any other window calls
+`Window.Close` on `Engine.primary` calls `Background.Close()`, which follows `WindowSetting.OnClose` — `Tray` hides the primary and the application keeps running, `Quit` calls `Shutdown.Request()`, `Ask` opens a close-or-minimize prompt; see [[desktop-stickies]]. Any other window calls
 `NoteActions.SettleWindow(window, onSettled)`. The settle logic moved out of `WindowActions` into
 `NoteActions` and both entry points share `FirstUnnamed`/`SaveEditedIn` — the shutdown step scopes
 them to every window, `SettleWindow` to one.
@@ -89,7 +89,7 @@ them to every window, `SettleWindow` to one.
 
 Alt+F4, taskbar Close and `taskkill` without `/F` all arrive as `WM_CLOSE`, which GLFW swallows
 into its should-close flag plus the close callback. `AGlfwWindow` registers that callback on the
-primary, on app windows and on chrome menu windows, and it does
+primary, on app windows and on chrome menu windows (the primary's close follows `OnClose`: hide, quit or ask — [[desktop-stickies]]), and it does
 `Engine.Post(() => WindowActions.Close(owner))` — the same `Window.Close` path as the drawn X.
 - Posted, not called: GLFW fires it inside `PollEvents`, and `Shutdown.Request` may open a prompt.
   `DrainPosted` runs right after `PollEvents` on the same tick.

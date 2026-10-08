@@ -246,6 +246,54 @@ namespace Thorium.Tests
             File.Delete(path);
         }
 
+        [A_XSDActionDependency("Planner.TwoViews", "Test")]
+        private static IEnumerator<int> TwoViews(TestContext t)
+        {
+            string path = Path.GetFullPath(Path.Combine(Path.GetTempPath(), $"aurora-planner-{Guid.NewGuid():N}{PlannerDocument.extension}"));
+            PlannerDocument planner = PlannerDocument.Blank("Shared");
+            planner.tickets.Add(new PlannerTicket { name = "Before", categoryId = planner.categories[0].id, time = TimeRange.Days(new DateOnly(2026, 10, 5), new DateOnly(2026, 10, 5)) });
+            planner.Save(path);
+
+            PlannerEditorControl a = new PlannerEditorControl { widthStar = 1f };
+            PlannerEditorControl b = new PlannerEditorControl { widthStar = 1f };
+            a.LoadPath(path);
+            b.LoadPath(path);
+            StackPanelControl both = new StackPanelControl { orientation = StackPanelControl.Orientation.Horizontal };
+            both.AddChild(a);
+            both.AddChild(b);
+            t.Show(both);
+            yield return 2;
+            t.Check(ReferenceEquals(a.document, b.document), "two views of one planner file share one document");
+
+            PlannerTicket ticket = a.document.tickets[0];
+            PlannerTicket draft = ticket.Clone();
+            draft.name = "After";
+            a.Apply(ticket, draft);
+            yield return 2;
+            t.Check(b.document.tickets[0].name == "After" && b.unsaved, "an edit in one view shows in the other, which is unsaved too");
+
+            b.Undo();
+            yield return 2;
+            t.Check(a.document.tickets[0].name == "Before", "undo in the other view reverts it");
+
+            PlannerDocument shared = a.document;
+            a.Destroy();
+            yield return 2;
+            PlannerEditorControl again = new PlannerEditorControl();
+            again.LoadPath(path);
+            t.Check(ReferenceEquals(again.document, shared), "closing one view keeps the document for the other");
+
+            both.Destroy();
+            again.Destroy();
+            yield return 2;
+            PlannerEditorControl fresh = new PlannerEditorControl();
+            fresh.LoadPath(path);
+            t.Check(!ReferenceEquals(fresh.document, shared), "closing the last view lets the document go");
+            fresh.Destroy();
+            yield return 2;
+            File.Delete(path);
+        }
+
         [A_XSDActionDependency("Planner.PopupCategory", "Test")]
         private static IEnumerator<int> PopupCategory(TestContext t)
         {

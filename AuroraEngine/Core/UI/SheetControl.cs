@@ -36,11 +36,11 @@ namespace ArctisAurora.Core.UI
 
         // geometry, design pixels
         public const float headerWidth = 48f;
-        public const float headerHeight = 24f;
+        public const float headerHeight = 20f;
         private const float cellInset = 4f;
         private const float lineWidth = 1f;
         private const float outlineWidth = 2f;
-        private const int fontSize = 14;
+        private const int fontSize = 12;
         private const float grabWidth = 4f;
         private const float minimumBand = 8f;
         private const float growWidth = 20f;

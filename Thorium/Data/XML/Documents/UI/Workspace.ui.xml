@@ -3,16 +3,16 @@
 <SplitView Orientation="Horizontal" HeightStar="1">
 
 	<EditableTabs Name="Tabs" Width="525" MinWidth="120" ContextMenu="view"
-	                  TabHeight="28" TabWidth="180"
-	                  TearOffDocument="tab-window">
+	                  TabHeight="24" TabWidth="140" NewButton="true"
+	                  TearOffDocument="tab-window" StickyDocument="sticky-window">
 		<TabItem Header="SampleNote">
 			<DocumentEditor Source="../../Notes/SampleNote.xml" ContextMenu="note"/>
 		</TabItem>
 	</EditableTabs>
-	<Splitter Width="5"/>
+	<Splitter Width="3"/>
 	<EditableTabs Name="TabsRight" WidthStar="1" MinWidth="120" ContextMenu="view"
-	                  TabHeight="28" TabWidth="180"
-	                  TearOffDocument="tab-window">
+	                  TabHeight="24" TabWidth="140" NewButton="true"
+	                  TearOffDocument="tab-window" StickyDocument="sticky-window">
 		<TabItem Header="Keybinds">
 			<DocumentEditor Source="../../Notes/Reference/Keybinds.xml" ContextMenu="note"/>
 		</TabItem>
