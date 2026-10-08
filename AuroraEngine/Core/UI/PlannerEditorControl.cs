@@ -9,13 +9,13 @@ namespace ArctisAurora.Core.UI
     // One open planner: a toolbar over the Gantt chart or the board, and the file behind them.
     public class PlannerEditorControl : StackPanelControl, IFileEditor
     {
-        private const float toolbarHeight = 28f;
-        private const float buttonInset = 12f;
+        private const float buttonHeight = 20f;
+        private const float buttonInset = 8f;
         private const int fontSize = 13;
 
         public PlannerDocument document { get; private set; } = null!;
         public string? path { get; private set; }
-        public bool unsaved { get; private set; }
+        public bool unsaved => document.unsaved;
         public UndoStack undo => document.undo;
 
         bool IFileEditor.isDirty => unsaved;
@@ -43,7 +43,8 @@ namespace ArctisAurora.Core.UI
         public PlannerBoardControl? board { get; private set; }
         public CalendarControl? calendar { get; private set; }
 
-        // toolbar buttons, lit for the shown view, zoom and span
+        // the tab-row tools and their buttons, lit for the shown view, zoom and span
+        public Control tools { get; }
         private readonly ButtonControl[] viewButtons = new ButtonControl[3];
         private readonly ButtonControl[] zoomButtons = new ButtonControl[4];
         private readonly ButtonControl[] spanButtons = new ButtonControl[3];
@@ -62,14 +63,8 @@ namespace ArctisAurora.Core.UI
             verticalAlignment = VerticalAlignment.Stretch;
             PaintOr(null, PaletteRole.Surface);
 
-            StackPanelControl toolbar = new StackPanelControl
-            {
-                orientation = Orientation.Horizontal,
-                Spacing = 1f,
-                preferredHeight = toolbarHeight,
-                horizontalAlignment = HorizontalAlignment.Stretch
-            };
-            toolbar.PaintOr(null, PaletteRole.Chrome);
+            TabToolsControl toolbar = new TabToolsControl();
+            tools = toolbar;
             viewButtons[0] = Button("Gantt", () => ShowView(PlannerView.Gantt));
             viewButtons[1] = Button("Board", () => ShowView(PlannerView.Board));
             viewButtons[2] = Button("Calendar", () => ShowView(PlannerView.Calendar));
@@ -79,7 +74,7 @@ namespace ArctisAurora.Core.UI
             toolbar.AddChild(addButton);
             addCategoryButton = Button("+ Category", AddCategory);
             toolbar.AddChild(addCategoryButton);
-            toolbar.AddChild(new PanelControl { widthStar = 1f, alpha = 0f, hitTestable = false });
+            toolbar.Separator();
             stepButtons[0] = Button("<", () => Step(-1));
             stepButtons[1] = Button("Today", GoToday);
             stepButtons[2] = Button(">", () => Step(1));
@@ -99,19 +94,19 @@ namespace ArctisAurora.Core.UI
             }
 
             scroller = new PlannerScroller(this);
-            AddChild(toolbar);
             AddChild(scroller);
         }
 
         public void LoadPath(string nameOrPath)
         {
-            path = Path.GetFullPath(Path.IsPathRooted(nameOrPath) ? nameOrPath : Paths.Doc(nameOrPath));
-            Load(PlannerDocument.Load(path));
+            string full = Path.GetFullPath(Path.IsPathRooted(nameOrPath) ? nameOrPath : Paths.Doc(nameOrPath));
+            Load(PlannerBook.Open(full));
+            path = full;
         }
 
         public void Load(PlannerDocument loaded)
         {
-            if (document != null) document.changed -= DocumentChanged;
+            Release();
             document = loaded;
             document.changed += DocumentChanged;
             selected = null;
@@ -120,14 +115,24 @@ namespace ArctisAurora.Core.UI
 
         public override void OnDestroy()
         {
-            if (document != null) document.changed -= DocumentChanged;
+            Release();
+            tools.Destroy();
             base.OnDestroy();
+        }
+
+        // Lets go of the shown document, and of its PlannerBook copy when one was opened by path.
+        private void Release()
+        {
+            if (document == null) return;
+            document.changed -= DocumentChanged;
+            if (path != null) PlannerBook.Close(path, document);
+            path = null;
         }
 
         // An edit or its undo: the file is unsaved and the shown view redraws.
         private void DocumentChanged()
         {
-            unsaved = true;
+            document.unsaved = true;
             if (selected != null && !document.tickets.Contains(selected)) selected = null;
             chart?.RowsChanged();
             board?.RebuildSoon();
@@ -374,7 +379,7 @@ namespace ArctisAurora.Core.UI
         {
             if (path == null) return;
             document.Save(path);
-            unsaved = false;
+            document.unsaved = false;
         }
 
         public void Repath(string newPath, string name)
@@ -387,7 +392,7 @@ namespace ArctisAurora.Core.UI
         #region ---- toolbar ----
         private ButtonControl Button(string text, Action press)
         {
-            ButtonControl button = new ButtonControl { preferredHeight = toolbarHeight, padding = new Thickness(buttonInset, 0f) };
+            ButtonControl button = new ButtonControl { preferredHeight = buttonHeight, verticalAlignment = VerticalAlignment.Center, padding = new Thickness(buttonInset, 0f) };
             button.PaintOr(null, PaletteRole.Chrome);
             button.AddChild(new LabelControl { text = text, fontSize = fontSize, role = PaletteRole.MutedInk, hitTestable = false, verticalPosition = 0.5f });
             button.RegisterOnPress(e =>

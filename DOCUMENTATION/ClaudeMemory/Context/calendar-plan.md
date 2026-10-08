@@ -1,6 +1,6 @@
 # Calendar plan — calendar in Thorium with Google and iCloud
 
-**Status:** designed 2026-10-06, parked — nothing built. 2026-10-07: the engine side is merged into the planner, see [planner-plan](planner-plan.md); C1 is superseded by the planner's PC (landed 2026-10-07), C2 landed 2026-10-07 as the planner's C2, C3–C7 stay parked. Further calendar work needs its own detailed plan (files, types, signatures) before
+**Status:** designed 2026-10-06, parked — nothing built. 2026-10-07: the engine side is merged into the planner, see [planner-plan](planner-plan.md); C1 is superseded by the planner's PC (landed 2026-10-07), C2 landed 2026-10-07 as the planner's C2, C3–C7 stay parked; 2026-10-08: C4's tray, close-to-tray and single instance landed engine-wide as `Background` ([[desktop-stickies]]). Further calendar work needs its own detailed plan (files, types, signatures) before
 any code. Part of the Thorium productivity suite (WIP list, Phase A). No decision record yet.
 
 ## Settled by the user (2026-10-06)
@@ -15,11 +15,11 @@ any code. Part of the Thorium productivity suite (WIP list, Phase A). No decisio
   other features can use it.
 - Google sign-in is the system browser consent flow (default browser, not Chrome specifically).
 
-## Open (ask before C4)
-- Background shape: whole app hides to tray (recommended — idle frames keep CPU near zero, GPU memory stays
+## Open (ask before C4) — both resolved 2026-10-08
+- **Chosen 2026-10-08: whole app hides to tray.** Background shape: whole app hides to tray (recommended — idle frames keep CPU near zero, GPU memory stays
   resident) vs a separate small background process for reminders and sync that launches Thorium on toast click
   (lighter, needs a shared cache and IPC).
-- Closing the main window: always hide to tray while start-at-login is on, or a separate setting.
+- **Chosen 2026-10-08: closing the main window follows `WindowSetting.OnClose` (Ask / Tray / Quit)** — one setting, not tied to start-at-login. (Was: always hide to tray while start-at-login is on, or a separate setting.)
 
 ## Shape
 | Part | Where | Proposed types |
@@ -74,9 +74,9 @@ any code. Part of the Thorium productivity suite (WIP list, Phase A). No decisio
   `HKCU\Software\Classes\AppUserModelId\<id>` (written by the app). Toast payload is XML. No Windows App SDK or
   Community Toolkit package.
 - Reminder sources: event reminders (VALARM) and attachments — "leave now" when a travel block starts.
-- Close to tray fits `Shutdown.xml`: a `Request` step hides the window and returns false; tray Quit skips it.
-- Tray icon is `Shell_NotifyIcon` via `DllImport` (GLFW has no tray).
-- Single instance: named mutex; a second launch forwards "show" to the running one and exits.
+- ~~Close to tray fits `Shutdown.xml`: a `Request` step hides the window and returns false; tray Quit skips it.~~ **Superseded 2026-10-08:** `WindowActions.Close` branches on `Background.active`; a refusing step would flip `Shutdown.isClosing` — see [[desktop-stickies]].
+- Tray icon is `Shell_NotifyIcon` via `DllImport` (GLFW has no tray). Landed 2026-10-08 (`Background`).
+- Single instance: named mutex; a second launch forwards "show" to the running one and exits. Landed 2026-10-08 (`Background`).
 
 ## Phases
 | # | Scope | Verify |
@@ -84,7 +84,7 @@ any code. Part of the Thorium productivity suite (WIP list, Phase A). No decisio
 | C1 (superseded 2026-10-07 by planner P1/P2/PC) | model, `*.calendar.xml`, Day/Week/Month, now line, create/move/resize with undo, "New calendar" menu | `Calendar` suite (overlap packing, XML round-trip, undo); screenshot of the running app |
 | C2 (landed 2026-10-07 as the planner's C2) | attachments (kinds in XML, travel/prep, custom) and event links (B follows A) | tests: attachments and linked events follow a move/resize; screenshot |
 | C3 | iCalendar read/write, recurrence, time zones | tests on fixture `.ics`, including a DST switch |
-| C4 | tray, start at login, single instance, toasts, reminders incl. "leave now" | manual: login start, toast fires and opens the event |
+| C4 (tray, close-to-tray and single instance landed 2026-10-08 via `Background`) | start at login, toasts, reminders incl. "leave now" | manual: login start, toast fires and opens the event |
 | C5 | CalDAV client + iCloud account, read-only | live test against the user's account (user signs in) |
 | C6 | Google OAuth via browser + Google CalDAV, read-only | same |
 | C7 | two-way sync: etags, 412 conflicts, offline edit queue | tests against a fake server; then live |

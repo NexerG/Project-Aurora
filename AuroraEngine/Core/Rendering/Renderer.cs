@@ -1,5 +1,6 @@
 ﻿using ArctisAurora.Core.Diagnostics;
 using ArctisAurora.Core.Registry;
+using ArctisAurora.Core.Registry.Assets;
 using ArctisAurora.Core.Rendering.Helpers;
 using ArctisAurora.Core.Rendering.Modules;
 using ArctisAurora.Core.Testing;
@@ -74,9 +75,7 @@ namespace ArctisAurora.EngineWork.Rendering
         // features
         private readonly string[] extensions = new string[]
         {
-            "VK_KHR_swapchain",
-            "VK_EXT_descriptor_indexing",
-            "VK_EXT_scalar_block_layout"
+            "VK_KHR_swapchain"
         };
 
         private readonly string[] validationLayers = new string[]
@@ -564,18 +563,34 @@ namespace ArctisAurora.EngineWork.Rendering
             }
             PhysicalDevice[] devices = new PhysicalDevice[deviceCount];
             devices = (PhysicalDevice[])vk.GetPhysicalDevices(instance);
-            gpu = devices[0];
 
             string preferred = SettingsRegistry.Get<GraphicsSettings>().device.name;
-            if (string.IsNullOrWhiteSpace(preferred)) return;
-
+            bool hasPreferred = !string.IsNullOrWhiteSpace(preferred);
+            bool matched = false;
+            int chosen = -1;
+            string reasons = "";
             for (int i = 0; i < devices.Length; i++)
             {
-                if (!DeviceName(devices[i]).Contains(preferred, StringComparison.OrdinalIgnoreCase)) continue;
-                gpu = devices[i];
-                return;
+                string name = DeviceName(devices[i]);
+                string? missing = Unsupported(devices[i]);
+                if (missing != null)
+                {
+                    reasons += $" {name} lacks {missing}.";
+                    Log.Info($"skipping {name} — no {missing}.");
+                    continue;
+                }
+                if (chosen < 0) chosen = i;
+                if (!hasPreferred || !name.Contains(preferred, StringComparison.OrdinalIgnoreCase)) continue;
+                chosen = i;
+                matched = true;
+                break;
             }
-            Log.Warn($"no device matching '{preferred}' — using {DeviceName(gpu)}.");
+            if (chosen < 0)
+                throw new Exception($"No GPU can run the renderer (Vulkan 1.3 with dynamic rendering — NVIDIA Maxwell, AMD Polaris, Intel Skylake or newer):{reasons}");
+
+            gpu = devices[chosen];
+            if (hasPreferred && !matched)
+                Log.Warn($"no usable device matching '{preferred}' — using {DeviceName(gpu)}.");
         }
 
         private string DeviceName(PhysicalDevice device)
@@ -585,28 +600,77 @@ namespace ArctisAurora.EngineWork.Rendering
             return SilkMarshal.PtrToString((nint)properties.DeviceName);
         }
 
-        // Asks the GPU what it actually supports before vkCreateDevice does. Without this an unsupported
-        // driver only reports a bare ErrorFeatureNotPresent with no indication of which feature was missing.
-        private void VerifyRequiredFeatures()
+        // What a device lacks to run the renderer, or null.
+        private string? Unsupported(PhysicalDevice device)
         {
+            PhysicalDeviceProperties properties;
+            vk.GetPhysicalDeviceProperties(device, &properties);
+            if (properties.ApiVersion < (uint)Vk.Version13)
+                return "Vulkan 1.3";
+
+            uint extensionCount = 0;
+            vk.EnumerateDeviceExtensionProperties(device, (byte*)null, &extensionCount, null);
+            ExtensionProperties[] availableExtensions = new ExtensionProperties[extensionCount];
+            fixed (ExtensionProperties* availableExtensionsPtr = availableExtensions)
+            {
+                vk.EnumerateDeviceExtensionProperties(device, (byte*)null, &extensionCount, availableExtensionsPtr);
+            }
+            foreach (string requiredExtension in extensions)
+            {
+                if (!availableExtensions.Any(ext => Marshal.PtrToStringAnsi((nint)ext.ExtensionName).TrimEnd('\0') == requiredExtension))
+                    return requiredExtension;
+            }
+
             PhysicalDeviceVulkan13Features supported13 = new PhysicalDeviceVulkan13Features()
             {
                 SType = StructureType.PhysicalDeviceVulkan13Features
             };
+            PhysicalDeviceVulkan12Features supported12 = new PhysicalDeviceVulkan12Features()
+            {
+                SType = StructureType.PhysicalDeviceVulkan12Features,
+                PNext = &supported13
+            };
             PhysicalDeviceFeatures2 supported = new PhysicalDeviceFeatures2()
             {
                 SType = StructureType.PhysicalDeviceFeatures2,
-                PNext = &supported13
+                PNext = &supported12
             };
-            vk.GetPhysicalDeviceFeatures2(gpu, &supported);
+            vk.GetPhysicalDeviceFeatures2(device, &supported);
 
-            if (!supported13.DynamicRendering)
-                throw new Exception("GPU driver does not support dynamic rendering (VkPhysicalDeviceVulkan13Features::dynamicRendering). Minimum: NVIDIA Maxwell, AMD Polaris, Intel Skylake.");
+            PhysicalDeviceFeatures core = supported.Features;
+            core.SamplerAnisotropy = true;
+            return MissingFeature(features, core) ?? MissingFeature(features12, supported12) ?? MissingFeature(features13, supported13);
+        }
+
+        // Turns off what the chosen device lacks but the renderer can do without.
+        private void FitToDevice()
+        {
+            string name = DeviceName(gpu);
+
+            PhysicalDeviceFeatures supported;
+            vk.GetPhysicalDeviceFeatures(gpu, &supported);
+            if (features.SamplerAnisotropy == true && supported.SamplerAnisotropy == false)
+            {
+                features.SamplerAnisotropy = false;
+                Log.Info($"no sampler anisotropy on {name} — samplers filter without it.");
+            }
+
+            PhysicalDeviceProperties properties;
+            vk.GetPhysicalDeviceProperties(gpu, &properties);
+            PhysicalDeviceLimits limits = properties.Limits;
+            uint samplers = Math.Min(
+                Math.Min(limits.MaxPerStageDescriptorSamplers, limits.MaxPerStageDescriptorSampledImages),
+                Math.Min(limits.MaxDescriptorSetSamplers, limits.MaxDescriptorSetSampledImages));
+            if (samplers < TextureAsset.MaxTextures)
+            {
+                TextureAsset.MaxTextures = samplers;
+                Log.Info($"texture table clamped to {samplers} on {name}.");
+            }
         }
 
         private void CreateLogicalDevice()
         {
-            VerifyRequiredFeatures();
+            FitToDevice();
 
             PhysicalDeviceVulkan13Features f13 = features13;
             f13.SType = StructureType.PhysicalDeviceVulkan13Features;
@@ -1036,7 +1100,7 @@ namespace ArctisAurora.EngineWork.Rendering
         internal void Draw(RenderWindow window)
         {
             // skip rendering while minimized (0-area framebuffer) — also avoids recreating at 0x0
-            if (window.os.windowSize.Width == 0 || window.os.windowSize.Height == 0)
+            if (window.hidden || window.os.windowSize.Width == 0 || window.os.windowSize.Height == 0)
                 return;
 
             ulong waitValue = (window.frameCounter - MAX_FRAMES_IN_FLIGHT) * 2 + 2;
@@ -1229,6 +1293,18 @@ namespace ArctisAurora.EngineWork.Rendering
                     }
                 }
             }
+        }
+
+        // First feature requested but not supported, by field name.
+        private static string? MissingFeature<T>(T requested, T supported) where T : struct
+        {
+            foreach (FieldInfo field in typeof(T).GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic))
+            {
+                if (field.FieldType != typeof(Bool32)) continue;
+                if ((Bool32)field.GetValue(requested)! == true && (Bool32)field.GetValue(supported)! == false)
+                    return field.Name;
+            }
+            return null;
         }
     }
 }

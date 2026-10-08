@@ -6,4 +6,5 @@
 	<ContextButton Text="Split right" Action="Tab.SplitRight"/>
 	<ContextButton Text="Split down" Action="Tab.SplitDown"/>
 	<ContextButton Text="Move to new window" Action="Tab.MoveToNewWindow"/>
+	<ContextSubmenu Text="Pin to desktop" Source="tab-stickies"/>
 </ContextMenu>

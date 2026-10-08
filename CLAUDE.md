@@ -20,7 +20,7 @@ Every change to the repo runs four steps, in order:
 1. **Analyze** - read the code that's actually involved. No plan built on a guess about what a file
    contains.
 2. **Write the plan** - files touched and what changes in each, anything *new* (file, type, signature,
-   dependency), what's deliberately left out, and the verification per step (§5's format). Forks go
+   dependency), what's deliberately left out, and the verification checkpoints (§5's format). Forks go
    here as forks, not as a choice already made (§1).
 3. **Ask. Then stop.** The plan is the whole turn. Not a plan followed by the diff in the same breath.
 4. **Go, or don't.** Approved: build exactly that. Rejected: stop and re-plan - never build a rejected
@@ -85,10 +85,15 @@ Transform tasks into verifiable goals:
 
 For multi-step tasks, state a brief plan:
 ```
-1. [Step] → verify: [check]
-2. [Step] → verify: [check]
-3. [Step] → verify: [check]
+1. [Step]
+2. [Step] → midpoint: [check]
+3. [Step]
+4. [Step] → end: [check]
 ```
+
+The test suite runs twice per go: at the midpoint (the step where the change first compiles and runs
+end-to-end, named in the plan) and at the end. Not per step. A plain build between steps is fine when
+the next step depends on it compiling.
 
 Strong success criteria let you loop independently. Weak criteria ("make it work") require constant clarification.
 

@@ -21,6 +21,7 @@
       <xs:enumeration value="DocumentSettings" />
       <xs:enumeration value="SessionTab" />
       <xs:enumeration value="SessionPane" />
+      <xs:enumeration value="SessionWorkspace" />
       <xs:enumeration value="SessionWindow" />
       <xs:enumeration value="SessionScope" />
       <xs:enumeration value="Session" />
@@ -49,6 +50,7 @@
       <xs:enumeration value="ProfilingCapture" />
       <xs:enumeration value="Profiling" />
       <xs:enumeration value="WindowMode" />
+      <xs:enumeration value="CloseAction" />
     </xs:restriction>
   </xs:simpleType>
   <xs:simpleType name="UI">
@@ -87,6 +89,7 @@
       <xs:enumeration value="GridList" />
       <xs:enumeration value="Icon" />
       <xs:enumeration value="Image" />
+      <xs:enumeration value="Inspector" />
       <xs:enumeration value="KeyCapture" />
       <xs:enumeration value="Label" />
       <xs:enumeration value="MenuButton" />
@@ -96,6 +99,7 @@
       <xs:enumeration value="Panel" />
       <xs:enumeration value="AttachmentKind" />
       <xs:enumeration value="AttachmentKinds" />
+      <xs:enumeration value="Ribbon" />
       <xs:enumeration value="Document" />
       <xs:enumeration value="TextStyleType" />
       <xs:enumeration value="TextAlignment" />
@@ -123,7 +127,9 @@
       <xs:enumeration value="TitleBar" />
       <xs:enumeration value="WindowFrame" />
       <xs:enumeration value="WindowRoot" />
+      <xs:enumeration value="WorkspaceBar" />
       <xs:enumeration value="Workspace" />
+      <xs:enumeration value="WorkspaceKind" />
       <xs:enumeration value="Orientation" />
     </xs:restriction>
   </xs:simpleType>

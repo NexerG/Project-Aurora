@@ -5,7 +5,7 @@
   <xs:import schemaLocation="InputTypeSchema.xsd" namespace="http://arctisaurora/AuroraInputTypes" />
   <xs:import schemaLocation="UITypeSchema.xsd" namespace="http://arctisaurora/AuroraUITypes" />
   <xs:simpleType name="Settings">
-    <xs:union memberTypes="types:SettingScope types:LogLevel types:CaptureMode types:WindowMode" />
+    <xs:union memberTypes="types:SettingScope types:LogLevel types:CaptureMode types:WindowMode types:CloseAction" />
   </xs:simpleType>
   <xs:attributeGroup name="Vault.Attributes">
     <xs:attributeGroup ref="types:Setting.Attributes" />
@@ -135,6 +135,7 @@
     <xs:attribute name="Mode" type="types:WindowMode" />
     <xs:attribute name="Width" type="xs:unsignedInt" />
     <xs:attribute name="Height" type="xs:unsignedInt" />
+    <xs:attribute name="OnClose" type="types:CloseAction" />
   </xs:attributeGroup>
   <xs:element name="WindowSetting" type="types:WindowSetting" />
   <xs:complexType name="WindowSetting">
@@ -218,6 +219,25 @@
     </xs:sequence>
     <xs:attributeGroup ref="types:SessionPane.Attributes" />
   </xs:complexType>
+  <xs:attributeGroup name="SessionWorkspace.Attributes">
+    <xs:attribute name="Title" type="xs:string" />
+    <xs:attribute name="Kind" type="UI:WorkspaceKind" />
+    <xs:attribute name="Shown" type="xs:boolean" />
+    <xs:attribute name="Ribbon" type="xs:string" />
+    <xs:attribute name="Inspector" type="xs:boolean" />
+  </xs:attributeGroup>
+  <xs:element name="SessionWorkspace" type="types:SessionWorkspace" />
+  <xs:group name="SessionPane.Children">
+    <xs:choice>
+      <xs:element name="SessionPane" type="types:SessionPane" />
+    </xs:choice>
+  </xs:group>
+  <xs:complexType name="SessionWorkspace">
+    <xs:sequence>
+      <xs:group minOccurs="0" maxOccurs="unbounded" ref="types:SessionPane.Children" />
+    </xs:sequence>
+    <xs:attributeGroup ref="types:SessionWorkspace.Attributes" />
+  </xs:complexType>
   <xs:attributeGroup name="SessionWindow.Attributes">
     <xs:attribute name="Document" type="xs:string" />
     <xs:attribute name="Primary" type="xs:boolean" />
@@ -226,16 +246,18 @@
     <xs:attribute name="Width" type="xs:int" />
     <xs:attribute name="Height" type="xs:int" />
     <xs:attribute name="Maximized" type="xs:boolean" />
+    <xs:attribute name="Pinned" type="xs:boolean" />
   </xs:attributeGroup>
   <xs:element name="SessionWindow" type="types:SessionWindow" />
-  <xs:group name="SessionPane.Children">
+  <xs:group name="ISessionWindowChild.Children">
     <xs:choice>
       <xs:element name="SessionPane" type="types:SessionPane" />
+      <xs:element name="SessionWorkspace" type="types:SessionWorkspace" />
     </xs:choice>
   </xs:group>
   <xs:complexType name="SessionWindow">
     <xs:sequence>
-      <xs:group minOccurs="0" maxOccurs="unbounded" ref="types:SessionPane.Children" />
+      <xs:group minOccurs="0" maxOccurs="unbounded" ref="types:ISessionWindowChild.Children" />
     </xs:sequence>
     <xs:attributeGroup ref="types:SessionWindow.Attributes" />
   </xs:complexType>
@@ -482,6 +504,13 @@
       <xs:enumeration value="Windowed" />
       <xs:enumeration value="Borderless" />
       <xs:enumeration value="Fullscreen" />
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:simpleType name="CloseAction">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="Ask" />
+      <xs:enumeration value="Tray" />
+      <xs:enumeration value="Quit" />
     </xs:restriction>
   </xs:simpleType>
 </xs:schema>

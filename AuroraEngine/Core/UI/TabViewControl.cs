@@ -17,6 +17,8 @@ namespace ArctisAurora.Core.UI
         public float tabHeight = 28f;
         [A_XSDElementProperty("TabWidth", "UI", "Width of a single tab in pixels.")]
         public float tabWidth = 160f;
+        [A_XSDElementProperty("MinTabWidth", "UI", "Width a tab shrinks to before the strip clips, in pixels.")]
+        public float minTabWidth = 64f;
 
         // strip palette
         [A_XSDElementProperty("TabColorHex", "UI", "Ground of an inactive tab.")]
@@ -40,13 +42,28 @@ namespace ArctisAurora.Core.UI
         [A_XSDElementProperty("TearOffDocument", "UI", "UI document a tab dragged out of every window opens in.")]
         public string tearOffDocument = "";
 
+        [A_XSDElementProperty("StickyDocument", "UI", "UI document a tab pinned to the desktop opens in.")]
+        public string stickyDocument = "";
+
         // menu each tab in the strip names
         [A_XSDElementProperty("TabContextMenu", "UI", "Menu a tab in the strip offers on right click.")]
         public string tabContextMenu = "tab";
+
+        [A_XSDElementProperty("NewButton", "UI", "Whether the strip ends in a + button that asks the host for a new file.")]
+        public bool newButton
+        {
+            get => plus != null;
+            set
+            {
+                if (value == (plus != null)) return;
+                if (value) base.AddChild(plus = BuildPlus());
+                else { plus!.Destroy(); plus = null; }
+            }
+        }
         #endregion
 
         // caption and close button geometry
-        protected const int captionSize = 14;
+        protected const int captionSize = 12;
         private const float captionInset = 8f;
         private const float closeWidth = 20f;
         private const int closeCaptionSize = 12;
@@ -59,10 +76,24 @@ namespace ArctisAurora.Core.UI
         private const uint tearOffHeight = 640;
         private static int _tornWindows;
 
+        // sticky window geometry
+        private const uint stickySize = 300;
+        private static int _stickyWindows;
+
         // share of a side inside which a dropped tab splits instead of moving in
         private const float edgeBand = 0.25f;
 
         private readonly StackPanelControl strip = new StackPanelControl();
+
+        // tab row beside the strip: the + button and the active editor's tools
+        private const float plusWidth = 24f;
+        private ButtonControl? plus;
+        private Control? tools;
+        private float stripWidth;
+        private float fittedTab;
+
+        // Raised by the + button with the view and the button, for the host to make a file in.
+        public static event Action<TabViewControl, Control>? newPressed;
 
         // drop hint — the wash and the edge it is showing, null when nothing is being dragged over us
         private HintControl? hint;
@@ -72,6 +103,15 @@ namespace ArctisAurora.Core.UI
 
         // Raised when any view's active tab changes.
         public static event Action<TabViewControl>? activeChanged;
+
+        // The view last worked in; only its active tab carries the accent.
+        public static TabViewControl? focused { get; private set; }
+
+        static TabViewControl()
+        {
+            Context.changed += OnContextChanged;
+            ContextMenus.RegisterSource("tab-stickies", TabActions.StickyEntries);
+        }
 
         public int ItemCount
         {
@@ -129,9 +169,16 @@ namespace ArctisAurora.Core.UI
             ApplyTabColors();
             if (activeItem == null && next != null) SetActive(next);
             if (wasActive && activeItem == null) activeChanged?.Invoke(this);
+            SyncTools();
             InvalidateLayout();
 
             CloseIfEmptied();
+        }
+
+        public override void OnDestroy()
+        {
+            if (ReferenceEquals(focused, this)) focused = null;
+            base.OnDestroy();
         }
 
         #region ---- drop ----
@@ -271,6 +318,32 @@ namespace ArctisAurora.Core.UI
             view.SetActive(item);
         }
 
+        // Puts a tab into a sticky window: the one given, or a new one built from stickyDocument at the pointer.
+        internal unsafe void PinToSticky(TabItemControl item, RenderWindow? into)
+        {
+            if (into == null)
+            {
+                if (string.IsNullOrEmpty(stickyDocument)) return;
+
+                RenderWindow source = UIEngine.WindowOf(this);
+                AGlfwWindow._glfw.GetWindowPos(source.os.handle, out int wx, out int wy);
+
+                into = Engine.OpenWindow($"sticky-{++_stickyWindows}",
+                    UIScaling.ToPixels(source, stickySize), UIScaling.ToPixels(source, stickySize),
+                    wx + (int)source.mousePos.X, wy + (int)source.mousePos.Y);
+                into.uiDocument = stickyDocument;
+                WindowRoot root = (WindowRoot)ParseXML(stickyDocument);
+                into.ui.uiRoot = root;
+                WorkspaceControl.In(root)?.LoadDefault();
+            }
+
+            TabViewControl view = FirstTabView(into.ui.uiRoot);
+            if (view == null) return;
+
+            item.SetParent(view);
+            view.SetActive(item);
+        }
+
         private static TabViewControl FirstTabView(Control control)
         {
             if (control is TabViewControl view) return view;
@@ -290,8 +363,24 @@ namespace ArctisAurora.Core.UI
             activeItem?.Show();
 
             ApplyTabColors();
+            SyncTools();
             InvalidateLayout();
             activeChanged?.Invoke(this);
+        }
+
+        // Mounts the active editor's tools on the tab row, taking them from wherever they were.
+        internal void SyncTools()
+        {
+            IFileEditor? editor = activeItem != null ? FileEditorOf(activeItem) : null;
+            Control? wanted = RibbonControl.Covers(this, editor) ? null : editor?.tools;
+            if (ReferenceEquals(wanted, tools) && (wanted == null || ReferenceEquals(wanted.parent, this))) return;
+
+            if (tools != null && ReferenceEquals(tools.parent, this)) base.RemoveChild(tools);
+            tools = wanted;
+            if (tools == null) return;
+
+            tools.parent?.RemoveChild(tools);
+            base.AddChild(tools);
         }
 
         // Writes an edited note, then tears the whole subtree down — the strip button with it. An
@@ -301,12 +390,12 @@ namespace ArctisAurora.Core.UI
 
         // onClosed runs once the tab is gone. Cancelling the prompt runs nothing, which is what stops
         // a queue of closes at the tab the user changed their mind about.
-        private void CloseTab(TabItemControl item, Action onClosed)
+        internal void CloseTab(TabItemControl item, Action onClosed)
         {
             if (item == null || !children.Contains(item)) { onClosed?.Invoke(); return; }
 
             DocumentEditorControl editor = EditorOf(item);
-            if (editor != null && editor.needsNaming)
+            if (editor != null && editor.needsNaming && editor.session.views == 1)
             {
                 editor.SaveNamed(
                     () => { FinishClose(item); onClosed?.Invoke(); },
@@ -384,6 +473,7 @@ namespace ArctisAurora.Core.UI
             ApplyTabColors();
             if (activeItem == null && next != null) SetActive(next);
             if (wasActive && activeItem == null) activeChanged?.Invoke(this);
+            SyncTools();
             InvalidateLayout();
 
             CloseIfEmptied();
@@ -576,13 +666,14 @@ namespace ArctisAurora.Core.UI
 
         private void ApplyTabColors()
         {
+            AccentRole bar = focused == null || ReferenceEquals(focused, this) ? AccentRole.Tab : AccentRole.TabIdle;
             int i = 0;
             foreach (TabItemControl item in Items)
             {
                 bool active = ReferenceEquals(item, activeItem);
                 string? hex = active ? activeTabColorHex : tabColorHex;
                 PaletteRole ground = active ? PaletteRole.Ground : PaletteRole.Surface;
-                AccentRole accent = active ? AccentRole.Tab : AccentRole.None;
+                AccentRole accent = active ? bar : AccentRole.None;
                 if (i < strip.children.Count && strip.children[i] is ButtonControl tab)
                 {
                     tab.PaintOr(hex, ground);
@@ -593,6 +684,50 @@ namespace ArctisAurora.Core.UI
                 }
                 i++;
             }
+        }
+
+        // The nearest view above the active control becomes the focused one; a control outside every view leaves it.
+        private static void OnContextChanged(string name, object? value)
+        {
+            if (name != "ActiveControl") return;
+
+            Entity? entity = value as Entity;
+            while (entity != null && entity is not TabViewControl) entity = entity.parent;
+            if (entity is not TabViewControl view || ReferenceEquals(view, focused)) return;
+
+            focused = view;
+            foreach (RenderWindow window in Engine.windows.Values)
+                foreach (TabViewControl each in TabViews(window.ui?.uiRoot))
+                    each.ApplyTabColors();
+        }
+
+        // Shares the strip between the tabs, each between minTabWidth and tabWidth.
+        private void FitTabs(float width)
+        {
+            int count = strip.children.Count;
+            fittedTab = 0f;
+            if (count == 0) return;
+
+            fittedTab = MathF.Floor(MathF.Max(MathF.Min(tabWidth, width / count), MathF.Min(minTabWidth, tabWidth)));
+            foreach (Entity e in strip.children)
+                if (e is Control tab) tab.preferredWidth = fittedTab;
+        }
+
+        private ButtonControl BuildPlus()
+        {
+            ButtonControl button = new ButtonControl { preferredWidth = plusWidth, preferredHeight = tabHeight };
+            button.PaintOr(null, PaletteRole.Clear);
+            button.AddChild(new LabelControl
+            {
+                text = "+",
+                fontSize = captionSize + 2,
+                role = PaletteRole.MutedInk,
+                hitTestable = false,
+                horizontalPosition = 0.5f,
+                verticalPosition = 0.5f
+            });
+            button.RegisterOnRelease(e => { newPressed?.Invoke(this, button); return true; });
+            return button;
         }
 
         // tab -> row -> [caption wrapper, close]
@@ -612,7 +747,15 @@ namespace ArctisAurora.Core.UI
             float innerW = MathF.Max(0, w - padding.totalHorizontal);
             float innerH = MathF.Max(0, h - padding.totalVertical);
 
-            strip.Measure(new Vector2(innerW, tabHeight));
+            float toolsW = 0f;
+            if (tools != null && ReferenceEquals(tools.parent, this))
+                toolsW = tools.Measure(new Vector2(innerW, tabHeight)).X;
+            float plusW = plus != null ? plusWidth : 0f;
+            stripWidth = MathF.Max(0, innerW - plusW - toolsW);
+
+            FitTabs(stripWidth);
+            strip.Measure(new Vector2(stripWidth, tabHeight));
+            plus?.Measure(new Vector2(plusW, tabHeight));
             activeItem?.Measure(new Vector2(innerW, MathF.Max(0, innerH - tabHeight)));
             hint?.Measure(new Vector2(innerW, innerH));
 
@@ -627,7 +770,10 @@ namespace ArctisAurora.Core.UI
 
             LayoutRect inner = finalRect.Shrink(padding);
 
-            strip.Arrange(new LayoutRect(inner.x, inner.y, inner.width, tabHeight));
+            strip.Arrange(new LayoutRect(inner.x, inner.y, stripWidth, tabHeight));
+            plus?.Arrange(new LayoutRect(inner.x + MathF.Min(fittedTab * strip.children.Count, stripWidth), inner.y, plusWidth, tabHeight));
+            if (tools != null && ReferenceEquals(tools.parent, this))
+                tools.Arrange(new LayoutRect(inner.x + inner.width - tools.DesiredSize.X, inner.y, tools.DesiredSize.X, tabHeight));
 
             activeItem?.Arrange(new LayoutRect(inner.x, inner.y + tabHeight, inner.width,
                 MathF.Max(0, inner.height - tabHeight)));

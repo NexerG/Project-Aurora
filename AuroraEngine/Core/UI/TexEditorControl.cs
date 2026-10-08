@@ -40,6 +40,18 @@ namespace ArctisAurora.Core.UI
         private XElement? shown;
         private bool exportWaiting;
 
+        // tab-row tools: whether edits recompile, the error count and the preview's zoom
+        private static readonly int[] zoomSteps = { 50, 75, 90, 100, 125, 150, 200 };
+        private TabToolsControl? texTools;
+        private LabelControl? liveCaption;
+        private LabelControl? errorCaption;
+        private LabelControl? zoomCaption;
+        private bool live = true;
+        private bool errorsCollapsed;
+        private int errorTotal;
+
+        public Control tools => texTools ??= BuildTools();
+
         public string? path => source.path;
 
         bool IFileEditor.isDirty => source.session?.isDirty == true;
@@ -52,7 +64,7 @@ namespace ArctisAurora.Core.UI
             alpha = 0f;
 
             source = new DocumentEditorControl { contextMenu = "note", widthStar = 1f, verticalAlignment = VerticalAlignment.Stretch };
-            source.onEdited = Edited;
+            source.onSaved = () => { if (!live) Recompile(); };
 
             preview = new DocumentEditorControl { heightStar = 1f, horizontalAlignment = HorizontalAlignment.Stretch };
             preview.onSave = Save;
@@ -73,8 +85,17 @@ namespace ArctisAurora.Core.UI
 
         public void LoadPath(string nameOrPath)
         {
+            if (source.session != null) source.activeDocument.changed -= Edited;
             source.LoadPath(nameOrPath);
+            source.activeDocument.changed += Edited;
             Recompile();
+        }
+
+        public override void OnDestroy()
+        {
+            if (source.session != null) source.activeDocument.changed -= Edited;
+            texTools?.Destroy();
+            base.OnDestroy();
         }
 
         #region ---- file ----
@@ -88,9 +109,10 @@ namespace ArctisAurora.Core.UI
         #endregion
 
         #region ---- compile ----
-        private void Edited()
+        private void Edited(NoteChange change)
         {
             editedAt = Engine.totalTime;
+            if (!live) return;
             SetTicking(true);
             FrameScheduler.RequestFrameAt(editedAt + recompileDelay);
         }
@@ -98,7 +120,7 @@ namespace ArctisAurora.Core.UI
         public override void OnTick()
         {
             base.OnTick();
-            if (pageRefs != null && editedAt <= compiledAt)
+            if (pageRefs != null && (editedAt <= compiledAt || !live))
             {
                 ResolvePages();
                 if (pageRefs == null && exportWaiting) WritePdf();
@@ -214,16 +236,14 @@ namespace ArctisAurora.Core.UI
             for (int i = errorRows.children.Count - 1; i >= 0; i--)
                 errorRows.children[i].Destroy();
 
-            if (found.Count == 0)
-            {
-                errors.Hide();
-                return;
-            }
+            errorTotal = found.Count;
+            if (errorCaption != null) errorCaption.text = ErrorText();
 
             foreach (TexError error in found)
                 errorRows.AddChild(ErrorRow(error));
             errors.preferredHeight = Math.Min(found.Count, maxErrorRows) * rowHeight;
-            errors.Show();
+            if (found.Count == 0 || errorsCollapsed) errors.Hide();
+            else errors.Show();
         }
 
         private ButtonControl ErrorRow(TexError error)
@@ -254,6 +274,64 @@ namespace ArctisAurora.Core.UI
                     return true;
                 });
             return row;
+        }
+        #endregion
+
+        #region ---- tools ----
+        private TabToolsControl BuildTools()
+        {
+            TabToolsControl row = new TabToolsControl();
+            row.Text("Build", _ => Recompile());
+            liveCaption = row.Text("Live", _ => SetLive(!live));
+            Light(liveCaption, live);
+            row.Separator();
+            errorCaption = row.Text(ErrorText(), _ => ToggleErrors());
+            row.Separator();
+            row.Text("Sync", _ => SyncPreview());
+            zoomCaption = row.Text(preview.zoomOverride is float zoom ? $"{MathF.Round(zoom * 100f)}%" : "Zoom", owner => TabToolsControl.Drop(owner,
+                zoomSteps.Select(step => (ContextMenuEntry)new ContextMenuButton($"{step}%", () => SetPreviewZoom(step))).ToList()), true);
+            return row;
+        }
+
+        // Live recompiles a moment after each edit; off, only Build and a save do.
+        public void SetLive(bool on)
+        {
+            live = on;
+            if (liveCaption != null) Light(liveCaption, on);
+            if (on && editedAt > compiledAt) Recompile();
+        }
+
+        public void SetPreviewZoom(int percent)
+        {
+            preview.zoomOverride = percent / 100f;
+            if (zoomCaption != null) zoomCaption.text = $"{percent}%";
+        }
+
+        private void ToggleErrors()
+        {
+            errorsCollapsed = !errorsCollapsed;
+            if (errorTotal == 0 || errorsCollapsed) errors.Hide();
+            else errors.Show();
+        }
+
+        // Scrolls the preview to the block typeset from the source caret's line, or the last one before it.
+        public void SyncPreview()
+        {
+            if (source.CaretBlock == null || source.activeDocument == null || preview.activeDocument == null) return;
+
+            int line = Array.IndexOf(source.activeDocument.blocks, source.CaretBlock.note) + 1;
+            int best = -1;
+            for (int i = 0; i < blockLines.Count; i++)
+                if (blockLines[i] > 0 && blockLines[i] <= line && (best < 0 || blockLines[i] >= blockLines[best])) best = i;
+            if (best >= 0) preview.GoTo(best, 0);
+        }
+
+        private string ErrorText() => errorTotal switch { 0 => "No errors", 1 => "1 error", _ => $"{errorTotal} errors" };
+
+        private static void Light(LabelControl caption, bool on)
+        {
+            caption.PaintOr(null, on ? PaletteRole.Accent : PaletteRole.MutedInk);
+            caption.InvalidateLayout();
         }
         #endregion
 

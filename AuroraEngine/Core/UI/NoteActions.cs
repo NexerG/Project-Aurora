@@ -12,8 +12,7 @@ namespace ArctisAurora.Core.UI
     {
         // Notes the user chose not to save. Remembered for the length of one shutdown attempt, or the
         // walk finds them again and never gets past them.
-        private static readonly HashSet<ArctisAurora.Core.UI.DocumentEditorControl> discarded =
-            new HashSet<ArctisAurora.Core.UI.DocumentEditorControl>();
+        private static readonly HashSet<DocumentEditSession> discarded = new HashSet<DocumentEditSession>();
 
         internal static void ForgetDiscarded()
         {
@@ -32,7 +31,7 @@ namespace ArctisAurora.Core.UI
 
             unnamed.SaveNamed(
                 Shutdown.Resume,
-                () => { discarded.Add(unnamed); Shutdown.Resume(); });
+                () => { discarded.Add(unnamed.session); Shutdown.Resume(); });
 
             return false;
         }
@@ -70,7 +69,7 @@ namespace ArctisAurora.Core.UI
             {
                 unnamed.SaveNamed(
                     () => SettleWindow(window, onSettled),
-                    () => { discarded.Add(unnamed); SettleWindow(window, onSettled); });
+                    () => { discarded.Add(unnamed.session); SettleWindow(window, onSettled); });
                 return;
             }
 
@@ -92,7 +91,7 @@ namespace ArctisAurora.Core.UI
         {
             if (control == null) return null;
             if (control is ArctisAurora.Core.UI.DocumentEditorControl editor
-                && editor.needsNaming && !discarded.Contains(editor))
+                && editor.needsNaming && !discarded.Contains(editor.session))
                 return editor;
 
             foreach (Entity child in control.children)
@@ -109,7 +108,7 @@ namespace ArctisAurora.Core.UI
         {
             if (control == null) return;
             if (control is IFileEditor file && file.isDirty
-                && !(control is ArctisAurora.Core.UI.DocumentEditorControl editor && discarded.Contains(editor)))
+                && !(control is ArctisAurora.Core.UI.DocumentEditorControl editor && discarded.Contains(editor.session)))
                 file.Save();
 
             foreach (Entity child in control.children)

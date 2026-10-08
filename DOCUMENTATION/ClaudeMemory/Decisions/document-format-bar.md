@@ -182,6 +182,8 @@ paths only, counters wound opposite for nonzero fill, no `A` command. `SvgPath` 
 outright and does not implement arcs. Winding was checked by rendering the file in a browser before
 baking, not after.
 
+`SvgPath` also takes only filled `<path>` (no stroke-to-outline) and fills `evenodd` as nonzero, so a hole is an inner contour wound the opposite way. Stroked icons from a design canvas cannot be imported as they are ([[workspaces]], W4b: 20 filled icons).
+
 Adding them changes the folder hash, so the icon set re-bakes on the next boot of every project.
 Thorium's baked output is **tracked** (`Thorium/Data/Icons/default/*`) and was regenerated;
 `AuroraEngine/Data/Icons/default/*` and the editor's copy are stale until those apps run — the same

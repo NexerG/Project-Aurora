@@ -16,5 +16,12 @@ namespace ArctisAurora.Core.UI
         {
             alpha = 0f;
         }
+
+        // A page parsed from XML gets its editor after its view took it, so the view looks for tools again.
+        public override void AddChild(ECS.EngineEntity.Entity entity)
+        {
+            base.AddChild(entity);
+            (parent as TabViewControl)?.SyncTools();
+        }
     }
 }

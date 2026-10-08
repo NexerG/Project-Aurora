@@ -29,6 +29,8 @@
           <xs:enumeration value="NoteModel.LoadHeadless" />
           <xs:enumeration value="NoteModel.Changes" />
           <xs:enumeration value="NoteModel.EditHeadless" />
+          <xs:enumeration value="NoteModel.TwoViews" />
+          <xs:enumeration value="NoteModel.RestoreTwice" />
           <xs:enumeration value="Palette.SetCrossfades" />
           <xs:enumeration value="Planner.XmlRoundTrip" />
           <xs:enumeration value="Planner.GanttGeometry" />
@@ -39,6 +41,7 @@
           <xs:enumeration value="Planner.EditAddDelete" />
           <xs:enumeration value="Planner.DeleteKeys" />
           <xs:enumeration value="Planner.SaveKey" />
+          <xs:enumeration value="Planner.TwoViews" />
           <xs:enumeration value="Planner.PopupCategory" />
           <xs:enumeration value="Planner.MenuMove" />
           <xs:enumeration value="Planner.BoardDragAcross" />
@@ -58,6 +61,17 @@
           <xs:enumeration value="Planner.AttachmentText" />
           <xs:enumeration value="Planner.AttachmentGolden" />
           <xs:enumeration value="Planner.GanttGolden" />
+          <xs:enumeration value="Note.NumbersToggle" />
+          <xs:enumeration value="Note.TasksToggle" />
+          <xs:enumeration value="Note.InsertPictureFile" />
+          <xs:enumeration value="Sheet.ImportCsv" />
+          <xs:enumeration value="Ribbon.CsvEntries" />
+          <xs:enumeration value="Ribbon.Shows" />
+          <xs:enumeration value="Ribbon.Docs" />
+          <xs:enumeration value="Ribbon.Sheets" />
+          <xs:enumeration value="Inspector.Docs" />
+          <xs:enumeration value="Inspector.Sheets" />
+          <xs:enumeration value="Ribbon.Session" />
           <xs:enumeration value="Sheet.XmlRoundTrip" />
           <xs:enumeration value="Sheet.TypeEnterUndo" />
           <xs:enumeration value="Sheet.PasteBlock" />
@@ -84,6 +98,12 @@
           <xs:enumeration value="Sheet.FixedSize" />
           <xs:enumeration value="Sheet.GrowPopup" />
           <xs:enumeration value="Sheet.InsertShifts" />
+          <xs:enumeration value="Sticky.PinPinRestore" />
+          <xs:enumeration value="TabTools.Mount" />
+          <xs:enumeration value="TabTools.Bullets" />
+          <xs:enumeration value="TabTools.AutoSum" />
+          <xs:enumeration value="TabTools.FormulaBar" />
+          <xs:enumeration value="TabTools.Tex" />
           <xs:enumeration value="TextInput.TypeWritesText" />
           <xs:enumeration value="TextInput.WordMoves" />
           <xs:enumeration value="TextInput.UndoReselects" />
@@ -175,7 +195,14 @@
           <xs:enumeration value="TextInput.PictureRotateLayout" />
           <xs:enumeration value="TextInput.PictureRotate" />
           <xs:enumeration value="TextInput.PictureRotateDraws" />
+          <xs:enumeration value="Workspace.Switch" />
+          <xs:enumeration value="Workspace.Menu" />
+          <xs:enumeration value="Workspace.SessionRoundTrip" />
+          <xs:enumeration value="Workspace.LegacySession" />
           <xs:enumeration value="Perf.AtlasBake" />
+          <xs:enumeration value="Background.HideShow" />
+          <xs:enumeration value="Background.MenuClamp" />
+          <xs:enumeration value="Background.ClosePrompt" />
           <xs:enumeration value="Commands.HelpListsCommands" />
           <xs:enumeration value="Commands.UnknownIsAnError" />
           <xs:enumeration value="Commands.ArgumentsConvert" />
@@ -365,7 +392,11 @@
           <xs:enumeration value="Text.Bold" />
           <xs:enumeration value="Text.Italic" />
           <xs:enumeration value="Text.Underline" />
+          <xs:enumeration value="Text.Strikethrough" />
           <xs:enumeration value="Text.AlignLeft" />
+          <xs:enumeration value="Text.Bullets" />
+          <xs:enumeration value="Text.Numbers" />
+          <xs:enumeration value="Text.Tasks" />
           <xs:enumeration value="Text.AlignCenter" />
           <xs:enumeration value="Text.AlignRight" />
           <xs:enumeration value="Text.AlignJustify" />
@@ -391,6 +422,7 @@
           <xs:enumeration value="Picture.CollideShape" />
           <xs:enumeration value="Math.Insert" />
           <xs:enumeration value="Math.InsertDisplay" />
+          <xs:enumeration value="Text.InsertPicture" />
           <xs:enumeration value="Math.Edit" />
           <xs:enumeration value="Table.Insert" />
           <xs:enumeration value="Table.RowAbove" />
@@ -439,9 +471,11 @@
           <xs:enumeration value="Sheets.NewFixed" />
           <xs:enumeration value="Sheets.NewFixedHere" />
           <xs:enumeration value="Planners.New" />
+          <xs:enumeration value="Tex.New" />
           <xs:enumeration value="Planners.NewHere" />
           <xs:enumeration value="Sheets.FromCsv" />
           <xs:enumeration value="Sheets.ConvertCsv" />
+          <xs:enumeration value="Sheets.ConvertOpenCsv" />
           <xs:enumeration value="Notes.Rename" />
           <xs:enumeration value="Notes.Duplicate" />
           <xs:enumeration value="Notes.Delete" />
@@ -454,10 +488,21 @@
           <xs:enumeration value="Tab.SplitRight" />
           <xs:enumeration value="Tab.SplitDown" />
           <xs:enumeration value="Tab.MoveToNewWindow" />
+          <xs:enumeration value="Tab.PinToSticky" />
           <xs:enumeration value="TestAction" />
           <xs:enumeration value="Window.Minimize" />
           <xs:enumeration value="Window.MaximizeRestore" />
+          <xs:enumeration value="Window.TogglePin" />
           <xs:enumeration value="Window.Close" />
+          <xs:enumeration value="Workspace.NewGeneral" />
+          <xs:enumeration value="Workspace.NewDocs" />
+          <xs:enumeration value="Workspace.NewSheets" />
+          <xs:enumeration value="Workspace.NewLaTeX" />
+          <xs:enumeration value="Workspace.NewManager" />
+          <xs:enumeration value="Workspace.NewCalendar" />
+          <xs:enumeration value="Workspace.Duplicate" />
+          <xs:enumeration value="Workspace.Rename" />
+          <xs:enumeration value="Workspace.Close" />
         </xs:restriction>
       </xs:simpleType>
     </xs:union>
@@ -472,6 +517,7 @@
           <xs:enumeration value="Renderer.PreInitialize" />
           <xs:enumeration value="InputHandler.LoadInputs" />
           <xs:enumeration value="Glfw.Init" />
+          <xs:enumeration value="Background.Init" />
           <xs:enumeration value="Renderer.Initialize" />
           <xs:enumeration value="Renderer.PrepareDescriptors" />
           <xs:enumeration value="Renderer.SetupObjects" />
@@ -499,6 +545,21 @@
       </xs:simpleType>
     </xs:union>
   </xs:simpleType>
+  <xs:simpleType name="Shutdown">
+    <xs:union memberTypes="actions:Any">
+      <xs:simpleType>
+        <xs:restriction base="xs:string">
+          <xs:enumeration value="Background.Remove" />
+          <xs:enumeration value="Notes.SettleUnnamed" />
+          <xs:enumeration value="Notes.SaveEdited" />
+          <xs:enumeration value="Session.Capture" />
+          <xs:enumeration value="Settings.SaveAll" />
+          <xs:enumeration value="Logging.Flush" />
+          <xs:enumeration value="Profiling.Flush" />
+        </xs:restriction>
+      </xs:simpleType>
+    </xs:union>
+  </xs:simpleType>
   <xs:simpleType name="Settings">
     <xs:union memberTypes="actions:Any">
       <xs:simpleType>
@@ -506,20 +567,6 @@
           <xs:enumeration value="Renderer.RequestSwapchainRebuild" />
           <xs:enumeration value="Document.Rezoom" />
           <xs:enumeration value="UI.Rescale" />
-        </xs:restriction>
-      </xs:simpleType>
-    </xs:union>
-  </xs:simpleType>
-  <xs:simpleType name="Shutdown">
-    <xs:union memberTypes="actions:Any">
-      <xs:simpleType>
-        <xs:restriction base="xs:string">
-          <xs:enumeration value="Notes.SettleUnnamed" />
-          <xs:enumeration value="Notes.SaveEdited" />
-          <xs:enumeration value="Session.Capture" />
-          <xs:enumeration value="Settings.SaveAll" />
-          <xs:enumeration value="Logging.Flush" />
-          <xs:enumeration value="Profiling.Flush" />
         </xs:restriction>
       </xs:simpleType>
     </xs:union>

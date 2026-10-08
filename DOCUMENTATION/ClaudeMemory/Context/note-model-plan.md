@@ -1,6 +1,6 @@
 # Note model plan — N0–N4, a data model under the note controls
 
-**Status:** agreed (user, 2026-10-07). N0 and N1 landed 2026-10-07, N2 landed 2026-10-08; N3–N4 not started.
+**Status:** agreed (user, 2026-10-07). N0 and N1 landed 2026-10-07, N2 and N3 landed 2026-10-08; N4 measured and declined 2026-10-08 (user). The plan is complete.
 Decision record: [note-model](../Decisions/note-model.md). Why: the Thorium workspace-switcher remake (workspaces = Blender-style title-bar tabs, design in the "Workspace Switcher" canvas artifact) needs the same note open in two workspaces and in two panes side by side; the user chose to build a note model first rather than share one editor control between workspaces.
 
 ## N0 — LANDED 2026-10-07
@@ -49,7 +49,18 @@ Decision record: [note-model](../Decisions/note-model.md). Why: the Thorium work
 - The model needs a range insert (built in N2): `NoteNode[]` reallocated once per insert, so a multi-block paste reallocated once per pasted block
 - **Risky phase** — `DocumentControl` is 4,258 lines with 157 `BlockControl` references; land region by region, suite green between
 
-## N3 — several views of one note
+## N3 — LANDED 2026-10-08 — several views of one note
+**Built:**
+- NEW `NoteSessions` (static, in `RichTextDocument.cs`): `Open(path)`/`Close(session)`, ref-counted, one `DocumentEditSession` per path (case-insensitive); `DocumentEditSession.views`, `lead`; `Repath` re-keys
+- NEW `NoteChange.Map(DocumentAddress)`; `NoteChange.length` also carries the tail offset on `Inserted`/`Removed`; NEW `DocumentControl.MapAddress`, which shifts caret, selection anchor and text-drag press; a picture/formula selection the change touches collapses onto the caret
+- Only `session.lead` (the view whose editor was last the `ActiveControl`) obeys a change's `anchor`/`caret`; a single view always does
+- `DocumentEditorControl.onEdited` removed; `TexEditorControl` recompiles on `changed`
+- Tab menu "Split right / down" on a note or `.tex` tab opens a second view of the note (`TabActions.Split`); sheet and planner tabs and dragging still move
+- Naming prompt on close only when `session.views == 1`; `NoteActions.discarded` holds sessions; `SheetLinks.RewriteNotes` goes through the first open tab only
+- Verify: full Thorium suite 257 passed / 3 failed / 40 skipped (3 pre-existing baseline; 2 extra passes are `NoteModel.TwoViews`, `NoteModel.RestoreTwice`). Test-verified; **NOT GUI-verified** (the menu path was not driven); not perf-measured
+- Detail: [note-model](../Decisions/note-model.md)
+
+**Planned (original):**
 - `DocumentControl.MapAddress(NoteChange)` shifts caret, selection anchor and text-drag anchor
 - A remote change touching a selected picture or formula clears that selection
 - Tab menu "Split right / down" for notes; opening from the vault still focuses the existing tab
@@ -59,7 +70,22 @@ Decision record: [note-model](../Decisions/note-model.md). Why: the Thorium work
 - One save; the last view closing releases the session; `TexEditorControl`'s source editor shares likewise
 - Verify: two views on one session — typing in A shows in B, undo in B reverts A, B's caret shifts after an insert above, deleting B's caret block clamps, closing A keeps B, closing both releases, session restore of a note open twice; one GUI run via `--send`
 
-## N4 — virtualization (gated)
+## N4 — DECLINED 2026-10-08 — virtualization
+**Measured:** 1,000-block / 1,000,000-character note (`PerfTests.OpenNote`), Release+PROFILE, `--test=Perf` 3 runs, `Step.Main.Layout` on Main
+- `Perf.TypeLargeNote`: p50 0.09–0.10 ms, p95 0.28–0.35 ms, max 10.8–12.7 ms (max is the pre-existing budget failure)
+- `Perf.RewrapLargeNote`: p50 2.10–2.22 ms, p95 2.55–2.69 ms, max 5.9–6.5 ms; `Text.MeasureBlock` p50 1.37–1.51 ms at about 1,005 calls; 305 KB per frame, worst frame 10,240 KB
+- `Perf.ResizeLargeNote` (same arrange work as a scroll): p50 0.16–0.17 ms, p95 0.21–0.28 ms, max 0.30–0.38 ms
+- `--profile-scenario` UI preset, whole timeline: p95 0.71–0.82 ms
+
+**Why declined:**
+- Every steady-state frame is already under the 3.3 ms target (300 fps); `MeasureCore` skips unchanged blocks and `CollectChildren` draws only what the clip touches
+- The cache still measures every block, so the dominant cost (text measuring in rewrap, 10 MB worst-frame allocation) stays; N4 removes only about 0.6 ms of rewrap and about 0.2 ms of scroll or resize
+- Every path holding a `BlockControl` (caret, multi-block selection, `DocumentControl.ViewOf`, tables, floats, sheet links) would handle controlless blocks — a larger refactor than N2
+- N3 already delivered multi-view
+- Not measured: open time and memory per view. Reopen if a large note opens with a hitch, memory per view bites, or notes far beyond 1M characters become real
+- Detail: [note-model](../Decisions/note-model.md)
+
+**Planned (original):**
 - Decide after N3 by measuring a large note
 - Per-view layout cache of per-block heights/lines from `TextMeasurer.MeasureBlock(IReadOnlyList<Run>, …)` (already data-in); only viewport + margin blocks become `BlockControl`s
 - Scroll range from the cache, not from the children; `Paginate` over the cache

@@ -11,7 +11,7 @@
   <DocumentSettings>
     <UI:DocumentLayout LineHeight="1.5" BlockSpacing="8">
 
-      <UI:TextStyle Type="Text" FontSize="18" />
+      <UI:TextStyle Type="Text" FontSize="16" />
 
       <UI:TextStyle Type="Heading1" FontSize="34" />
       <UI:TextStyle Type="Heading2" FontSize="28" />

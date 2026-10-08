@@ -5,7 +5,7 @@ using System.Numerics;
 
 namespace ArctisAurora.Core.UI
 {
-    // The format bar for whichever note holds the caret. It owns no editor: every button resolves
+    // The format bar for its target note, or whichever holds the caret. It owns no editor: every button resolves
     // the focused one when it is pressed, the same walk the keybinds use. That is why nothing in
     // here may take the active control — the walk starts at the caret's block, and a button that
     // stole it would leave the bar acting on itself.
@@ -42,6 +42,7 @@ namespace ArctisAurora.Core.UI
         // metrics
         private const int barHeight = 30;
         private const int iconButtonWidth = 34;
+        private const int markerButtonWidth = 16;
         private const int iconSize = 14;
         private const int captionSize = 13;
 
@@ -89,18 +90,39 @@ namespace ArctisAurora.Core.UI
             ("Purple", "#D9C4F0")
         };
 
+        private static readonly (string caption, ListMarker marker)[] markerOptions =
+        {
+            ("Filled circle", ListMarker.Disc),
+            ("Empty circle", ListMarker.Circle),
+            ("Filled triangle", ListMarker.Triangle),
+            ("Empty triangle", ListMarker.TriangleOutline),
+            ("Filled square", ListMarker.Square),
+            ("Empty square", ListMarker.SquareOutline),
+            ("1. 2. 3.", ListMarker.Decimal),
+            ("A. B. C.", ListMarker.UpperAlpha),
+            ("a. b. c.", ListMarker.LowerAlpha),
+            ("i. ii. iii.", ListMarker.LowerRoman),
+            ("I. II. III.", ListMarker.UpperRoman)
+        };
+
+        // The note the bar acts on and reflects; the caret's note when left unset.
+        public Func<DocumentEditorControl?>? target;
+
         private readonly IconControl boldInk;
         private readonly IconControl italicInk;
         private readonly IconControl underlineInk;
+        private readonly IconControl strikeInk;
         private readonly IconControl highlightInk;
         private readonly IconControl alignLeftInk;
         private readonly IconControl alignCenterInk;
         private readonly IconControl alignRightInk;
         private readonly IconControl alignJustifyInk;
+        private readonly IconControl bulletsInk;
+        private readonly IconControl numbersInk;
+        private readonly IconControl tasksInk;
         private readonly LabelControl stylingCaption;
         private readonly LabelControl colorInk;
         private readonly PxBox pxField;
-        private readonly LabelControl pageCaption;
 
         // The last editor that held the caret. Only the px field uses it: a field has to take the
         // active control to be typed into, which is the one thing the rest of the bar avoids, so the
@@ -120,6 +142,10 @@ namespace ArctisAurora.Core.UI
         private bool? shownBold;
         private bool? shownItalic;
         private bool? shownUnderline;
+        private bool? shownStrike;
+        private bool? shownBullets;
+        private bool? shownNumbers;
+        private bool? shownTasks;
         private string? shownHighlight;
         private TextStyleType? shownStyling;
         private bool? shownLeft;
@@ -129,7 +155,6 @@ namespace ArctisAurora.Core.UI
         private string? shownColor;
         private PaletteRole? shownInk;
         private int? shownPx;
-        private (PageMode, PageSize, bool)? shownPage;
 
         public override bool takesActiveControl => false;
 
@@ -141,26 +166,18 @@ namespace ArctisAurora.Core.UI
             preferredHeight = barHeight;
             horizontalAlignment = HorizontalAlignment.Stretch;
 
-            boldInk = Ink("bold");
-            italicInk = Ink("italic");
-            AddChild(IconButton(boldInk, _ => TextInputActions.Bold()));
-            AddChild(IconButton(italicInk, _ => TextInputActions.Italic()));
-            underlineInk = Ink("underline");
-            AddChild(IconButton(underlineInk, _ => TextInputActions.Underline()));
-            AddChild(Separator());
-
             stylingCaption = Caption(stylingOptions[0].caption);
             AddChild(CaptionButton(stylingCaption, 124, OpenStyling));
             AddChild(Separator());
 
-            alignLeftInk = Ink("align-left");
-            alignCenterInk = Ink("align-center");
-            alignRightInk = Ink("align-right");
-            alignJustifyInk = Ink("align-justify");
-            AddChild(IconButton(alignLeftInk, _ => TextInputActions.AlignLeft()));
-            AddChild(IconButton(alignCenterInk, _ => TextInputActions.AlignCenter()));
-            AddChild(IconButton(alignRightInk, _ => TextInputActions.AlignRight()));
-            AddChild(IconButton(alignJustifyInk, _ => TextInputActions.AlignJustify()));
+            boldInk = Ink("bold");
+            italicInk = Ink("italic");
+            AddChild(IconButton(boldInk, _ => On(TextInputActions.Bold)));
+            AddChild(IconButton(italicInk, _ => On(TextInputActions.Italic)));
+            underlineInk = Ink("underline");
+            AddChild(IconButton(underlineInk, _ => On(TextInputActions.Underline)));
+            strikeInk = Ink("strikethrough");
+            AddChild(IconButton(strikeInk, _ => On(TextInputActions.Strikethrough)));
             AddChild(Separator());
 
             colorInk = Caption("A");
@@ -184,8 +201,39 @@ namespace ArctisAurora.Core.UI
             AddChild(pxField);
             AddChild(Separator());
 
-            pageCaption = Caption("A4");
-            AddChild(CaptionButton(pageCaption, 88, OpenPage));
+            alignLeftInk = Ink("align-left");
+            alignCenterInk = Ink("align-center");
+            alignRightInk = Ink("align-right");
+            alignJustifyInk = Ink("align-justify");
+            AddChild(IconButton(alignLeftInk, _ => On(TextInputActions.AlignLeft)));
+            AddChild(IconButton(alignCenterInk, _ => On(TextInputActions.AlignCenter)));
+            AddChild(IconButton(alignRightInk, _ => On(TextInputActions.AlignRight)));
+            AddChild(IconButton(alignJustifyInk, _ => On(TextInputActions.AlignJustify)));
+            AddChild(Separator());
+
+            bulletsInk = Ink("bullet-disc");
+            AddChild(IconButton(bulletsInk, _ => On(TextInputActions.Bullets)));
+            ToolButton markers = NewButton(markerButtonWidth, OpenMarkers);
+            markers.AddChild(Ink("chevron-down"));
+            AddChild(markers);
+            numbersInk = Ink("list-numbered");
+            AddChild(IconButton(numbersInk, _ => On(TextInputActions.Numbers)));
+            tasksInk = Ink("list-task");
+            AddChild(IconButton(tasksInk, _ => On(TextInputActions.Tasks)));
+            AddChild(IconButton(Ink("outdent"), _ => On(TextInputActions.Outdent)));
+            AddChild(IconButton(Ink("indent"), _ => On(TextInputActions.Indent)));
+        }
+
+        private DocumentEditorControl? Target() => target != null ? target() : TextInputActions.Editor();
+
+        // Hands the target note the caret if another had it, then acts.
+        private void On(Action action)
+        {
+            DocumentEditorControl? editor = Target();
+            if (editor == null) return;
+
+            if (!ReferenceEquals(TextInputActions.Editor(), editor)) editor.FocusCaret();
+            action();
         }
 
         // Reflects the span the selection starts in. Cheap enough to poll: four comparisons, and a
@@ -194,7 +242,7 @@ namespace ArctisAurora.Core.UI
         {
             base.OnTick();
 
-            DocumentEditorControl live = TextInputActions.Editor();
+            DocumentEditorControl? live = Target();
             if (live != null) remembered = live;
 
             // Reflecting the remembered editor rather than the live one is what keeps the bar
@@ -205,6 +253,8 @@ namespace ArctisAurora.Core.UI
             Reflect(boldInk, source?.bold == true, ref shownBold);
             Reflect(italicInk, source?.italic == true, ref shownItalic);
             Reflect(underlineInk, source?.underline == true, ref shownUnderline);
+
+            Reflect(strikeInk, source?.strikethrough == true, ref shownStrike);
 
             string? highlight = source?.highlightHex;
             if (shownHighlight != highlight)
@@ -225,6 +275,11 @@ namespace ArctisAurora.Core.UI
             Reflect(alignCenterInk, alignment == TextAlignment.Center, ref shownCenter);
             Reflect(alignRightInk, alignment == TextAlignment.Right, ref shownRight);
             Reflect(alignJustifyInk, alignment == TextAlignment.Justify, ref shownJustify);
+            BlockControl? block = editor?.CaretBlock;
+            bool numbered = block?.listKind == ListKind.Bullet && ListMarkers.IsNumbered(block.listMarker ?? ListMarker.Disc);
+            Reflect(bulletsInk, block?.listKind == ListKind.Bullet && !numbered, ref shownBullets);
+            Reflect(numbersInk, numbered, ref shownNumbers);
+            Reflect(tasksInk, block?.listKind == ListKind.Task, ref shownTasks);
 
             string? color = source.HasValue ? source.Value.colorHex : idleInkHex;
             PaletteRole ink = source.HasValue ? PaletteRole.Ink : PaletteRole.MutedInk;
@@ -241,16 +296,6 @@ namespace ArctisAurora.Core.UI
             {
                 shownPx = px;
                 pxField.text = px > 0 ? px.ToString() : string.Empty;
-            }
-
-            PageLayout? page = editor?.Page;
-            (PageMode, PageSize, bool)? format = page == null ? null : (page.mode, page.size, page.landscape);
-            if (shownPage != format)
-            {
-                shownPage = format;
-                pageCaption.text = page == null ? string.Empty
-                    : page.mode == PageMode.Pageless ? "Pageless"
-                    : page.landscape ? $"{page.size} L" : page.size.ToString();
             }
         }
 
@@ -312,16 +357,18 @@ namespace ArctisAurora.Core.UI
             shown = on;
             ink.PaintOr(on ? activeInkHex : idleInkHex, on ? PaletteRole.Accent : PaletteRole.MutedInk);
         }
-
         #region ---- menus ----
         // The editor is captured here rather than re-resolved inside the entry: a menu row is a
         // plain button and does take the active control, so by the time an entry runs the walk would
         // start at the menu instead of the note.
-        private static void OpenStyling(ToolButton owner)
+        private void OpenStyling(ToolButton owner)
         {
-            DocumentEditorControl editor = TextInputActions.Editor();
-            if (editor == null) return;
+            DocumentEditorControl? editor = Target();
+            if (editor != null) Drop(owner, StylingEntries(editor));
+        }
 
+        internal static List<ContextMenuEntry> StylingEntries(DocumentEditorControl editor)
+        {
             List<ContextMenuEntry> entries = new List<ContextMenuEntry>();
             foreach ((string caption, TextStyleType type) in stylingOptions)
             {
@@ -330,13 +377,35 @@ namespace ArctisAurora.Core.UI
                     ? editor.InsertRule
                     : () => editor.SetBlockStyling(picked)));
             }
-
-            Drop(owner, entries);
+            return entries;
         }
 
-        private static void OpenColors(ToolButton owner)
+        private void OpenMarkers(ToolButton owner)
         {
-            DocumentEditorControl editor = TextInputActions.Editor();
+            DocumentEditorControl? editor = Target();
+            if (editor != null) Drop(owner, MarkerEntries(editor));
+        }
+
+        internal static List<ContextMenuEntry> MarkerEntries(DocumentEditorControl editor)
+        {
+            List<ContextMenuEntry> entries = new List<ContextMenuEntry>();
+            foreach ((string caption, ListMarker marker) in markerOptions)
+            {
+                if (marker == ListMarker.Decimal) entries.Add(new ContextMenuLine());
+
+                ListMarker picked = marker;
+                entries.Add(new ContextMenuButton(caption, () =>
+                {
+                    editor.SetListMarker(picked);
+                    editor.FocusCaret();
+                }));
+            }
+            return entries;
+        }
+
+        private void OpenColors(ToolButton owner)
+        {
+            DocumentEditorControl? editor = Target();
             if (editor == null) return;
 
             List<ContextMenuEntry> entries = new List<ContextMenuEntry>();
@@ -355,9 +424,9 @@ namespace ArctisAurora.Core.UI
             Drop(owner, entries);
         }
 
-        private static void OpenHighlights(ToolButton owner)
+        private void OpenHighlights(ToolButton owner)
         {
-            DocumentEditorControl editor = TextInputActions.Editor();
+            DocumentEditorControl? editor = Target();
             if (editor == null) return;
 
             List<ContextMenuEntry> entries = new List<ContextMenuEntry>();
@@ -390,19 +459,10 @@ namespace ArctisAurora.Core.UI
             return picker;
         }
 
-        private static void OpenPage(ToolButton owner)
+        // The paper sizes, then the custom size fields.
+        internal static List<ContextMenuEntry> SizeEntries(DocumentEditorControl editor, PageLayout current)
         {
-            DocumentEditorControl editor = TextInputActions.Editor();
-            PageLayout? current = editor?.Page;
-            if (current == null) return;
-
-            List<ContextMenuEntry> entries = new List<ContextMenuEntry>
-            {
-                PageEntry(editor, current, "Paged", page => page.mode = PageMode.Paged),
-                PageEntry(editor, current, "Pageless", page => page.mode = PageMode.Pageless),
-                new ContextMenuLine()
-            };
-
+            List<ContextMenuEntry> entries = new List<ContextMenuEntry>();
             foreach (PageSize size in Enum.GetValues<PageSize>())
             {
                 if (size == PageSize.Custom) continue;
@@ -412,14 +472,7 @@ namespace ArctisAurora.Core.UI
             }
 
             entries.Add(new ContextMenuContent(CustomSizeFields(editor, current)));
-
-            entries.Add(new ContextMenuLine());
-            entries.Add(PageEntry(editor, current, current.landscape ? "Portrait" : "Landscape",
-                page => page.landscape = !page.landscape));
-            entries.Add(PageEntry(editor, current, current.pageNumbers ? "Hide page numbers" : "Show page numbers",
-                page => page.pageNumbers = !page.pageNumbers));
-
-            Drop(owner, entries);
+            return entries;
         }
 
         // Width and height in millimetres; Enter in either sets them as a custom paper size.
@@ -470,20 +523,22 @@ namespace ArctisAurora.Core.UI
         }
 
         // Changes a copy, so an inherited editor-wide page is never written through.
-        private static ContextMenuButton PageEntry(DocumentEditorControl editor, PageLayout current, string caption,
-            Action<PageLayout> change) => new ContextMenuButton(caption, () =>
-            {
-                PageLayout page = current.Clone();
-                change(page);
-                editor.SetPage(page);
-                editor.FocusCaret();
-            });
+        internal static ContextMenuButton PageEntry(DocumentEditorControl editor, PageLayout current, string caption,
+            Action<PageLayout> change) => new ContextMenuButton(caption, () => ChangePage(editor, current, change));
+
+        internal static void ChangePage(DocumentEditorControl editor, PageLayout current, Action<PageLayout> change)
+        {
+            PageLayout page = current.Clone();
+            change(page);
+            editor.SetPage(page);
+            editor.FocusCaret();
+        }
 
         private static void Drop(ToolButton owner, List<ContextMenuEntry> entries) =>
             ContextMenus.Open(entries, owner,
                 new Vector2(owner.arrangedRect.x, owner.arrangedRect.Bottom));
 
-        private static string CaptionFor(TextStyleType type)
+        internal static string CaptionFor(TextStyleType type)
         {
             foreach ((string caption, TextStyleType option) in stylingOptions)
                 if (option == type) return caption;
@@ -598,6 +653,10 @@ namespace ArctisAurora.Core.UI
             shownBold = null;
             shownItalic = null;
             shownUnderline = null;
+            shownStrike = null;
+            shownBullets = null;
+            shownNumbers = null;
+            shownTasks = null;
             shownHighlight = "";
             shownInk = null;
         }

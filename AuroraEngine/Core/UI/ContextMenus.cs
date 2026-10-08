@@ -163,6 +163,30 @@ namespace ArctisAurora.Core.UI
         }
 
         // Over the origin window's tree when the panel fits inside it, in a window of its own when not.
+        // Opens in a window of its own at a screen point, sized by scaleFrom and kept inside the monitor's
+        // work area — above the point when it would cross the bottom.
+        public static void OpenAtScreen(List<ContextMenuEntry> entries, int x, int y, RenderWindow scaleFrom)
+        {
+            Close();
+            if (entries.Count == 0 || scaleFrom.ui.uiRoot == null) return;
+
+            _origin = scaleFrom;
+            target = scaleFrom.ui.uiRoot;
+            ContextMenuControl panel = new ContextMenuControl(entries, 0);
+            Vector2 viewport = scaleFrom.ui.uiRoot.arrangedRect.size;
+            Vector2 size = panel.Measure(viewport);
+            HostInWindow(panel, size, viewport);
+            _open.Add(panel);
+
+            int width = (int)UIScaling.ToPixels(scaleFrom, (uint)MathF.Ceiling(size.X));
+            int height = (int)UIScaling.ToPixels(scaleFrom, (uint)MathF.Ceiling(size.Y));
+            (int ax, int ay, int aw, int ah) = AGlfwWindow.WorkAreaAt(x, y);
+            int px = Math.Max(ax, Math.Min(x, ax + aw - width));
+            int py = Math.Max(ay, y + height > ay + ah ? y - height : y);
+            panel.window!.os.SetPosition(px, py);
+            panel.window.Focus();
+        }
+
         private static void Host(ContextMenuControl panel)
         {
             WindowRoot root = _origin!.ui.uiRoot;

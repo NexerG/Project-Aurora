@@ -6,12 +6,15 @@ using System.Numerics;
 namespace ArctisAurora.Core.UI
 {
     // A grip between two panes of a StackPanel. Between a sized pane and a star one it writes the
-    // first pane's size; between two star panes it trades weight between the pair.
+    // sized pane's size; between two star panes it trades weight between the pair.
     [A_XSDType("Splitter", "UI")]
     public class SplitterControl : ButtonControl
     {
         private Vector2 grab;
         private float grabSize;
+
+        // a star pane against a sized one after it, which is the one sized
+        private bool grabNext;
 
         // star against star
         private bool grabStar;
@@ -47,7 +50,9 @@ namespace ArctisAurora.Core.UI
                 grabSize = vertical ? pane.arrangedRect.height : pane.arrangedRect.width;
 
                 grabStar = false;
-                if (next != null && IsStar(pane, vertical) && IsStar(next, vertical))
+                grabNext = next != null && IsStar(pane, vertical) && !IsStar(next, vertical);
+                if (grabNext) grabSize = vertical ? next!.arrangedRect.height : next!.arrangedRect.width;
+                else if (next != null && IsStar(pane, vertical) && IsStar(next, vertical))
                 {
                     grabTotal = grabSize + (vertical ? next.arrangedRect.height : next.arrangedRect.width);
                     grabWeight = (vertical ? pane.heightStar : pane.widthStar)
@@ -67,9 +72,15 @@ namespace ArctisAurora.Core.UI
             if (pane == null) return;
 
             bool vertical = IsVertical;
-            float wanted = grabSize + (vertical ? e.point.Y - grab.Y : e.point.X - grab.X);
+            float moved = vertical ? e.point.Y - grab.Y : e.point.X - grab.X;
+            float wanted = grabSize + (grabNext ? -moved : moved);
 
-            if (grabStar) DragStars(pane, vertical, wanted);
+            if (grabNext && NextPane() is Control next)
+            {
+                if (vertical) next.preferredHeight = MathF.Max(next.minHeight, wanted);
+                else next.preferredWidth = MathF.Max(next.minWidth, wanted);
+            }
+            else if (grabStar) DragStars(pane, vertical, wanted);
             else if (vertical) pane.preferredHeight = MathF.Max(pane.minHeight, wanted);
             else pane.preferredWidth = MathF.Max(pane.minWidth, wanted);
 

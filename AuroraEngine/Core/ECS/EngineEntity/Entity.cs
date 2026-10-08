@@ -1,6 +1,8 @@
 ﻿using ArctisAurora.Core.Filing.Serialization;
 using ArctisAurora.Core.Registry;
 using ArctisAurora.Core.Data;
+using ArctisAurora.Core.Diagnostics;
+using System.Diagnostics;
 using Silk.NET.Maths;
 using ArctisAurora.EngineWork.ComponentBehaviour;
 using ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan;
@@ -17,6 +19,8 @@ namespace ArctisAurora.Core.ECS.EngineEntity
         //variables
         [@Serializable]
         bool enabled = true;
+        private static readonly LogChannel Log = LogChannel.For("Entity");
+
         [@Serializable]
         [A_XSDElementProperty("Name", "EntityRegistry", "Identifier for FindByName lookups. Not required to be unique.")]
         public string name = "entity";
@@ -364,8 +368,17 @@ namespace ArctisAurora.Core.ECS.EngineEntity
 
         public virtual void AddChild(Entity entity)
         {
+            WarnIfDestroyed(entity);
             children.Add(entity);
             entity.parent = this;
+        }
+
+        // DEBUG: a child added under a destroyed parent is never torn down and no tree reaches it.
+        [Conditional("DEBUG")]
+        protected void WarnIfDestroyed(Entity entity)
+        {
+            if (_destroyed)
+                Log.Warn($"'{entity.name}' ({entity.GetType().Name}) added under destroyed '{name}' ({GetType().Name}); it will outlive it");
         }
 
         public virtual void RemoveChild(Entity entity)

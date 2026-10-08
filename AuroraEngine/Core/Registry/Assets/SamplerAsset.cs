@@ -99,6 +99,7 @@ namespace ArctisAurora.Core.Registry.Assets
         public void CreateVulkanSampler()
         {
             Renderer.vk.GetPhysicalDeviceProperties(Renderer.gpu, out PhysicalDeviceProperties props);
+            bool anisotropic = anisotropyEnable && Renderer.renderer.features.SamplerAnisotropy == true;
 
             SamplerCreateInfo info = new SamplerCreateInfo()
             {
@@ -108,8 +109,8 @@ namespace ArctisAurora.Core.Registry.Assets
                 AddressModeU = (Silk.NET.Vulkan.SamplerAddressMode)addressModeU,
                 AddressModeV = (Silk.NET.Vulkan.SamplerAddressMode)addressModeV,
                 AddressModeW = (Silk.NET.Vulkan.SamplerAddressMode)addressModeW,
-                AnisotropyEnable = anisotropyEnable,
-                MaxAnisotropy = anisotropyEnable ? props.Limits.MaxSamplerAnisotropy : 1f,
+                AnisotropyEnable = anisotropic,
+                MaxAnisotropy = anisotropic ? props.Limits.MaxSamplerAnisotropy : 1f,
                 BorderColor = BorderColor.IntOpaqueBlack,
                 UnnormalizedCoordinates = false,
                 CompareEnable = false,

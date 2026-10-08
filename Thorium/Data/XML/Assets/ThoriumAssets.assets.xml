@@ -3,6 +3,7 @@
 			   xsi:schemaLocation="http://arctisaurora/AuroraAssetRegistryTypes ../Schemas/AssetRegistryTypeSchema.xsd">
 
 	<Asset Type="UIDocumentAsset" Name="tab-window" Source="XML/Documents/UI/TabWindow.ui.xml"/>
+	<Asset Type="UIDocumentAsset" Name="sticky-window" Source="XML/Documents/UI/StickyWindow.ui.xml"/>
 	<Asset Type="UIDocumentAsset" Name="settings"   Source="XML/Documents/UI/Settings.ui.xml"/>
 	<Asset Type="UIDocumentAsset" Name="vaults"     Source="XML/Documents/UI/Vaults.ui.xml"/>
 
@@ -13,6 +14,9 @@
 
 	<!-- context menus on the new stack, named by a control's ContextMenu attribute -->
 	<Asset Type="ContextMenuAsset" Name="title-bar" Source="XML/Documents/Menus/TitleBar.menu.xml"/>
+	<Asset Type="ContextMenuAsset" Name="workspace" Source="XML/Documents/Menus/Workspace.menu.xml"/>
+	<Asset Type="ContextMenuAsset" Name="workspace-add" Source="XML/Documents/Menus/WorkspaceAdd.menu.xml"/>
+	<Asset Type="ContextMenuAsset" Name="pane-new" Source="XML/Documents/Menus/PaneNew.menu.xml"/>
 	<Asset Type="ContextMenuAsset" Name="thorium"   Source="XML/Documents/Menus/Thorium.menu.xml"/>
 	<Asset Type="ContextMenuAsset" Name="file"      Source="XML/Documents/Menus/File.menu.xml"/>
 	<Asset Type="ContextMenuAsset" Name="edit"      Source="XML/Documents/Menus/Edit.menu.xml"/>

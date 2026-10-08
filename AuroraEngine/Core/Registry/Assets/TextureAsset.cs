@@ -22,7 +22,7 @@ namespace ArctisAurora.Core.Registry.Assets
         internal Image<Rgba32> image = null!;
 
         #region ---- bindless texture table ----
-        public const uint MaxTextures = 256;
+        public static uint MaxTextures { get; internal set; } = 256;
 
         private static TextureAsset[] _table = Array.Empty<TextureAsset>();
         public static IReadOnlyList<TextureAsset> Table => Volatile.Read(ref _table);

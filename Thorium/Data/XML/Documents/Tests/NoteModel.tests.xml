@@ -6,4 +6,6 @@
 	<Test Action="NoteModel.LoadHeadless"/>
 	<Test Action="NoteModel.Changes"/>
 	<Test Action="NoteModel.EditHeadless"/>
+	<Test Action="NoteModel.TwoViews"/>
+	<Test Action="NoteModel.RestoreTwice"/>
 </TestSuite>

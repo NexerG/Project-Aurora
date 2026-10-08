@@ -149,9 +149,14 @@ This file holds **open work**. A landed entry moves to [[Changelog]]; one that s
 		- [ ] formula string literals, AND/OR/COUNT, absolute refs + fill-down → `sheets`
 		- [ ] link cache file in the vault for references (user's idea, not designed) — would cover the undo-after-insert gap → `sheets`
 		- [ ] delete rows/columns (insert exists; delete does not) → `sheets`
-	- [ ] **workspace tabs** — Blender-style tabs across the top switching Notes / Sheets / Board — blocked on the note data model (workspace remake planned; same note in several workspaces/panes)
-	- [ ] **note data model (user, 2026-10-07)** — N0, N1 (2026-10-07) and N2 (edits go through `RichTextDocument`, views react; 2026-10-08) landed; N3 (several views; `NoteSessions` moved here) and N4 (gated virtualization) open → `ClaudeMemory/Context/note-model-plan.md`
+	- [ ] **workspace tabs** — Blender-style workspaces in the title bar; plan W1–W5 in `ClaudeMemory/Context/workspace-plan.md` (W1, W2, W3, W4a and W4b landed 2026-10-08; W5 split gestures skipped by the user 2026-10-08)
+		- [ ] **TabToolsControl.Text draws nothing for a one-character caption (2026-10-08)** — cause not investigated; `$` and `%` on the Sheets ribbon are built through `RibbonControl.Glyph` instead → workspaces
+		- [ ] **W3/W4 NOT GUI-verified (2026-10-08)** — the OS dialogs (Picture…, Import CSV…, the folder picker for adding a vault) and `Sheets.ConvertOpenCsv` on a real vault; ribbon, inspector and tab-row tools in a real run
+	- [x] **note data model (user, 2026-10-07)** — landed, N0–N3 built; N4 (virtualization) measured and declined 2026-10-08. See `ClaudeMemory/Context/note-model-plan.md`
 		- [ ] **N2 NOT GUI-verified (2026-10-08)** — in a real session: typing, Enter/Backspace across blocks, paste/drop, picture drags, table insert/delete/resize, page/palette/layout changes, and undo/redo of each
+		- [ ] **N3 NOT GUI-verified (2026-10-08)** — tab-menu Split right/down on a note and a `.tex` tab opens a second view; typing in one view shows in the other, caret shifts, undo, closing one view keeps the other, a note open twice at shutdown
+	- [ ] **Perf.TypeLargeNote fails its 8 ms Max (pre-existing, 2026-10-08)** — failing frame: `Document.MeasureBlocks` ~5–6 ms, `Layout.Arrange` ~4.6–5 ms, `Text.MeasureBlock` 0.01 ms; not investigated → `note-model`
+	- [ ] **large-note rewrap allocation (2026-10-08)** — `Text.MeasureBlock` allocates 305 KB per rewrap frame, 10 MB in the worst, on a 1M-char note; the real large-note cost → `note-model`
 	- [ ] **planner (user, 2026-10-07)** — `*.planner.xml`, one file shown as Gantt, board and calendar; F0, P1–P4, PC, C2 landed (Gantt editable, board draggable, categories, assignee chips, calendar view, attachments and follows links); follow-ups below → `ClaudeMemory/Context/planner-plan.md`
 		- [ ] **planner F0–P4 NOT GUI-verified (2026-10-07)** — vault browser menus, open/rename/delete, tab restore, zoom; P2 bar drag, popup, menu, keys; P3 real card drag; P4 "+ Category", category popup (typing, picker, Delete), row/column double clicks, category menus, many-assignee chips, one-tick board lag; test-, golden-, shot-verified only → `planner`
 		- [ ] **planner popup: Tab between boxes** — no `Planner.Tab` bind → `planner`
@@ -165,7 +170,10 @@ This file holds **open work**. A landed entry moves to [[Changelog]]; one that s
 		- [ ] **planner attachments: not drawn on the board, Month chips or the calendar's all-day strip** → `planner`
 		- [ ] **planner follows: followers move only on release** — not live during the drag → `planner`
 		- [ ] **engine: guard `UIEngine` pointer dispatch against controls destroyed mid-dispatch** — destroying or rebuilding controls in press / release / tap / drag end leaves stale layout state; the planner posts its rebuild (`RebuildSoon`) → `rebuild-inside-pointer-dispatch`
-	- [ ] **calendar (designed 2026-10-06, parked)** — engine side merged into the planner 2026-10-07 (PC + C2 in planner-plan); still parked: Google + iCloud over CalDAV (read-only first), iCalendar/recurrence, tray + start at login + toasts; C3–C7 → `ClaudeMemory/Context/calendar-plan.md`
+	- [ ] **calendar (designed 2026-10-06, parked)** — engine side merged into the planner 2026-10-07 (PC + C2 in planner-plan); still parked: Google + iCloud over CalDAV (read-only first), iCalendar/recurrence, start at login + toasts + reminders (tray + single instance landed 2026-10-08, engine-wide as `Background`); C3–C7 → `ClaudeMemory/Context/calendar-plan.md`
+	- [ ] **stickies + tray NOT GUI-verified (2026-10-08)** — landed, test-verified; by hand: tray icon and clicks, tray menu taking focus, X hiding the main window, second launch raising it, sign-out save, sticky look/resize/pin, "Pin to desktop" submenu → `desktop-stickies`
+		- [ ] tray icon is IDI_APPLICATION (Thorium has no .ico) and is not re-added after an Explorer restart (TaskbarCreated) → `desktop-stickies`
+		- [ ] `--profile` runs are swallowed by single instance while Thorium runs (only `--test` is exempt) → `desktop-stickies`
 	- [ ] **simplified mode** — a setting that swaps to the familiar layouts (menu bar, one document at a time) for less technical users; a layout choice, not a separate app
 - [ ] fix resolution stuff associated with DPI and stuff. use `glfwGetMonitorContentScale` *(non-essential)*
 

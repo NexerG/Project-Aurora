@@ -45,9 +45,12 @@ namespace ArctisAurora.Core.UI
         public bool propertiesOpen { get; set; }
     }
 
+    // What a SessionWindow may hold: its workspaces, or the panes a record from before workspaces held.
+    public interface ISessionWindowChild { }
+
     // A split when it holds panes, a leaf when it holds tabs.
     [A_XSDType("SessionPane", "Settings", AllowedChildren = typeof(ISessionChild))]
-    public class SessionPane : ISessionChild
+    public class SessionPane : ISessionChild, ISessionWindowChild
     {
         [A_XSDElementProperty("Orientation", "Settings", "Axis a split pane divides along.")]
         public StackPanelControl.Orientation orientation { get; set; } = StackPanelControl.Orientation.Horizontal;
@@ -65,7 +68,29 @@ namespace ArctisAurora.Core.UI
         public List<SessionPane> panes = new List<SessionPane>();
     }
 
-    [A_XSDType("SessionWindow", "Settings", AllowedChildren = typeof(SessionPane))]
+    [A_XSDType("SessionWorkspace", "Settings", AllowedChildren = typeof(SessionPane))]
+    public class SessionWorkspace : ISessionWindowChild
+    {
+        [A_XSDElementProperty("Title", "Settings", "Name on the workspace's tab.")]
+        public string title { get; set; } = "";
+
+        [A_XSDElementProperty("Kind", "Settings", "What the workspace is for.")]
+        public WorkspaceKind kind { get; set; }
+
+        [A_XSDElementProperty("Shown", "Settings", "True for the workspace that was on screen.")]
+        public bool shown { get; set; }
+
+        [A_XSDElementProperty("Ribbon", "Settings", "The ribbon category picked in a Docs or Sheets workspace.")]
+        public string ribbon { get; set; } = "Format";
+
+        [A_XSDElementProperty("Inspector", "Settings", "True while a Docs or Sheets workspace shows its inspector.")]
+        public bool inspector { get; set; } = true;
+
+        [A_XSDElementProperty("SessionPane", "Settings")]
+        public List<SessionPane> panes = new List<SessionPane>();
+    }
+
+    [A_XSDType("SessionWindow", "Settings", AllowedChildren = typeof(ISessionWindowChild))]
     public class SessionWindow
     {
         [A_XSDElementProperty("Document", "Settings", "UI document the window was built from.")]
@@ -81,6 +106,13 @@ namespace ArctisAurora.Core.UI
         [A_XSDElementProperty("Height", "Settings")] public int height { get; set; }
         [A_XSDElementProperty("Maximized", "Settings")] public bool maximized { get; set; }
 
+        [A_XSDElementProperty("Pinned", "Settings", "True while the window is kept above every other window.")]
+        public bool pinned { get; set; }
+
+        [A_XSDElementProperty("SessionWorkspace", "Settings")]
+        public List<SessionWorkspace> workspaces = new List<SessionWorkspace>();
+
+        // read from records written before workspaces, never written
         [A_XSDElementProperty("SessionPane", "Settings")]
         public List<SessionPane> panes = new List<SessionPane>();
     }
@@ -127,7 +159,7 @@ namespace ArctisAurora.Core.UI
         }
 
         // Records this scope, empties every workspace and rebuilds key's, the primary staying where it is.
-        // False when key has nothing recorded, leaving the primary one empty pane.
+        // False when key has nothing recorded, leaving the primary its first-run workspaces, each one empty pane.
         public static bool ChangeScope(string key)
         {
             Capture();
@@ -135,7 +167,7 @@ namespace ArctisAurora.Core.UI
             scope = key;
 
             if (Rebuild(false)) return true;
-            WorkspaceControl.In(Engine.primary.ui.uiRoot)?.LoadPane();
+            WorkspaceControl.In(Engine.primary.ui.uiRoot)?.LoadEmpty();
             return false;
         }
 
@@ -189,6 +221,7 @@ namespace ArctisAurora.Core.UI
 
             Fill(WorkspaceControl.In(window.ui.uiRoot), record);
             if (record.maximized) window.os.Maximize();
+            if (record.pinned) WindowActions.Pin(window, true);
         }
 
         // A window whose saved rect no longer lands on a screen goes back to the middle of the
@@ -211,18 +244,46 @@ namespace ArctisAurora.Core.UI
             if (record.maximized) window.os.Maximize();
         }
 
-        // A window with no panes recorded still gets its authored arrangement, so a record written
-        // before a workspace existed does not open an empty window.
+        // A window with nothing recorded still gets its authored arrangement, so a record written
+        // before a workspace existed does not open an empty window. A record written before there
+        // were several workspaces becomes one General workspace.
         private static void Fill(WorkspaceControl workspace, SessionWindow record)
         {
             if (workspace == null) return;
 
-            if (record.panes.Count == 0) { workspace.LoadDefault(); return; }
+            if (record.workspaces.Count == 0)
+            {
+                if (record.panes.Count == 0) { workspace.LoadDefault(); return; }
+                FillPage(workspace, workspace.AddPage(nameof(WorkspaceKind.General), WorkspaceKind.General), record.panes);
+                return;
+            }
 
-            TabViewControl seed = workspace.LoadPane();
-            if (seed == null) { workspace.LoadDefault(); return; }
+            WorkspacePageControl shown = null;
+            foreach (SessionWorkspace saved in record.workspaces)
+            {
+                WorkspacePageControl page = workspace.AddPage(saved.title, saved.kind);
+                page.ribbonCategory = saved.ribbon;
+                page.inspectorShown = saved.inspector;
+                FillPage(workspace, page, saved.panes);
+                if (saved.shown) shown = page;
+            }
+            if (shown != null) workspace.Show(shown);
+        }
 
-            Build(record.panes[0], seed);
+        private static void FillPage(WorkspaceControl workspace, WorkspacePageControl page, List<SessionPane> panes)
+        {
+            TabViewControl seed = workspace.LoadPane(page);
+            if (seed != null && panes.Count > 0) Build(panes[0], seed);
+        }
+
+        // A second workspace holding the same files in the same arrangement.
+        public static WorkspacePageControl Duplicate(WorkspaceControl workspace, WorkspacePageControl page)
+        {
+            WorkspacePageControl copy = workspace.AddPage(page.title, page.kind);
+            copy.ribbonCategory = page.ribbonCategory;
+            copy.inspectorShown = page.inspectorShown;
+            FillPage(workspace, copy, PanesOf(page));
+            return copy;
         }
 
         // The arrangement replayed as the splits that would have produced it, so all of
@@ -335,18 +396,33 @@ namespace ArctisAurora.Core.UI
                     y = y,
                     width = width,
                     height = height,
-                    maximized = maximized
+                    maximized = maximized,
+                    pinned = window.pinned
                 };
 
-                if (workspace.children.Count > 0 && workspace.children[0] is Control content
-                    && PaneOf(content) is SessionPane root)
-                    record.panes.Add(root);
+                foreach (WorkspacePageControl page in workspace.Pages)
+                    record.workspaces.Add(new SessionWorkspace
+                    {
+                        title = page.title,
+                        kind = page.kind,
+                        shown = ReferenceEquals(page, workspace.shown),
+                        ribbon = page.ribbonCategory,
+                        inspector = page.inspectorShown,
+                        panes = PanesOf(page)
+                    });
 
                 captured.Add(record);
             }
 
             ScopeFor(scope).windows = captured;
             Log.Info($"captured {captured.Count} window(s) for '{scope}'");
+        }
+
+        private static List<SessionPane> PanesOf(WorkspacePageControl page)
+        {
+            List<SessionPane> panes = new List<SessionPane>();
+            if (page.content is Control content && PaneOf(content) is SessionPane root) panes.Add(root);
+            return panes;
         }
 
         private static SessionPane PaneOf(Control node)

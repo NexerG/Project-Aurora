@@ -236,7 +236,7 @@ namespace ArctisAurora.Core.UI
             for (int i = to.block; i > from.block; i--)
                 Detach(flat[i]);
 
-            Raise(NoteChangeKind.Removed, from.block + 1, to.block - from.block, at: from);
+            Raise(NoteChangeKind.Removed, from.block + 1, to.block - from.block, at: from, length: to.offset);
             Raise(NoteChangeKind.Kind, from.block, caret: from);
         }
 
@@ -284,7 +284,7 @@ namespace ArctisAurora.Core.UI
             added[^1].run.AppendSpans(rest.spans, rest.text);
             InsertAfter(head, added);
 
-            Raise(NoteChangeKind.Inserted, at.block + 1, added.Length, at: start);
+            Raise(NoteChangeKind.Inserted, at.block + 1, added.Length, at: start, length: fragment.blocks[^1].text.Length);
             Raise(NoteChangeKind.Kind, at.block, anchor: anchor, caret: caret);
         }
 
@@ -508,6 +508,10 @@ namespace ArctisAurora.Core.UI
         // that was only ever looked at.
         public bool isDirty { get; private set; }
 
+        // open views, and the one that follows an edit's caret
+        public int views { get; internal set; }
+        internal DocumentControl? lead;
+
         public DocumentEditSession(RichTextDocument document, string path)
         {
             this.document = document;
@@ -517,7 +521,11 @@ namespace ArctisAurora.Core.UI
         public void MarkDirty() => isDirty = true;
 
         // Follows the file after it is renamed on disk, so the next save writes where the note is now.
-        public void Repath(string newPath) => path = newPath;
+        public void Repath(string newPath)
+        {
+            NoteSessions.Rekey(this, newPath);
+            path = newPath;
+        }
 
         public void Save()
         {
@@ -526,6 +534,39 @@ namespace ArctisAurora.Core.UI
             document.Save(path);
             if (!stamp) document.modified = RichTextDocument.Stamp(File.GetLastWriteTime(path));
             isDirty = false;
+        }
+    }
+
+    // One session per open path, shared by every view of it.
+    public static class NoteSessions
+    {
+        private static readonly Dictionary<string, DocumentEditSession> open =
+            new Dictionary<string, DocumentEditSession>(StringComparer.OrdinalIgnoreCase);
+
+        public static DocumentEditSession Open(string path)
+        {
+            if (!open.TryGetValue(path, out DocumentEditSession? session))
+            {
+                session = new DocumentEditSession(RichTextDocument.Load(path), path);
+                open[path] = session;
+            }
+
+            session.views++;
+            return session;
+        }
+
+        public static void Close(DocumentEditSession session)
+        {
+            if (--session.views > 0) return;
+            if (open.TryGetValue(session.path, out DocumentEditSession? held) && held == session) open.Remove(session.path);
+        }
+
+        internal static void Rekey(DocumentEditSession session, string newPath)
+        {
+            if (!open.TryGetValue(session.path, out DocumentEditSession? held) || held != session) return;
+
+            open.Remove(session.path);
+            open[newPath] = session;
         }
     }
 

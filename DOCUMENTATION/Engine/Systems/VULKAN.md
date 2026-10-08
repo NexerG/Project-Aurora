@@ -91,6 +91,21 @@ Each role gets a family and a queue index inside it. Graphics takes index 0 of i
 The logical device is the API interface between the GPU and the CPU. It is responsible for API calls that are associated with rendering sequence (descriptors, command/image/frame buffers). If it's some sort of data that will be used in rendering or associated with rendering objects it passes through the logical device.
 To create it you have to give it the feature set the rendering modules will be using (raytracing, swapchains, validation layers etc). This is an important part to be able to tell whether the `Physical Device` will be able to run the rendering program. Here we create the queues for modules, and then after setting Vulkan Features and queues we create the `Logical Device`. An important note is that usually GPU resources are predetermined. So if the resources are for 10 objects to be rendered to add another object you'd have to re-allocate more resources (or pre-allocate).
 
+`Minimum Requirements`
+The renderer asks for Vulkan 1.3 and only the features the UI path actually uses: the swapchain extension, dynamic rendering, timeline semaphores, scalar block layout and descriptor indexing. Features promoted to core are enabled through the feature structs, never listed again as extensions, because a listed extension is one more thing a driver can refuse. What the renderer can live without degrades instead of failing: sampler anisotropy turns off on a GPU that lacks it, and the texture table shrinks to the device's sampler limit.
+```
+ChoosePhysicalDevice()
+	for each device
+		missing = Unsupported(device)        // API < 1.3, a missing extension, or the first requested feature field it lacks
+		if missing → log it, skip
+		first usable wins, unless the <Device> setting names another usable one
+	none usable → throw with every device's reason
+
+FitToDevice()
+	no samplerAnisotropy → clear it; SamplerAsset creates samplers without it
+	TextureAsset.MaxTextures = min(256, per-stage and per-set sampler/sampled-image limits)
+```
+
 `Swapchain`
 The swapchain simply put is a few images that the Renderer targets it's final image to. It is done this way so the display image doesn't corrupt and display half of the rendered image. One image is for display - another is to render to. Can be more than 2 images. Think of it as a ring. One is being prepared another is being draw into.
 A resize rebuilds it, because the images are sized when the swapchain is created and on Windows they must match the window exactly. The new swapchain is created with the old one passed in as `OldSwapchain`, and only then are the old image views and the retired swapchain destroyed - that lets the driver keep its connection to the display instead of tearing it down and building it again, which on an AMD integrated GPU took a rebuild from about 120 ms to 17 ms. The surface's capabilities are asked for on every rebuild, since they carry the window's current size, but its format and present-mode lists are asked for once and kept on the window.
@@ -160,7 +175,7 @@ Each module has to have a render target it renders to. That's why in the list `I
 `Dynamic Rendering`
 A render pass used to be the resource describer of what images a render uses, what format they're in, and what layout they start and end in — and a framebuffer was the object that bound actual image views to those slots. The engine uses dynamic rendering (Vulkan 1.3 core, `PhysicalDeviceVulkan13Features::dynamicRendering`) instead, so neither object exists any more. What each of them carried moved somewhere more direct: the attachment formats are declared once on the pipeline through `PipelineRenderingCreateInfo`, and the image view, load/store ops and clear colour are handed straight to `CmdBeginRendering` when the command buffer is recorded.
 The catch is that a render pass was also doing the image layout transitions for free — its initial/final layouts moved the image in and out, and its subpass dependencies supplied the barrier around it. `CmdBeginRendering` does none of that, so every module now issues those transitions itself with an explicit `vkCmdPipelineBarrier`: one before to reach `ColorAttachmentOptimal`, one after to reach whatever the next consumer needs (`ShaderReadOnlyOptimal` for a module the compositor samples, `PresentSrcKhr` for the compositor). That's the whole trade — you delete two object lifetimes and their resize handling, and you take on writing the barriers by hand.
-This is what sets the engine's hardware floor: roughly NVIDIA Maxwell (2014), AMD Polaris (2016) or Intel Skylake (2015) on Windows. `Renderer.VerifyRequiredFeatures` checks for it before `vkCreateDevice` so an unsupported driver says so plainly instead of failing with a bare `ErrorFeatureNotPresent`.
+This is what sets the engine's hardware floor: roughly NVIDIA Maxwell (2014), AMD Polaris (2016) or Intel Skylake (2015) on Windows. `Renderer.Unsupported` checks for it, with every other required feature, before `vkCreateDevice` so an unsupported driver says so plainly instead of failing with a bare `ErrorFeatureNotPresent`.
 
 #### UI Rasterizer Module
 

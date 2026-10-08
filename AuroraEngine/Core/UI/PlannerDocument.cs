@@ -18,6 +18,10 @@ namespace ArctisAurora.Core.UI
         public readonly List<XElement> extra = new List<XElement>();
 
         public readonly UndoStack undo = new UndoStack();
+        public bool unsaved;
+
+        // open views of this copy, counted by PlannerBook
+        internal int views;
 
         // raised after an edit or its undo
         public event Action? changed;
@@ -136,6 +140,37 @@ namespace ArctisAurora.Core.UI
             follows = other.follows;
             extra.Clear();
             extra.AddRange(other.extra);
+        }
+    }
+
+    // One copy per open planner file, shared by every view of it.
+    public static class PlannerBook
+    {
+        private static readonly Dictionary<string, PlannerDocument> open =
+            new Dictionary<string, PlannerDocument>(StringComparer.OrdinalIgnoreCase);
+
+        public static PlannerDocument Open(string path)
+        {
+            if (!open.TryGetValue(path, out PlannerDocument? document))
+            {
+                document = PlannerDocument.Load(path);
+                open[path] = document;
+            }
+
+            document.views++;
+            return document;
+        }
+
+        public static void Close(string path, PlannerDocument document)
+        {
+            if (--document.views > 0) return;
+            if (open.TryGetValue(path, out PlannerDocument? held) && held == document) open.Remove(path);
+        }
+
+        public static void Renamed(string from, string to)
+        {
+            if (!open.Remove(from, out PlannerDocument? document)) return;
+            open[to] = document;
         }
     }
 

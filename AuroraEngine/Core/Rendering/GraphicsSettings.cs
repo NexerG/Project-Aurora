@@ -34,6 +34,15 @@ namespace ArctisAurora.EngineWork.Rendering
 
         [A_XSDElementProperty("Height", "Settings")]
         public uint height { get; set; } = 720;
+
+        [A_XSDType("CloseAction", "Settings")]
+        public enum CloseAction
+        {
+            Ask, Tray, Quit
+        }
+
+        [A_XSDElementProperty("OnClose", "Settings", "Closing the main window asks, hides it to the tray, or quits.")]
+        public CloseAction onClose { get; set; } = CloseAction.Quit;
     }
 
     [A_XSDType("VSync", "Settings")]

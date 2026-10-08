@@ -44,7 +44,9 @@ ArctisAurora.Core.Filing -> AuroraEngine/Core/Filing/Bezier.cs
 ArctisAurora.Core.Filing -> AuroraEngine/Core/Filing/CffOutlines.cs
 ArctisAurora.Core.Filing -> AuroraEngine/Core/Filing/ClipboardImage.cs
 ArctisAurora.Core.Filing -> AuroraEngine/Core/Filing/ClipboardText.cs
+ArctisAurora.Core.Filing -> AuroraEngine/Core/Filing/FileDialog.cs
 ArctisAurora.Core.Filing -> AuroraEngine/Core/Filing/FileObject.cs
+ArctisAurora.Core.Filing -> AuroraEngine/Core/Filing/FilePicker.cs
 ArctisAurora.Core.Filing -> AuroraEngine/Core/Filing/FolderPicker.cs
 ArctisAurora.Core.Filing -> AuroraEngine/Core/Filing/Glyph.cs
 ArctisAurora.Core.Filing -> AuroraEngine/Core/Filing/IconSet.cs
@@ -141,6 +143,7 @@ ArctisAurora.Core.UI -> AuroraEngine/Core/UI/HintControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/IconControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/IFileEditor.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/ImageControl.cs
+ArctisAurora.Core.UI -> AuroraEngine/Core/UI/InspectorControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/KeyCaptureControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/LabelControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/LayoutEngine.cs
@@ -154,6 +157,7 @@ ArctisAurora.Core.UI -> AuroraEngine/Core/UI/NoteFormats.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/NoteModel.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/NoteNameWindow.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/NotePropertiesControl.cs
+ArctisAurora.Core.UI -> AuroraEngine/Core/UI/NoteToolsControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/Palettes.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/PanelControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/PdfExport.cs
@@ -167,6 +171,7 @@ ArctisAurora.Core.UI -> AuroraEngine/Core/UI/PlannerEdits.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/PlannerTicketPopup.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/PlannerXml.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/PointerEvent.cs
+ArctisAurora.Core.UI -> AuroraEngine/Core/UI/RibbonControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/RichTextDocument.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/ScrollableControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/ScrollThumbControl.cs
@@ -195,6 +200,7 @@ ArctisAurora.Core.UI -> AuroraEngine/Core/UI/TabActions.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/TabItemControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/TableControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/TabStripButtonControl.cs
+ArctisAurora.Core.UI -> AuroraEngine/Core/UI/TabToolsControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/TabViewControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/TexEditorControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/TexLowering.cs
@@ -214,7 +220,10 @@ ArctisAurora.Core.UI -> AuroraEngine/Core/UI/ViewActions.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/WindowActions.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/WindowFrameControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/WindowRoot.cs
+ArctisAurora.Core.UI -> AuroraEngine/Core/UI/WorkspaceActions.cs
+ArctisAurora.Core.UI -> AuroraEngine/Core/UI/WorkspaceBarControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/WorkspaceControl.cs
+ArctisAurora.Core.UI -> AuroraEngine/Core/UI/WorkspacePageControl.cs
 ArctisAurora.Core.Users -> AuroraEngine/Core/Users/User.cs
 ArctisAurora.CustomEntities -> AuroraEngine/CustomEntities/Layer.cs
 ArctisAurora.CustomEntities -> AuroraEngine/CustomEntities/SimulatorEntity.cs
@@ -237,6 +246,7 @@ ArctisAurora.EngineWork.Registry -> AuroraEngine/Core/Registry/AssetRegistries.c
 ArctisAurora.EngineWork.Rendering -> AuroraEngine/Core/Rendering/AGlfwWindow.cs
 ArctisAurora.EngineWork.Rendering -> AuroraEngine/Core/Rendering/AuroraCamera.cs
 ArctisAurora.EngineWork.Rendering -> AuroraEngine/Core/Rendering/AVulkanMesh.cs
+ArctisAurora.EngineWork.Rendering -> AuroraEngine/Core/Rendering/Background.cs
 ArctisAurora.EngineWork.Rendering -> AuroraEngine/Core/Rendering/DisplayNames.cs
 ArctisAurora.EngineWork.Rendering -> AuroraEngine/Core/Rendering/GraphicsPipeline.cs
 ArctisAurora.EngineWork.Rendering -> AuroraEngine/Core/Rendering/GraphicsSettings.cs
@@ -261,6 +271,7 @@ ArctisAurora.Simulators -> AuroraEngine/Simulators/Simulator_DEPRECATED.cs
 ArctisAurora.Simulators.ParticleTypes -> AuroraEngine/Simulators/ParticleTypes/Particle2D.cs
 ArctisAurora.Simulators.Vulkan -> AuroraEngine/Simulators/Vulkan/Simulator3D.cs
 ArctisAurora.Tests -> AuroraEngine/Tests/AtlasPerfTests.cs
+ArctisAurora.Tests -> AuroraEngine/Tests/BackgroundTests.cs
 ArctisAurora.Tests -> AuroraEngine/Tests/CommandTests.cs
 ArctisAurora.Tests -> AuroraEngine/Tests/ConsoleTests.cs
 ArctisAurora.Tests -> AuroraEngine/Tests/FontTests.cs
@@ -294,5 +305,10 @@ Thorium.Tests -> Thorium/Tests/LatinModernTests.cs
 Thorium.Tests -> Thorium/Tests/NoteModelTests.cs
 Thorium.Tests -> Thorium/Tests/PaletteTests.cs
 Thorium.Tests -> Thorium/Tests/PlannerTests.cs
+Thorium.Tests -> Thorium/Tests/RibbonEntriesTests.cs
+Thorium.Tests -> Thorium/Tests/RibbonTests.cs
 Thorium.Tests -> Thorium/Tests/SheetTests.cs
+Thorium.Tests -> Thorium/Tests/StickyTests.cs
+Thorium.Tests -> Thorium/Tests/TabToolsTests.cs
 Thorium.Tests -> Thorium/Tests/TextInputTests.cs
+Thorium.Tests -> Thorium/Tests/WorkspaceTests.cs

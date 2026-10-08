@@ -1285,6 +1285,7 @@ namespace ArctisAurora.Tests
 
             XElement document = new XElement("Document",
                 new XElement("DocumentLayout", new XAttribute("BlockSpacing", "0"),
+                    new XElement("TextStyle", new XAttribute("Type", "Text"), new XAttribute("FontSize", "18")),
                     new XElement("Page", new XAttribute("Mode", "Paged"), new XAttribute("Size", "A6"))),
                 Para("intro", "a"), Note("a", "note a"),
                 Para("more", "b"), Note("b", "note b"),

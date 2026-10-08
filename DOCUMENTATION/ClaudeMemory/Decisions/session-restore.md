@@ -18,7 +18,7 @@ Closes the `session restore` item. Builds on [[render-window-owns-the-swapchain]
 
 ### 1. A declared `Workspace`, not a subtree restore guesses at
 
-`WorkspaceControl` is a single-child host naming two UI documents: `Default`, built when the session has
+`WorkspaceControl` hosts workspace pages, one pane tree per page (it was a single-child host until W2, 2026-10-08; see [[workspaces]]), and names two UI documents: `Default`, built when the session has
 nothing for this window, and `Pane`, one empty pane a restored arrangement splits to rebuild itself.
 
 **Rejected: session replaces whatever pane subtree it finds** (the first proposal). Restore would have had
@@ -139,6 +139,13 @@ its GPU teardown would have been dropped from `Engine.windows` and never destroy
 
 Before this, `scope` was set only at boot. After a switch, the shutdown capture filed the new vault's tabs under the
 old vault's key.
+
+### 8. Workspaces are in the record (2026-10-08)
+
+- `SessionWorkspace` (`Title`, `Kind`, `Shown`, `SessionPane` list) is a child of `SessionWindow`; both it and `SessionPane` implement `ISessionWindowChild`, which `SessionWindow`'s `AllowedChildren` now names. `Record` writes one per page; `Fill` rebuilds one page each and shows the `Shown` one.
+- **Old records are carried forward, not reset.** A `SessionWindow` with `panes` and no `workspaces` loads as one General page and is written back as workspaces. `SessionWindow.panes` is read only, never written.
+- A window with nothing recorded gets `LoadDefault`; the `ChangeScope` fallback for a vault with nothing recorded is `LoadEmpty()` (every `FirstRun` kind, one empty pane each) where it was `LoadPane()`.
+- Reasoning and rejected alternatives: [[workspaces]].
 
 ## The `Collapse` ordering defect this exposed
 

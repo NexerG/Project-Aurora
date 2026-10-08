@@ -32,10 +32,10 @@ namespace ArctisAurora.Core.UI
         None, Row, Tab, TabEnd, Control, Popup
     }
 
-    // Which palette accent bar a code-built control draws: Row on the left, Tab on the top.
+    // Which palette accent bar a code-built control draws: Row on the left, Tab and TabIdle on the top.
     public enum AccentRole
     {
-        None, Row, Tab
+        None, Row, Tab, TabIdle
     }
 
     [A_XSDType("WindowCorners", "UI")]
@@ -69,6 +69,8 @@ namespace ArctisAurora.Core.UI
         public string danger = "";
         [A_XSDElementProperty("EdgeAccent", "UI", "Control edges, as a hex code. Accent when left out.")]
         public string edgeAccent = "";
+        [A_XSDElementProperty("IdleAccent", "UI", "Accent bar of the active tab in a pane that is not focused, as a hex code. Line stepped toward its text when left out.")]
+        public string idleAccent = "";
 
         // text
         [A_XSDElementProperty("DarkInk", "UI", "Text on light backgrounds, as a hex code.")]
@@ -131,7 +133,7 @@ namespace ArctisAurora.Core.UI
         public const uint clear = inlineBit | gradientBit;
 
         // block layout: surfaces × states, ink and muted ink per surface, the two raw inks, the edge accent,
-        // the ground's ink stepped once, then the four code colours
+        // the ground's ink stepped once, the four code colours, then the idle accent
         private const uint surfaceCount = 8;
         private const uint stateCount = 3;
         private const uint inkBase = surfaceCount * stateCount;
@@ -139,7 +141,8 @@ namespace ArctisAurora.Core.UI
         private const uint edgeAccentSlot = rawInkBase + 2;
         private const uint inkStepSlot = edgeAccentSlot + 1;
         private const uint codeBase = inkStepSlot + 1;
-        internal const uint blockSize = codeBase + 4;
+        private const uint idleAccentSlot = codeBase + 4;
+        internal const uint blockSize = idleAccentSlot + 1;
 
         private static readonly Dictionary<string, PaletteDefinition> byName =
             new Dictionary<string, PaletteDefinition>(StringComparer.OrdinalIgnoreCase);
@@ -252,6 +255,9 @@ namespace ArctisAurora.Core.UI
         // The slot every unauthored edge paints with.
         public static uint EdgeAccent(PaletteDefinition palette) => palette.firstSlot + edgeAccentSlot;
 
+        // The slot an unfocused pane's active tab bar paints with.
+        public static uint IdleAccent(PaletteDefinition palette) => palette.firstSlot + idleAccentSlot;
+
         // A code token's slot; Plain has none.
         public static uint Code(PaletteDefinition palette, SyntaxToken token) => palette.firstSlot + codeBase + (uint)token - 1;
 
@@ -348,6 +354,7 @@ namespace ArctisAurora.Core.UI
                 accent = Required(element, "Accent"),
                 danger = Required(element, "Danger"),
                 edgeAccent = element.Attribute("EdgeAccent")?.Value ?? "",
+                idleAccent = element.Attribute("IdleAccent")?.Value ?? "",
                 keyword = element.Attribute("Keyword")?.Value ?? "",
                 stringLiteral = element.Attribute("String")?.Value ?? "",
                 number = element.Attribute("Number")?.Value ?? "",
@@ -437,6 +444,9 @@ namespace ArctisAurora.Core.UI
             Put(new Vector4(HexOr(palette.stringLiteral, surfaces[6]), 1f));
             Put(new Vector4(HexOr(palette.number, surfaces[6]), 1f));
             Put(new Vector4(HexOr(palette.comment, Vector3.Lerp(codeInk, codeGround, palette.muted)), 1f));
+
+            Vector3 lineInk = Contrast(dark, surfaces[5]) >= Contrast(light, surfaces[5]) ? dark : light;
+            Put(new Vector4(HexOr(palette.idleAccent, Vector3.Lerp(surfaces[5], lineInk, palette.step * 2)), 1f));
         }
 
         private static Vector3 HexOr(string hex, Vector3 fallback) => string.IsNullOrEmpty(hex) ? fallback : Control.HexToRGB(hex);

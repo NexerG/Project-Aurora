@@ -17,6 +17,7 @@
 		<Step Action="PlannerAttachmentKinds.Load"/>
 		<Step Action="AnimationLibrary.LoadAnimations"/>
 		<Step Action="Engine.SystemSetup"/>
+		<Step Action="Background.Init"/>
 		<Step Action="Engine.InitWindowing"/>
 		<Step Action="AssetRegistries.InstantiateRegistries"/>
 		<Step Action="AssetRegistries.RegisterSerializableTypes"/>

@@ -49,7 +49,7 @@ already provides it. The barriers only do layout transitions and the write->read
 ## Hardware floor
 `PhysicalDeviceVulkan13Features::dynamicRendering`. Practically: NVIDIA Maxwell (2014), AMD
 Polaris on Windows / GCN 1.0 on RADV (2012), Intel Skylake (2015).
-`Renderer.VerifyRequiredFeatures()` checks it before `vkCreateDevice` so the failure is legible.
+`Renderer.Unsupported` checks it per device before `vkCreateDevice` — [[renderer-minimum-requirements]].
 
 ## Verified
 Builds clean; `Thorium.exe` runs the full loop with validation layers on and produces **zero**

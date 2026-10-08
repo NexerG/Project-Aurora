@@ -67,6 +67,8 @@ A split copies the source pane's chrome onto a new view, and the construction wa
 
 Tearing off is not the same problem: a torn window is built from `TearOffDocument`, so the XML names the kind. `TabWindow.ui.xml` names `<EditableTabs>` for that reason. The attribute carries the name the manifest gives the document — `TearOffDocument="tab-window"` — not its file name; see [[UI Document]].
 
+Pinning a tab to the desktop works the same way: `StickyDocument` names the document a sticky window is built from, a small window with its own title bar (a pin toggle that keeps it above other windows, and close) over a workspace whose pane holds tabs. "Pin to desktop" in the tab menu copies the tab as a second view of the same note into a new sticky or an existing one, and the original tab stays where it was. A split pane carries `StickyDocument` along with `TearOffDocument`.
+
 ## Input
 
 None declared. The gesture arrives through [[Vulkan Control]]'s release dispatch, which reports the tap count and is filtered to two at registration, so a third click on a tab does nothing rather than reopening the field. Everything inside the field — typing, the caret, Enter, Escape, commit on blur — is [[Editable Label]]'s and [[Text Box]]'s.

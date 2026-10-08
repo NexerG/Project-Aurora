@@ -155,9 +155,21 @@ namespace ArctisAurora.Core.UI
         [A_XSDActionDependency("Text.Underline", "Input", "Toggles underline over the selection, or for what is typed next")]
         public static void Underline() => Toggle(span => span.underline, style => style.underline, on => new StyleDelta(underline: on));
 
+        [A_XSDActionDependency("Text.Strikethrough", "Input", "Toggles strikethrough over the selection, or for what is typed next")]
+        public static void Strikethrough() => Toggle(span => span.strikethrough, style => style.strikethrough, on => new StyleDelta(strikethrough: on));
+
         #region ---- alignment ----
         [A_XSDActionDependency("Text.AlignLeft", "Input", "Aligns the paragraphs under the caret to the left")]
         public static void AlignLeft() => Editor()?.SetAlignment(TextAlignment.Left);
+
+        [A_XSDActionDependency("Text.Bullets", "Input", "Turns the paragraphs under the caret into a bulleted list, or back into text")]
+        public static void Bullets() => Editor()?.ToggleBullets();
+
+        [A_XSDActionDependency("Text.Numbers", "Input", "Turns the paragraphs under the caret into a numbered list, or back into text")]
+        public static void Numbers() => Editor()?.ToggleNumbers();
+
+        [A_XSDActionDependency("Text.Tasks", "Input", "Turns the paragraphs under the caret into a task list, or back into text")]
+        public static void Tasks() => Editor()?.ToggleTasks();
 
         [A_XSDActionDependency("Text.AlignCenter", "Input", "Centres the paragraphs under the caret")]
         public static void AlignCenter() => Editor()?.SetAlignment(TextAlignment.Center);
@@ -239,6 +251,23 @@ namespace ArctisAurora.Core.UI
 
         [A_XSDActionDependency("Math.InsertDisplay", "Input", "Inserts a display formula at the caret and opens its source")]
         public static void InsertDisplayFormula() => Editor()?.InsertFormula(true);
+
+        private static readonly (string, string)[] pictureFilters = { ("Pictures", "*.png;*.jpg;*.jpeg;*.bmp;*.gif") };
+
+        [A_XSDActionDependency("Text.InsertPicture", "Input", "Picks a picture file and puts it in the focused note at the caret")]
+        public static void InsertPicture()
+        {
+            DocumentEditorControl editor = Editor();
+            if (editor?.path == null) return;
+
+            FilePicker.Pick(UIEngine.WindowOf(editor), Path.GetDirectoryName(editor.path)!, pictureFilters, picked =>
+            {
+                if (picked == null || editor.destroyed) return;
+
+                editor.FocusCaret();
+                editor.InsertPictureFile(picked);
+            });
+        }
 
         [A_XSDActionDependency("Math.Edit", "Input", "Opens the selected formula's source")]
         public static void EditFormula() => Editor()?.EditFormula();

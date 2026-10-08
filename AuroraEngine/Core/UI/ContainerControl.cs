@@ -20,6 +20,7 @@ namespace ArctisAurora.Core.UI
             if (entity is not Control control)
                 throw new Exception("Child entity must be a Control");
 
+            WarnIfDestroyed(entity);
             children.Add(entity);
             control.parent = this;
             MarkTreeOrderDirty();

@@ -15,6 +15,7 @@
 		<Step Action="Session.Capture"/>
 		<Step Action="Settings.SaveAll"/>
 		<Step Action="Profiling.Flush"/>
+		<Step Action="Background.Remove"/>
 		<Step Action="Logging.Flush"/>
 	</Phase>
 

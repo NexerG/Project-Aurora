@@ -4,6 +4,7 @@ using ArctisAurora.Core.Filing.Serialization;
 using ArctisAurora.Core.Registry;
 using ArctisAurora.Core.Testing;
 using ArctisAurora.Core.UI;
+using ArctisAurora.EngineWork;
 using System.Xml.Linq;
 
 namespace Thorium.Tests
@@ -171,6 +172,117 @@ namespace Thorium.Tests
             yield break;
         }
 
+        [A_XSDActionDependency("NoteModel.TwoViews", "Test")]
+        private static IEnumerator<int> TwoViews(TestContext t)
+        {
+            string path = Fixture("alpha", "beta", "gamma");
+            DocumentEditorControl a = Pane();
+            DocumentEditorControl b = Pane();
+            StackPanelControl both = new StackPanelControl
+            {
+                orientation = StackPanelControl.Orientation.Vertical,
+                horizontalAlignment = HorizontalAlignment.Stretch,
+                verticalAlignment = VerticalAlignment.Stretch
+            };
+            both.AddChild(a);
+            both.AddChild(b);
+            t.Show(both);
+            a.LoadPath(path);
+            b.LoadPath(path);
+            File.Delete(path);
+            yield return 2;
+
+            DocumentEditSession session = a.session;
+            RichTextDocument document = session.document;
+            t.Check(ReferenceEquals(b.session, session) && session.views == 2, "two views of one path share one session");
+
+            Content(b).SetCaret(Blocks(b)[1], 2);
+            Content(a).SetCaret(Blocks(a)[0], 5);
+            a.FocusCaret();
+            yield return 1;
+            yield return t.Type("XY");
+            t.Check(Blocks(b)[0].text == "alphaXY", $"typing in A shows in B: {Blocks(b)[0].text}");
+            t.Check(Caret(b) == (1, 2) && Tail(b) == "ta", $"B's caret stays where it was: {Caret(b)}");
+
+            document.InsertText(new DocumentAddress(1, 0), "<");
+            t.Check(Caret(b) == (1, 3) && Tail(b) == "ta", $"an insert before B's caret in its block shifts it: {Caret(b)}");
+
+            document.InsertText(new DocumentAddress(1, 3), ">");
+            t.Check(Caret(b) == (1, 3) && Tail(b) == ">ta", $"an insert at B's caret leaves the caret in front of it: {Caret(b)}");
+
+            document.SplitBlockAt(new DocumentAddress(0, 2));
+            t.Check(Caret(b) == (2, 3) && Tail(b) == ">ta", $"a split above moves B's caret down a block: {Caret(b)}");
+
+            document.JoinBlockWithNext(new DocumentAddress(0, 2));
+            t.Check(Caret(b) == (1, 3) && Tail(b) == ">ta", $"a join above moves it back: {Caret(b)}");
+
+            document.SplitBlockAt(new DocumentAddress(1, 1));
+            t.Check(Caret(b) == (2, 2) && Tail(b) == ">ta", $"a split before B's caret carries it into the tail: {Caret(b)}");
+
+            document.JoinBlockWithNext(new DocumentAddress(1, 1));
+            t.Check(Caret(b) == (1, 3) && Tail(b) == ">ta", $"a join brings it back into the head: {Caret(b)}");
+
+            DocumentFragment pasted = document.CaptureFragment(new DocumentAddress(0, 0), new DocumentAddress(1, 1));
+            document.InsertFragment(new DocumentAddress(1, 1), pasted);
+            t.Check(Caret(b) == (2, 3) && Tail(b) == ">ta", $"a paste before B's caret carries it into the last pasted block: {Caret(b)}");
+
+            Content(a).SetCaret(Blocks(a)[0], 7);
+            b.FocusCaret();
+            yield return 1;
+            yield return t.Key(Keys.Z, Keys.LeftControl);
+            yield return t.Key(Keys.Z, Keys.LeftControl);
+            t.Check(Blocks(a)[0].text == "alpha", $"undo in B reverts A's typing: {Blocks(a)[0].text}");
+            t.Check(Caret(a) == (0, 5), $"and A's caret follows the text back: {Caret(a)}");
+
+            a.FocusCaret();
+            yield return 1;
+            Content(b).SetCaret(Blocks(b)[2], 2);
+            document.DeleteBetween(new DocumentAddress(1, 1), new DocumentAddress(3, 1));
+            t.Check(Caret(b) == (1, 1), $"deleting B's caret block clamps its caret to the cut: {Caret(b)}");
+
+            a.Destroy();
+            yield return 1;
+            document.InsertText(new DocumentAddress(0, 0), "!");
+            t.Check(session.views == 1 && Blocks(b)[0].text == "!alpha", "closing A keeps B on the note");
+
+            t.Show(new StackPanelControl());
+            yield return 1;
+            t.Check(session.views == 0, "closing both releases the session");
+        }
+
+        [A_XSDActionDependency("NoteModel.RestoreTwice", "Test")]
+        private static IEnumerator<int> RestoreTwice(TestContext t)
+        {
+            string path = Fixture("alpha", "beta", "gamma");
+            TabItemControl first = SessionLayout.tabFactory(path);
+            TabItemControl second = SessionLayout.tabFactory(path);
+            TabViewControl.FileEditorOf(first).RestoreView(new SessionTab { caretBlock = 1, caretOffset = 2, anchorBlock = 1, anchorOffset = 2 });
+            TabViewControl.FileEditorOf(second).RestoreView(new SessionTab { caretBlock = 2, caretOffset = 4, anchorBlock = 2, anchorOffset = 4 });
+
+            TabViewControl top = new TabViewControl { horizontalAlignment = HorizontalAlignment.Stretch, preferredHeight = 300f };
+            TabViewControl bottom = new TabViewControl { horizontalAlignment = HorizontalAlignment.Stretch, preferredHeight = 300f };
+            top.AddChild(first);
+            bottom.AddChild(second);
+            StackPanelControl both = new StackPanelControl
+            {
+                orientation = StackPanelControl.Orientation.Vertical,
+                horizontalAlignment = HorizontalAlignment.Stretch,
+                verticalAlignment = VerticalAlignment.Stretch
+            };
+            both.AddChild(top);
+            both.AddChild(bottom);
+            t.Show(both);
+            File.Delete(path);
+            yield return 3;
+
+            DocumentEditorControl a = TabViewControl.EditorOf(first);
+            DocumentEditorControl b = TabViewControl.EditorOf(second);
+            t.Check(ReferenceEquals(a.session, b.session) && a.session.views == 2, "a note restored twice opens one session");
+            t.Check(Caret(a) == (1, 2) && Caret(b) == (2, 4), $"each view keeps its own caret: {Caret(a)} and {Caret(b)}");
+
+            t.Show(new StackPanelControl());
+        }
+
         // A note's text read and written the way RichTextDocument does, without the file's timestamps.
         private static string RoundTrip(string text, string extension, string name)
         {
@@ -196,6 +308,30 @@ namespace Thorium.Tests
             new XElement("Block", attributes, new XElement("Run", new XAttribute("Text", text)));
 
         private static XElement Cell(params object[] content) => new XElement("Cell", content);
+
+        // A note of plain paragraphs written to a temp file.
+        private static string Fixture(params string[] texts)
+        {
+            string path = Path.Combine(Path.GetTempPath(), $"aurora-views-{Guid.NewGuid():N}.xml");
+            DocumentXml.Save(DocumentXml.Parse(new XElement("Document", texts.Select(text => Block(text)))), path);
+            return path;
+        }
+
+        private static DocumentEditorControl Pane() => new DocumentEditorControl
+        {
+            horizontalAlignment = HorizontalAlignment.Stretch,
+            preferredHeight = 300f
+        };
+
+        private static DocumentControl Content(DocumentEditorControl editor) => editor.children.OfType<DocumentControl>().First();
+
+        private static List<BlockControl> Blocks(DocumentEditorControl editor) => Content(editor).children.OfType<BlockControl>().ToList();
+
+        // a view's caret as flat block index and offset, and the text after it
+        private static (int block, int offset) Caret(DocumentEditorControl editor) =>
+            (Blocks(editor).IndexOf(Content(editor).caretBlock), Content(editor).caretOffset);
+
+        private static string Tail(DocumentEditorControl editor) => Content(editor).caretBlock.text[Content(editor).caretOffset..];
 
         // Three blocks and a one-cell table.
         private static readonly XElement Small = new XElement("Document",

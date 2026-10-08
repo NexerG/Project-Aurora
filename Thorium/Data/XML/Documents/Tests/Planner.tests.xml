@@ -29,4 +29,5 @@
 	<Test Action="Planner.FollowCycle"/>
 	<Test Action="Planner.AttachmentText"/>
 	<Test Action="Planner.AttachmentGolden"/>
+	<Test Action="Planner.TwoViews"/>
 </TestSuite>

@@ -4,7 +4,7 @@
   <xs:import schemaLocation="AllTypesSchema.xsd" namespace="http://arctisaurora/AuroraTypes" />
   <xs:import schemaLocation="EntityRegistryTypeSchema.xsd" namespace="http://arctisaurora/AuroraEntityRegistryTypes" />
   <xs:simpleType name="UI">
-    <xs:union memberTypes="types:ListMarker types:EffectLoop types:GradientKind types:GridSizeMode types:PaletteRole types:WindowCorners types:TextStyleType types:TextAlignment types:PageMode types:PageSize types:SlotPlace types:ScrollDirection types:PictureWrap types:PictureCollision types:Orientation" />
+    <xs:union memberTypes="types:ListMarker types:EffectLoop types:GradientKind types:GridSizeMode types:PaletteRole types:WindowCorners types:TextStyleType types:TextAlignment types:PageMode types:PageSize types:SlotPlace types:ScrollDirection types:PictureWrap types:PictureCollision types:WorkspaceKind types:Orientation" />
   </xs:simpleType>
   <xs:attributeGroup name="VaultBrowser.Attributes">
     <xs:attributeGroup ref="types:Scrollable.Attributes" />
@@ -377,6 +377,11 @@
     <xs:sequence />
     <xs:attributeGroup ref="types:Image.Attributes" />
   </xs:complexType>
+  <xs:element name="Inspector" type="types:Inspector" />
+  <xs:complexType name="Inspector">
+    <xs:sequence />
+    <xs:attributeGroup ref="types:StackPanel.Attributes" />
+  </xs:complexType>
   <xs:element name="KeyCapture" type="types:KeyCapture" />
   <xs:complexType name="KeyCapture">
     <xs:sequence />
@@ -426,6 +431,7 @@
     <xs:attribute name="Accent" type="xs:string" />
     <xs:attribute name="Danger" type="xs:string" />
     <xs:attribute name="EdgeAccent" type="xs:string" />
+    <xs:attribute name="IdleAccent" type="xs:string" />
     <xs:attribute name="DarkInk" type="xs:string" />
     <xs:attribute name="LightInk" type="xs:string" />
     <xs:attribute name="Keyword" type="xs:string" />
@@ -475,6 +481,15 @@
     <xs:sequence>
       <xs:group minOccurs="0" maxOccurs="unbounded" ref="types:PlannerAttachmentKind.Children" />
     </xs:sequence>
+  </xs:complexType>
+  <xs:attributeGroup name="Ribbon.Attributes">
+    <xs:attributeGroup ref="types:StackPanel.Attributes" />
+    <xs:attribute name="ConvertCsv" type="actions:UI" />
+  </xs:attributeGroup>
+  <xs:element name="Ribbon" type="types:Ribbon" />
+  <xs:complexType name="Ribbon">
+    <xs:sequence />
+    <xs:attributeGroup ref="types:Ribbon.Attributes" />
   </xs:complexType>
   <xs:attributeGroup name="Document.Attributes">
     <xs:attribute name="Name" type="xs:string" />
@@ -723,8 +738,10 @@
   </xs:complexType>
   <xs:attributeGroup name="TabView.Attributes">
     <xs:attributeGroup ref="EntityRegistry:Control.Attributes" />
+    <xs:attribute name="NewButton" type="xs:boolean" />
     <xs:attribute name="TabHeight" type="xs:float" />
     <xs:attribute name="TabWidth" type="xs:float" />
+    <xs:attribute name="MinTabWidth" type="xs:float" />
     <xs:attribute name="TabColorHex" type="xs:string" />
     <xs:attribute name="ActiveTabColorHex" type="xs:string" />
     <xs:attribute name="TabHoverColorHex" type="xs:string" />
@@ -733,6 +750,7 @@
     <xs:attribute name="GripHoverColorHex" type="xs:string" />
     <xs:attribute name="GripPressColorHex" type="xs:string" />
     <xs:attribute name="TearOffDocument" type="xs:string" />
+    <xs:attribute name="StickyDocument" type="xs:string" />
     <xs:attribute name="TabContextMenu" type="xs:string" />
   </xs:attributeGroup>
   <xs:element name="TabView" type="types:TabView" />
@@ -790,16 +808,36 @@
     <xs:sequence />
     <xs:attributeGroup ref="EntityRegistry:Control.Attributes" />
   </xs:complexType>
+  <xs:attributeGroup name="WorkspaceBar.Attributes">
+    <xs:attributeGroup ref="types:StackPanel.Attributes" />
+    <xs:attribute name="TabContextMenu" type="xs:string" />
+  </xs:attributeGroup>
+  <xs:element name="WorkspaceBar" type="types:WorkspaceBar" />
+  <xs:complexType name="WorkspaceBar">
+    <xs:sequence />
+    <xs:attributeGroup ref="types:WorkspaceBar.Attributes" />
+  </xs:complexType>
   <xs:attributeGroup name="Workspace.Attributes">
     <xs:attributeGroup ref="EntityRegistry:Control.Attributes" />
     <xs:attribute name="Default" type="xs:string" />
     <xs:attribute name="Pane" type="xs:string" />
+    <xs:attribute name="FirstRun" type="xs:string" />
   </xs:attributeGroup>
   <xs:element name="Workspace" type="types:Workspace" />
   <xs:complexType name="Workspace">
     <xs:sequence />
     <xs:attributeGroup ref="types:Workspace.Attributes" />
   </xs:complexType>
+  <xs:simpleType name="WorkspaceKind">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="General" />
+      <xs:enumeration value="Docs" />
+      <xs:enumeration value="Sheets" />
+      <xs:enumeration value="LaTeX" />
+      <xs:enumeration value="Manager" />
+      <xs:enumeration value="Calendar" />
+    </xs:restriction>
+  </xs:simpleType>
   <xs:simpleType name="Orientation">
     <xs:restriction base="xs:string">
       <xs:enumeration value="Horizontal" />

@@ -285,5 +285,28 @@ namespace ArctisAurora.Core.UI
             this.anchor = anchor;
             this.caret = caret;
         }
+
+        // Where an address from before this change sits after it.
+        public DocumentAddress Map(DocumentAddress a)
+        {
+            switch (kind)
+            {
+                case NoteChangeKind.Text:
+                    if (a.block != at.block || a.offset <= at.offset) return a;
+                    return new DocumentAddress(a.block, Math.Max(at.offset, a.offset + length));
+                case NoteChangeKind.Inserted:
+                    if (a.block >= first) return new DocumentAddress(a.block + count, a.offset);
+                    if (a.block == at.block && a.offset > at.offset)
+                        return new DocumentAddress(first + count - 1, a.offset - at.offset + length);
+                    return a;
+                case NoteChangeKind.Removed:
+                    if (a.block >= first + count) return new DocumentAddress(a.block - count, a.offset);
+                    if (a.block == first + count - 1) return new DocumentAddress(at.block, at.offset + Math.Max(0, a.offset - length));
+                    if (a.block >= first || (a.block == at.block && a.offset > at.offset)) return at;
+                    return a;
+                default:
+                    return a;
+            }
+        }
     }
 }

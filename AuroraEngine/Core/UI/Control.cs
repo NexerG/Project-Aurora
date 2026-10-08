@@ -328,8 +328,17 @@ namespace ArctisAurora.Core.UI
                 };
 
             if (accentRole == AccentRole.Row) edgeThickness = new Thickness(0f, 0f, 0f, scheme.rowAccentWidth);
-            else if (accentRole == AccentRole.Tab) edgeThickness = new Thickness(scheme.tabAccentWidth, 0f, 0f, 0f);
+            else if (accentRole is AccentRole.Tab or AccentRole.TabIdle) edgeThickness = new Thickness(scheme.tabAccentWidth, 0f, 0f, 0f);
+
+            if (!edgeColorAuthored && accentRole is AccentRole.Tab or AccentRole.TabIdle)
+                visual.edgePaint = accentRole == AccentRole.TabIdle ? Palettes.IdleAccent(scheme) : EdgePaint(scheme);
         }
+
+        // The edge paint an unauthored edge takes from its role.
+        private uint EdgePaint(PaletteDefinition scheme) =>
+            edgeRole >= PaletteRole.Ground && edgeRole <= PaletteRole.Danger
+                ? Palettes.Surface(scheme, edgeRole)
+                : Palettes.EdgeAccent(scheme);
 
         [A_XSDElementProperty("EdgeRole", "UI", "The palette surface colour this control's edges paint with. EdgeColorHex wins over it; EdgeAccent when left out.")]
         public PaletteRole edgeRole
@@ -571,10 +580,7 @@ namespace ArctisAurora.Core.UI
             Control? p = parent as Control;
             palette = ownPalette ?? p?.palette ?? Palettes.Default;
             uint ground = GroundBehind();
-            if (!edgeColorAuthored)
-                visual.edgePaint = edgeRole >= PaletteRole.Ground && edgeRole <= PaletteRole.Danger
-                    ? Palettes.Surface(palette, edgeRole)
-                    : Palettes.EdgeAccent(palette);
+            if (!edgeColorAuthored) visual.edgePaint = EdgePaint(palette);
             ApplyShape();
             gradientWord = Gradients.Word(gradientId, palette);
             edgeGradientWord = Gradients.Word(edgeGradientId, palette);
