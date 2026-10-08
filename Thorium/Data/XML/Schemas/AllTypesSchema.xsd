@@ -15,6 +15,7 @@
       <xs:enumeration value="Device" />
       <xs:enumeration value="Monitor" />
       <xs:enumeration value="WindowSetting" />
+      <xs:enumeration value="Tray" />
       <xs:enumeration value="VSync" />
       <xs:enumeration value="Validation" />
       <xs:enumeration value="Graphics" />

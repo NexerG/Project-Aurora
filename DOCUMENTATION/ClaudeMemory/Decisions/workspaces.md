@@ -52,6 +52,18 @@
 - Icons: 20 NEW filled SVGs in the default set (strikethrough, list-numbered, list-task, outdent, indent, panel-right, table, picture, sigma, sigma-display, link, code, quote, divider, copy, plus, layers, import, export, convert). Atlas rebaked (44 icons), copied byte-identical to AuroraEngine, Thorium, AuroraEditor and Carbon `Data/Icons/default`.
 - Tests: `RibbonEntriesTests.cs` (`Note.NumbersToggle`, `Note.TasksToggle`, `Note.InsertPictureFile`, `Sheet.ImportCsv`, `Ribbon.CsvEntries`).
 
+### Reset UI (2026-10-08)
+- `SessionLayout.Reset()` + action `Session.Reset` (Thorium app menu "Reset UI"): every workspace back to `FirstRun`, torn-off windows closed, stickies kept. Details: [[session-restore]] §9.
+
+### Workspace tab drag (2026-10-08)
+- `WorkspaceControl.Move(WorkspacePageControl page, int index)` NEW — index is a gap among the bar's tabs (0..count). Same workspace: reorders children (a gap past the old slot is decremented), raises `changed`. From another workspace: refused when the source is on `Engine.primary` and has one page; otherwise RemoveChild from source, AddChild here, insert at the gap, `Show(page)`, then the source's NEW private `Released(page, index)` — clears `shown` if it was the page, closes the source window via `Engine.CloseWindow` when it is now empty and not the primary, else shows the neighbour at the old index and raises `changed`. `Released` exists because `OnChildDetached` only fires on Destroy, not on RemoveChild/SetParent.
+- `WorkspaceBarControl`: NEW XML property `TearOffDocument` (`tearOffDocument`); NEW region `drop` — `DraggingOverStart`/`DraggingOver` (place marker), `DraggingOverEnd`, `FinishDrag` (calls `workspace.Move(tab.page, GapAt(point))`), private `ShowMarker`, `HideMarker`, `GapAt` (count of tabs whose centre is left of the point). Marker field `marker`: a `PanelControl`, role Accent, 2x16, not hit-testable, reset in `Rebuild`.
+- `WorkspaceBarControl.TearOff(WorkspacePageControl page)` NEW (`internal unsafe`) — mirrors `TabViewControl.TearOff`: opens a 900x640 window named `workspace-N` at the pointer from `tearOffDocument`, no `LoadDefault`, then `Move(page, 0)`; refuses when the page is its window's only workspace.
+- `WorkspaceButton`: NEW internal field `bar`; press/move threshold drag (12 px, `StartDrag` + `DragGhost.Show`; does not arm while `caption.isEditing`). `OnDrag` samples `UIEngine.mouseOverWindow != null` each tick. `OnDragStop` hides the ghost, tears off when not accepted and the pointer was outside every window, else shows the page.
+- `WindowActions`: NEW action `Window.MinimizeToTray` -> `Background.Hide()` (always the primary). NEW icon `tray.svg` (tray with down arrow) in the default set; atlas rebaked to 45 icons.
+- Data: `UI.ui.xml` (`<WorkspaceBar TearOffDocument="tab-window"/>`; tray button `Icon="tray"` before minimize); `TabWindow.ui.xml` (new `<WorkspaceBar TearOffDocument="tab-window"/>` and the `workspace-add` "+" MenuButton after the title label).
+- Tests: `WorkspaceTests` NEW `Workspace.Reorder`, `Workspace.MoveAcross`, `Workspace.TearOff` (+ helpers `ShowBar`, `AddEmpty`, `Tabs`, `Marker`, `Torn`, `Find<T>`), registered in `Workspace.tests.xml`.
+
 ## Why these choices
 
 **A workspace is a code-only page inside `WorkspaceControl`** (user, 2026-10-08).
@@ -94,7 +106,7 @@ Sheets already shared document and undo through `SheetBook`, so only `unsaved` m
 `SplitterControl` previously always sized the pane before it, which between the star Workspace column and the fixed inspector would have resized the Workspace.
 
 **Icons are drawn, not text captions** (user).
-The importer (`Filing.SvgPath`) takes only filled `<path>` (no stroke-to-outline, `fill="none"` is refused), nonzero winding only (evenodd is filled as nonzero, so holes are inner contours wound the opposite way), and no arc `A` command (arcs are written as cubic curves). The design canvas's stroked icons therefore could not be imported as-is.
+The importer (`Filing.Serialization.SvgPath`) refused strokes at W4b (no stroke-to-outline, `fill="none"` was refused), so the design canvas's stroked icons could not be imported as-is; since 2026-10-09 strokes import, baked from the centreline — see [[svg-import]]. (At W4b it also took only `<path>`, filled evenodd as nonzero and had no arc `A` command; since 2026-10-09 it reads arcs, basic shapes, transforms and evenodd — see [[svg-import]].)
 
 **Inspector Reference shows `Page!Cell`, not the full note link.**
 A `StackPanelControl` measures max(content, preferred), so the full link (with the file name) widened the column to 549 px. Copy still copies the cells, which Paste link turns into a link.
@@ -106,6 +118,27 @@ A `StackPanelControl` measures max(content, preferred), so the full link (with t
 
 **A control added under a destroyed parent is now warned about** — see [[destroyed-parent-orphans]] for the bug found while verifying W4.
 
+**Workspace tab drag moves on drop, not live while dragging.**
+The bar rebuilds on every `WorkspaceControl.changed`, which would destroy the dragged button mid-drag.
+
+**The drop marker is a real stack child.**
+Tabs right of the gap shift ~4 px while it shows. Rejected: an edge on the neighbouring tab (clashes with the shown tab's accent edge); an overlay arranged outside the stack (needs a custom arrange).
+
+**Tear-off triggers only when the drop is accepted by nothing AND the pointer was outside every app window.**
+"Outside" is sampled in `OnDrag` each tick, because `UIEngine.EndDrag` clears `mouseOverWindow` (firing `DraggedOutOfWindow`) before `OnDragStop`.
+
+**Torn-off windows reuse the `tab-window` document for both pane and workspace tear-offs** (user-approved).
+Every secondary tab window now shows a workspace bar (a pane tear-off shows a "General" tab). Rejected: a separate workspace-window document — a workspace could then not be dropped onto a pane-tab window.
+
+**Last-workspace rule: the primary keeps its last workspace; a secondary window that loses its last one closes.**
+`Move` refuses to take the primary's only page; the secondary closes like `TabViewControl.CloseIfEmptied`; tearing off a window's only workspace is refused.
+
+**The tray button acts only on the primary.**
+The tray only restores the primary; the action reuses `Background.Hide`. The tray icon is up from boot whatever `OnClose` says ([[desktop-stickies]]).
+
+**The drag threshold sits on the button, like `TabStripButtonControl` and the planner's `TicketCard`.**
+Moves dispatch to the hovered control, so a flick that leaves a narrow tab before travelling 12 px over it never starts a drag; the Reorder test drags with 24 steps for that reason.
+
 ## Known gaps
 - `TabToolsControl.Text` one-character caption bug (cause unknown).
 - OS dialogs (Picture…, Import CSV…) and `Sheets.ConvertOpenCsv` untested; the folder-picker refactor needs one manual vault-add.
@@ -116,7 +149,12 @@ A `StackPanelControl` measures max(content, preferred), so the full link (with t
 - An empty pane shows nothing at all (no strip, no "No open files" message).
 - Folders stay listed under every filter, including ones with no matching file.
 - After a switch the active control is the editor control, not its caret, so typing needs a click first (not verified either way).
-- Torn-off windows keep one General workspace and have no bar.
+- Workspace tab drag: test-verified (`_Build/test.sh Workspace`, 7 Workspace tests pass; Boot fails on the pre-existing baseline sampler error); full suite 286 passed / 2 failed / 40 skipped, the 2 (Boot, Perf.TypeLargeNote) pre-existing, no [Vulkan] lines. NOT GUI-verified: mouse drag between two OS windows, drop outside every window by hand, marker look, tray button look/icon, tray hide/restore by hand. No test for the tray button (it would hide the test runner's primary; `Background.Hide` is covered by `Background.ClosePrompt`).
+- Flick-drag across a narrow workspace tab can miss the 12 px threshold.
+- Ribbon and inspector exist only in the primary; a Docs/Sheets workspace in a secondary window has no ribbon there (its saved category is kept).
+- No "Move to new window" entry in the workspace context menu.
+- Sticky window has no workspace bar.
+- Index computation and marker shift can flicker within a ~4 px band at a tab's centre.
 - Duplicate keeps the same title.
 - Not GUI-verified: click, double-click rename, right-click, the "+" menu, a real quit and relaunch. Not perf-measured.
 - W2: full Thorium suite 262 passed / 3 failed / 40 skipped; the 3 were the pre-existing baseline (Boot, Sheet.FixedSize, Perf.TypeLargeNote).

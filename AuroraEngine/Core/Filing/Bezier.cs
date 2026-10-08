@@ -15,6 +15,23 @@ namespace ArctisAurora.Core.Filing
         public Vector3D<int> color;
     }
 
+    public enum StrokeCap { Butt, Round, Square }
+
+    public enum StrokeJoin { Miter, Round, Bevel }
+
+    // One stroked subpath: centreline in its own coordinates, mapped into glyph space by toGlyph.
+    [@NonSerializable]
+    public class StrokeRun
+    {
+        public List<Edge> edges = new List<Edge>();
+        public bool closed;
+        public float halfWidth;
+        public StrokeCap cap;
+        public StrokeJoin join;
+        public float miterLimit = 4f;
+        public Matrix3x2 toGlyph = Matrix3x2.Identity;
+    }
+
     [@Serializable]
     public class Bezier
     {

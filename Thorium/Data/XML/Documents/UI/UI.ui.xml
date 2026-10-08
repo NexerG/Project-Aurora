@@ -21,11 +21,14 @@
 				<Label Text="View" FontSize="12" HorizontalPos="0.5" VerticalPos="0.5" Role="MutedInk"/>
 			</MenuButton>
 			<Panel Width="1" Height="14" Margin="0,8,0,8" VerticalAlignment="Center" Role="Line"/>
-			<WorkspaceBar Height="26"/>
+			<WorkspaceBar Height="26" TearOffDocument="tab-window"/>
 			<MenuButton Width="22" Height="22" Margin="2,0,0,2" ContextMenu="workspace-add" HoverClip="underline" EdgeRole="Accent">
 				<Label Text="+" FontSize="14" HorizontalPos="0.5" VerticalPos="0.5" Role="MutedInk"/>
 			</MenuButton>
 			<Panel WidthStar="1" Height="26"/>
+			<Button Width="40" Height="26" onRelease="Window.MinimizeToTray">
+				<Icon Set="default" Icon="tray" Width="14" Height="14" HorizontalPos="0.5" VerticalPos="0.5"/>
+			</Button>
 			<Button Width="40" Height="26" onRelease="Window.Minimize">
 				<Icon Set="default" Icon="minimize" Width="12" Height="12" HorizontalPos="0.5" VerticalPos="0.5"/>
 			</Button>

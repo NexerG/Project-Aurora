@@ -24,7 +24,10 @@ namespace ArctisAurora.Core.UI
             AGlfwWindow._glfw.IconifyWindow(window.os.handle);
         }
 
-        [A_XSDActionDependency("Window.MaximizeRestore", "UI", "Maximizes the window, or restores it when it already is")]
+        [A_XSDActionDependency("Window.MinimizeToTray", "UI", "Hides the main window to the tray")]
+        public static void MinimizeToTray() => Background.Hide();
+
+        [A_XSDActionDependency("Window.MaximizeRestore", "UI","Maximizes the window, or restores it when it already is")]
         public static void MaximizeRestore()
         {
             RenderWindow window = Acting();

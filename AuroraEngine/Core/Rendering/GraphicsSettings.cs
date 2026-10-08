@@ -45,6 +45,13 @@ namespace ArctisAurora.EngineWork.Rendering
         public CloseAction onClose { get; set; } = CloseAction.Quit;
     }
 
+    [A_XSDType("Tray", "Settings")]
+    public class TraySetting : Setting
+    {
+        [A_XSDElementProperty("Enabled", "Settings", "The app has a tray icon, a single running copy, and can hide its main window to the tray.")]
+        public bool enabled { get; set; } = false;
+    }
+
     [A_XSDType("VSync", "Settings")]
     public class VSyncSetting : Setting
     {
@@ -79,6 +86,7 @@ namespace ArctisAurora.EngineWork.Rendering
         public readonly DeviceSetting device = new DeviceSetting();
         public readonly MonitorSetting monitor = new MonitorSetting();
         public readonly WindowSetting window = new WindowSetting();
+        public readonly TraySetting tray = new TraySetting { scope = SettingScope.App };
         public readonly VSyncSetting vsync = new VSyncSetting { onChanged = "Renderer.RequestSwapchainRebuild" };
         public readonly VulkanValidationSetting validation = new VulkanValidationSetting();
     }

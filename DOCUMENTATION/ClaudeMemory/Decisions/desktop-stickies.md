@@ -1,7 +1,7 @@
 # Decision — desktop stickies are torn-off-tab windows; background mode is one engine-wide toggle
 
 **Date:** 2026-10-08
-**Scope:** `ArctisAurora.EngineWork.Rendering` — `Background`, `RenderWindow`, `AGlfwWindow`, `GraphicsSettings.WindowSetting`; `ArctisAurora.Core.UI` — `WindowActions`, `ConfirmWindow`, `TabViewControl`, `TabActions`, `SessionLayout`, `ContextMenus`; `Thorium/Data/XML/Documents/UI/StickyWindow.ui.xml`
+**Scope:** `ArctisAurora.EngineWork.Rendering` — `Background`, `RenderWindow`, `AGlfwWindow`, `GraphicsSettings.WindowSetting`, `GraphicsSettings.TraySetting`; `ArctisAurora.Core.UI` — `WindowActions`, `ConfirmWindow`, `TabViewControl`, `TabActions`, `SessionLayout`, `ContextMenus`; `Thorium/Data/XML/Documents/UI/StickyWindow.ui.xml`
 
 ## What changed
 
@@ -17,13 +17,15 @@ Stickies:
 
 Background mode (`ArctisAurora.EngineWork.Rendering.Background`, static, Win32 P/Invoke):
 - `GraphicsSettings.WindowSetting.onClose` (XML `OnClose`, nested enum `WindowSetting.CloseAction { Ask, Tray, Quit }`, `[A_XSDType("CloseAction", "Settings")]`), default `Quit`; replaces the bool `CloseToTray`. Thorium ships `OnClose="Ask"` in `Graphics.settings.xml`. Shows in the Settings window as a dropdown (enum member).
-- `Init()` — bootstrap action `Background.Init`, between `Engine.SystemSetup` and `Engine.InitWindowing` in the shared `Bootstrap.bootstrap.xml`. No-op returning true when `onClose` is `Quit` or `TestRunner.active` (so Ask also claims single instance and adds the tray). Otherwise host name = entry assembly name; `Claim(name)` = named mutex `Local\ArctisAurora.Background.<name>`; if another copy owns it: log, `SignalShow(name)` (FindWindowW by class `ArctisAurora.Background` + title, PostMessage WM_APP+2), `Environment.Exit(0)`. Else `CreateTray(name)`: RegisterClassExW, a hidden top-level window, Shell_NotifyIconW NIM_ADD with IDI_APPLICATION and tooltip = host name.
+- Amended 2026-10-09: `ArctisAurora.EngineWork.Rendering.TraySetting : Setting` (`[A_XSDType("Tray", "Settings")]`, member `bool enabled`, XML `Enabled`, default false); `GraphicsSettings.tray = new TraySetting { scope = SettingScope.App }`. It gates the tray, single instance and close-to-tray as a whole. Thorium ships `<Tray Scope="App" Enabled="true"/>` in `Graphics.settings.xml`; Carbon and AuroraEditor get the default (no tray). `SettingsTypeSchema.xsd` regenerated. Private helper `Background.Tray()` reads it.
+- `Init()` — bootstrap action `Background.Init` (description "When Tray is enabled, adds the tray icon and, unless OnClose is Quit, claims the single running copy"), between `Engine.SystemSetup` and `Engine.InitWindowing` in the shared `Bootstrap.bootstrap.xml`. No-op returning true under `TestRunner.active` or when `tray.enabled` is false. Host name = entry assembly name. Unless `onClose` is `Quit`: `Claim(name)` = named mutex `Local\ArctisAurora.Background.<name>`; if another copy owns it: log, `SignalShow(name)` (FindWindowW by class `ArctisAurora.Background` + title, PostMessage WM_APP+2), `Environment.Exit(0)`. Then `CreateTray(name)`: RegisterClassExW, a hidden top-level window, Shell_NotifyIconW NIM_ADD with IDI_APPLICATION and tooltip = host name.
 - `Remove()` — shutdown action `Background.Remove`, a `Commit` step before `Logging.Flush` in `Shutdown.shutdown.xml`; NIM_DELETE, no-op without a tray. `active` — the tray exists.
-- `Close()` — the main window's close: `Tray` -> `Hide()`, `Quit` -> `Shutdown.Request()`, `Ask` -> private `Ask()` opens `ConfirmWindow.Ask` ("Close <host> or minimize it to the tray?", buttons Cancel / Minimize / Close, check "Don't ask again"). Private `Answer(CloseAction, bool remember)`: remember sets `onClose` to the chosen action (Tray or Quit) and calls `SettingsRegistry.Commit()`; then `Hide()` or `Shutdown.Request()`. Cancel does nothing. Private helpers `Settings()` (the `WindowSetting`), `HostName()` (entry assembly name).
-- `Hide()` — creates the tray first when it isn't up (`!active && !TestRunner.active`), then `NoteActions.SaveEdited()`, `SessionLayout.Capture()`, `Engine.primary.hidden = true`, hides the OS window. `Show()` — clears `hidden`, shows, focuses. `Quit()` — `Show()` then `Shutdown.Request()`.
+- `Close()` — the main window's close: with `tray.enabled` false, `Shutdown.Request()` directly and `OnClose` ignored; otherwise `Tray` -> `Hide()`, `Quit` -> `Shutdown.Request()`, `Ask` -> private `Ask()` opens `ConfirmWindow.Ask` ("Close <host> or minimize it to the tray?", buttons Cancel / Minimize / Close, check "Don't ask again"). Private `Answer(CloseAction, bool remember)`: remember sets `onClose` to the chosen action (Tray or Quit) and calls `SettingsRegistry.Commit()`; then `Hide()` or `Shutdown.Request()`. Cancel does nothing. Private helpers `Settings()` (the `WindowSetting`), `HostName()` (entry assembly name).
+- `Hide()` — `NoteActions.SaveEdited()`, `SessionLayout.Capture()`, `Engine.primary.hidden = true`, hides the OS window. `Show()` — clears `hidden`, shows, focuses. `Quit()` — `Show()` then `Shutdown.Request()`.
 - WndProc (dispatched on main by GLFW's PollEvents/WaitEvents, since the window is created on the bootstrap/GLFW thread): tray left-button-up -> `Engine.Post(Show)`; right-button-up -> `Engine.Post(OpenMenu)` = `ContextMenus.OpenAtScreen` at the cursor with "Open <host>" and "Quit"; WM_APP+2 -> Show; WM_ENDSESSION(wParam true) -> `Shutdown.RunPhase(Shutdown.commitPhase)` synchronously.
 - `WindowActions.Close(RenderWindow)` on `Engine.primary`: `Background.Close()`. The drawn X, Alt+F4, taskbar Close and taskkill without /F all go through it, so they hide, quit or ask per `OnClose`. Thorium's menu "Exit" (`ExitApplication` -> `Engine.CloseWindow(primary)`) and the tray menu's Quit still quit outright, without a prompt.
 - `ConfirmWindow` generalized: overload `Ask(RenderWindow source, string message, string? check, params (string caption, Action<bool> answer)[] answers)` — a right-aligned row of answer buttons in the order given and, when `check` is non-null, a CheckBox + label line between message and buttons (window grows by `checkHeight`, 28 units). Each answer receives the checkbox state. The old `Ask(source, message, onConfirm, onCancel)` stays and delegates (Cancel/Confirm, no check line); `VaultBrowserControl` unchanged. Content is rebuilt per ask (`Fill`) inside a column built once (`_column`, `_check`); `Answer(Action<bool>)` replaces `_message`, `_onConfirm`, `_onCancel`, `Confirm()`, `Cancel()`.
+- Tray button: action `Window.MinimizeToTray` (`WindowActions`) calls `Background.Hide()`, primary only; Thorium's title bar has a button with `Icon="tray"` left of minimize. See [[workspaces]].
 - Tests: `Thorium.Tests.StickyTests` (`Sticky.PinPinRestore`, suite `Sticky.tests.xml`); `ArctisAurora.Tests.BackgroundTests` (`Background.HideShow`, `Background.MenuClamp`, `Background.ClosePrompt`, suite `Background.tests.xml`). `ClosePrompt`: with `OnClose=Ask`, `WindowActions.Close(primary)` opens `ConfirmWindow` with Cancel/Minimize/Close; clicking Minimize hides the primary; an unticked check leaves the setting at `Ask`.
 
 ## Why these choices
@@ -49,7 +51,17 @@ The renderer's device, queues and descriptor set 0 are tied to `Engine.primary`.
 **Close-to-tray branches in `WindowActions.Close`, not as a refusing Shutdown `Request` step.**
 A refusing step flips `Shutdown.isClosing` and would make the X button change what quitting means. This supersedes the calendar plan's proposal (C4: a `Request` step hides the window and returns false).
 
-**One engine-wide setting: tray, single instance and the close behaviour all hang off `WindowSetting.OnClose` (Ask | Tray | Quit); tray and single instance exist when it is not `Quit`.**
+**The tray icon is up only when the host's `Tray Enabled` is true (and outside `--test`); within that, single instance and the close behaviour hang off `WindowSetting.OnClose` (Ask | Tray | Quit); single instance exists when it is not `Quit`.**
+User choice 2026-10-08: the app sits in the tray while open, not only once hidden. Single instance stayed on the `OnClose` gate. This replaced "tray and single instance exist when it is not `Quit`". User choice 2026-10-09 retracted "always up": tray on/off is an engine setting set per app (Thorium on as before, test runs without a tray, other hosts default off), so Carbon and AuroraEditor, which had a tray since 2026-10-08, lose it.
+
+**`TraySetting` is its own Setting type, App scope; `OnClose` stays User scope.**
+Scope is per Setting, and `WindowSetting` (width, height, OnClose) must stay User. Rejected: making `OnClose` App scope — App-scoped settings are ignored in the write root, never saved and hidden from the Settings window (`SettingsRegistry` ~226/343, `SettingsWindow` ~157), so the close prompt's "Don't ask again" would silently stop persisting.
+
+**`Background.Close` gates on the setting, not on `Background.active`.**
+Rejected gating on `active` (the tray exists): under `--test` the tray is never created, so `Background.ClosePrompt` (OnClose=Ask) would quit instead of prompting.
+
+**Test runs keep the hardcoded `TestRunner.active` guard in `Init`.**
+User choice (option "1a"). Rejected: having the test runner switch the setting off — `TestRunner.Arm` runs before `Settings.LoadAll`, so it would need a later hook for no gain.
 Originally a bool `CloseToTray`; now one enum rather than that bool plus a separate "ask" bool, because Ask needs the tray to exist and so shares the gate, and one enum keeps the gate a single comparison. User choice. Wired as a shared bootstrap step, not in Thorium's Main. Rejected: claiming the mutex in Main before `new Engine()` — Engine's ctor handles `--send`, and `--test` runs launched while the user's app is open would be swallowed. Host name comes from the entry assembly. Skipped under `--test`.
 
 **The close prompt is the existing `ConfirmWindow` generalized to N answers plus an optional check line.**
@@ -64,8 +76,8 @@ Thorium's menu Exit (`ExitApplication`) and the tray menu's Quit still quit outr
 **"Don't ask again" persists through `SettingsRegistry.Commit()`** (fires OnChanged + SaveAll).
 Accepted cost: if the Settings window is open with unapplied edits at that moment, they are applied and saved too. Rejected: a per-setting save path.
 
-**`Hide()` creates the tray on demand.**
-Switching Quit -> Ask/Tray at runtime would otherwise hide the window with no tray to bring it back. Single instance is still claimed only at boot, so it starts at the next launch.
+**`Hide()` no longer creates the tray on demand.**
+It did, so switching Quit -> Ask/Tray at runtime could not hide the window with no tray to bring it back; with the tray up from boot (when enabled) that path was dead and was removed. Single instance is still claimed only at boot, so it starts at the next launch.
 
 **No migration for the `CloseToTray` rename.**
 The user's write root had no stored `CloseToTray`: the bool landed the same day, XML only, and never reached a user file.
@@ -83,6 +95,8 @@ Extends [[shutdown-sequence]] (§6 per-window close and §7 OS close now hide th
 
 ## Known gaps
 - NOT GUI-verified: tray icon appearance, left/right click on it, the engine tray menu actually taking focus (Windows may refuse foreground to a background process; `ContextMenus.Tick` would then close it next frame), X hiding the main window, the second launch bringing the window forward, sign-out saving, sticky look/resize/pin by hand, the "Pin to desktop" submenu listing existing stickies and adding a note into one.
+- Tray setting: test-verified only (full suite 287 passed, 2 failed — Boot pre-existing, `Perf.TypeLargeNote` perf, not chased; 40 skipped; Background suite 3/3 besides Boot). Launch check: Carbon Debug shows no `ArctisAurora.Background` window, Thorium Debug does. Tray icon appearance NOT GUI-verified.
+- No test covers the tray-off `Close` path (it would request shutdown of the test session).
 - Tray icon is IDI_APPLICATION — Thorium has no ApplicationIcon/.ico.
 - No re-add after Explorer restarts (TaskbarCreated not handled).
 - A submenu opened from the tray menu would be hosted relative to the hidden primary and may land in its hidden root (the tray menu has no submenus today).
@@ -91,7 +105,7 @@ Extends [[shutdown-sequence]] (§6 per-window close and §7 OS close now hide th
 - Close prompt: test-verified by `Background.ClosePrompt`; NOT GUI-verified: the prompt's look, the check line layout, "Don't ask again" persisting across a restart (that Commit + user file write path is untested), the Settings dropdown.
 - Single instance is not claimed when switching away from `Quit` mid-run (next launch).
 - If another `ConfirmWindow` prompt is already open, closing the main window does nothing (`ConfirmWindow` refuses a second ask).
-- Switching to `Quit` mid-run leaves the tray icon up until exit (harmless; the tray menu still works).
+- New tray icons land in Windows 11's hidden-icons overflow until the user promotes them in Taskbar settings; no supported API promotes one.
 - Stickies belong to the vault's session scope: a vault switch closes them; switching back restores them.
 - A hidden window's caret blink still requests idle wake-ups.
 - No drag-a-tab-onto-another-window's-strip; adding to an existing sticky is through the submenu.

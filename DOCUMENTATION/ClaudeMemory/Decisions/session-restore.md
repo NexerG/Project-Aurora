@@ -147,6 +147,15 @@ old vault's key.
 - A window with nothing recorded gets `LoadDefault`; the `ChangeScope` fallback for a vault with nothing recorded is `LoadEmpty()` (every `FirstRun` kind, one empty pane each) where it was `LoadPane()`.
 - Reasoning and rejected alternatives: [[workspaces]].
 
+### 9. Reset UI (2026-10-08)
+
+- `SessionLayout.Reset()` = `ClearWorkspaces` + primary `LoadDefault()`, same scope, record untouched (the next `Capture` overwrites it).
+- **Stickies survive.** `ClearWorkspaces(kept)` skips non-primary windows the predicate keeps; `Reset` keeps any window whose `uiDocument` is a `stickyDocument` of a primary pane (the `TabActions.StickyEntries` rule). Torn-off tab and workspace windows close. `ChangeScope` still clears everything.
+- Action `Session.Reset` (`WorkspaceActions.ResetUI`): `Engine.Post` → `NoteActions.SettleAll(Reset)` — same order as the vault switch, so unnamed notes are prompted before their tabs go. Thorium app menu entry "Reset UI".
+- Window rect, maximize and zoom are NOT reset.
+- Test-verified: `Workspace.Reset` (pages back to `FirstRun`, nothing open, torn window closed, sticky kept). NOT GUI-verified.
+- The seeded notes (`SampleNote.xml`, `Reference/Keybinds.xml`) were removed with the other test notes; `Workspace.ui.xml` now seeds two empty panes, and `NoteModel.SaveIsStable` reads `Data/Notes` if present instead of anchoring on `SampleNote.xml`.
+
 ## The `Collapse` ordering defect this exposed
 
 `SplitViewControl.Split` detaches the source from its host before the new split arrives, and says so in a

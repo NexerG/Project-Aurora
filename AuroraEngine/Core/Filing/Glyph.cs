@@ -41,6 +41,12 @@ namespace ArctisAurora.Core.Filing
         [NonSerializable]
         public List<Bezier> contours = new List<Bezier>();
 
+        [@NonSerializable]
+        public bool evenOdd;
+
+        [@NonSerializable]
+        public List<StrokeRun> strokes = new List<StrokeRun>();
+
         public Glyph()
         {
             regular.glyphWidth = 1;

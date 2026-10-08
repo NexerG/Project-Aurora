@@ -48,6 +48,9 @@ namespace ArctisAurora.Core.UI
             CloseNext(tabs, 0, () => workspace.RemovePage(page));
         }
 
+        [A_XSDActionDependency("Session.Reset", "UI", "Puts every workspace back to its first-run arrangement; stickies stay")]
+        public static void ResetUI() => Engine.Post(() => NoteActions.SettleAll(SessionLayout.Reset));
+
         // One tab at a time, each from the previous one's completion, because the naming prompt is one window.
         private static void CloseNext(List<TabItemControl> tabs, int index, Action onClosed)
         {

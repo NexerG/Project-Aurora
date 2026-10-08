@@ -1,6 +1,7 @@
 using ArctisAurora.Core.ECS.EngineEntity;
 using ArctisAurora.Core.Filing;
 using ArctisAurora.Core.Registry;
+using ArctisAurora.EngineWork;
 
 namespace ArctisAurora.Core.UI
 {
@@ -56,6 +57,11 @@ namespace ArctisAurora.Core.UI
         // the highlighted entry
         private string? currentPath;
 
+        // entries made, removed or renamed on disk, rebuilt once the burst settles
+        private FileSystemWatcher? watcher;
+        private readonly Timer settle;
+        private const int settleMs = 200;
+
         protected abstract string RootPath { get; }
 
         protected abstract void PopulateRows();
@@ -95,6 +101,19 @@ namespace ArctisAurora.Core.UI
             rows.alpha = 0f;
             rows.orientation = StackPanelControl.Orientation.Vertical;
             AddChild(rows);
+
+            settle = new Timer(_ => Engine.Post(() => { if (!destroyed) Rebuild(); }));
+        }
+
+        public override void OnDestroy()
+        {
+            lock (settle)
+            {
+                watcher?.Dispose();
+                watcher = null;
+                settle.Dispose();
+            }
+            base.OnDestroy();
         }
 
         // Re-reads the root folder and replaces every row.
@@ -106,10 +125,40 @@ namespace ArctisAurora.Core.UI
             rows.Spacing = rowSpacing;
 
             string path = RootPath;
+            Watch(path);
             root = Directory.Exists(path) ? new FileObject(path) : null;
             if (root == null) return;
 
             PopulateRows();
+        }
+
+        // Points the watcher at the root, which a vault switch moves.
+        private void Watch(string path)
+        {
+            if (watcher?.Path == path) return;
+
+            lock (settle)
+            {
+                watcher?.Dispose();
+                watcher = null;
+                if (!Directory.Exists(path)) return;
+
+                watcher = new FileSystemWatcher(path)
+                {
+                    IncludeSubdirectories = true,
+                    NotifyFilter = NotifyFilters.FileName | NotifyFilters.DirectoryName
+                };
+                watcher.Created += OnDiskChanged;
+                watcher.Deleted += OnDiskChanged;
+                watcher.Renamed += OnDiskChanged;
+                watcher.EnableRaisingEvents = true;
+            }
+        }
+
+        private void OnDiskChanged(object sender, FileSystemEventArgs e)
+        {
+            lock (settle)
+                if (watcher != null) settle.Change(settleMs, Timeout.Infinite);
         }
 
         // A row is a button over an expander gutter and the entry's name. The gutter is kept on a
