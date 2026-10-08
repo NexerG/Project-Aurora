@@ -48,7 +48,7 @@
 			</StackPanel>
 			<Splitter Width="3"/>
 			<StackPanel Orientation="Vertical" WidthStar="1">
-				<Workspace Name="Workspace" HeightStar="1" Default="workspace" Pane="tab-pane" FirstRun="General Sheets"/>
+				<Workspace Name="Workspace" HeightStar="1" Default="workspace" Pane="tab-pane" FirstRun="General Docs Sheets LaTeX Manager Calendar"/>
 			</StackPanel>
 			<Splitter Width="3"/>
 			<Inspector Width="240"/>

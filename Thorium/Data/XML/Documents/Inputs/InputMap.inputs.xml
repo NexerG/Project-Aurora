@@ -8,6 +8,8 @@
 	<NamedModifier Modifier="Word" Key="RightControl" />
 	<NamedModifier Modifier="Copy" Key="LeftControl" />
 	<NamedModifier Modifier="Copy" Key="RightControl" />
+	<NamedModifier Modifier="Zoom" Key="LeftControl" />
+	<NamedModifier Modifier="Zoom" Key="RightControl" />
 
 	<Keybind Trigger="AnySymbol" Action="Text.Write">
 		<Continuous />
