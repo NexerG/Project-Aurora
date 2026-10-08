@@ -171,6 +171,18 @@ namespace ArctisAurora.Core.UI
             return false;
         }
 
+        // The primary back to its first-run workspaces, every other workspace window closed but stickies.
+        public static void Reset()
+        {
+            WorkspaceControl primary = WorkspaceControl.In(Engine.primary.ui.uiRoot);
+            HashSet<string> stickies = TabViewControl.TabViews(Engine.primary.ui.uiRoot)
+                .Select(view => view.stickyDocument).Where(document => !string.IsNullOrEmpty(document)).ToHashSet();
+
+            ClearWorkspaces(window => stickies.Contains(window.uiDocument));
+            primary?.LoadDefault();
+            Log.Info($"reset the UI for '{scope}'");
+        }
+
         private static bool Rebuild(bool placePrimary)
         {
             WorkspaceControl primary = WorkspaceControl.In(Engine.primary.ui.uiRoot);
@@ -196,11 +208,12 @@ namespace ArctisAurora.Core.UI
         }
 
         // The primary's workspace emptied and every other window holding one closed.
-        private static void ClearWorkspaces()
+        private static void ClearWorkspaces(Func<RenderWindow, bool> kept = null)
         {
             foreach (RenderWindow window in Engine.windows.Values.ToList())
             {
                 if (window.closeRequested || WorkspaceControl.In(window.ui?.uiRoot) is not WorkspaceControl workspace) continue;
+                if (window != Engine.primary && kept != null && kept(window)) continue;
 
                 if (window == Engine.primary)
                     foreach (Entity child in workspace.children.ToList()) child.Destroy();

@@ -27,10 +27,23 @@
           <xs:enumeration value="Tab.SplitRight" />
           <xs:enumeration value="Tab.SplitDown" />
           <xs:enumeration value="Tab.MoveToNewWindow" />
+          <xs:enumeration value="Tab.PinToSticky" />
           <xs:enumeration value="TestAction" />
           <xs:enumeration value="Window.Minimize" />
+          <xs:enumeration value="Window.MinimizeToTray" />
           <xs:enumeration value="Window.MaximizeRestore" />
+          <xs:enumeration value="Window.TogglePin" />
           <xs:enumeration value="Window.Close" />
+          <xs:enumeration value="Workspace.NewGeneral" />
+          <xs:enumeration value="Workspace.NewDocs" />
+          <xs:enumeration value="Workspace.NewSheets" />
+          <xs:enumeration value="Workspace.NewLaTeX" />
+          <xs:enumeration value="Workspace.NewManager" />
+          <xs:enumeration value="Workspace.NewCalendar" />
+          <xs:enumeration value="Workspace.Duplicate" />
+          <xs:enumeration value="Workspace.Rename" />
+          <xs:enumeration value="Workspace.Close" />
+          <xs:enumeration value="Session.Reset" />
         </xs:restriction>
       </xs:simpleType>
     </xs:union>
@@ -41,6 +54,13 @@
         <xs:restriction base="xs:string">
           <xs:enumeration value="ExitApplication" />
           <xs:enumeration value="Console.Toggle" />
+          <xs:enumeration value="Planner.Undo" />
+          <xs:enumeration value="Planner.Redo" />
+          <xs:enumeration value="Planner.Delete" />
+          <xs:enumeration value="Planner.Edit" />
+          <xs:enumeration value="Planner.EditCategory" />
+          <xs:enumeration value="Planner.AddCategory" />
+          <xs:enumeration value="Planner.Save" />
           <xs:enumeration value="Sheet.Up" />
           <xs:enumeration value="Sheet.Down" />
           <xs:enumeration value="Sheet.Left" />
@@ -82,7 +102,11 @@
           <xs:enumeration value="Text.Bold" />
           <xs:enumeration value="Text.Italic" />
           <xs:enumeration value="Text.Underline" />
+          <xs:enumeration value="Text.Strikethrough" />
           <xs:enumeration value="Text.AlignLeft" />
+          <xs:enumeration value="Text.Bullets" />
+          <xs:enumeration value="Text.Numbers" />
+          <xs:enumeration value="Text.Tasks" />
           <xs:enumeration value="Text.AlignCenter" />
           <xs:enumeration value="Text.AlignRight" />
           <xs:enumeration value="Text.AlignJustify" />
@@ -108,6 +132,7 @@
           <xs:enumeration value="Picture.CollideShape" />
           <xs:enumeration value="Math.Insert" />
           <xs:enumeration value="Math.InsertDisplay" />
+          <xs:enumeration value="Text.InsertPicture" />
           <xs:enumeration value="Math.Edit" />
           <xs:enumeration value="Table.Insert" />
           <xs:enumeration value="Table.RowAbove" />
@@ -125,6 +150,7 @@
           <xs:enumeration value="Text.Redo" />
           <xs:enumeration value="Text.Cancel" />
           <xs:enumeration value="Text.Save" />
+          <xs:enumeration value="Tex.ExportPdf" />
           <xs:enumeration value="Text.CaretLeft" />
           <xs:enumeration value="Text.CaretRight" />
           <xs:enumeration value="Text.CaretUp" />
@@ -147,6 +173,9 @@
       <xs:simpleType>
         <xs:restriction base="xs:string">
           <xs:enumeration value="Perf.AtlasBake" />
+          <xs:enumeration value="Background.HideShow" />
+          <xs:enumeration value="Background.MenuClamp" />
+          <xs:enumeration value="Background.ClosePrompt" />
           <xs:enumeration value="Commands.HelpListsCommands" />
           <xs:enumeration value="Commands.UnknownIsAnError" />
           <xs:enumeration value="Commands.ArgumentsConvert" />
@@ -158,6 +187,8 @@
           <xs:enumeration value="Input.KeyWithModifierFiresKeybind" />
           <xs:enumeration value="Input.DragMovesSplitter" />
           <xs:enumeration value="Input.RepeatJoinsUndoStep" />
+          <xs:enumeration value="Input.DropdownInsidePopup" />
+          <xs:enumeration value="Input.SourceSubmenu" />
           <xs:enumeration value="Layout.StackPanelArranges" />
           <xs:enumeration value="Layout.StarChildCrossSize" />
           <xs:enumeration value="Layout.GridAutoRowWrapsAtColumn" />
@@ -177,6 +208,7 @@
           <xs:enumeration value="Math.Matrix" />
           <xs:enumeration value="Math.Cases" />
           <xs:enumeration value="Math.Aligned" />
+          <xs:enumeration value="Math.FillWidth" />
           <xs:enumeration value="Math.Array" />
           <xs:enumeration value="Math.Tag" />
           <xs:enumeration value="Math.EnvErrors" />
@@ -289,6 +321,7 @@
           <xs:enumeration value="Renderer.PreInitialize" />
           <xs:enumeration value="InputHandler.LoadInputs" />
           <xs:enumeration value="Glfw.Init" />
+          <xs:enumeration value="Background.Init" />
           <xs:enumeration value="Renderer.Initialize" />
           <xs:enumeration value="Renderer.PrepareDescriptors" />
           <xs:enumeration value="Renderer.SetupObjects" />
@@ -302,6 +335,7 @@
           <xs:enumeration value="Effects.LoadEffects" />
           <xs:enumeration value="Gradients.LoadGradients" />
           <xs:enumeration value="Palettes.LoadPalettes" />
+          <xs:enumeration value="PlannerAttachmentKinds.Load" />
           <xs:enumeration value="Context.LoadContexts" />
           <xs:enumeration value="Context.LoadDeclared" />
           <xs:enumeration value="EntityRegistry.ParseXML" />
@@ -315,6 +349,21 @@
       </xs:simpleType>
     </xs:union>
   </xs:simpleType>
+  <xs:simpleType name="Shutdown">
+    <xs:union memberTypes="actions:Any">
+      <xs:simpleType>
+        <xs:restriction base="xs:string">
+          <xs:enumeration value="Background.Remove" />
+          <xs:enumeration value="Notes.SettleUnnamed" />
+          <xs:enumeration value="Notes.SaveEdited" />
+          <xs:enumeration value="Session.Capture" />
+          <xs:enumeration value="Settings.SaveAll" />
+          <xs:enumeration value="Logging.Flush" />
+          <xs:enumeration value="Profiling.Flush" />
+        </xs:restriction>
+      </xs:simpleType>
+    </xs:union>
+  </xs:simpleType>
   <xs:simpleType name="Settings">
     <xs:union memberTypes="actions:Any">
       <xs:simpleType>
@@ -322,20 +371,6 @@
           <xs:enumeration value="Renderer.RequestSwapchainRebuild" />
           <xs:enumeration value="Document.Rezoom" />
           <xs:enumeration value="UI.Rescale" />
-        </xs:restriction>
-      </xs:simpleType>
-    </xs:union>
-  </xs:simpleType>
-  <xs:simpleType name="Shutdown">
-    <xs:union memberTypes="actions:Any">
-      <xs:simpleType>
-        <xs:restriction base="xs:string">
-          <xs:enumeration value="Notes.SettleUnnamed" />
-          <xs:enumeration value="Notes.SaveEdited" />
-          <xs:enumeration value="Session.Capture" />
-          <xs:enumeration value="Settings.SaveAll" />
-          <xs:enumeration value="Logging.Flush" />
-          <xs:enumeration value="Profiling.Flush" />
         </xs:restriction>
       </xs:simpleType>
     </xs:union>

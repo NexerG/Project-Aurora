@@ -811,6 +811,7 @@
   <xs:attributeGroup name="WorkspaceBar.Attributes">
     <xs:attributeGroup ref="types:StackPanel.Attributes" />
     <xs:attribute name="TabContextMenu" type="xs:string" />
+    <xs:attribute name="TearOffDocument" type="xs:string" />
   </xs:attributeGroup>
   <xs:element name="WorkspaceBar" type="types:WorkspaceBar" />
   <xs:complexType name="WorkspaceBar">

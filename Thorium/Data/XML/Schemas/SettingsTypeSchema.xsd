@@ -25,6 +25,7 @@
       <xs:element name="Device" type="types:Device" />
       <xs:element name="Monitor" type="types:Monitor" />
       <xs:element name="WindowSetting" type="types:WindowSetting" />
+      <xs:element name="Tray" type="types:Tray" />
       <xs:element name="VSync" type="types:VSync" />
       <xs:element name="Validation" type="types:Validation" />
       <xs:element name="SheetGrow" type="types:SheetGrow" />
@@ -141,6 +142,15 @@
   <xs:complexType name="WindowSetting">
     <xs:sequence />
     <xs:attributeGroup ref="types:WindowSetting.Attributes" />
+  </xs:complexType>
+  <xs:attributeGroup name="Tray.Attributes">
+    <xs:attributeGroup ref="types:Setting.Attributes" />
+    <xs:attribute name="Enabled" type="xs:boolean" />
+  </xs:attributeGroup>
+  <xs:element name="Tray" type="types:Tray" />
+  <xs:complexType name="Tray">
+    <xs:sequence />
+    <xs:attributeGroup ref="types:Tray.Attributes" />
   </xs:complexType>
   <xs:attributeGroup name="VSync.Attributes">
     <xs:attributeGroup ref="types:Setting.Attributes" />

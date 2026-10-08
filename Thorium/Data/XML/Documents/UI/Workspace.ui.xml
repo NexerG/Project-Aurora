@@ -4,17 +4,9 @@
 
 	<EditableTabs Name="Tabs" Width="525" MinWidth="120" ContextMenu="view"
 	                  TabHeight="24" TabWidth="140" NewButton="true"
-	                  TearOffDocument="tab-window" StickyDocument="sticky-window">
-		<TabItem Header="SampleNote">
-			<DocumentEditor Source="../../Notes/SampleNote.xml" ContextMenu="note"/>
-		</TabItem>
-	</EditableTabs>
+	                  TearOffDocument="tab-window" StickyDocument="sticky-window"/>
 	<Splitter Width="3"/>
 	<EditableTabs Name="TabsRight" WidthStar="1" MinWidth="120" ContextMenu="view"
 	                  TabHeight="24" TabWidth="140" NewButton="true"
-	                  TearOffDocument="tab-window" StickyDocument="sticky-window">
-		<TabItem Header="Keybinds">
-			<DocumentEditor Source="../../Notes/Reference/Keybinds.xml" ContextMenu="note"/>
-		</TabItem>
-	</EditableTabs>
+	                  TearOffDocument="tab-window" StickyDocument="sticky-window"/>
 </SplitView>

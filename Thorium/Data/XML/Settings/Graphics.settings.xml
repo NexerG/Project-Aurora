@@ -13,6 +13,7 @@
   <Graphics>
     <VSync Scope="App"/>
     <WindowSetting OnClose="Ask"/>
+    <Tray Scope="App" Enabled="true"/>
   </Graphics>
 
 </UserSettings>

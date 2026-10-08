@@ -37,14 +37,14 @@ namespace ArctisAurora.EngineWork.Rendering
 
         public static bool active => _window != IntPtr.Zero;
 
-        // Unless OnClose is Quit: one running copy per host, and a tray icon. A second copy shows the first and exits.
-        [A_XSDActionDependency("Background.Init", "Bootstrap", "Claims the single running copy and adds the tray icon unless OnClose is Quit")]
+        // When Tray is enabled: a tray icon; unless OnClose is Quit, one running copy per host. A second copy shows the first and exits.
+        [A_XSDActionDependency("Background.Init", "Bootstrap", "When Tray is enabled, adds the tray icon and, unless OnClose is Quit, claims the single running copy")]
         public static bool Init()
         {
-            if (Settings().onClose ==WindowSetting.CloseAction.Quit || TestRunner.active) return true;
+            if (!Tray() || TestRunner.active) return true;
 
             string name = HostName();
-            if (!Claim(name))
+            if (Settings().onClose != WindowSetting.CloseAction.Quit && !Claim(name))
             {
                 Log.Info($"{name} is already running — showing it");
                 SignalShow(name);
@@ -64,6 +64,8 @@ namespace ArctisAurora.EngineWork.Rendering
         }
 
         private static WindowSetting Settings() =>SettingsRegistry.Get<GraphicsSettings>().window;
+
+        private static bool Tray() => SettingsRegistry.Get<GraphicsSettings>().tray.enabled;
 
         private static string HostName() => Assembly.GetEntryAssembly()?.GetName().Name ?? "Aurora";
 
@@ -150,9 +152,15 @@ namespace ArctisAurora.EngineWork.Rendering
             return handle;
         }
 
-        // The main window's close: asks, hides to the tray, or quits, as OnClose says.
+        // The main window's close: quits without a tray; otherwise asks, hides to the tray, or quits, as OnClose says.
         public static void Close()
         {
+            if (!Tray())
+            {
+                Shutdown.Request();
+                return;
+            }
+
             switch (Settings().onClose)
             {
                 case WindowSetting.CloseAction.Tray: Hide(); break;
@@ -182,7 +190,6 @@ namespace ArctisAurora.EngineWork.Rendering
         // Saves edited notes and the layout, then hides the main window.
         public static void Hide()
         {
-            if (!active && !TestRunner.active) CreateTray(HostName());
             NoteActions.SaveEdited();
             SessionLayout.Capture();
             Engine.primary.hidden = true;

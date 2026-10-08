@@ -151,6 +151,7 @@ This file holds **open work**. A landed entry moves to [[Changelog]]; one that s
 		- [ ] delete rows/columns (insert exists; delete does not) → `sheets`
 	- [ ] **workspace tabs** — Blender-style workspaces in the title bar; plan W1–W5 in `ClaudeMemory/Context/workspace-plan.md` (W1, W2, W3, W4a and W4b landed 2026-10-08; W5 split gestures skipped by the user 2026-10-08)
 		- [ ] **TabToolsControl.Text draws nothing for a one-character caption (2026-10-08)** — cause not investigated; `$` and `%` on the Sheets ribbon are built through `RibbonControl.Glyph` instead → workspaces
+		- [ ] **flick-drag over a narrow workspace tab can miss the 12 px threshold (2026-10-08)** — moves dispatch to the hovered control, so a fast flick leaves the tab before the drag starts → workspaces
 		- [ ] **W3/W4 NOT GUI-verified (2026-10-08)** — the OS dialogs (Picture…, Import CSV…, the folder picker for adding a vault) and `Sheets.ConvertOpenCsv` on a real vault; ribbon, inspector and tab-row tools in a real run
 	- [x] **note data model (user, 2026-10-07)** — landed, N0–N3 built; N4 (virtualization) measured and declined 2026-10-08. See `ClaudeMemory/Context/note-model-plan.md`
 		- [ ] **N2 NOT GUI-verified (2026-10-08)** — in a real session: typing, Enter/Backspace across blocks, paste/drop, picture drags, table insert/delete/resize, page/palette/layout changes, and undo/redo of each
@@ -175,6 +176,10 @@ This file holds **open work**. A landed entry moves to [[Changelog]]; one that s
 		- [ ] tray icon is IDI_APPLICATION (Thorium has no .ico) and is not re-added after an Explorer restart (TaskbarCreated) → `desktop-stickies`
 		- [ ] `--profile` runs are swallowed by single instance while Thorium runs (only `--test` is exempt) → `desktop-stickies`
 	- [ ] **simplified mode** — a setting that swaps to the familiar layouts (menu bar, one document at a time) for less technical users; a layout choice, not a separate app
+- [ ] **SVG: stroke-dasharray/dashoffset** — pre-pass in `SvgPath` splitting runs by arc length (de Casteljau, open runs) → `svg-import`
+- [ ] **SVG parser: command after Z without M fails** — legal SVG (new subpath starts at the last start point) gives "line before any moveto" → `svg-import`
+- [ ] **SVG: `<use>`, nested viewports, percentage lengths** — also `preserveAspectRatio`, `display="none"`/`visibility`, mixed fill rules in one icon → `svg-import`
+- [ ] **default icon atlas copies differ across the four projects** — AuroraEngine and AuroraEditor hold an older `default_atlas.png`/`default.aid` than Thorium and Carbon → `svg-import`
 - [ ] fix resolution stuff associated with DPI and stuff. use `glfwGetMonitorContentScale` *(non-essential)*
 
 ---

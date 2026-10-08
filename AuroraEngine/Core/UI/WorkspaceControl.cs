@@ -1,5 +1,7 @@
 using ArctisAurora.Core.ECS.EngineEntity;
 using ArctisAurora.Core.Registry;
+using ArctisAurora.EngineWork;
+using ArctisAurora.EngineWork.Rendering;
 using System.Numerics;
 
 namespace ArctisAurora.Core.UI
@@ -103,6 +105,52 @@ namespace ArctisAurora.Core.UI
 
             if (shown == null && children.Count > 0)
                 Show((WorkspacePageControl)children[Math.Min(index, children.Count - 1)]);
+            changed?.Invoke(this);
+        }
+
+        // Puts a workspace at a gap among this one's, taking it from another window's; the primary's last stays.
+        public void Move(WorkspacePageControl page, int index)
+        {
+            if (page.parent is not WorkspaceControl from) return;
+
+            if (ReferenceEquals(from, this))
+            {
+                int old = children.IndexOf(page);
+                if (index > old) index--;
+                if (index == old) return;
+
+                children.RemoveAt(old);
+                children.Insert(index, page);
+                MarkTreeOrderDirty();
+                changed?.Invoke(this);
+                return;
+            }
+
+            if (from.Pages.Count() < 2 && UIEngine.WindowOf(from) == Engine.primary) return;
+
+            int left = from.children.IndexOf(page);
+            from.RemoveChild(page);
+            AddChild(page);
+            children.Remove(page);
+            children.Insert(Math.Clamp(index, 0, children.Count), page);
+            Show(page);
+            from.Released(page, left);
+        }
+
+        // Shows the neighbour of a workspace that left, or closes a secondary window it left empty.
+        private void Released(WorkspacePageControl page, int index)
+        {
+            if (ReferenceEquals(shown, page)) shown = null;
+
+            if (children.Count == 0)
+            {
+                RenderWindow window = UIEngine.WindowOf(this);
+                if (window != null && window != Engine.primary) Engine.CloseWindow(window);
+                return;
+            }
+
+            if (shown == null) Show((WorkspacePageControl)children[Math.Min(index, children.Count - 1)]);
+            InvalidateLayout();
             changed?.Invoke(this);
         }
 

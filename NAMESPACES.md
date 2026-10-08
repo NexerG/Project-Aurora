@@ -279,6 +279,7 @@ ArctisAurora.Tests -> AuroraEngine/Tests/InputTests.cs
 ArctisAurora.Tests -> AuroraEngine/Tests/LayoutTests.cs
 ArctisAurora.Tests -> AuroraEngine/Tests/MathTests.cs
 ArctisAurora.Tests -> AuroraEngine/Tests/PerfTests.cs
+ArctisAurora.Tests -> AuroraEngine/Tests/SvgTests.cs
 ArctisAurora.Tests -> AuroraEngine/Tests/SyntaxTests.cs
 ArctisAurora.Tests -> AuroraEngine/Tests/TexTests.cs
 ArctisAurora.Tests -> AuroraEngine/Tests/VisualTests.cs

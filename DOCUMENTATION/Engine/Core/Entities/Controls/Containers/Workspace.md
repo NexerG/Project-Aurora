@@ -47,6 +47,8 @@ The page is code-only, with no XML element. It exists because `SplitView`'s `Spl
 
 `WorkspaceBarControl` is the strip of tabs in the title bar, one `WorkspaceButton` per page of the workspace in its own window. The shown tab paints a ground with the tab accent, the others are clear with muted ink. A press shows the page, a double-click renames it in place, a right-click opens the `workspace` context menu, and the "+" button next to the bar opens `workspace-add`.
 
+A tab can be dragged: dropping it in its own bar reorders it, dropping it on another window's bar moves the workspace, panes and tabs included, into that window, and dropping it outside every app window tears it off into a new window built from the bar's `TearOffDocument`. A 2 px accent marker shows the gap while the tab is over a bar. The move happens on drop and not live, because the bar rebuilds on every `changed` and that would destroy the dragged button mid-drag. The primary window always keeps its last workspace; a secondary window that loses its last one closes.
+
 The bar rebuilds when the workspace raises `changed`, posted to the main thread rather than run in place, because a rename commits from inside the caption a rebuild would destroy.
 
 ## Tab-row tools
@@ -84,6 +86,7 @@ FocusedView(page)
 | `Show(page)` | method | Hides the shown page and shows another. |
 | `Rename(page, title)` | method | Renames a page. |
 | `RemovePage(page)` | method | Removes a page; refuses the last one. |
+| `Move(page, index)` | method | Reorders a page within the bar, or moves it in from another workspace at a gap index. |
 | `changed` | static event | Raised with the workspace when its pages change. |
 | `LoadDefault()` | method | Parses `Default` into a page of the first `FirstRun` kind and adds an empty pane to each further kind. |
 | `LoadEmpty()` | method | One page per `FirstRun` kind, each with one empty pane. |
@@ -121,6 +124,37 @@ Show(page)
 		ActiveControl = page.lastFocused.editor
 	else
 		ActiveControl = the first pane of page
+	raise changed
+```
+
+### Move
+A page leaving another workspace is detached with RemoveChild, which does not tell that workspace, so the source is settled explicitly.
+
+```
+Move(page, index)
+	if page is a child of this
+		old = index of page
+		if index > old -> index = index - 1
+		place page at index among the children
+		raise changed
+		return
+	source = the workspace page is in
+	if source is on Engine.primary and has one page -> return
+	oldIndex = index of page in source
+	source.RemoveChild(page)
+	AddChild(page)
+	place page at index among the children
+	Show(page)
+	source.Released(page, oldIndex)
+```
+
+```
+Released(page, oldIndex)
+	if shown is page -> shown = null
+	if no pages remain
+		if the window is not the primary -> Engine.CloseWindow(the window)
+		return
+	if nothing is shown -> Show(the page now at oldIndex)
 	raise changed
 ```
 
@@ -202,13 +236,15 @@ It cannot fill itself during parsing, because the record it would need is per wi
 
 The session records one `SessionWorkspace` per page, with its title, kind and pane tree, and which one was shown. A record written before workspaces existed loads as one General page and is written back in the new shape.
 
+Reset UI (`Session.Reset`, in Thorium's app menu) is the fourth caller. It settles unsaved notes, empties the primary's workspace, closes every other window holding one except stickies, and calls `LoadDefault` on the primary again.
+
 ## Known holes
 
 Each page is a single-child host, which exposed an ordering defect in [[SplitView]]'s collapse: the survivor of a collapsing split was re-parented into the host while the split was still a child of it. Every other host was a `StackPanel`, which tolerates the transient second child. Collapse now detaches the split first, matching what its own `Split` had always done.
 
 Nothing enforces one workspace per window; a document declaring two would have the second one ignored by everything that goes looking.
 
-A torn-off window keeps one General page and has no tab bar. An empty pane shows nothing at all. Duplicating a page keeps its title.
+An empty pane shows nothing at all. Duplicating a page keeps its title.
 
 ## Related
 - [[Thorium]] — hosts the ribbon, the inspector and the vault browser whose filter follows the shown page

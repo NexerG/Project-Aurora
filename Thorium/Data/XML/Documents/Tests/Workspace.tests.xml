@@ -6,4 +6,8 @@
 	<Test Action="Workspace.Menu"/>
 	<Test Action="Workspace.SessionRoundTrip"/>
 	<Test Action="Workspace.LegacySession"/>
+	<Test Action="Workspace.Reorder"/>
+	<Test Action="Workspace.MoveAcross"/>
+	<Test Action="Workspace.TearOff"/>
+	<Test Action="Workspace.Reset"/>
 </TestSuite>

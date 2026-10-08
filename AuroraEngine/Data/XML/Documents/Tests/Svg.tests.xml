@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<TestSuite xmlns="http://arctisaurora/AuroraTestTypes"
+		  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+		  xsi:schemaLocation="http://arctisaurora/AuroraTestTypes ../../Schemas/TestTypeSchema.xsd" >
+	<Test Action="Svg.InheritedFill"/>
+	<Test Action="Svg.Unrendered"/>
+	<Test Action="Svg.Transform"/>
+	<Test Action="Svg.Malformed"/>
+	<Test Action="Svg.FillRule"/>
+	<Test Action="Svg.Arc"/>
+	<Test Action="Svg.Shapes"/>
+	<Test Action="Svg.StrokeRuns"/>
+	<Test Action="Svg.StrokeBake"/>
+</TestSuite>

@@ -199,6 +199,10 @@
           <xs:enumeration value="Workspace.Menu" />
           <xs:enumeration value="Workspace.SessionRoundTrip" />
           <xs:enumeration value="Workspace.LegacySession" />
+          <xs:enumeration value="Workspace.Reorder" />
+          <xs:enumeration value="Workspace.MoveAcross" />
+          <xs:enumeration value="Workspace.TearOff" />
+          <xs:enumeration value="Workspace.Reset" />
           <xs:enumeration value="Perf.AtlasBake" />
           <xs:enumeration value="Background.HideShow" />
           <xs:enumeration value="Background.MenuClamp" />
@@ -280,6 +284,15 @@
           <xs:enumeration value="Perf.Controls.TabView.Relayout" />
           <xs:enumeration value="Perf.Controls.Table.Static" />
           <xs:enumeration value="Perf.Controls.Table.Relayout" />
+          <xs:enumeration value="Svg.InheritedFill" />
+          <xs:enumeration value="Svg.Unrendered" />
+          <xs:enumeration value="Svg.Transform" />
+          <xs:enumeration value="Svg.Malformed" />
+          <xs:enumeration value="Svg.FillRule" />
+          <xs:enumeration value="Svg.Arc" />
+          <xs:enumeration value="Svg.Shapes" />
+          <xs:enumeration value="Svg.StrokeRuns" />
+          <xs:enumeration value="Svg.StrokeBake" />
           <xs:enumeration value="Syntax.CSharpLine" />
           <xs:enumeration value="Syntax.CommentSpansLines" />
           <xs:enumeration value="Syntax.Languages" />
@@ -491,6 +504,7 @@
           <xs:enumeration value="Tab.PinToSticky" />
           <xs:enumeration value="TestAction" />
           <xs:enumeration value="Window.Minimize" />
+          <xs:enumeration value="Window.MinimizeToTray" />
           <xs:enumeration value="Window.MaximizeRestore" />
           <xs:enumeration value="Window.TogglePin" />
           <xs:enumeration value="Window.Close" />
@@ -503,6 +517,7 @@
           <xs:enumeration value="Workspace.Duplicate" />
           <xs:enumeration value="Workspace.Rename" />
           <xs:enumeration value="Workspace.Close" />
+          <xs:enumeration value="Session.Reset" />
         </xs:restriction>
       </xs:simpleType>
     </xs:union>

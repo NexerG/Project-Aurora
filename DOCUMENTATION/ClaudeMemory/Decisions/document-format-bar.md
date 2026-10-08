@@ -178,11 +178,11 @@ even when it agrees with the scheme on the day it was saved.
 ## Icons
 
 Three new SVGs in `AuroraEngine/Data/Icons/default/svg` — `bold`, `italic`, `chevron-down` — filled
-paths only, counters wound opposite for nonzero fill, no `A` command. `SvgPath` rejects `fill:none`
-outright and does not implement arcs. Winding was checked by rendering the file in a browser before
+paths only, counters wound opposite for nonzero fill. `SvgPath` rejected `fill:none`
+at the time (since 2026-10-09 it means no fill, see [[svg-import]]). Winding was checked by rendering the file in a browser before
 baking, not after.
 
-`SvgPath` also takes only filled `<path>` (no stroke-to-outline) and fills `evenodd` as nonzero, so a hole is an inner contour wound the opposite way. Stroked icons from a design canvas cannot be imported as they are ([[workspaces]], W4b: 20 filled icons).
+`SvgPath` took no strokes at the time, so stroked icons from a design canvas could not be imported as they were ([[workspaces]], W4b: 20 filled icons); since 2026-10-09 strokes import, baked from the centreline — see [[svg-import]]. (When these icons were written the importer also had no `A` command and filled `evenodd` as nonzero; since 2026-10-09 it reads arcs, basic shapes, transforms and evenodd — see [[svg-import]].)
 
 Adding them changes the folder hash, so the icon set re-bakes on the next boot of every project.
 Thorium's baked output is **tracked** (`Thorium/Data/Icons/default/*`) and was regenerated;

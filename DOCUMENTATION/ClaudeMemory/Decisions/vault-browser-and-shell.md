@@ -124,9 +124,12 @@ level was added twice. Fixed, because the browser is the first caller.
   can no longer resolve an editor. Known and recorded in [[document-selection]] decision 8; the
   sidebar is the first thing that makes it easy to hit. The answer is real focus, not a patch here.
 - No new-note, rename or delete. Rename is the `ContextMenuControl` item already on the WIP list.
-- ~~The browser never refreshes~~ — partly closed 2026-08-20: toggling a folder calls `Rebuild()`,
-  which re-reads the root, so a note added on disk appears after any toggle. Nothing watches the
-  folder, so it still does not appear on its own.
+- ~~The browser never refreshes~~ — closed 2026-10-08: `FileBrowserControl` holds a
+  `FileSystemWatcher` on `RootPath` (subfolders, names only — `Created`/`Deleted`/`Renamed`) and
+  posts one `Rebuild()` 200 ms after the last event. `Changed` is ignored, since every save fires it
+  and saves write in place. Re-pointed in `Rebuild()` when the root moves (vault switch), disposed in
+  `OnDestroy` under the same lock the event handler takes. An open note edited outside the app is
+  still not reloaded.
 
 Related: [[settings-registry]], [[settings-categories]], [[document-structural-editing]],
 [[thorium-editor-architecture]]

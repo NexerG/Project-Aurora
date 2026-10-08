@@ -98,6 +98,19 @@ namespace ArctisAurora.Core.Generators
             int[] crossSign = ArrayPool<int>.Shared.Rent(edgeCount * 3);
             FillBounds(glyph, bounds);
 
+            // stroke runs: glyph-to-local maps, local-to-glyph distance scale, glyph-space reach boxes
+            int runCount = glyph.strokes.Count;
+            Matrix3x2[] toLocal = runCount == 0 ? Array.Empty<Matrix3x2>() : new Matrix3x2[runCount];
+            float[] runScale = runCount == 0 ? Array.Empty<float>() : new float[runCount];
+            float[] runBounds = runCount == 0 ? Array.Empty<float>() : new float[runCount * 4];
+            for (int r = 0; r < runCount; r++)
+            {
+                StrokeRun run = glyph.strokes[r];
+                if (Matrix3x2.Invert(run.toGlyph, out toLocal[r]))
+                    runScale[r] = MathF.Sqrt(MathF.Abs(run.toGlyph.GetDeterminant()));
+                RunBounds(run, runBounds, r * 4);
+            }
+
             for (int y = 0; y < innerSize; y++)
             {
                 float py = ((y + 0.5f) / innerSize) * (normH + 2 * spreadV) - spreadV;
@@ -142,13 +155,29 @@ namespace ArctisAurora.Core.Generators
                         for (int i = 0; i < crossings; i++)
                             if (crossX[i] > px) winding += crossSign[i];
 
-                        if (winding == 0)
+                        if (glyph.evenOdd ? (winding & 1) == 0 : winding == 0)
                         {
                             minR = -minR;
                             minG = -minG;
                             minB = -minB;
                             minAll = -minAll;
                         }
+                    }
+
+                    if (runCount != 0)
+                    {
+                        float stroke = float.NegativeInfinity;
+                        for (int r = 0; r < runCount; r++)
+                        {
+                            int rb = r * 4;
+                            if (runScale[r] == 0f || px < runBounds[rb] - clampDist || py < runBounds[rb + 1] - clampDist
+                                || px > runBounds[rb + 2] + clampDist || py > runBounds[rb + 3] + clampDist) continue;
+                            stroke = MathF.Max(stroke, StrokeDistance(Vector2.Transform(p, toLocal[r]), glyph.strokes[r]) * runScale[r]);
+                        }
+                        minR = MathF.Max(minR, stroke);
+                        minG = MathF.Max(minG, stroke);
+                        minB = MathF.Max(minB, stroke);
+                        minAll = MathF.Max(minAll, stroke);
                     }
 
                     float redDist = Math.Clamp(minR * distanceFactor, -1, 1);
@@ -186,6 +215,138 @@ namespace ArctisAurora.Core.Generators
                     bounds[b + 3] = MathF.Max(MathF.Max(edge.p0.Y, edge.c0.Y), MathF.Max(edge.c1.Y, edge.p1.Y));
                 }
             }
+        }
+
+        // A run's glyph-space box, widened by the furthest a cap or join reaches.
+        private static void RunBounds(StrokeRun run, float[] bounds, int at)
+        {
+            float reach = run.halfWidth * (run.join == StrokeJoin.Miter ? MathF.Max(run.miterLimit, 1.5f) : 1.5f);
+            Vector2 min = new Vector2(float.MaxValue), max = new Vector2(float.MinValue);
+            foreach (Edge e in run.edges)
+            {
+                min = Vector2.Min(min, Vector2.Min(Vector2.Min(e.p0, e.c0), Vector2.Min(e.c1, e.p1)));
+                max = Vector2.Max(max, Vector2.Max(Vector2.Max(e.p0, e.c0), Vector2.Max(e.c1, e.p1)));
+            }
+            min -= new Vector2(reach);
+            max += new Vector2(reach);
+
+            Vector2 a = Vector2.Transform(min, run.toGlyph), b = Vector2.Transform(max, run.toGlyph);
+            Vector2 c = Vector2.Transform(new Vector2(min.X, max.Y), run.toGlyph), d = Vector2.Transform(new Vector2(max.X, min.Y), run.toGlyph);
+            Vector2 lo = Vector2.Min(Vector2.Min(a, b), Vector2.Min(c, d)), hi = Vector2.Max(Vector2.Max(a, b), Vector2.Max(c, d));
+            bounds[at] = lo.X;
+            bounds[at + 1] = lo.Y;
+            bounds[at + 2] = hi.X;
+            bounds[at + 3] = hi.Y;
+        }
+
+        // Signed distance to one stroked subpath in its own units, positive inside.
+        private static float StrokeDistance(Vector2 p, StrokeRun run)
+        {
+            List<Edge> edges = run.edges;
+            Vector2 startDir = Vector2.Zero, endDir = Vector2.Zero;
+            for (int e = 0; e < edges.Count && startDir == Vector2.Zero; e++) startDir = Direction(edges[e], true);
+            for (int e = edges.Count - 1; e >= 0 && endDir == Vector2.Zero; e--) endDir = Direction(edges[e], false);
+            if (startDir == Vector2.Zero)
+            {
+                if (run.cap == StrokeCap.Butt) return float.NegativeInfinity;
+                startDir = endDir = Vector2.UnitX;
+            }
+
+            float nearest = float.MaxValue;
+            for (int e = 0; e < edges.Count; e++)
+            {
+                Edge edge = edges[e];
+                float dx = MathF.Max(MathF.Max(MathF.Min(MathF.Min(edge.p0.X, edge.c0.X), MathF.Min(edge.c1.X, edge.p1.X)) - p.X,
+                    p.X - MathF.Max(MathF.Max(edge.p0.X, edge.c0.X), MathF.Max(edge.c1.X, edge.p1.X))), 0f);
+                float dy = MathF.Max(MathF.Max(MathF.Min(MathF.Min(edge.p0.Y, edge.c0.Y), MathF.Min(edge.c1.Y, edge.p1.Y)) - p.Y,
+                    p.Y - MathF.Max(MathF.Max(edge.p0.Y, edge.c0.Y), MathF.Max(edge.c1.Y, edge.p1.Y))), 0f);
+                if (dx * dx + dy * dy >= nearest * nearest) continue;
+                nearest = MathF.Min(nearest, ClosestTOnBezier(p, edge));
+            }
+            float s = run.halfWidth - nearest;
+
+            if (!run.closed)
+            {
+                s = Cap(s, p, edges[0].p0, -startDir, run);
+                s = Cap(s, p, edges[^1].p1, endDir, run);
+            }
+            int joints = run.closed ? edges.Count : edges.Count - 1;
+            for (int j = 0; j < joints; j++)
+                s = Join(s, p, edges[j], edges[(j + 1) % edges.Count], run);
+            return s;
+        }
+
+        // Butt cuts the round end back to the end line; square adds a half-width box past it.
+        private static float Cap(float s, Vector2 p, Vector2 end, Vector2 outward, StrokeRun run)
+        {
+            float hw = run.halfWidth;
+            Vector2 d = p - end;
+            float along = Vector2.Dot(d, outward);
+            return run.cap switch
+            {
+                StrokeCap.Butt => MathF.Min(s, MathF.Max(-along, d.Length() - 1.5f * hw)),
+                StrokeCap.Square => MathF.Max(s, -Box(along - hw / 2f, outward.X * d.Y - outward.Y * d.X, hw / 2f, hw)),
+                _ => s,
+            };
+        }
+
+        // Bevel cuts the round join back to the bevel line; miter adds the kite out to the tip.
+        private static float Join(float s, Vector2 p, Edge into, Edge from, StrokeRun run)
+        {
+            if (run.join == StrokeJoin.Round) return s;
+            Vector2 ta = Direction(into, false), tb = Direction(from, true);
+            if (ta == Vector2.Zero || tb == Vector2.Zero) return s;
+            float cross = ta.X * tb.Y - ta.Y * tb.X;
+            float turn = MathF.Atan2(MathF.Abs(cross), Vector2.Dot(ta, tb));
+            if (turn < 0.01f) return s;
+
+            float hw = run.halfWidth;
+            float side = cross > 0f ? -hw : hw;
+            Vector2 nA = new Vector2(-ta.Y, ta.X) * side;
+            Vector2 nB = new Vector2(-tb.Y, tb.X) * side;
+            Vector2 sum = nA + nB;
+            Vector2 outward = sum.LengthSquared() > 1e-12f * hw * hw ? Vector2.Normalize(sum) : ta;
+            float cosHalf = MathF.Cos(turn / 2f);
+            Vector2 v = into.p1;
+
+            if (run.join == StrokeJoin.Miter && cosHalf * run.miterLimit >= 1f)
+            {
+                Span<Vector2> kite = stackalloc Vector2[] { v, v + nA, v + outward * (hw / cosHalf), v + nB };
+                return MathF.Max(s, -Polygon(p, kite));
+            }
+            return MathF.Min(s, MathF.Max(hw * cosHalf - Vector2.Dot(p - v, outward), Vector2.Distance(p, v) - 1.5f * hw));
+        }
+
+        // Unit tangent at an edge's start or end, skipping coincident controls; zero for a point.
+        private static Vector2 Direction(Edge edge, bool atStart)
+        {
+            Vector2 d = atStart ? edge.c0 - edge.p0 : edge.p1 - edge.c1;
+            if (d.LengthSquared() < 1e-12f) d = atStart ? edge.c1 - edge.p0 : edge.p1 - edge.c0;
+            if (d.LengthSquared() < 1e-12f) d = edge.p1 - edge.p0;
+            return d.LengthSquared() < 1e-12f ? Vector2.Zero : Vector2.Normalize(d);
+        }
+
+        // Box distance in the box's own axes, outside positive.
+        private static float Box(float x, float y, float halfX, float halfY)
+        {
+            float qx = MathF.Abs(x) - halfX, qy = MathF.Abs(y) - halfY;
+            return new Vector2(MathF.Max(qx, 0f), MathF.Max(qy, 0f)).Length() + MathF.Min(MathF.Max(qx, qy), 0f);
+        }
+
+        // Polygon distance, outside positive.
+        private static float Polygon(Vector2 p, ReadOnlySpan<Vector2> v)
+        {
+            float d = Vector2.DistanceSquared(p, v[0]);
+            float sign = 1f;
+            for (int i = 0, j = v.Length - 1; i < v.Length; j = i, i++)
+            {
+                Vector2 e = v[j] - v[i], w = p - v[i];
+                Vector2 b = w - e * Math.Clamp(Vector2.Dot(w, e) / Vector2.Dot(e, e), 0f, 1f);
+                d = MathF.Min(d, b.LengthSquared());
+                bool c1 = p.Y >= v[i].Y, c2 = p.Y < v[j].Y, c3 = e.X * w.Y > e.Y * w.X;
+                if ((c1 && c2 && c3) || (!c1 && !c2 && !c3)) sign = -sign;
+            }
+            return sign * MathF.Sqrt(d);
         }
 
         private static float ClosestTOnBezier(Vector2 p, Edge edge)
