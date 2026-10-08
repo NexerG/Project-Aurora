@@ -18,6 +18,7 @@
       <xs:enumeration value="Extend" />
       <xs:enumeration value="Word" />
       <xs:enumeration value="Copy" />
+      <xs:enumeration value="Zoom" />
     </xs:restriction>
   </xs:simpleType>
   <xs:attributeGroup name="NamedModifier.Attributes">

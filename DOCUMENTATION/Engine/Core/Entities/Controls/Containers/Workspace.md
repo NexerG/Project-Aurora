@@ -33,7 +33,7 @@ It holds workspace pages and paints nothing — its mask is `invisible`, like ev
 
 What the workspace adds beyond that is three names: `Default`, the UI document built into a page when the session has nothing recorded for this window, `Pane`, a document holding one empty pane that a restored arrangement splits to rebuild itself, and `FirstRun`, the space-separated list of workspace kinds a window starts with.
 
-Declaring one is a single element. In [[Thorium]] the main window's whole editing area is one `<Workspace>` element with `Default="workspace"`, `Pane="tab-pane"` and `FirstRun="General Sheets"`, and the two-pane arrangement lives in the `workspace` document.
+Declaring one is a single element. In [[Thorium]] the main window's whole editing area is one `<Workspace>` element with `Default="workspace"`, `Pane="tab-pane"` and `FirstRun="General Docs Sheets LaTeX Manager Calendar"` so a fresh window starts with every kind, and the two-pane arrangement lives in the `workspace` document.
 
 ## Pages and kinds
 

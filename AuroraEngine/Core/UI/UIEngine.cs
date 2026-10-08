@@ -469,6 +469,12 @@ namespace ArctisAurora.Core.UI
         // The wheel walks up from the hovered control until something consumes it.
         private static void SolveScroll(Vector2 point, Vector2 offset)
         {
+            if (InputHandler.instance.IsModifierDown(InputModifier.Zoom))
+            {
+                if (offset.Y > 0) UIScaling.ZoomIn();
+                else if (offset.Y < 0) UIScaling.ZoomOut();
+                return;
+            }
             if (hovering == null) return;
             Dispatch(Event(hovering, point, offset, 0, 0), PointerPhase.Scroll);
         }
