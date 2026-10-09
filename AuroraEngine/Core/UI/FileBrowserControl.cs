@@ -165,12 +165,14 @@ namespace ArctisAurora.Core.UI
         // file row so its name lines up with the folder names around it.
         protected FileRowControl AddRow(FileObject file, int depth, string expander, Action activate)
         {
-            LabelControl gutter = new LabelControl
+            IconControl gutter = new IconControl
             {
-                text = expander,
-                fontSize = rowFontSize,
+                setName = "default",
+                iconName = expander,
                 preferredWidth = gutterWidth,
-                horizontalPosition = 0f
+                preferredHeight = 10f,
+                verticalAlignment = VerticalAlignment.Center,
+                hitTestable = false
             };
             gutter.PaintOr(folderColorHex, PaletteRole.MutedInk);
 
@@ -237,7 +239,7 @@ namespace ArctisAurora.Core.UI
                 row.label.fieldColorHex = rowFieldColorHex;
 
                 if (row.children.Count > 0 && row.children[0] is Control content
-                    && content.children.Count > 0 && content.children[0] is LabelControl gutter)
+                    && content.children.Count > 0 && content.children[0] is IconControl gutter)
                     gutter.PaintOr(folderColorHex, PaletteRole.MutedInk);
             }
         }

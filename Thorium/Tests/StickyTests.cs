@@ -54,9 +54,9 @@ namespace Thorium.Tests
             t.Check(copy != null && ReferenceEquals(copy.session, source.session) && source.session.views == 2,
                 "the sticky holds a second view of the same note");
 
-            ButtonControl pin = Find<ButtonControl>(sticky.ui.uiRoot, b => b.children.OfType<LabelControl>().Any(l => l.name == "pin"))!;
+            ButtonControl pin = Find<ButtonControl>(sticky.ui.uiRoot, b => b.children.OfType<IconControl>().Any(l => l.name == "pin"))!;
             yield return t.Click(pin);
-            LabelControl pinLabel = pin.children.OfType<LabelControl>().First();
+            IconControl pinLabel = pin.children.OfType<IconControl>().First();
             t.Check(sticky.pinned && pinLabel.role == PaletteRole.Accent, "the pin button keeps the sticky on top and lights");
 
             SessionLayout.ChangeScope("sticky-b");

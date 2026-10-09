@@ -47,7 +47,8 @@ namespace ArctisAurora.Core.UI
     {
         Custom,
         Single,
-        Stack
+        Stack,
+        Wrap
     }
 
     public struct LayoutRect

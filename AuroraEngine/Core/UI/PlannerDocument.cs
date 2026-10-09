@@ -10,7 +10,10 @@ namespace ArctisAurora.Core.UI
         public const string extension = ".planner.xml";
         public const string defaultColor = "#4C8BF5";
 
+        public const float defaultNameWidth = 200f;
+
         public string? name;
+        public float nameWidth = defaultNameWidth;
         public readonly List<PlannerCategory> categories = new List<PlannerCategory>();
         public readonly List<PlannerTicket> tickets = new List<PlannerTicket>();
 
@@ -81,6 +84,9 @@ namespace ArctisAurora.Core.UI
         public Guid id = Guid.NewGuid();
         public string name = "";
         public string colorHex = PlannerDocument.defaultColor;
+        public float width = defaultWidth;
+
+        public const float defaultWidth = 260f;
     }
 
     public sealed class PlannerTicket

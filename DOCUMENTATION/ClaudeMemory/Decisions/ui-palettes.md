@@ -171,6 +171,29 @@ Slice 6 of [../Context/animation-plan.md](../Context/animation-plan.md).
 
 **Why a baked copy.** With the pool on another thread, Main's owner-asserted reads would fail, and even `Backing` reads would feed mid-fade colours into contrast decisions.
 
+## Contrast floors (2026-10-09)
+
+- Against `Surface` (WCAG luminance ratio): `SubField` ≥ 1.25, `Chrome` ≥ 1.25, `Line` ≥ 1.5. Each was moved along its existing direction (darker on light, lighter on dark) until it met the floor; the canvas values in the table above are superseded for these three.
+- Before, the sheet's fx box (`SubField`), grid (`Line`) and headers (`Chrome`) read at 1.03–1.27 and vanished on light palettes (user, 2026-10-09).
+- Dark palettes' `Chrome` sits darker than a near-black `Surface` and cannot reach 1.25 that way; left at canvas values pending a decision (glacier excepted, reachable → `171A1F`).
+
+| `Name` | Chrome | SubField | Line |
+|---|---|---|---|
+| `thorium-light` | DAD9D4 | DAD8D3 | C8C6C1 |
+| `thorium-bone` | D8DAD4 | D9DBD2 | C6C8C0 |
+| `thorium-violet` | D8D8DC | D8D8DD | C6C6CC |
+| `thorium-terracotta` | D8D8D8 | D8D8D8 | C6C6C6 |
+| `thorium-yellow` | E1D9C2 | E0DAC4 | CEC7B3 |
+| `thorium-printstream` | E5E5E5 | E5E5E5 | D2D2D2 |
+| `thorium-glacier` | 171A1F | 353D47 | 414853 |
+| `thorium-aurora` | — | 232B39 | 2F3845 |
+| `thorium-cyberpunk` | — | 272035 | 352C49 |
+| `thorium-oxblood` | — | 322224 | 442D30 |
+| `thorium-phosphor` | — | 1C2922 | 29362D |
+| `thorium-void` | — | 1E1E1E | 2C2C2C |
+
+- **1px rules snap to whole pixels.** Every quad goes through the SDF coverage in `UIEngine.frag`, so a 1px rect straddling a pixel boundary draws as two half-alpha pixels — on a faint `Line` that reads as no line. `UI.SheetControl.ArrangeGrid` and the header rules place their edge with `UIScaling.Snap` (floored on the window's device pixel grid, design × `WindowRoot.scale`) and their width with `UIScaling.Hairline` (design width rounded to whole device pixels, min 1 — 1px at 125/150 %, 2px at 200 %; user chose this over a fixed 1-device-px hairline). Rejected: snapping quad edges in `UIEngine.vert` — needs the framebuffer size in the UBO, all four shader copies, a golden re-bake, and makes animated quads step by pixels.
+
 ## Code colours (2026-10-02)
 
 - Optional `Keyword`, `String`, `Number`, `Comment` on `<Palette>`; four slots at the end of every block (`Palettes.Code`). Unset → Accent, or muted ink on `SubField` for Comment. See [[code-block-colouring]].

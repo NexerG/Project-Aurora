@@ -286,16 +286,17 @@ namespace ArctisAurora.Core.UI
             float lineHeight = fixedSize ? MathF.Min(view.Bottom, origin.Y + page.RowTop(page.rows)) - view.y : view.height;
             float lineLength = fixedSize ? MathF.Min(view.Right, origin.X + page.ColumnLeft(page.columns)) - view.x : view.width;
 
+            float hairline = UIScaling.Hairline(this, lineWidth);
             int line = 0;
             for (int c = firstColumn; c <= lastColumn; c++)
             {
-                float right = origin.X + page.ColumnLeft(c + 1);
-                Pooled(lines, grid, line++, PaletteRole.Line).Arrange(new LayoutRect(right - lineWidth, view.y, lineWidth, MathF.Max(0f, lineHeight)));
+                float right = UIScaling.Snap(this, origin.X + page.ColumnLeft(c + 1));
+                Pooled(lines, grid, line++, PaletteRole.Line).Arrange(new LayoutRect(right - hairline, view.y, hairline, MathF.Max(0f, lineHeight)));
             }
             for (int r = firstRow; r <= lastRow; r++)
             {
-                float bottom = origin.Y + page.RowTop(r + 1);
-                Pooled(lines, grid, line++, PaletteRole.Line).Arrange(new LayoutRect(view.x, bottom - lineWidth, MathF.Max(0f, lineLength), lineWidth));
+                float bottom = UIScaling.Snap(this, origin.Y + page.RowTop(r + 1));
+                Pooled(lines, grid, line++, PaletteRole.Line).Arrange(new LayoutRect(view.x, bottom - hairline, MathF.Max(0f, lineLength), hairline));
             }
             for (int i = line; i < lines.Count; i++)
                 lines[i].Arrange(Hidden);
@@ -340,11 +341,15 @@ namespace ArctisAurora.Core.UI
             bool range = editor.anchorRow != editor.activeRow || editor.anchorColumn != editor.activeColumn;
             selection.Arrange(range ? RangeRect() : LayoutRect.Empty);
 
-            LayoutRect active = CellRect(editor.activeRow, editor.activeColumn);
-            outline[0].Arrange(new LayoutRect(active.x, active.y, active.width, outlineWidth));
-            outline[1].Arrange(new LayoutRect(active.x, active.Bottom - outlineWidth, active.width, outlineWidth));
-            outline[2].Arrange(new LayoutRect(active.x, active.y, outlineWidth, active.height));
-            outline[3].Arrange(new LayoutRect(active.Right - outlineWidth, active.y, outlineWidth, active.height));
+            LayoutRect cellRect = CellRect(editor.activeRow, editor.activeColumn);
+            float left = UIScaling.Snap(this, cellRect.x);
+            float top = UIScaling.Snap(this, cellRect.y);
+            LayoutRect active = new LayoutRect(left, top, UIScaling.Snap(this, cellRect.Right) - left, UIScaling.Snap(this, cellRect.Bottom) - top);
+            float edge = UIScaling.Hairline(this, outlineWidth);
+            outline[0].Arrange(new LayoutRect(active.x, active.y, active.width, edge));
+            outline[1].Arrange(new LayoutRect(active.x, active.Bottom - edge, active.width, edge));
+            outline[2].Arrange(new LayoutRect(active.x, active.y, edge, active.height));
+            outline[3].Arrange(new LayoutRect(active.Right - edge, active.y, edge, active.height));
 
             if (!editor.editing)
             {
@@ -362,8 +367,9 @@ namespace ArctisAurora.Core.UI
         {
             Pooled(headerParts, headers, 0, PaletteRole.Chrome).Arrange(new LayoutRect(view.x, view.y, view.width, headerHeight));
             Pooled(headerParts, headers, 1, PaletteRole.Chrome).Arrange(new LayoutRect(view.x, view.y, headerWidth, view.height));
-            Pooled(headerParts, headers, 2, PaletteRole.Line).Arrange(new LayoutRect(view.x, view.y + headerHeight - lineWidth, view.width, lineWidth));
-            Pooled(headerParts, headers, 3, PaletteRole.Line).Arrange(new LayoutRect(view.x + headerWidth - lineWidth, view.y, lineWidth, view.height));
+            float hairline = UIScaling.Hairline(this, lineWidth);
+            Pooled(headerParts, headers, 2, PaletteRole.Line).Arrange(new LayoutRect(view.x, UIScaling.Snap(this, view.y + headerHeight) - hairline, view.width, hairline));
+            Pooled(headerParts, headers, 3, PaletteRole.Line).Arrange(new LayoutRect(UIScaling.Snap(this, view.x + headerWidth) - hairline, view.y, hairline, view.height));
 
             int name = 0;
             for (int c = firstColumn; c <= lastColumn; c++)

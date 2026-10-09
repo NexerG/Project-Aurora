@@ -8,10 +8,16 @@
 			<Panel Width="3" Height="12" Margin="0,7,0,10" VerticalAlignment="Center" Role="Accent"/>
 			<Panel WidthStar="1" Height="22"/>
 			<Button Width="32" Height="22" onRelease="Window.TogglePin">
-				<Label Name="pin" Text="^" FontSize="14" Role="MutedInk"/>
+				<Icon Name="pin" Set="default" Icon="pin" Width="11" Height="11" HorizontalPos="0.5" VerticalPos="0.5"/>
+			</Button>
+			<Button Width="32" Height="22" onRelease="Window.Minimize">
+				<Icon Set="default" Icon="minimize" Width="12" Height="12" HorizontalPos="0.5" VerticalPos="0.5"/>
+			</Button>
+			<Button Width="32" Height="22" onRelease="Window.MaximizeRestore">
+				<Icon Set="default" Icon="maximize" Width="14" Height="14" HorizontalPos="0.5" VerticalPos="0.5"/>
 			</Button>
 			<Button Width="32" Height="22" HoverColorHex="#C42B1E" PressColorHex="#A82318" onRelease="Window.Close">
-				<Label Text="X" FontSize="14" Role="MutedInk"/>
+				<Icon Set="default" Icon="close" Width="12" Height="12" HorizontalPos="0.5" VerticalPos="0.5"/>
 			</Button>
 		</TitleBar>
 

@@ -167,10 +167,6 @@ namespace ArctisAurora.Core.UI
     // engine.
     public static class TextMeasurer
     {
-        // atlas cell geometry
-        internal const float atlasInkMargin = 0.1f;
-        internal const float CellScale = 1f / (1f - 2f * atlasInkMargin);
-
         // A run reduced to what layout needs. Runs are TextInputControls today and constructing one
         // reaches into the asset registry, so the measurer takes the data rather than the control —
         // that is what keeps it runnable with no registry and no GPU.
@@ -744,16 +740,18 @@ namespace ArctisAurora.Core.UI
             float ascent = 0f;
             float descent = 0f;
 
-            foreach (Glyph glyph in Resolve(fontName).atlasMetaData.glyphs)
+            AtlasMetaData atlas = Resolve(fontName).atlasMetaData;
+            float margin = atlas.inkMargin;
+            float cellScale = atlas.cellScale;
+            foreach (Glyph glyph in atlas.glyphs)
             {
                 int range = glyph.regular.yMax - glyph.regular.yMin;
                 if (range == 0) continue;
 
                 // The quad is the padded atlas cell rather than the ink box,
                 // and the baseline sits inside that cell at the glyph's yMax fraction.
-                float cellHeight = glyph.regular.glyphHeight * TextMeasurer.CellScale;
-                float glyphAscent = (TextMeasurer.atlasInkMargin
-                    + (1f - 2f * TextMeasurer.atlasInkMargin) * glyph.regular.yMax / range) * cellHeight;
+                float cellHeight = glyph.regular.glyphHeight * cellScale;
+                float glyphAscent = (margin + (1f - 2f * margin) * glyph.regular.yMax / range) * cellHeight;
 
                 if (glyphAscent > ascent) ascent = glyphAscent;
                 if (cellHeight - glyphAscent > descent) descent = cellHeight - glyphAscent;

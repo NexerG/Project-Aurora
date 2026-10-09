@@ -35,6 +35,8 @@ Silk.NET.GLFW 2.21 binds neither. The newest release (2.23.0) doesn't either, an
 **GLFW init is its own step, not a side effect of opening the first window.**
 User call. It lets `InitWindowing` ask for the monitor's scale before the window exists.
 
+**Hairlines snap to device pixels (2026-10-09).** `UIScaling.Snap` / `Hairline` — see [[ui-palettes]] § Contrast floors. Only the sheet grid uses them so far.
+
 ## Known gaps
 - A display scale other than 100% is **not verified**; the test machine is one 1920×1080 at 100%. Moving a window between monitors of different scales has never been exercised.
 - The first window uses the **primary** monitor's scale even when `GraphicsSettings` names another monitor; the callback fixes the contents once it lands, not the window size.

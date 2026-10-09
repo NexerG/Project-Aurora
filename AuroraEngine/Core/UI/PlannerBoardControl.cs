@@ -1,6 +1,7 @@
 using ArctisAurora.Core.Filing;
 using ArctisAurora.Core.Users;
 using ArctisAurora.EngineWork;
+using CursorShape = Silk.NET.GLFW.CursorShape;
 using System.Globalization;
 using System.Numerics;
 
@@ -9,7 +10,9 @@ namespace ArctisAurora.Core.UI
     // A planner's tickets as cards in a column per category.
     public class PlannerBoardControl : StackPanelControl
     {
-        public const float columnWidth = 260f;
+        public const float minColumnWidth = 160f;
+        public const float maxColumnWidth = 600f;
+        private const float edgeGrab = 3f;
         private const float gap = 12f;
         private const float inset = 8f;
         private const float stripWidth = 4f;
@@ -32,6 +35,12 @@ namespace ArctisAurora.Core.UI
         private TicketCard? markedCard;
         private int markedIndex = -1;
         private bool rebuildPending;
+
+        // the column whose right edge is being dragged
+        private int resizing = -1;
+        private float pressWidth;
+        private float pressX;
+        private CursorShape shownCursor = CursorShape.Arrow;
 
         public PlannerBoardControl(PlannerEditorControl editor)
         {
@@ -71,7 +80,7 @@ namespace ArctisAurora.Core.UI
                 List<PlannerTicket> tickets = document.TicketsIn(category).ToList();
                 StackPanelControl column = new StackPanelControl
                 {
-                    preferredWidth = columnWidth,
+                    preferredWidth = category.width,
                     verticalAlignment = VerticalAlignment.Top,
                     Spacing = inset,
                     padding = new Thickness(inset),
@@ -96,7 +105,9 @@ namespace ArctisAurora.Core.UI
                 PanelControl swatch = new PanelControl { preferredWidth = 10f, preferredHeight = 10f, verticalAlignment = VerticalAlignment.Center, cornerRole = CornerRole.Control, hitTestable = false };
                 swatch.PaintOr(category.colorHex, PaletteRole.Accent);
                 heading.AddChild(swatch);
-                heading.AddChild(Text($"{category.name}  {tickets.Count}", titleSize, PaletteRole.Ink, FontStyle.Bold));
+                LabelControl title = Text($"{category.name}  {tickets.Count}", titleSize, PaletteRole.Ink, FontStyle.Bold, true);
+                title.widthStar = 1f;
+                heading.AddChild(title);
                 column.AddChild(heading);
 
                 List<TicketCard> cards = new List<TicketCard>();
@@ -123,13 +134,13 @@ namespace ArctisAurora.Core.UI
             card.AddChild(strip);
 
             StackPanelControl body = new StackPanelControl { Spacing = 2f, padding = new Thickness(inset), alpha = 0f, hitTestable = false };
-            body.AddChild(Text(ticket.name, titleSize, PaletteRole.Ink, FontStyle.Regular));
-            body.AddChild(Text(Dates(ticket.time), detailSize, PaletteRole.MutedInk, FontStyle.Regular));
+            body.AddChild(Text(ticket.name, titleSize, PaletteRole.Ink, FontStyle.Regular, true));
+            body.AddChild(Text(Dates(ticket.time), detailSize, PaletteRole.MutedInk, FontStyle.Regular, true));
             if (ticket.creator is User creator)
-                body.AddChild(Text($"by {creator.name}", detailSize, PaletteRole.MutedInk, FontStyle.Regular));
+                body.AddChild(Text($"by {creator.name}", detailSize, PaletteRole.MutedInk, FontStyle.Regular, true));
             if (ticket.assignees.Count > 0)
             {
-                StackPanelControl chips = new StackPanelControl { orientation = Orientation.Horizontal, Spacing = 4f, alpha = 0f, hitTestable = false };
+                WrapPanelControl chips = new WrapPanelControl { Spacing = 4f, alpha = 0f, hitTestable = false };
                 foreach (User assignee in ticket.assignees)
                 {
                     StackPanelControl chip = new StackPanelControl { preferredHeight = chipHeight, padding = new Thickness(6f, 0f), cornerRole = CornerRole.Control, hitTestable = false };
@@ -217,6 +228,65 @@ namespace ArctisAurora.Core.UI
         }
         #endregion
 
+        #region ---- column resize ----
+        private int EdgeAt(Vector2 point)
+        {
+            for (int i = 0; i < columns.Count; i++)
+                if (MathF.Abs(point.X - columns[i].column.arrangedRect.Right) <= edgeGrab) return i;
+            return -1;
+        }
+
+        public override bool OnPointerPress(PointerEvent e)
+        {
+            if (e.button == PointerEvent.leftButton && EdgeAt(e.point) is int edge && edge >= 0)
+            {
+                resizing = edge;
+                pressWidth = columns[edge].category.width;
+                pressX = e.point.X;
+                StartDrag();
+                return true;
+            }
+            return base.OnPointerPress(e);
+        }
+
+        public override void OnDrag(PointerEvent e)
+        {
+            base.OnDrag(e);
+            if (resizing < 0) return;
+            float width = Math.Clamp(pressWidth + e.point.X - pressX, minColumnWidth, maxColumnWidth);
+            columns[resizing].category.width = width;
+            columns[resizing].column.preferredWidth = width;
+        }
+
+        public override void OnDragStop(bool accepted)
+        {
+            base.OnDragStop(accepted);
+            if (resizing < 0) return;
+            if (columns[resizing].category.width != pressWidth) editor.document.unsaved = true;
+            resizing = -1;
+            ShowCursor(CursorShape.Arrow);
+        }
+
+        public override bool OnPointerMove(PointerEvent e)
+        {
+            if (resizing < 0) ShowCursor(EdgeAt(e.point) >= 0 ? CursorShape.HResize : CursorShape.Arrow);
+            return base.OnPointerMove(e);
+        }
+
+        public override bool OnPointerExit(PointerEvent e)
+        {
+            if (resizing < 0) ShowCursor(CursorShape.Arrow);
+            return base.OnPointerExit(e);
+        }
+
+        private void ShowCursor(CursorShape shape)
+        {
+            if (shownCursor == shape) return;
+            shownCursor = shape;
+            UIEngine.WindowOf(this)?.os.ChangeCursor(shape);
+        }
+        #endregion
+
         // One ticket's card; a press dragged past a few pixels carries it to another place on the board.
         public sealed class TicketCard : StackPanelControl
         {
@@ -278,9 +348,18 @@ namespace ArctisAurora.Core.UI
             }
         }
 
-        private static LabelControl Text(string text, int size, PaletteRole role, FontStyle style)
+        private sealed class WrappingLabel : LabelControl
         {
-            LabelControl label = new LabelControl { text = text, fontSize = size, style = style, hitTestable = false };
+            protected override bool Wraps => true;
+        }
+
+        private static LabelControl Text(string text, int size, PaletteRole role, FontStyle style, bool wraps = false)
+        {
+            LabelControl label = wraps ? new WrappingLabel() : new LabelControl();
+            label.text = text;
+            label.fontSize = size;
+            label.style = style;
+            label.hitTestable = false;
             label.PaintOr(null, role);
             return label;
         }

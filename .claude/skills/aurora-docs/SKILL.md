@@ -60,3 +60,4 @@ Its report is not evidence (CLAUDE.md §10).
 - Each `GAP` or `CONFLICT` line in the report: answer it with an `Edit` here, or tell the user.
 - Read the vault prose for voice; Sonnet's vault prose can need a sentence fixed.
 - The verification word in the WIP / Changelog entry matches the brief exactly.
+- A WIP / Changelog change has its twin in `D:\Repositories\ThoriumNotes\*.planner.xml`.

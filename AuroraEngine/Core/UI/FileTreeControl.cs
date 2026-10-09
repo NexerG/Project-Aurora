@@ -9,8 +9,8 @@ namespace ArctisAurora.Core.UI
     public abstract class FileTreeControl : FileBrowserControl
     {
         // expander captions
-        private const string closedPrefix = ">";
-        private const string openPrefix = "v";
+        private const string closedPrefix = "chevron-right";
+        private const string openPrefix = "chevron-down";
 
         // row height tweens when a folder opens or closes
         private const float expandSeconds = 0.18f;
@@ -100,8 +100,8 @@ namespace ArctisAurora.Core.UI
                 return;
             }
 
-            LabelControl gutter = listed[at].row.gutter;
-            gutter.text = closedPrefix;
+            IconControl gutter = listed[at].row.gutter;
+            gutter.iconName = closedPrefix;
             gutter.effect = closeTurn;
 
             for (int i = at + 1; i < end; i++)

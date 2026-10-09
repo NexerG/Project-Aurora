@@ -15,8 +15,8 @@ namespace Thorium.Tests
         private static IEnumerator<int> XmlRoundTrip(TestContext t)
         {
             XElement source = XElement.Parse(
-                "<Planner Name=\"Launch\">" +
-                "<Category Id=\"11111111-1111-1111-1111-111111111111\" Name=\"Design\" Color=\"#E5484D\" />" +
+                "<Planner Name=\"Launch\" NameWidth=\"240\">" +
+                "<Category Id=\"11111111-1111-1111-1111-111111111111\" Name=\"Design\" Color=\"#E5484D\" Width=\"300\" />" +
                 "<Category Id=\"22222222-2222-2222-2222-222222222222\" Name=\"Build\" Color=\"#30A46C\" />" +
                 "<Ticket Id=\"aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa\" Name=\"Sketches\" Category=\"11111111-1111-1111-1111-111111111111\" " +
                 "Start=\"2026-10-05\" End=\"2026-10-08\" AllDay=\"true\" Creator=\"Grexen\" Created=\"2026-10-01T09:30:00\" />" +
@@ -33,6 +33,7 @@ namespace Thorium.Tests
 
             t.Check(XNode.DeepEquals(source, PlannerXml.ToXml(planner)), $"the planner writes back as it was read: {PlannerXml.ToXml(planner)}");
             t.Check(planner.categories.Count == 2 && planner.tickets.Count == 2, "both categories and both tickets are read");
+            t.Check(planner.nameWidth == 240f && planner.categories[0].width == 300f && planner.categories[1].width == PlannerCategory.defaultWidth, "the name column and board column widths are read");
             t.Check(planner.extra.Count == 1 && review.extra.Count == 1, "elements the reader does not know are kept");
             t.Check(sketches.time.allDay && sketches.time.end - sketches.time.start == TimeSpan.FromDays(3), "an all-day ticket ends at midnight after its last day");
             t.Check(!review.time.allDay && review.time.end - review.time.start == TimeSpan.FromMinutes(150), "a timed ticket keeps its hours and minutes");

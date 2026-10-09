@@ -886,22 +886,23 @@ namespace ArctisAurora.Core.UI
                 return m.advanceWidth * size;
             }
 
-            float cellW = m.glyphWidth * size * TextMeasurer.CellScale;
-            float cellH = m.glyphHeight * size * TextMeasurer.CellScale;
-            float bearingX = m.leftSideOffset * size - cellW * TextMeasurer.atlasInkMargin;
+            float margin = atlas.inkMargin;
+            float cellW = m.glyphWidth * size * atlas.cellScale;
+            float cellH = m.glyphHeight * size * atlas.cellScale;
 
             float ascent = 0f;
             int range = m.yMax - m.yMin;
             if (range != 0)
             {
                 // baselineFromTop is a fraction OF THE CELL, so it scales the cell height
-                float baselineFromTop = TextMeasurer.atlasInkMargin
-                    + (1f - 2f * TextMeasurer.atlasInkMargin) * m.yMax / range;
+                float baselineFromTop = margin + (1f - 2f * margin) * m.yMax / range;
                 ascent = baselineFromTop * cellH;
             }
 
-            float x = penX + bearingX;
-            float y = baselineY - ascent;
+            float s = UIEngine.pixelScale;
+            float ink = (penX + m.leftSideOffset * size) * s;
+            float x = MathF.Round(ink * 3f) / (3f * s) - cellW * margin;
+            float y = MathF.Round(baselineY * s) / s - ascent;
 
             Matrix4x4 matrix = Matrix4x4.Identity;
             matrix *= Matrix4x4.CreateScale(cellW, cellH, 1f);

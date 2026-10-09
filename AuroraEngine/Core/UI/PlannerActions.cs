@@ -20,6 +20,12 @@ namespace ArctisAurora.Core.UI
         [A_XSDActionDependency("Planner.EditCategory", "Input", "Opens the popup of the category last pressed on")]
         public static void EditCategory() => Editor()?.EditPickedCategory();
 
+        [A_XSDActionDependency("Planner.AddTicketHere", "Input", "Opens the popup for a new ticket in the category last pressed on")]
+        public static void AddTicketHere() => Editor()?.AddTicketToPickedCategory();
+
+        [A_XSDActionDependency("Planner.DeleteCategoryWithTickets", "Input", "Asks, then deletes the category last pressed on and all its tickets")]
+        public static void DeleteCategoryWithTickets() => Editor()?.ConfirmDeletePickedCategory();
+
         [A_XSDActionDependency("Planner.AddCategory", "Input", "Opens the popup for a new category")]
         public static void AddCategory() => Editor()?.AddCategory();
 

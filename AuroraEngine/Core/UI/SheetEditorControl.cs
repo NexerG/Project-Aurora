@@ -77,7 +77,7 @@ namespace ArctisAurora.Core.UI
                 edgeRole = PaletteRole.Line
             };
             cellName = new LabelControl { preferredWidth = 44f, fontSize = 12, role = PaletteRole.Ink, verticalPosition = 0.5f };
-            formula = new TextBoxControl { widthStar = 1f, fontSize = 12, role = PaletteRole.Field };
+            formula = new TextBoxControl { widthStar = 1f, fontSize = 12, role = PaletteRole.SubField, padding = new Thickness(6f, 0f), cornerRole = CornerRole.Control };
             formula.onCommit = value => { CommitFormula(value); if (sheet != null) UIEngine.SetActiveControl(sheet); };
             formula.onCancel = () => { SyncFormula(); if (sheet != null) UIEngine.SetActiveControl(sheet); };
             formula.onBlur = () => CommitFormula(formula.text);

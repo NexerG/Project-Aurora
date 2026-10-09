@@ -131,6 +131,7 @@
       <xs:enumeration value="WorkspaceBar" />
       <xs:enumeration value="Workspace" />
       <xs:enumeration value="WorkspaceKind" />
+      <xs:enumeration value="WrapPanel" />
       <xs:enumeration value="Orientation" />
     </xs:restriction>
   </xs:simpleType>

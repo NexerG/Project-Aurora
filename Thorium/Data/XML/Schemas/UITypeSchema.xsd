@@ -839,6 +839,15 @@
       <xs:enumeration value="Calendar" />
     </xs:restriction>
   </xs:simpleType>
+  <xs:attributeGroup name="WrapPanel.Attributes">
+    <xs:attributeGroup ref="EntityRegistry:Control.Attributes" />
+    <xs:attribute name="Spacing" type="xs:float" />
+  </xs:attributeGroup>
+  <xs:element name="WrapPanel" type="types:WrapPanel" />
+  <xs:complexType name="WrapPanel">
+    <xs:sequence />
+    <xs:attributeGroup ref="types:WrapPanel.Attributes" />
+  </xs:complexType>
   <xs:simpleType name="Orientation">
     <xs:restriction base="xs:string">
       <xs:enumeration value="Horizontal" />

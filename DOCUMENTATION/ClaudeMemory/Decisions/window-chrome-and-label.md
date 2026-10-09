@@ -79,10 +79,11 @@ calls `WindowActions.Close()`, so the keybind and the title bar's X go through t
 commented-out XML, and is **deleted** (user, 2026-08-17). `actionSchema.xsd` drops it on the next
 run, so nothing has to be edited by hand.
 
-### 5. Captions are ASCII, because the atlas is
+### 5. Captions are icons
 
-`-`, `[]`, `X`. The imported glyph set is ASCII plus Lithuanian diacritics — no `−`, `□` or `✕`.
-A glyph outside the atlas is not a fallback, it is a missing quad.
+Every title bar's minimize / maximize / close button holds an `<Icon Set="default">` (`minimize`,
+`maximize`, `close`), never a text caption. The original ASCII `-`, `[]`, `X` existed only because the
+font atlas has no `−`, `□` or `✕`; the icon set replaced them.
 
 ### 6. Every child of the bar carries an explicit size
 

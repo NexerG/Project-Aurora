@@ -29,6 +29,9 @@ namespace ArctisAurora.Core.UI
         // set while an export walks a tree; Emit records into it instead of writing quads
         internal static DrawRecorder? recorder;
 
+        // window pixels per design unit for the window being emitted
+        internal static float pixelScale = 1f;
+
         #region ---- layout ----
         private static readonly HashSet<Control> _dirtyRoots = new HashSet<Control>();
 
@@ -640,6 +643,8 @@ namespace ArctisAurora.Core.UI
                 if (ui == null) continue;
 
                 int first = quads.Count;
+                float viewport = ui.uiRoot?.ViewportSize(window.os.windowSize).X ?? 0f;
+                pixelScale = viewport > 0f ? window.os.windowSize.Width / viewport : 1f;
                 Control root = ui.rangeRoot ?? ui.uiRoot;
                 int walked = root == null ? 0 : Collect(root, Control.rootDepth);
                 int count = quads.Count - first;

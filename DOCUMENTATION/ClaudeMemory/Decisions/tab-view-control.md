@@ -315,7 +315,6 @@ The Sizes board's "Button caption 14 → 12" was read as the tab caption; dialog
 ## Known gaps
 - At boot, before any click, `focused` is null and every pane's active tab shows the blue bar.
 - The 3 px grip and 64 px `MinTabWidth` are engine defaults, so AuroraEditor and Carbon change too; a 3 px grip is a narrow mouse target.
-- The torn-off tab window's caption buttons are still 16 px text glyphs ("-", "[]", "X"), not icons.
 - Quote text (18) is now larger than body text (16).
 - No palette file sets `IdleAccent` yet.
 

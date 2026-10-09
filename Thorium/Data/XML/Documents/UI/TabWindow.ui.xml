@@ -13,13 +13,13 @@
 			</MenuButton>
 			<Panel WidthStar="1" Height="26"/>
 			<Button Width="40" Height="26" onRelease="Window.Minimize">
-				<Label Text="-" FontSize="16" Role="MutedInk"/>
+				<Icon Set="default" Icon="minimize" Width="12" Height="12" HorizontalPos="0.5" VerticalPos="0.5"/>
 			</Button>
 			<Button Width="40" Height="26" onRelease="Window.MaximizeRestore">
-				<Label Text="[]" FontSize="16" Role="MutedInk"/>
+				<Icon Set="default" Icon="maximize" Width="14" Height="14" HorizontalPos="0.5" VerticalPos="0.5"/>
 			</Button>
 			<Button Width="40" Height="26" HoverColorHex="#C42B1E" PressColorHex="#A82318" onRelease="Window.Close">
-				<Label Text="X" FontSize="16" Role="MutedInk"/>
+				<Icon Set="default" Icon="close" Width="12" Height="12" HorizontalPos="0.5" VerticalPos="0.5"/>
 			</Button>
 		</TitleBar>
 

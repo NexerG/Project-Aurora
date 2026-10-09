@@ -144,7 +144,7 @@ Moves dispatch to the hovered control, so a flick that leaves a narrow tab befor
 - OS dialogs (Picture…, Import CSV…) and `Sheets.ConvertOpenCsv` untested; the folder-picker refactor needs one manual vault-add.
 - Inspector width from a splitter drag is not saved in the session.
 - Inspector List row is text (None/Bullets/Numbers/Tasks), not icons.
-- Status bar and the design's Explorations ideas are still out.
+- Status bar (Thorium `UI.ui.xml`, `Thorium.Editor.StatusBarActions`) is a mockup: storage / connection / git items toggle static state with no backing; no store/server/branch icons yet. The design's Explorations ideas are still out.
 - W3/W4 are not GUI-verified: no real-app run.
 - An empty pane shows nothing at all (no strip, no "No open files" message).
 - Folders stay listed under every filter, including ones with no matching file.
