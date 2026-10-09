@@ -144,6 +144,7 @@ namespace ArctisAurora.Core.Testing
             {
                 string suite = Paths.DocName(path);
                 if (filter != null && !string.Equals(suite, filter, StringComparison.OrdinalIgnoreCase)) continue;
+                if (filter == null && string.Equals(suite, "Perf", StringComparison.OrdinalIgnoreCase)) continue;
                 found = true;
 
                 XElement root = XElement.Load(path);

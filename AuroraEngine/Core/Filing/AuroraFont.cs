@@ -119,6 +119,7 @@ namespace ArctisAurora.Core.Filing
             glyphs.hasItalic = faceStyles.Contains(FontStyle.Italic);
             glyphs.hasBoldItalic = faceStyles.Contains(FontStyle.BoldItalic);
             glyphs.pxRange = MTSDFGen.PxRange;
+            glyphs.cellSize = perGlyphSize;
 
             // Every face measures its own advances and ink boxes; fold them onto the regular glyph
             // that carries all four sets.
@@ -586,6 +587,8 @@ namespace ArctisAurora.Core.Filing
         public Glyph[] glyphs = null!;
         [@Serializable]
         public float pxRange;
+        [@Serializable]
+        public int cellSize;
 
         // which faces the family bake actually found
         [@Serializable]
@@ -614,6 +617,10 @@ namespace ArctisAurora.Core.Filing
         public int styleCount => 1 + (hasBold ? 1 : 0) + (hasItalic ? 1 : 0) + (hasBoldItalic ? 1 : 0);
 
         public int cellCount => glyphCount * styleCount;
+
+        // cell quad geometry around the ink box
+        public float inkMargin => MTSDFGen.InkMargin(cellSize);
+        public float cellScale => 1f / (1f - 2f * inkMargin);
 
         // A style the family has no face for draws as regular rather than as nothing.
         public FontStyle Effective(FontStyle style) => style switch

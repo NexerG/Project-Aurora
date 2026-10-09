@@ -17,6 +17,11 @@ namespace ArctisAurora.Core.Filing
         public Glyph[] icons = null!;
         [@Serializable]
         public float pxRange;
+        [@Serializable]
+        public int cellSize;
+
+        // cell quad over the ink box
+        public float cellScale => 1f / (1f - 2f * MTSDFGen.InkMargin(cellSize));
 
         [@NonSerializable]
         private string[] split = null!;
@@ -61,6 +66,7 @@ namespace ArctisAurora.Core.Filing
             meta.names = string.Join('\n', names);
             meta.icons = icons.ToArray();
             meta.pxRange = MTSDFGen.PxRange;
+            meta.cellSize = perIconSize;
 
             string dir = Path.Combine(outputRoot, setName);
             Directory.CreateDirectory(dir);

@@ -56,6 +56,33 @@
 			<Splitter Width="3"/>
 			<Inspector Width="240"/>
 		</StackPanel>
+
+		<StackPanel Orientation="Horizontal" Height="22" Padding="0,4,0,4" Role="Surface" EdgeThickness="1,0,0,0" EdgeRole="Line">
+			<Button Width="136" Height="22" onRelease="Status.CycleStore">
+				<StackPanel Orientation="Horizontal" Height="22" Padding="0,8,0,8">
+					<Icon Name="StatusStoreIcon" Set="default" Icon="cloud" Width="12" Height="12" Margin="0,6,0,0" VerticalAlignment="Center"/>
+					<Label Name="StatusStore" Text="Online server" FontSize="11" WidthStar="1" Height="22" VerticalPos="0.5" Role="MutedInk"/>
+					<Icon Set="default" Icon="chevron-up" Width="10" Height="10" VerticalAlignment="Center"/>
+				</StackPanel>
+			</Button>
+			<StackPanel Name="StatusConnection" Orientation="Horizontal" Width="98" Height="22">
+				<Panel Width="1" Height="12" Margin="0,5,0,5" VerticalAlignment="Center" Role="Line"/>
+				<Button Width="96" Height="22" onRelease="Status.ToggleConnection">
+					<StackPanel Orientation="Horizontal" Height="22" Padding="0,8,0,8">
+						<Panel Name="StatusConnectionDot" Width="7" Height="7" CornerRadius="3.5" ColorHex="#3C7A3A" Margin="0,6,0,0" VerticalAlignment="Center"/>
+						<Label Text="Connection" FontSize="11" WidthStar="1" Height="22" VerticalPos="0.5" Role="MutedInk"/>
+					</StackPanel>
+				</Button>
+			</StackPanel>
+			<Panel Width="1" Height="12" Margin="0,5,0,5" VerticalAlignment="Center" Role="Line"/>
+			<Button Width="142" Height="22" onRelease="Status.TogglePending">
+				<StackPanel Orientation="Horizontal" Height="22" Padding="0,8,0,8">
+					<Icon Set="default" Icon="git-branch" Width="12" Height="12" Margin="0,6,0,0" VerticalAlignment="Center"/>
+					<Panel Name="StatusGitDot" Width="7" Height="7" CornerRadius="3.5" ColorHex="#D9A21B" Margin="0,6,0,0" VerticalAlignment="Center"/>
+					<Label Name="StatusGit" Text="Changes pending" FontSize="11" WidthStar="1" Height="22" VerticalPos="0.5" Role="MutedInk"/>
+				</StackPanel>
+			</Button>
+		</StackPanel>
 	</StackPanel>
 	</WindowFrame>
 </WindowRoot>

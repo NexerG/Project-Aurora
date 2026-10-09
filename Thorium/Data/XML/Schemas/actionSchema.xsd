@@ -221,6 +221,7 @@
           <xs:enumeration value="Input.DropdownInsidePopup" />
           <xs:enumeration value="Input.SourceSubmenu" />
           <xs:enumeration value="Layout.StackPanelArranges" />
+          <xs:enumeration value="Layout.WrapPanelWraps" />
           <xs:enumeration value="Layout.StarChildCrossSize" />
           <xs:enumeration value="Layout.GridAutoRowWrapsAtColumn" />
           <xs:enumeration value="Layout.RotatedHitTest" />
@@ -362,6 +363,8 @@
           <xs:enumeration value="Planner.Delete" />
           <xs:enumeration value="Planner.Edit" />
           <xs:enumeration value="Planner.EditCategory" />
+          <xs:enumeration value="Planner.AddTicketHere" />
+          <xs:enumeration value="Planner.DeleteCategoryWithTickets" />
           <xs:enumeration value="Planner.AddCategory" />
           <xs:enumeration value="Planner.Save" />
           <xs:enumeration value="Sheet.Up" />
@@ -475,6 +478,9 @@
     <xs:union memberTypes="actions:Any">
       <xs:simpleType>
         <xs:restriction base="xs:string">
+          <xs:enumeration value="Status.CycleStore" />
+          <xs:enumeration value="Status.ToggleConnection" />
+          <xs:enumeration value="Status.TogglePending" />
           <xs:enumeration value="Vaults.Open" />
           <xs:enumeration value="Vaults.Add" />
           <xs:enumeration value="Notes.New" />

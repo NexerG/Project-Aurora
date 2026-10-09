@@ -224,6 +224,7 @@ ArctisAurora.Core.UI -> AuroraEngine/Core/UI/WorkspaceActions.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/WorkspaceBarControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/WorkspaceControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/WorkspacePageControl.cs
+ArctisAurora.Core.UI -> AuroraEngine/Core/UI/WrapPanelControl.cs
 ArctisAurora.Core.Users -> AuroraEngine/Core/Users/User.cs
 ArctisAurora.CustomEntities -> AuroraEngine/CustomEntities/Layer.cs
 ArctisAurora.CustomEntities -> AuroraEngine/CustomEntities/SimulatorEntity.cs
@@ -300,6 +301,7 @@ Carbon.Editor.CustomControls -> Carbon/Editor/CustomControls/ZoneTableControl.cs
 Thorium -> Thorium/Thorium.cs
 Thorium -> Thorium/ThoriumSettings.cs
 Thorium.Editor -> Thorium/Editor/Decorations.cs
+Thorium.Editor -> Thorium/Editor/StatusBarActions.cs
 Thorium.Editor -> Thorium/Editor/VaultsWindow.cs
 Thorium.Editor.CustomControls -> Thorium/Editor/CustomControls/VaultBrowserControl.cs
 Thorium.Tests -> Thorium/Tests/LatinModernTests.cs

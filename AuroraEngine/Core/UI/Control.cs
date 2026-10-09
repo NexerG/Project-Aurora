@@ -24,7 +24,7 @@ namespace ArctisAurora.Core.UI
         public ref ArrangeData arrange => ref Pool.GetRef<ArrangeData>(dataHandle);
         internal ref LayoutNode node => ref Pool.GetRef<LayoutNode>(dataHandle);
         public ref VulkanControl visual => ref Pool.GetRef<VulkanControl>(dataHandle);
-
+        
         public Control()
         {
             visual.type = VulkanControlType.PanelControl;

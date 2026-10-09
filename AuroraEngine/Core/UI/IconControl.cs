@@ -13,6 +13,9 @@ namespace ArctisAurora.Core.UI
 
         private const int defaultSize = 16;
 
+        // the bound set's cell quad over the artwork
+        private float cellScale = 1f;
+
         public override Control? ActiveContextTarget() => (parent as Control)?.ActiveContextTarget();
 
         [A_XSDElementProperty("Set", "UI", "Icon set to draw from, as named in the asset manifest.")]
@@ -50,6 +53,7 @@ namespace ArctisAurora.Core.UI
             }
 
             sampler = set.textureAsset;
+            cellScale = set.metaData.cellScale;
 
             float k = MathF.Ceiling(MathF.Sqrt(set.metaData.iconCount));
             float cellUV = 1f / k;
@@ -64,12 +68,11 @@ namespace ArctisAurora.Core.UI
             InvalidateLayout();
         }
 
-        // Width/Height are the artwork, not the cell. The bake pads every cell by an eighth of its
-        // inner size per side, and TextMeasurer.CellScale is that same margin undone.
+        // Width/Height are the artwork, not the cell; cellScale is the set's bake margin undone.
         protected override Vector2 MeasureCore(Vector2 availableSize)
         {
-            float w = (preferredWidth > 0 ? preferredWidth : defaultSize) * TextMeasurer.CellScale;
-            float h = (preferredHeight > 0 ? preferredHeight : defaultSize) * TextMeasurer.CellScale;
+            float w = (preferredWidth > 0 ? preferredWidth : defaultSize) * cellScale;
+            float h = (preferredHeight > 0 ? preferredHeight : defaultSize) * cellScale;
             arrange.desired = new Vector2(w, h);
             SetFlag(ArrangeFlags.MeasureDirty, false);
             return arrange.desired;

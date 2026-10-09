@@ -32,24 +32,24 @@ namespace ArctisAurora.Core.UI
 
         private const string noTicket = "(none)";
 
-        private PlannerTicketPopup(PlannerEditorControl editor, Control from, PlannerTicket? ticket, TimeRange? time)
+        private PlannerTicketPopup(PlannerEditorControl editor, Control from, PlannerTicket? ticket, TimeRange? time, PlannerCategory? category)
         {
             this.editor = editor;
             this.from = from;
             this.ticket = ticket;
-            draft = ticket?.Clone() ?? NewTicket(editor, time);
+            draft = ticket?.Clone() ?? NewTicket(editor, time, category);
             filedUnder = draft.categoryId;
         }
 
         // Opens on a ticket, or on a new one over time (else today) when ticket is null.
-        public static void Open(PlannerEditorControl editor, Control from, Vector2 point, PlannerTicket? ticket, TimeRange? time = null) =>
-            new PlannerTicketPopup(editor, from, ticket, time).Show(point);
+        public static void Open(PlannerEditorControl editor, Control from, Vector2 point, PlannerTicket? ticket, TimeRange? time = null, PlannerCategory? category = null) =>
+            new PlannerTicketPopup(editor, from, ticket, time, category).Show(point);
 
-        // Today, all day, created now by the current user, last in the selected ticket's category.
-        private static PlannerTicket NewTicket(PlannerEditorControl editor, TimeRange? time)
+        // Today, all day, created now by the current user, last in the given category, else the selected ticket's.
+        private static PlannerTicket NewTicket(PlannerEditorControl editor, TimeRange? time, PlannerCategory? filed)
         {
             PlannerDocument document = editor.document;
-            PlannerCategory category = editor.selected != null ? document.CategoryOf(editor.selected) : document.categories[0];
+            PlannerCategory category = filed ?? (editor.selected != null ? document.CategoryOf(editor.selected) : document.categories[0]);
             DateTime now = editor.Now;
             DateOnly today = DateOnly.FromDateTime(now);
             return new PlannerTicket

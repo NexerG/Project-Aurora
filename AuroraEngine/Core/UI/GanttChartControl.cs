@@ -1,5 +1,7 @@
 using ArctisAurora.Core.ECS.EngineEntity;
 using ArctisAurora.Core.Filing;
+using ArctisAurora.Core.Threading;
+using ArctisAurora.EngineWork;
 using Silk.NET.GLFW;
 using System.Globalization;
 using System.Numerics;
@@ -39,7 +41,9 @@ namespace ArctisAurora.Core.UI
         private enum Grip { Move, Start, End }
 
         // geometry, design pixels
-        public const float nameWidth = 200f;
+        public const float minNameWidth = 80f;
+        public const float maxNameWidth = 600f;
+        private const float nameGrab = 3f;
         public const float bandHeight = 22f;
         public const float headerHeight = bandHeight * 2f;
         public const float rowHeight = 28f;
@@ -95,6 +99,14 @@ namespace ArctisAurora.Core.UI
         private DateTime pressTime;
         private CursorShape shownCursor = CursorShape.Arrow;
 
+        // the name column edge being dragged
+        private bool resizingNames;
+        private float pressNameWidth;
+        private float pressX;
+
+        // the minute the now line was drawn at
+        private DateTime shownMinute;
+
         // "Move to category": the categories of the planner the menu was opened on.
         static GanttChartControl() => ContextMenus.RegisterSource("planner-categories", () =>
         {
@@ -114,7 +126,7 @@ namespace ArctisAurora.Core.UI
             this.editor = editor;
             contextMenu = "planner";
             stopsContextMenu = true;
-            today.PaintOr(null, PaletteRole.Accent);
+            today.PaintOr(null, PaletteRole.Danger);
 
             AddChild(bands);
             AddChild(grid);
@@ -128,6 +140,22 @@ namespace ArctisAurora.Core.UI
             AddChild(today);
             AddChild(names);
             AddChild(headers);
+
+            SetTicking(true);
+        }
+
+        // Redraws when the minute turns, and asks for a frame then.
+        public override void OnTick()
+        {
+            base.OnTick();
+            DateTime now = editor.Now;
+            DateTime minute = new DateTime(now.Year, now.Month, now.Day, now.Hour, now.Minute, 0);
+            if (minute != shownMinute)
+            {
+                shownMinute = minute;
+                InvalidateArrange();
+            }
+            FrameScheduler.RequestFrameAt(Engine.totalTime + (minute.AddMinutes(1) - now).TotalSeconds);
         }
 
         // Tickets or categories changed; rows and span are rebuilt.
@@ -138,6 +166,8 @@ namespace ArctisAurora.Core.UI
         }
 
         #region ---- geometry ----
+        public float nameWidth => editor.document.nameWidth;
+
         private float DayWidth => editor.zoom switch
         {
             PlannerZoom.Hour => 768f,
@@ -292,12 +322,14 @@ namespace ArctisAurora.Core.UI
         {
             int band = 0;
             int line = 0;
+            float hairline = UIScaling.Hairline(this, lineWidth);
             for (int r = firstRow; r <= lastRow; r++)
             {
                 float top = RowTop(r);
                 if (rows[r].ticket == null)
                     Pooled(bandParts, bands, band++, PaletteRole.Chrome).Arrange(new LayoutRect(view.x, top, view.width, rowHeight));
-                Pooled(lines, grid, line++, PaletteRole.Line).Arrange(new LayoutRect(view.x, top + rowHeight - lineWidth, view.width, lineWidth));
+                float bottom = UIScaling.Snap(this, top + rowHeight);
+                Pooled(lines, grid, line++, PaletteRole.Line).Arrange(new LayoutRect(view.x, bottom - hairline, view.width, hairline));
             }
             for (int i = band; i < bandParts.Count; i++)
                 bandParts[i].Arrange(Hidden);
@@ -309,11 +341,12 @@ namespace ArctisAurora.Core.UI
         {
             Unit lower = Lower;
             float height = MathF.Max(0f, MathF.Min(view.Bottom, RowTop(rows.Count)) - view.y);
+            float hairline = UIScaling.Hairline(this, lineWidth);
             for (DateTime t = Floor(from, lower); t <= to; t = Next(t, lower))
             {
-                float x = X(t);
+                float x = UIScaling.Snap(this, X(t));
                 if (x < view.x + nameWidth) continue;
-                Pooled(lines, grid, line++, PaletteRole.Line).Arrange(new LayoutRect(x, view.y, lineWidth, height));
+                Pooled(lines, grid, line++, PaletteRole.Line).Arrange(new LayoutRect(x, view.y, hairline, height));
             }
             for (int i = line; i < lines.Count; i++)
                 lines[i].Arrange(Hidden);
@@ -360,6 +393,7 @@ namespace ArctisAurora.Core.UI
         {
             PlannerDocument document = editor.document;
             int link = 0;
+            float hairline = UIScaling.Hairline(this, lineWidth);
             foreach (PlannerTicket follower in document.tickets)
             {
                 if (follower.follows is not Guid id || document.Find(id) is not PlannerTicket leader) continue;
@@ -367,14 +401,14 @@ namespace ArctisAurora.Core.UI
                 int to = RowOf(follower);
                 if (from < 0 || to < 0 || Math.Max(from, to) < firstRow || Math.Min(from, to) > lastRow) continue;
 
-                float startX = X(leader.time.end);
-                float bendX = startX + elbowWidth;
-                float endX = X(follower.time.start);
-                float fromY = RowTop(from) + rowHeight * 0.5f;
-                float toY = RowTop(to) + rowHeight * 0.5f;
-                Pooled(linkParts, grid, link++, PaletteRole.MutedInk).Arrange(new LayoutRect(startX, fromY, elbowWidth, lineWidth));
-                Pooled(linkParts, grid, link++, PaletteRole.MutedInk).Arrange(new LayoutRect(bendX, MathF.Min(fromY, toY), lineWidth, MathF.Abs(toY - fromY) + lineWidth));
-                Pooled(linkParts, grid, link++, PaletteRole.MutedInk).Arrange(new LayoutRect(MathF.Min(bendX, endX), toY, MathF.Abs(endX - bendX), lineWidth));
+                float startX = UIScaling.Snap(this, X(leader.time.end));
+                float bendX = UIScaling.Snap(this, startX + elbowWidth);
+                float endX = UIScaling.Snap(this, X(follower.time.start));
+                float fromY = UIScaling.Snap(this, RowTop(from) + rowHeight * 0.5f);
+                float toY = UIScaling.Snap(this, RowTop(to) + rowHeight * 0.5f);
+                Pooled(linkParts, grid, link++, PaletteRole.MutedInk).Arrange(new LayoutRect(startX, fromY, bendX - startX, hairline));
+                Pooled(linkParts, grid, link++, PaletteRole.MutedInk).Arrange(new LayoutRect(bendX, MathF.Min(fromY, toY), hairline, MathF.Abs(toY - fromY) + hairline));
+                Pooled(linkParts, grid, link++, PaletteRole.MutedInk).Arrange(new LayoutRect(MathF.Min(bendX, endX), toY, MathF.Abs(endX - bendX), hairline));
             }
             for (int i = link; i < linkParts.Count; i++)
                 linkParts[i].Arrange(Hidden);
@@ -392,11 +426,14 @@ namespace ArctisAurora.Core.UI
             }
 
             LayoutRect bar = BarRect(ticket);
-            LayoutRect ring = new LayoutRect(bar.x - outlineWidth, bar.y - outlineWidth, bar.width + outlineWidth * 2f, bar.height + outlineWidth * 2f);
-            outline[0].Arrange(new LayoutRect(ring.x, ring.y, ring.width, outlineWidth));
-            outline[1].Arrange(new LayoutRect(ring.x, ring.Bottom - outlineWidth, ring.width, outlineWidth));
-            outline[2].Arrange(new LayoutRect(ring.x, ring.y, outlineWidth, ring.height));
-            outline[3].Arrange(new LayoutRect(ring.Right - outlineWidth, ring.y, outlineWidth, ring.height));
+            float left = UIScaling.Snap(this, bar.x - outlineWidth);
+            float top = UIScaling.Snap(this, bar.y - outlineWidth);
+            LayoutRect ring = new LayoutRect(left, top, UIScaling.Snap(this, bar.Right + outlineWidth) - left, UIScaling.Snap(this, bar.Bottom + outlineWidth) - top);
+            float thickness = UIScaling.Hairline(this, outlineWidth);
+            outline[0].Arrange(new LayoutRect(ring.x, ring.y, ring.width, thickness));
+            outline[1].Arrange(new LayoutRect(ring.x, ring.Bottom - thickness, ring.width, thickness));
+            outline[2].Arrange(new LayoutRect(ring.x, ring.y, thickness, ring.height));
+            outline[3].Arrange(new LayoutRect(ring.Right - thickness, ring.y, thickness, ring.height));
         }
 
         private void ArrangeToday(LayoutRect view)
@@ -404,14 +441,16 @@ namespace ArctisAurora.Core.UI
             float x = X(editor.Now);
             float bottom = MathF.Min(view.Bottom, RowTop(rows.Count));
             bool shown = x >= view.x + nameWidth && x <= view.Right;
-            today.Arrange(shown ? new LayoutRect(x - todayWidth * 0.5f, view.y, todayWidth, MathF.Max(0f, bottom - view.y)) : Hidden);
+            float width = UIScaling.Hairline(this, todayWidth);
+            today.Arrange(shown ? new LayoutRect(UIScaling.Snap(this, x - width * 0.5f), view.y, width,MathF.Max(0f, bottom - view.y)) : Hidden);
         }
 
         // The name column, pinned to the viewport's left edge.
         private void ArrangeNames(LayoutRect view, int firstRow, int lastRow)
         {
             Pooled(nameParts, names, 0, PaletteRole.Surface).Arrange(new LayoutRect(view.x, view.y, nameWidth, view.height));
-            Pooled(nameParts, names, 1, PaletteRole.Line).Arrange(new LayoutRect(view.x + nameWidth - lineWidth, view.y, lineWidth, view.height));
+            float hairline = UIScaling.Hairline(this, lineWidth);
+            Pooled(nameParts, names, 1, PaletteRole.Line).Arrange(new LayoutRect(UIScaling.Snap(this, view.x + nameWidth) - hairline, view.y, hairline, view.height));
 
             int category = 0;
             int ticket = 0;
@@ -433,9 +472,11 @@ namespace ArctisAurora.Core.UI
         private void ArrangeHeader(LayoutRect view, DateTime from, DateTime to)
         {
             Pooled(headerParts, headers, 0, PaletteRole.Chrome).Arrange(new LayoutRect(view.x, view.y, view.width, headerHeight));
-            Pooled(headerParts, headers, 1, PaletteRole.Line).Arrange(new LayoutRect(view.x + nameWidth, view.y + bandHeight - lineWidth, view.width - nameWidth, lineWidth));
-            Pooled(headerParts, headers, 2, PaletteRole.Line).Arrange(new LayoutRect(view.x, view.y + headerHeight - lineWidth, view.width, lineWidth));
-            Pooled(headerParts, headers, 3, PaletteRole.Line).Arrange(new LayoutRect(view.x + nameWidth - lineWidth, view.y, lineWidth, headerHeight));
+            float hairline = UIScaling.Hairline(this, lineWidth);
+            float nameEdge = UIScaling.Snap(this, view.x + nameWidth);
+            Pooled(headerParts, headers, 1, PaletteRole.Line).Arrange(new LayoutRect(view.x + nameWidth, UIScaling.Snap(this, view.y + bandHeight) - hairline, view.width - nameWidth, hairline));
+            Pooled(headerParts, headers, 2, PaletteRole.Line).Arrange(new LayoutRect(view.x, UIScaling.Snap(this, view.y + headerHeight) - hairline, view.width, hairline));
+            Pooled(headerParts, headers, 3, PaletteRole.Line).Arrange(new LayoutRect(nameEdge - hairline, view.y, hairline, headerHeight));
 
             float left = view.x + nameWidth;
             Unit lower = Lower;
@@ -532,6 +573,8 @@ namespace ArctisAurora.Core.UI
             return row >= 0 && row < rows.Count ? row : null;
         }
 
+        private bool OnNameEdge(Vector2 point) => MathF.Abs(point.X - (Viewport().x + nameWidth)) <= nameGrab;
+
         // The bar under a point and which part of it: an edge resizes, the middle moves.
         private bool GripAt(Vector2 point, out PlannerTicket ticket, out Grip at)
         {
@@ -559,7 +602,14 @@ namespace ArctisAurora.Core.UI
             }
             if (e.button != PointerEvent.leftButton) return false;
 
-            if (GripAt(e.point, out PlannerTicket ticket, out Grip at))
+            if (OnNameEdge(e.point))
+            {
+                resizingNames = true;
+                pressNameWidth = nameWidth;
+                pressX = e.point.X;
+                StartDrag();
+            }
+            else if (GripAt(e.point, out PlannerTicket ticket, out Grip at))
             {
                 editor.Select(ticket);
                 dragged = ticket;
@@ -576,6 +626,12 @@ namespace ArctisAurora.Core.UI
         public override void OnDrag(PointerEvent e)
         {
             base.OnDrag(e);
+            if (resizingNames)
+            {
+                editor.document.nameWidth = Math.Clamp(pressNameWidth + e.point.X - pressX, minNameWidth, maxNameWidth);
+                InvalidateLayout();
+                return;
+            }
             if (dragged == null || draggedBefore == null) return;
 
             TimeRange was = draggedBefore.time;
@@ -595,6 +651,13 @@ namespace ArctisAurora.Core.UI
         public override void OnDragStop(bool accepted)
         {
             base.OnDragStop(accepted);
+            if (resizingNames)
+            {
+                resizingNames = false;
+                if (nameWidth != pressNameWidth) editor.document.unsaved = true;
+                ShowCursor(CursorShape.Arrow);
+                return;
+            }
             if (dragged == null || draggedBefore == null) return;
 
             PlannerTicket ticket = dragged;
@@ -608,14 +671,14 @@ namespace ArctisAurora.Core.UI
         public override bool OnPointerMove(PointerEvent e)
         {
             bool handled = base.OnPointerMove(e);
-            if (dragged == null)
-                ShowCursor(GripAt(e.point, out _, out Grip at) && at != Grip.Move ? CursorShape.HResize : CursorShape.Arrow);
+            if (dragged == null && !resizingNames)
+                ShowCursor(OnNameEdge(e.point) || GripAt(e.point, out _, out Grip at) && at != Grip.Move ? CursorShape.HResize : CursorShape.Arrow);
             return handled;
         }
 
         public override bool OnPointerExit(PointerEvent e)
         {
-            if (dragged == null) ShowCursor(CursorShape.Arrow);
+            if (dragged == null && !resizingNames) ShowCursor(CursorShape.Arrow);
             return base.OnPointerExit(e);
         }
 

@@ -230,7 +230,7 @@ Cosmetic; left alone.
   entirely — see decision 8. `Dragging` is a registered context nothing ever notifies.
 - A button held while the pointer leaves the *window* keeps its press tint — see decision 2.
 - No hover feedback anywhere but `ButtonControl`. Rows, chrome buttons — that is the whole set.
-- Captions are still ASCII (`-`, `[]`, `X`); the atlas has no `−`, `□` or `✕`.
+- Captions are `default` icon-set icons (`minimize`, `maximize`, `close`), not text.
 - Rounded corners are not in this: the analytic rounded-box SDF needs a corner radius on
   `ControlData` (48 bytes and 16-aligned today, so it wants a repack to 64) and a panel-vs-glyph
   branch in `UI.frag`. See the MTSDF note below.

@@ -69,6 +69,18 @@ namespace ArctisAurora.Core.Generators
             }
         }
 
+        // cell padding in texels, and the distance spread per side of what is inside it
+        private const int cellPad = 1;
+        private static int Spread(int innerSize) => innerSize / 8;
+
+        // Per-side fraction of a cell's sampled quad between its edge and the ink box.
+        public static float InkMargin(int cellSize)
+        {
+            int innerSize = cellSize - cellPad * 2;
+            int spreadPx = Spread(innerSize);
+            return spreadPx / (float)(innerSize + 2 * spreadPx);
+        }
+
         // Rasterizes one shape into a square cell of the atlas.
         public static void GenerateCell(Glyph glyph, Image<Rgba32> image, int startX, int startY, int cellSize, float pxRange)
         {
@@ -76,9 +88,9 @@ namespace ArctisAurora.Core.Generators
             float normW = (glyph.regular.xMax - glyph.regular.xMin) / scale;
             float normH = (glyph.regular.yMax - glyph.regular.yMin) / scale;
 
-            int pad = 1;
+            int pad = cellPad;
             int innerSize = cellSize - pad * 2;
-            int spreadPx = innerSize / 8;
+            int spreadPx = Spread(innerSize);
             float spreadU = (spreadPx / (float)innerSize) * normW;
             float spreadV = (spreadPx / (float)innerSize) * normH;
 

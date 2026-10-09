@@ -119,6 +119,20 @@ Landed entry shape:
 
 The verification word is the brief's, exactly. Never upgrade it.
 
+## Planner mirrors
+
+`D:\Repositories\ThoriumNotes\WIP.planner.xml` and `Changelog.planner.xml` mirror the two files above. Every
+entry added, moved or removed there gets the same change here, by `Edit`.
+
+- One `<Ticket>` per `- [ ]`/`- [x]` line. `Name` = the bold headline (else the text before ` — `), backticks
+  and `*` stripped, cut to 140 characters. No body text.
+- `Id` a new Guid; `Category` = the WIP `# ` heading's `<Category>` Id (Changelog: the one "Landed" category).
+- WIP `Start`/`End`: the phase span already used by that category's other tickets; sections without a phase
+  use the day added. Changelog: the entry's date, `End` the next day. `AllDay="true"`, `Creator="Grexen"`,
+  `Created` = entry date (else `Start`) `T00:00:00`, `Order` = last + 1.
+- A nested entry gets `Follows="<parent ticket Id>"`.
+- A landed entry: delete its WIP ticket, add a Changelog ticket.
+
 ## Not written down
 
 - **A repaired bug leaves no log entry.** The docs describe the fixed behaviour. A decision made while fixing

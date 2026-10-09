@@ -20,6 +20,27 @@ namespace ArctisAurora.Core.UI
         // A design size in the pixels a window opened from source needs.
         public static uint ToPixels(RenderWindow source, uint design) => (uint)MathF.Ceiling(design * For(source));
 
+        // A design coordinate floored onto the device pixel grid of the control's window.
+        public static float Snap(Control control, float design)
+        {
+            float scale = ScaleOf(control);
+            return MathF.Floor(design * scale) / scale;
+        }
+
+        // A design width rounded to whole device pixels, at least one.
+        public static float Hairline(Control control, float design)
+        {
+            float scale = ScaleOf(control);
+            return MathF.Max(1f, MathF.Round(design * scale)) / scale;
+        }
+
+        private static float ScaleOf(Control control)
+        {
+            Control c = control;
+            while (c.parent is Control p) c = p;
+            return c is WindowRoot root ? root.scale : 1f;
+        }
+
         // Re-lays a window's tree at its current scale.
         public static void Apply(RenderWindow window)
         {

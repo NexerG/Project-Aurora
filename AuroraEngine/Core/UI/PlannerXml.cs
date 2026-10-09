@@ -4,7 +4,7 @@ using System.Xml.Linq;
 
 namespace ArctisAurora.Core.UI
 {
-    // <Planner Name><Category Id Name Color/><Ticket Id Name Category Color Start End AllDay TimeZone Creator Created Order Follows><Assignee User/><Attachment Kind Side Minutes/></Ticket></Planner>
+    // <Planner Name NameWidth><Category Id Name Color Width/><Ticket Id Name Category Color Start End AllDay TimeZone Creator Created Order Follows><Assignee User/><Attachment Kind Side Minutes/></Ticket></Planner>
     public static class PlannerXml
     {
         private const string dayFormat = "yyyy-MM-dd";
@@ -25,6 +25,8 @@ namespace ArctisAurora.Core.UI
         public static PlannerDocument Parse(XElement root)
         {
             PlannerDocument document = new PlannerDocument { name = (string?)root.Attribute("Name") };
+            if (float.TryParse((string?)root.Attribute("NameWidth"), NumberStyles.Float, CultureInfo.InvariantCulture, out float nameWidth))
+                document.nameWidth = nameWidth;
 
             foreach (XElement element in root.Elements())
             {
@@ -35,7 +37,9 @@ namespace ArctisAurora.Core.UI
                         {
                             id = Id(element, "Id") ?? Guid.NewGuid(),
                             name = (string?)element.Attribute("Name") ?? "",
-                            colorHex = Color(element) ?? PlannerDocument.defaultColor
+                            colorHex = Color(element) ?? PlannerDocument.defaultColor,
+                            width = float.TryParse((string?)element.Attribute("Width"), NumberStyles.Float, CultureInfo.InvariantCulture, out float width)
+                                ? width : PlannerCategory.defaultWidth
                         });
                         break;
                     case "Ticket":
@@ -111,12 +115,19 @@ namespace ArctisAurora.Core.UI
         {
             XElement root = new XElement("Planner");
             if (document.name != null) root.SetAttributeValue("Name", document.name);
+            if (document.nameWidth != PlannerDocument.defaultNameWidth)
+                root.SetAttributeValue("NameWidth", document.nameWidth.ToString(CultureInfo.InvariantCulture));
 
             foreach (PlannerCategory category in document.categories)
-                root.Add(new XElement("Category",
+            {
+                XElement element = new XElement("Category",
                     new XAttribute("Id", category.id),
                     new XAttribute("Name", category.name),
-                    new XAttribute("Color", category.colorHex)));
+                    new XAttribute("Color", category.colorHex));
+                if (category.width != PlannerCategory.defaultWidth)
+                    element.SetAttributeValue("Width", category.width.ToString(CultureInfo.InvariantCulture));
+                root.Add(element);
+            }
 
             foreach (PlannerTicket ticket in document.tickets)
             {

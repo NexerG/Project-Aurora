@@ -38,6 +38,32 @@ namespace ArctisAurora.Tests
             t.Check(panel.DesiredSize.Y == 98f, "panel wants its children's heights plus two gaps");
         }
 
+        [A_XSDActionDependency("Layout.WrapPanelWraps", "Test")]
+        private static IEnumerator<int> WrapPanelWraps(TestContext t)
+        {
+            WrapPanelControl panel = new WrapPanelControl
+            {
+                Spacing = 4f,
+                preferredWidth = 100f,
+                horizontalAlignment = HorizontalAlignment.Left,
+                verticalAlignment = VerticalAlignment.Top
+            };
+            StackPanelControl[] children = new StackPanelControl[3];
+            for (int i = 0; i < children.Length; i++)
+            {
+                children[i] = new StackPanelControl { preferredWidth = 40f, preferredHeight = 20f };
+                panel.AddChild(children[i]);
+            }
+            t.Show(panel);
+            yield return 2;
+
+            LayoutRect box = panel.arrangedRect;
+            t.Check(children[0].arrangedRect.x == box.x && children[0].arrangedRect.y == box.y, "first child sits at the top left");
+            t.Check(children[1].arrangedRect.x == box.x + 44f && children[1].arrangedRect.y == box.y, "second child fits beside the first, 40 + 4 along");
+            t.Check(children[2].arrangedRect.x == box.x && children[2].arrangedRect.y == box.y + 24f, "third child does not fit in 100 px and starts a line 20 + 4 down");
+            t.Check(panel.DesiredSize.Y == 44f, $"panel wants two lines plus a gap: {panel.DesiredSize.Y}");
+        }
+
         [A_XSDActionDependency("Layout.StarChildCrossSize", "Test")]
         private static IEnumerator<int> StarChildCrossSize(TestContext t)
         {

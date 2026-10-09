@@ -101,9 +101,9 @@ namespace ArctisAurora.Core.UI
             DataPool pool = UIEngine.Elements;
             int row = pool.DenseOf(control.dataHandle);
             bool ranged = Current(pool) && pool.Backing<LayoutNode>()[row].count > 0;
-            return control is StackPanelControl
-                ? MeasureStack(pool, row, control, offer, ranged)
-                : MeasureSingle(pool, row, control, offer, ranged);
+            return control is StackPanelControl ? MeasureStack(pool, row, control, offer, ranged)
+                 : control is WrapPanelControl ? MeasureWrap(pool, row, control, offer, ranged)
+                 : MeasureSingle(pool, row, control, offer, ranged);
         }
 
         // Arranges a control's children the way its own ArrangeCore falls back to.
@@ -113,6 +113,7 @@ namespace ArctisAurora.Core.UI
             int row = pool.DenseOf(control.dataHandle);
             bool ranged = Current(pool) && pool.Backing<LayoutNode>()[row].count > 0;
             if (control is StackPanelControl) ArrangeStack(pool, row, control, rect, ranged);
+            else if (control is WrapPanelControl) ArrangeWrap(pool, row, control, rect, ranged);
             else ArrangeSingle(pool, row, control, rect, ranged);
         }
 
@@ -138,6 +139,7 @@ namespace ArctisAurora.Core.UI
             Vector2 desired = kind switch
             {
                 LayoutNodeKind.Stack => MeasureStack(pool, row, control, offer, true),
+                LayoutNodeKind.Wrap => MeasureWrap(pool, row, control, offer, true),
                 LayoutNodeKind.Single => MeasureSingle(pool, row, control, offer, true),
                 _ => (control ?? (Control)pool.OwnerAt(row)).CallMeasureCore(offer),
             };
@@ -170,6 +172,7 @@ namespace ArctisAurora.Core.UI
                 a.arranged = rect;
                 a.clip = clip;
                 if (kind == LayoutNodeKind.Stack) ArrangeStack(pool, row, control, rect, true);
+                else if (kind == LayoutNodeKind.Wrap) ArrangeWrap(pool, row, control, rect, true);
                 else ArrangeSingle(pool, row, control, rect, true);
             }
 
@@ -430,6 +433,94 @@ namespace ArctisAurora.Core.UI
             }
         }
 
+        // Lines of children at their desired size, each line as wide as the box allows.
+        private static Vector2 MeasureWrap(DataPool pool, int row, Control? control, Vector2 offer, bool ranged)
+        {
+            LayoutNode[] nodes = pool.Backing<LayoutNode>();
+            float spacing = nodes[row].spacing;
+
+            Span<ArrangeData> arrange = pool.GetSpan<ArrangeData>();
+            ref ArrangeData a = ref arrange[row];
+            float boxWidth = a.preferredWidth > 0 ? a.preferredWidth : offer.X;
+            float innerWidth = MathF.Max(0f, boxWidth - a.padding.totalHorizontal);
+
+            float x = 0f;
+            float lineHeight = 0f;
+            float top = 0f;
+            float widest = 0f;
+            bool lineEmpty = true;
+            ChildCursor children = ChildrenOf(pool, row, control, ranged, nodes);
+            while (children.Next(nodes, pool, out int child, out Control? childControl))
+            {
+                if (((ArrangeFlags)arrange[child].flags & ArrangeFlags.Hidden) != 0) continue;
+                Vector2 desired = MeasureRow(pool, child, childControl, new Vector2(MathF.Max(0f, innerWidth - arrange[child].margin.totalHorizontal), float.MaxValue));
+                arrange = pool.GetSpan<ArrangeData>();
+                Thickness margin = arrange[child].margin;
+                float w = desired.X + margin.totalHorizontal;
+                float h = desired.Y + margin.totalVertical;
+
+                if (!lineEmpty && x + spacing + w > innerWidth)
+                {
+                    top += lineHeight + spacing;
+                    x = 0f;
+                    lineHeight = 0f;
+                    lineEmpty = true;
+                }
+                x += lineEmpty ? w : spacing + w;
+                lineEmpty = false;
+                lineHeight = MathF.Max(lineHeight, h);
+                widest = MathF.Max(widest, x);
+            }
+
+            a = ref arrange[row];
+            float width = widest + a.padding.totalHorizontal;
+            float height = top + lineHeight + a.padding.totalVertical;
+            if (a.preferredWidth > 0) width = MathF.Max(width, a.preferredWidth);
+            if (a.preferredHeight > 0) height = MathF.Max(height, a.preferredHeight);
+
+            Vector2 result = new Vector2(width, height);
+            a.desired = result;
+            return result;
+        }
+
+        private static void ArrangeWrap(DataPool pool, int row, Control? control, LayoutRect rect, bool ranged)
+        {
+            LayoutNode[] nodes = pool.Backing<LayoutNode>();
+            float spacing = nodes[row].spacing;
+
+            Span<ArrangeData> arrange = pool.GetSpan<ArrangeData>();
+            LayoutRect inner = rect.Shrink(arrange[row].padding);
+
+            float x = inner.x;
+            float y = inner.y;
+            float lineHeight = 0f;
+            bool lineEmpty = true;
+            ChildCursor children = ChildrenOf(pool, row, control, ranged, nodes);
+            while (children.Next(nodes, pool, out int child, out Control? childControl))
+            {
+                ref ArrangeData ca = ref arrange[child];
+                if (((ArrangeFlags)ca.flags & ArrangeFlags.Hidden) != 0) continue;
+                Thickness margin = ca.margin;
+                float w = MathF.Min(ca.desired.X, MathF.Max(0f, inner.width - margin.totalHorizontal));
+                float h = ca.desired.Y;
+
+                if (!lineEmpty && x + spacing + w + margin.totalHorizontal > inner.Right)
+                {
+                    y += lineHeight + spacing;
+                    x = inner.x;
+                    lineHeight = 0f;
+                    lineEmpty = true;
+                }
+                if (!lineEmpty) x += spacing;
+                lineEmpty = false;
+
+                ArrangeRow(pool, child, childControl, new LayoutRect(x + margin.left, y + margin.top, w, h), row);
+                arrange = pool.GetSpan<ArrangeData>();
+                x += w + margin.totalHorizontal;
+                lineHeight = MathF.Max(lineHeight, h + margin.totalVertical);
+            }
+        }
+
         // Sets a row's dirty flags and its parents' until one already has them; safe from several animation chunks at once.
         internal static void MarkDirty(Span<ArrangeData> arrange, ReadOnlySpan<LayoutNode> nodes, int row, LayoutChange change)
         {
@@ -534,6 +625,7 @@ namespace ArctisAurora.Core.UI
 
             kind = Overrides(type, "MeasureCore") || Overrides(type, "ArrangeCore") ? LayoutNodeKind.Custom
                  : control is StackPanelControl ? LayoutNodeKind.Stack
+                 : control is WrapPanelControl ? LayoutNodeKind.Wrap
                  : LayoutNodeKind.Single;
             _kinds[type] = kind;
             return kind;
@@ -542,7 +634,7 @@ namespace ArctisAurora.Core.UI
         private static bool Overrides(Type type, string method)
         {
             Type declaring = type.GetMethod(method, BindingFlags.Instance | BindingFlags.NonPublic)!.DeclaringType!;
-            return declaring != typeof(Control) && declaring != typeof(StackPanelControl);
+            return declaring != typeof(Control) && declaring != typeof(StackPanelControl) && declaring != typeof(WrapPanelControl);
         }
 
         // DEBUG: every reached row sits at its pre-order position, so its subtree is the rows [row, row + count).

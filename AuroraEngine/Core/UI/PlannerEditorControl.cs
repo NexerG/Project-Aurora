@@ -183,7 +183,7 @@ namespace ArctisAurora.Core.UI
         public void SetZoom(PlannerZoom level)
         {
             if (level == zoom) return;
-            if (chart != null) pendingLeft = chart.TimeAt(chart.arrangedRect.x + scroller.GetScrollOffset().X + GanttChartControl.nameWidth);
+            if (chart != null) pendingLeft = chart.TimeAt(chart.arrangedRect.x + scroller.GetScrollOffset().X + chart.nameWidth);
             zoom = level;
             chart?.RowsChanged();
             scroller.InvalidateArrange();
@@ -341,6 +341,13 @@ namespace ArctisAurora.Core.UI
             PlannerCategoryPopup.Open(this, pickedFrom, pickedAt, pickedCategory);
         }
 
+        // Opens the ticket popup for a new ticket in the category last pressed on, where it was pressed.
+        public void AddTicketToPickedCategory()
+        {
+            if (pickedCategory == null || pickedFrom == null || !document.categories.Contains(pickedCategory)) return;
+            PlannerTicketPopup.Open(this, pickedFrom, pickedAt, null, category: pickedCategory);
+        }
+
         // A popup's name and colour: written over its category, or a new category when it is null.
         public void ApplyCategory(PlannerCategory? category, string name, string colorHex)
         {
@@ -358,6 +365,33 @@ namespace ArctisAurora.Core.UI
         {
             if (document.categories.Count <= 1 || !document.categories.Contains(category)) return;
             Record("Delete category", new PlannerCategoryAddEdit(document, category, document.categories.IndexOf(category), false));
+        }
+
+        // Removes a category and every ticket filed under it as one step, never the last category.
+        public void DeleteCategoryWithTickets(PlannerCategory category)
+        {
+            if (document.categories.Count <= 1 || !document.categories.Contains(category)) return;
+            using (undo.Begin("Delete category"))
+            {
+                foreach (PlannerTicket ticket in document.tickets.Where(t => ReferenceEquals(document.CategoryOf(t), category)).ToList())
+                {
+                    IEditRecord edit = new PlannerTicketAddEdit(document, ticket, document.tickets.IndexOf(ticket), false);
+                    edit.Redo();
+                    undo.Push(edit);
+                }
+                IEditRecord removal = new PlannerCategoryAddEdit(document, category, document.categories.IndexOf(category), false);
+                removal.Redo();
+                undo.Push(removal);
+            }
+        }
+
+        // Asks before deleting the category last pressed on and its tickets.
+        public void ConfirmDeletePickedCategory()
+        {
+            if (pickedCategory is not PlannerCategory category || document.categories.Count <= 1 || !document.categories.Contains(category)) return;
+            int count = document.TicketsIn(category).Count();
+            ConfirmWindow.Ask(UIEngine.WindowOf(this), $"Delete \"{category.name}\" and its {count} ticket{(count == 1 ? "" : "s")}?",
+                () => DeleteCategoryWithTickets(category), null);
         }
 
         public void Undo() => undo.Undo();

@@ -13,7 +13,8 @@ slice 3: `TestContext` input helpers, `UI.WindowRoot.ToWindowSpace`, `AGlfwWindo
 [[carbon-frame-viewer]] §17, with `TestResultsReader` beside the writer here.
 
 ## What changed
-- `--test` runs every suite, `--test=<Suite>` one. `TestRunner.Arm` is called from `Engine.Init` after
+- `--test` runs every suite except `Perf` (2026-10-09: feature work checks function and errors; perf is run only
+  when measuring, via `--test=Perf` / `PerfTests.cmd`), `--test=<Suite>` one. `TestRunner.Arm` is called from `Engine.Init` after
   `ProfileScenario.Arm`.
 - A suite is `Data/XML/Documents/Tests/<Suite>.tests.xml`, found across mounts by `VirtualFileSystem.EnumerateAll`;
   the file's name half is the suite name — the `*.inputs.xml` keybind-group rule. `<Test Action="…" Timeout="ms"/>`,
