@@ -20,26 +20,20 @@ This file holds **open work**. A landed entry moves to [[Changelog]]; one that s
 	- [ ] **`WindowFrameControl`'s maximized grips still need context logic** — 6a ported `hitTestable`, so the grips can opt out of the test again, but opting out hands their pixels to a *sibling drawn behind them* and the new walk resolves overlapping siblings by paint order, which is not the same thing. Deferred to context logic (user, 2026-09-06)
 	- [ ] **selection and cross-block caret placement are deferred, each on a specific blocker** — `SelectionControl` needs drag ported before anything can drive it, and `DocumentEditorControl.CaretAtPoint` resolves a point across *blocks*, of which the new stack has none. The per-run `IndexAt` exists and is what the caret uses today
 - [ ] **`_components` and `children` are allocated on every entity whether used or not** — 32 B each, 64 B per entity, ~64 MB at 1M. User chose to leave both eager (2026-09-06); `_components` is read at 13 sites all inside `Entity`, `children` at 136 sites across 37 files, most of them in the UI stack being deleted
-- [x] **decide what Alt+F4 does.** Decided 2026-09-18: routed like the X button — a GLFW close callback posts `WindowActions.Close(owner)`, so the primary goes through `Shutdown.Request()` and any other window settles alone. Alt+F4, taskbar close and `taskkill` without `/F` all behave the same. Ghost and plain context-menu windows still ignore it
 - [x] **session restore (2026-08-31)** — landed, See `ClaudeMemory/Decisions/session-restore.md`
 	- [ ] **the primary window's rect is applied after `Engine.Init` returns**, so it shows at the `GraphicsSettings` size for the ~800ms of bootstrap and then jumps. `SettingsRegistry.LoadAll` is the first bootstrap step and `InitWindowing` follows it, so nothing can read the session earlier. Fix is either creating the primary hidden and showing it after restore, or sourcing the scope key from somewhere available before `LoadAll`
 	- [ ] **switching vaults should restore the incoming vault's layout** (approved 2026-10-01) — `Switch` now captures and rescopes but still calls `OpenFirstNote`. Open: torn-off windows of the old vault (`Switch` closes only primary's tabs), the new vault's secondary windows, whether the primary moves → `session-restore`
 	- [ ] **per-tab view state not GUI-verified** — caret, selection, top line and header state across a real quit/relaunch and a vault switch; test-verified only → `session-restore`
 	- [ ] an iconified window comes back normal; a window whose every recorded note was deleted comes back as an empty pane rather than not at all
 - [ ] bootstrap and shutdown steps report success unconditionally — the `bool` is wired end to end but no step actually detects its own failure yet
-- [ ] UI collision
-	- [ ] add handle states - game, ui etc
-	- [ ] Update engine class so the mouse inputs are handled in input handler
 - [ ] **`TextInputControl.ResolveOnClick` swallows every click** — it calls `BeginEdit()` and returns without calling base, so `bubbleClick` is dead on it whatever the XML says. Any control nested inside a `TextInput` cannot receive a click. Worked around by adding `LabelControl` for non-editable text rather than changing the override; the swallow is still there
 - [ ] **`StackPanelControl.Measure` pollutes `maxCross` from star children** — pass 1 measures a star child with `0` on the main axis, so a text child wraps to one character per line and reports a huge cross size; pass 2 only ever `Max`es `maxCross` and never re-bases it against the real star width. An 8-character label made a 32px title bar 168px tall. Dodge is an explicit size on every child
 - [ ] **keybinds bind to a declared intent, not straight to an action** (user, 2026-08-31) — one `<AbstractKeybind>` names the intent and N `<Keybind Trigger= Bind=>` point at it; today numpad Enter duplicates `Action="Text.NewBlock"` and `Rebind` makes it fire twice. See `ClaudeMemory/Context/keybind-intent-plan.md`
 - [ ] text editor
-	- [ ] fix beziers
 	- [ ] add the rest of the alphabet (eu languages)
 		- [ ] create language packs?
 	- [ ] editor
 		- [ ] **GUI-verify `.md` notes and lists** — open, edit, save a Markdown note; dots/checkboxes in the indent, wrapping inside it, checkbox click + undo, `- `/`[ ] ` conversion, Enter/Backspace on items, Tab/Shift+Tab → `note-file-formats`
-		- [ ] a custom note format of Thorium's own, beside `.md` (user, 2026-09-17) → `note-file-formats`
 		- [ ] **properties panel second pass not GUI-verified** — add/remove a key, true/false checkbox, Open on a `[[link]]`/URL, Read only, List markers; test-verified only → `note-properties`
 		- [ ] **`FontSize` / `CodeFont` frontmatter keys — open fork**: a note's `<TextStyle>` list replaces the whole scheme, so a body-size key needs per-type merging, against `DocumentLayout.textStyles`' rule → `note-properties`
 		- [ ] glyph ceiling — every character is a `GlyphControl`, always (~56.7k on the 400-block note, past `UIModule`'s 50,000 cap). Accepted knowingly. **The UI data/visualization split does not fix this** — one control per element means the count is unchanged; the two share a cause but are separate problems. Escape hatch that does not change the design: a run holds `text` + its `BlockLayout` with no glyph children and calls `SyncGlyphs()` when visible
@@ -49,10 +43,11 @@ This file holds **open work**. A landed entry moves to [[Changelog]]; one that s
 		- [ ] a clean note is still rewritten on tab close (byte-identical, but it touches mtime) — `TabViewControl.CloseTab` now saves only when dirty, so recheck the other close paths
 		- [ ] page view polish — page fill barely differs from the gap, no headers/footers (deferred 2026-10-02; open fork: plain text with `{page}` from page-menu fields vs rich text edited in the margin) → `document-pages`
 	- [ ] **UI scaling not verified at a display scale ≠ 100%, or across monitors of different scale** — test machine is one 1920×1080 at 100% → `ui-scaling`
+	- [ ] **touchpad pinch may zoom too fast (2026-10-11)** — pinch is Ctrl+wheel with small fractional deltas, and any nonzero delta in a frame steps a full 10%; step rate not tuned → `ui-scaling`
+	- [ ] **`subtreeBounds != recomputed` / "skipped layout left 12 rows stale" after Ctrl+Shift app zoom with a sheet tab open (2026-10-11)** — also once at startup with a planner tab (subtreeBounds (0,0,0,0)); not investigated → `ui-scaling`
 	- [ ] **the `"window"` menu is the whole app's fallback** — `UI.xml` names `ContextMenu="window"` on the root `<Window>`, so right-clicking a splitter or the outer panel still offers Minimize/Maximize/Close; `TabWindow.xml` names it nowhere, so a torn-off window offers them *not even on its own title bar*. Fix is moving the attribute onto `<TitleBar>` in both. Deferred 2026-08-20 — the crash is fixed, the placement is a separate call
-	- [ ] no selection highlight; nothing watches the vault folder, so a note added on disk shows up only after a toggle rebuilds; `FileObject.icon` is still set by nothing; clicking a row while renaming commits the edit *and* opens that row's note
+	- [ ] no selection highlight; `FileObject.icon` is still set by nothing; clicking a row while renaming commits the edit *and* opens that row's note
 	- [ ] **the editor's folder browser is not built** — double-clickable folders that open inside, over the same `FileObject` model. No longer blocked: `ResolveOnDoubleClick` is dispatched as of the tab-rename pass, and nothing wires a folder row to it yet. Also needs a project-root notion; `AuroraEditor` has no settings category and its `UI.xml` is nine coloured buttons
-	- [ ] dragging a maximized window moves it while still maximized instead of restoring first
 	- [ ] **custom cursors defined in XML**, alongside the standard GLFW shapes — an asset naming its image and hotspot, resolved the same way masks and textures already are, so a control can name a cursor instead of picking from the fixed `CursorShape` enum. Include **animated cursors** (a frame list plus a frame time) in the same design rather than bolting them on after; GLFW has no animated cursor, so the engine drives frames itself by re-applying the cursor on a timer
 	- [x] hover/press feedback — landed, See `ClaudeMemory/Decisions/button-states-and-hover-bubbling.md`
 		- [ ] `Context.Set` still does not fire the `IContext` callbacks, so `SolveHover`, `SolveLMBPress`, `SetDragging`, `UpdateDropHint` and `ClearDropHint` each carry their own copy of the add/remove dance — five sites since `hinted` and `pressTarget` became the `Hinted` and `PressTarget` contexts (2026-08-27). Every setter now goes through the funnel: `activeControl` since the declared-contexts pass (2026-08-22), `dragging`, `Hinted` and `PressTarget` since 2026-08-27; only `Forget` still writes directly, deliberately, so a teardown runs no derivation. What is left is unifying the callbacks into `Set`, plus routing `DocumentControl`'s caret repoint through it
@@ -111,9 +106,7 @@ This file holds **open work**. A landed entry moves to [[Changelog]]; one that s
 	- [ ] **a session's first seconds run tier-0 JIT code (2026-10-02)** — measuring a 1M-char note on open took 83–96 ms, 22–24 with tiering off (old code; 46–51 ms now, tiering on); typing frames 4–6× slower until code tiers up. Host `QuickJitForLoops` or `AggressiveOptimization` on hot paths undecided → `large-note-measure-cost` § Known gaps
 	- [ ] **engine font bakes are stale (2026-09-25)** — `AuroraEngine/Data/Fonts/*.agd` fail to deserialize (type id 0); Debug and Thorium's Release shadow them with Thorium's own bakes, a host without its own fonts would crash at `FontAsset.Load` → `profiling-unoptimized-jit`
 	- [ ] **an in-engine file browser, to retire the OS folder dialog (2026-08-30)** — `FolderPicker` is Win32 `IFileOpenDialog` on an STA thread, the first hard blocker under the engine's own portability. See `ClaudeMemory/Context/file-chooser-plan.md`
-	- [ ] control frustum culling — engine-wide cull of off-screen controls; note it cuts *draw* work only, so it is not an answer to the glyph ceiling — culled controls keep their entity and their pool row
 	- [ ] **UI data/visualization split (2026-08-17)** — most of the UI becomes data, controls become visualization; sequenced after Thorium v1 and the profiler. See `ClaudeMemory/Decisions/ui-data-control-split.md`
-	- [ ] fix up UI shaders (samplers, transparency)
 	- [ ] checkout `Pretext` by Cheng Lou for UI layout calculations (apparently 500x faster than the current implementation)	
 	- [ ] **engine defect — a star child poisons a `StackPanelControl`'s cross measurement** (found 2026-08-19 building the tab strip). `Measure` pass 1 probes each star child at **0** on the main axis (`crossOffer` is `(0, inner.height)` horizontally) purely to learn its cross size; pass 2 re-measures at the real allocation. But `maxCross` is a running `MathF.Max` across both passes, so any control whose cross size depends on its main size — i.e. all text — contributes its pass-1 value forever. A 10-character caption measured at content width `-8` wraps one character per line and reported **168px** tall instead of 21; the panel arranged itself 168 tall and centred, putting a sibling 70px above the strip where the clip discarded it. Worked around by pinning `preferredHeight` on the star child, which makes `VulkanControl.Measure` skip the child-driven height. Real fix is for pass 2 to *replace* each star child's cross contribution rather than max against the probe, or for pass 1 to skip cross measurement of star children entirely
 	- [x] **double-click a tab to rename its note (2026-08-21)** — landed, See `ClaudeMemory/Decisions/tab-rename-and-double-click.md`
@@ -162,7 +155,9 @@ This file holds **open work**. A landed entry moves to [[Changelog]]; one that s
 		- [ ] **planner popup: Tab between boxes** — no `Planner.Tab` bind → `planner`
 		- [ ] **planner: clear a ticket colour back to its category's** — impossible once picked → `planner`
 		- [ ] **planner Gantt: drag past the span** — a bar dragged past the chart's span is cut off until release → `planner`
-		- [ ] **planner board: select / open a card** — no click-to-select or double-click edit on the board; Delete / Edit act on the Gantt selection only; a drop outside the board does nothing, no auto-scroll at the edge → `planner`
+		- [ ] **planner board: double-click edit a card, selection outline** — a click selects and expands a card (D2); still no double-click edit and no outline on a selected card; a drop outside the board does nothing, no auto-scroll at the edge → `planner`
+		- [ ] **planner descriptions NOT GUI-verified (2026-10-09)** — real typing in the popup's description box, Shift+Enter, caret Up/Down, selection across lines, scrolling past 8 lines, clicking cards / bars / blocks to expand, Esc, window-resize re-wrap of the Gantt description; test- and golden-verified only → `planner`
+		- [ ] **RegexTextControl: inline segment flow (chips) not done** — segments only stack vertically; no `<RegexText>` XML element → `planner`
 		- [ ] **planner: reorder categories** — no way to change category order (Gantt rows, board columns) → `planner`
 		- [ ] **planner PC + C2 NOT GUI-verified (2026-10-07)** — real-mouse calendar drags / resizes, VResize cursor, toolbar `<` `Today` `>` and span buttons, now line on the real clock, popup Before / After / Follows rows, session restore; test- and golden-verified only → `planner`
 		- [ ] **planner popup: Apply button runs inside a press dispatch** — clicking it in `Planner.AttachmentText` logged `subtreeBounds stale` ×8 in the full run (the engine trap); the test uses Enter, the button is unchanged → `rebuild-inside-pointer-dispatch`
@@ -179,7 +174,6 @@ This file holds **open work**. A landed entry moves to [[Changelog]]; one that s
 - [ ] **SVG parser: command after Z without M fails** — legal SVG (new subpath starts at the last start point) gives "line before any moveto" → `svg-import`
 - [ ] **SVG: `<use>`, nested viewports, percentage lengths** — also `preserveAspectRatio`, `display="none"`/`visibility`, mixed fill rules in one icon → `svg-import`
 - [ ] **default icon atlas copies differ across the four projects** — AuroraEngine and AuroraEditor hold an older `default_atlas.png`/`default.aid` than Thorium and Carbon → `svg-import`
-- [ ] fix resolution stuff associated with DPI and stuff. use `glfwGetMonitorContentScale` *(non-essential)*
 
 ---
 # PHASE B — ECS rework + renderer/settings foundation (~Jul–Sep 2026)
@@ -189,7 +183,6 @@ This file holds **open work**. A landed entry moves to [[Changelog]]; one that s
 	- [ ] **`vkDeviceWaitIdle` takes no queue lock** — swapchain rebuild and window reap call it while a loader thread may be submitting to `transferQueue`; the spec needs every queue externally synchronised → `device-queue-slots`
 - [ ] Engine settings/preferences — XSD/XML-driven (GPU device selection, CPU/thread counts, misc engine options)
 	- [ ] **oversight — settings have no Cancel.** A settings screen writes the live `Setting`, so a value takes effect the moment a widget moves; `Commit()` (`Apply` + `SaveAll`) gates only the *action* and the persistence. A screen offering Cancel has to restore the old values itself, and a reader mid-edit sees a half-edited category (only `VSync` is read late enough to notice). Fix when a settings screen exists: edit a cloned category and commit it on OK, the way `DocumentEditSession` already edits a note. See `ClaudeMemory/Decisions/settings-categories.md` decision 7
-- [ ] figure out a way to do UITrees (save only tree tops in the registry)
 - [x] **a swap is a decoration action, and the engine ships the settings shell (2026-08-29)** — landed, See `ClaudeMemory/Decisions/ui-document-registry.md`
 	- [ ] **no pool-count evidence for a swap.** The round trip is "no FATAL and the app stayed alive", not the `1325/1325` check the landing pass used; a `--profile-pools` capture now records the occupancy per frame, but no swap has been run against one → `engine-profiling` §14
 	- [ ] **Thorium's `Settings.xml` is a byte-identical duplicate** of the engine's now. It shadows the engine copy, so Thorium never exercises the fallback; deleting it would prove the fallback and drop the duplication
@@ -216,29 +209,14 @@ This file holds **open work**. A landed entry moves to [[Changelog]]; one that s
 ---
 # PHASE D — Editor shell + renderer maturity (2027)
 - [ ] AuroraEditor shell — scene hierarchy panel, reflection-driven inspector (off XSD attributes), asset browser
-- [ ] Registry and Bootstrapper rework
 - [ ] renderer update
 	- [ ] separate whole renderer features away from modules like `TimelineSemaphores` into an array. (settings) — `RenderingModule` exposes `features` and `features12` but **no `features13`**, so no module can request a 1.3 feature; `PreInitialize` hardcodes `DynamicRendering` → `ui-engine-clip-as-coverage`
 	- [ ] resource manager
 	- [ ] Buffer device address (BDA) for vertex buffers — `CreateBuffer` no longer chains `AddressBitKhr` onto every allocation (2026-09-12); this now needs the flag *and* `bufferDeviceAddress` requested → `mapped-streaming-buffers` § 7
-	- [ ] descriptor sets
-		- [ ] create global descriptor set (time, settings, etc)
-		- [ ] texture set
-			- [ ] massive texture buffer
-		- [ ] sampler set
-		- [ ] per object data
 	- [ ] bring mesh component up to speed with the new system
 	- [ ] try to add normal rasterizer to the new renderer ecosystem 
 	- [ ] figure out how to blend the game render and UI render
 	- [ ] fix normal rasterizer
-	- [ ] Lazy renderer
-		- [ ] draw only if the renderer was marked dirty
-	- [ ] separate queue allocation
-		- [ ] fix
-					`destinationStage = PipelineStageFlags.AllCommandsBit;`
-					to
-					`destinationStage = PipelineStageFlags.FragmentShaderBit;`
-					this fix will need to move texture assigning on the graphics queue instead of the transfer queue.
 	- [ ] Vulkan module upgrade
 		- [ ] figure out how to do GPU occlusion culling
 			- [ ] after buffered descriptor sets

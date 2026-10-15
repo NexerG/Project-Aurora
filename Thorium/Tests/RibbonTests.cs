@@ -16,13 +16,13 @@ namespace Thorium.Tests
             (RibbonControl ribbon, WorkspaceControl workspace, InspectorControl inspector) = ShowShell(t);
             WorkspacePageControl general = workspace.AddPage("General", WorkspaceKind.General);
             TabViewControl generalView = workspace.LoadPane(general);
-            generalView.AddChild(SessionLayout.tabFactory(note));
+            generalView.AddChild(SessionLayout.tabFactory(note, false));
             WorkspacePageControl docs = workspace.AddPage("Docs", WorkspaceKind.Docs);
             TabViewControl docsView = workspace.LoadPane(docs);
-            docsView.AddChild(SessionLayout.tabFactory(note));
+            docsView.AddChild(SessionLayout.tabFactory(note, false));
             WorkspacePageControl sheets = workspace.AddPage("Sheets", WorkspaceKind.Sheets);
             TabViewControl sheetsView = workspace.LoadPane(sheets);
-            sheetsView.AddChild(SessionLayout.tabFactory(sheet));
+            sheetsView.AddChild(SessionLayout.tabFactory(sheet, false));
             yield return 2;
 
             t.Check(ribbon.hidden && inspector.hidden, "a General workspace has neither ribbon nor inspector");
@@ -52,7 +52,7 @@ namespace Thorium.Tests
             string note = TempFile(".xml");
             (RibbonControl ribbon, WorkspaceControl workspace, _) = ShowShell(t);
             WorkspacePageControl docs = workspace.AddPage("Docs", WorkspaceKind.Docs);
-            workspace.LoadPane(docs).AddChild(SessionLayout.tabFactory(note));
+            workspace.LoadPane(docs).AddChild(SessionLayout.tabFactory(note, false));
             yield return 3;
 
             DocumentEditorControl editor = TabViewControl.EditorOf(TabViewControl.TabViews(docs).First().Items.First());
@@ -88,9 +88,9 @@ namespace Thorium.Tests
             string sheet = TempFile(SheetDocument.extension);
             (RibbonControl ribbon, WorkspaceControl workspace, _) = ShowShell(t);
             WorkspacePageControl docs = workspace.AddPage("Docs", WorkspaceKind.Docs);
-            workspace.LoadPane(docs).AddChild(SessionLayout.tabFactory(note));
+            workspace.LoadPane(docs).AddChild(SessionLayout.tabFactory(note, false));
             WorkspacePageControl sheets = workspace.AddPage("Sheets", WorkspaceKind.Sheets);
-            workspace.LoadPane(sheets).AddChild(SessionLayout.tabFactory(sheet));
+            workspace.LoadPane(sheets).AddChild(SessionLayout.tabFactory(sheet, false));
             docs.ribbonCategory = "Insert";
             workspace.Show(sheets);
             yield return 3;
@@ -130,7 +130,7 @@ namespace Thorium.Tests
             string note = TempFile(".xml");
             (RibbonControl ribbon, WorkspaceControl workspace, InspectorControl inspector) = ShowShell(t);
             WorkspacePageControl docs = workspace.AddPage("Docs", WorkspaceKind.Docs);
-            workspace.LoadPane(docs).AddChild(SessionLayout.tabFactory(note));
+            workspace.LoadPane(docs).AddChild(SessionLayout.tabFactory(note, false));
             yield return 3;
 
             DocumentEditorControl editor = TabViewControl.EditorOf(TabViewControl.TabViews(docs).First().Items.First());
@@ -174,7 +174,7 @@ namespace Thorium.Tests
             string sheet = TempFile(SheetDocument.extension);
             (RibbonControl ribbon, WorkspaceControl workspace, InspectorControl inspector) = ShowShell(t);
             WorkspacePageControl sheets = workspace.AddPage("Sheets", WorkspaceKind.Sheets);
-            workspace.LoadPane(sheets).AddChild(SessionLayout.tabFactory(sheet));
+            workspace.LoadPane(sheets).AddChild(SessionLayout.tabFactory(sheet, false));
             yield return 3;
 
             SheetEditorControl editor = (SheetEditorControl)TabViewControl.FileEditorOf(TabViewControl.TabViews(sheets).First().Items.First());
@@ -203,7 +203,7 @@ namespace Thorium.Tests
             (_, WorkspaceControl workspace, _) = ShowShell(t);
             SessionLayout.scope = "rb-a";
             WorkspacePageControl docs = workspace.AddPage("Docs", WorkspaceKind.Docs);
-            workspace.LoadPane(docs).AddChild(SessionLayout.tabFactory(note));
+            workspace.LoadPane(docs).AddChild(SessionLayout.tabFactory(note, false));
             docs.ribbonCategory = "Page";
             docs.inspectorShown = false;
             yield return 2;

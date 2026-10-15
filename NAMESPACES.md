@@ -118,6 +118,8 @@ ArctisAurora.Core.UI -> AuroraEngine/Core/UI/ContextMenuEntries.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/ContextMenus.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/Control.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/ControlXml.cs
+ArctisAurora.Core.UI -> AuroraEngine/Core/UI/DateFormats.cs
+ArctisAurora.Core.UI -> AuroraEngine/Core/UI/DateTimeSettings.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/DockingControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/DocumentControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/DocumentEditorControl.cs
@@ -171,6 +173,7 @@ ArctisAurora.Core.UI -> AuroraEngine/Core/UI/PlannerEdits.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/PlannerTicketPopup.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/PlannerXml.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/PointerEvent.cs
+ArctisAurora.Core.UI -> AuroraEngine/Core/UI/RegexTextControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/RibbonControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/RichTextDocument.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/ScrollableControl.cs
@@ -225,6 +228,7 @@ ArctisAurora.Core.UI -> AuroraEngine/Core/UI/WorkspaceBarControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/WorkspaceControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/WorkspacePageControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/WrapPanelControl.cs
+ArctisAurora.Core.UI -> AuroraEngine/Core/UI/XmlEditorControl.cs
 ArctisAurora.Core.Users -> AuroraEngine/Core/Users/User.cs
 ArctisAurora.CustomEntities -> AuroraEngine/CustomEntities/Layer.cs
 ArctisAurora.CustomEntities -> AuroraEngine/CustomEntities/SimulatorEntity.cs
@@ -254,6 +258,7 @@ ArctisAurora.EngineWork.Rendering -> AuroraEngine/Core/Rendering/GraphicsSetting
 ArctisAurora.EngineWork.Rendering -> AuroraEngine/Core/Rendering/Renderer.cs
 ArctisAurora.EngineWork.Rendering -> AuroraEngine/Core/Rendering/RenderWindow.cs
 ArctisAurora.EngineWork.Rendering -> AuroraEngine/Core/Rendering/Swapchain.cs
+ArctisAurora.EngineWork.Rendering -> AuroraEngine/Core/Rendering/TouchpadInput.cs
 ArctisAurora.EngineWork.Rendering -> AuroraEngine/Core/Rendering/VulkanRenderer.cs
 ArctisAurora.EngineWork.Rendering.Helpers -> AuroraEngine/Core/Rendering/Helpers/AVulkanBufferHandler.cs
 ArctisAurora.EngineWork.Rendering.Helpers -> AuroraEngine/Core/Rendering/Helpers/AVulkanHelper.cs
@@ -315,3 +320,4 @@ Thorium.Tests -> Thorium/Tests/StickyTests.cs
 Thorium.Tests -> Thorium/Tests/TabToolsTests.cs
 Thorium.Tests -> Thorium/Tests/TextInputTests.cs
 Thorium.Tests -> Thorium/Tests/WorkspaceTests.cs
+Thorium.Tests -> Thorium/Tests/XmlTests.cs

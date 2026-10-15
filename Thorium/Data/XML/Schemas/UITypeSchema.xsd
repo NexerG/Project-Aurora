@@ -837,6 +837,7 @@
       <xs:enumeration value="LaTeX" />
       <xs:enumeration value="Manager" />
       <xs:enumeration value="Calendar" />
+      <xs:enumeration value="Xml" />
     </xs:restriction>
   </xs:simpleType>
   <xs:attributeGroup name="WrapPanel.Attributes">

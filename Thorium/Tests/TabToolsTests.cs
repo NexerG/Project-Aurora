@@ -2,6 +2,8 @@ using ArctisAurora.Core.ECS.EngineEntity;
 using ArctisAurora.Core.Registry;
 using ArctisAurora.Core.Testing;
 using ArctisAurora.Core.UI;
+using ArctisAurora.EngineWork;
+using System.Numerics;
 
 namespace Thorium.Tests
 {
@@ -14,8 +16,8 @@ namespace Thorium.Tests
             string sheet = TempFile(SheetDocument.extension, null);
             WorkspaceControl workspace = ShowWorkspace(t);
             TabViewControl view = workspace.LoadPane();
-            TabItemControl noteTab = SessionLayout.tabFactory(note);
-            TabItemControl sheetTab = SessionLayout.tabFactory(sheet);
+            TabItemControl noteTab = SessionLayout.tabFactory(note, false);
+            TabItemControl sheetTab = SessionLayout.tabFactory(sheet, false);
             view.AddChild(noteTab);
             view.AddChild(sheetTab);
             view.SetActive(sheetTab);
@@ -155,6 +157,33 @@ namespace Thorium.Tests
             t.Show(new StackPanelControl());
             yield return 2;
             File.Delete(path);
+        }
+
+        [A_XSDActionDependency("TabTools.PreviewWheelZoom", "Test")]
+        private static IEnumerator<int> PreviewWheelZoom(TestContext t)
+        {
+            string path = TempFile(".tex", "\\documentclass{article}\n\\begin{document}\ncat\n\\end{document}\n");
+            TexEditorControl editor = new TexEditorControl();
+            t.Show(editor);
+            editor.LoadPath(path);
+            DocumentZoomSetting zoom = SettingsRegistry.Get<UISettings>().documentZoom;
+            float before = zoom.percent;
+            yield return 2;
+
+            editor.SetPreviewZoom(150);
+            yield return 2;
+            yield return t.Scroll(editor.preview, new Vector2(0f, 1f), new[] { Keys.LeftControl });
+            yield return 2;
+            t.Check(MathF.Abs(editor.preview.zoomOverride!.Value - 1.6f) < 0.001f && zoom.percent == before,
+                $"Ctrl+wheel over a zoomed preview steps the preview's own zoom: {editor.preview.zoomOverride}, setting {zoom.percent}");
+            t.Check(HasText(editor.tools, "160%"), "the zoom caption follows");
+
+            t.Show(new StackPanelControl());
+            yield return 2;
+            File.Delete(path);
+
+            static bool HasText(Control control, string text) =>
+                control is LabelControl label && label.text == text || control.children.OfType<Control>().Any(child => HasText(child, text));
         }
 
         private static WorkspaceControl ShowWorkspace(TestContext t)

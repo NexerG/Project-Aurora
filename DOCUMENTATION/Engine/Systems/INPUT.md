@@ -53,6 +53,14 @@ Both the raw key event queue and the character input queue are double-buffered. 
 
 The scroll wheel uses a simpler pattern — accumulate into `scrollDeltaWrite`, copy to `scrollDelta` at tick start, zero the write buffer. No lock needed because the write is a float accumulation and the read only happens after the swap.
 
+#### Wheel zoom
+Holding the `Zoom` role (Control) turns the wheel into zoom and the scroll is not delivered. Control plus the `AppZoom` role (Shift) zooms the whole UI. Control alone zooms the content of whichever editor is under the pointer, a note, a sheet or the planner (Board, Gantt and Calendar), through the one shared document zoom setting; over a Tex preview that has its own zoom picked it steps that preview zoom instead. Off any editor, Control alone does nothing. A touchpad pinch arrives as Control plus wheel, so it zooms the same way.
+
+#### Scroll gestures
+GLFW reports scroll deltas but not where a gesture starts or ends, so `InputHandler` tracks the gesture itself. A mouse wheel gesture ends after 0.15 seconds without a delta. On a precision touchpad on Windows, `TouchpadInput` registers for Raw Input from the HID touchpad device and reads the tip switch of each finger from `WM_INPUT`, which the window procedure hands over before forwarding it to GLFW. A gesture with a finger down is marked touched. After the last finger lifts, Windows keeps sending momentum deltas that fade out. The gesture ends when a delta falls below a small floor or 50 milliseconds pass with none, and the rest of the momentum tail is swallowed. Touching the pad again stops the momentum, and the next lift ends the gesture.
+
+`SettleScroll()` runs first in `ActivateKeybinds` and sets `scrollEnded` for the one tick in which a gesture finished. `UIEngine` remembers the control that consumed the scroll and calls its `OnPointerScrollEnd()` once then. The planner calendar uses it to settle onto a whole day or week. Other platforms and non-precision touchpads fall back to the wheel's quiet period. See ClaudeMemory note scroll-gesture-end for the measurements and rejected alternatives.
+
 #### Window Focus
 GLFW's window focus callback is wired per window in `Engine.WireInput` and lands in `RenderWindow.FocusChanged`, which records the window in `UICollisionHandling.pendingActiveGlfwWindow` and does nothing else. `Engine.MainTick` publishes it into the `ActiveGLFWWindow` context after the window reap and before the UI loop, so no control callback ever runs inside `glfwPollEvents` — the same defer-to-the-tick pattern as the input queues above.
 

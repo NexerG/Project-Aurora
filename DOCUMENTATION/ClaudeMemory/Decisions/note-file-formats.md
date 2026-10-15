@@ -100,4 +100,4 @@ inverse, the same argument `StyleRangeEdit` makes.
 - A double-click on a checkbox bubbles a 2-tap to `DocumentControl` and selects a word.
 - Only Thorium's `InputMap.inputs.xml` binds Tab — it is the only host with `Text.*` binds.
 
-Related: [[document-undo]], [[text-styling-types]], [[xml-save-skips-defaults]], [[vault-browser-and-shell]], [[ui-palettes]], [[note-properties]]
+Related: [[xml-editor]], [[document-undo]], [[text-styling-types]], [[xml-save-skips-defaults]], [[vault-browser-and-shell]], [[ui-palettes]], [[note-properties]]

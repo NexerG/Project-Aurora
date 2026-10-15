@@ -43,6 +43,9 @@ namespace ArctisAurora.Core.UI
 
         [A_XSDElementProperty("PropertiesOpen", "Settings", "Whether the note's properties header was expanded.")]
         public bool propertiesOpen { get; set; }
+
+        [A_XSDElementProperty("AsXml", "Settings", "Whether the tab showed the file as XML source.")]
+        public bool asXml { get; set; }
     }
 
     // What a SessionWindow may hold: its workspaces, or the panes a record from before workspaces held.
@@ -144,7 +147,7 @@ namespace ArctisAurora.Core.UI
 
         // How the host turns a saved path into a tab. The engine can build the editor but not what
         // the host binds to it, so restoring tabs needs this set.
-        public static Func<string, TabItemControl> tabFactory;
+        public static Func<string, bool, TabItemControl> tabFactory;
 
         // secondary windows are renamed on restore, so a later tear-off cannot collide with one
         private const string restoredWindow = "session-";
@@ -359,7 +362,7 @@ namespace ArctisAurora.Core.UI
                     continue;
                 }
 
-                TabItemControl tab = tabFactory(path);
+                TabItemControl tab = tabFactory(path, record.tabs[i].asXml);
                 if (tab == null) continue;
 
                 TabViewControl.FileEditorOf(tab)?.RestoreView(record.tabs[i]);

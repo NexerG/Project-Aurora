@@ -26,7 +26,7 @@ namespace ArctisAurora.Core.UI
     [A_XSDType("DocumentZoom", "Settings")]
     public class DocumentZoomSetting : Setting
     {
-        [A_XSDElementProperty("Percent", "Settings", "Size of a note's page and text, 25 to 400.")]
+        [A_XSDElementProperty("Percent", "Settings", "Size of note, sheet and planner content, 25 to 400.")]
         public float percent { get; set; } = 100f;
     }
 

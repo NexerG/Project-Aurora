@@ -211,4 +211,4 @@ Running `Thorium` (engine manifest + Thorium's `Graphics.xml` + a seeded write r
 - The `schemaLocation` a saved file gets is a long relative path back to the app's schema folder
   (pre-existing).
 
-Related: [[settings-registry]], [[cross-system-change-notification]], [[xml-save-skips-defaults]]
+Related: [[date-time-settings]], [[settings-registry]], [[cross-system-change-notification]], [[xml-save-skips-defaults]]

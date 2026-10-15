@@ -46,6 +46,8 @@ The creator of a ticket is a `User`, from `ArctisAurora.Core.Users`. There are n
 <Planner Name="Launch">
 	<Category Id="…" Name="Design" Color="#4C8BF5"/>
 	<Ticket Id="…" Name="Mockups" Category="…" Start="2026-10-07" End="2026-10-10" AllDay="true" Creator="Grexen" Created="2026-10-07T09:30:00" Order="0" Follows="…">
+		<Description>Two lines
+of text</Description>
 		<Assignee User="Grexen"/>
 		<Attachment Kind="Travel" Side="Before" Minutes="30"/>
 	</Ticket>
@@ -54,9 +56,11 @@ The creator of a ticket is a `User`, from `ArctisAurora.Core.Users`. There are n
 
 All-day times are written `yyyy-MM-dd`, timed ones `yyyy-MM-ddTHH:mm`. A planner with no category gets one called "General" when it is read. A ticket without a readable start and end is kept as an unknown element and written back unchanged, as is any other element the reader does not know. Categories are written first, then tickets, then the unknown elements. A ticket's `Follows` attribute names the ticket it follows and is written after `Order`. An `Attachment` element holds a kind, a side (`Before` or `After`) and a number of minutes, and is written after the assignees; one without a kind or without positive minutes is kept as an unknown element.
 
+A ticket's description is plain text kept in a `<Description>` child, written first among the ticket's children and only when it is not empty. It is a child element rather than an attribute because XML turns newlines inside an attribute into spaces, and the description keeps its line breaks.
+
 ## Editing
 
-Click a bar on the Gantt chart to select it; the selected bar is outlined in Ink. Drag the middle of a bar to move it, or drag near an edge to resize it. The edge zone is the smaller of 6 pixels and a third of the bar inside the bar, and 6 pixels outside it; over an edge the cursor becomes a horizontal resize. A drag snaps by the delta rather than by the edge: to the hour on Hour zoom for a timed ticket, to the day otherwise, so a timed ticket moved on Day zoom keeps its time of day. A resize keeps at least one unit. A whole drag is one undo step, "Move ticket" or "Resize ticket". Double-click a bar to edit it.
+Click a bar on the Gantt chart to select it; the selected bar is outlined in Ink, and its whole row, name column included, is washed in Accent at 15% alpha. Drag the middle of a bar to move it, or drag near an edge to resize it. The edge zone is the smaller of 6 pixels and a third of the bar inside the bar, and 6 pixels outside it; over an edge the cursor becomes a horizontal resize. A drag snaps by the delta rather than by the edge: to the hour on Hour zoom for a timed ticket, to the day otherwise, so a timed ticket moved on Day zoom keeps its time of day. A resize keeps at least one unit. A whole drag is one undo step, "Move ticket" or "Resize ticket". Double-click a bar to edit it.
 
 "+ Ticket" in the toolbar opens the ticket popup for a new ticket. The new ticket is called "New ticket", lasts today as an all-day ticket, is created by the current user, and goes last in the selected ticket's category, or in the first category when nothing is selected. Delete removes the selected ticket. Ctrl+Z undoes, Ctrl+Y or Ctrl+Shift+Z redoes, and Ctrl+S saves.
 
@@ -65,6 +69,10 @@ The ticket popup has a name box, a category dropdown, start and end boxes, an as
 Right-click a bar for the planner menu: Edit ticket, Delete ticket and a Move to category submenu that lists the planner's categories when it opens, so it is never stale. The right click selects the ticket in the row first.
 
 Press a card on the board and move it 4 pixels to start dragging it; a preview of the card follows the pointer, as a dragged tab does. While the pointer is over the board the column it would drop into is outlined in Accent, and a gap opens where the card will land: above the card the drop lands before, or below the last card when it lands last. The column is the one whose horizontal range holds the pointer, otherwise the nearest, and the place is after the column's other cards whose centre is above the pointer. Dropping files the ticket under that column's category at that place and renumbers the column's `order`, as one undo step, "Move ticket". The source column is not renumbered, so its `order` may keep a gap. Dropping outside the board does nothing. Cards cannot be selected or opened from the board yet. The board is rebuilt one tick after any change, not during the click or drag that caused it, so a change shows on the board one tick late.
+
+The ticket popup has a Description row under the name, at least three rows tall. It is a `RegexTextControl`: an editable field that a regex cuts into segments, each shown as its own wrapping run, stacked one under the other. For the description the pattern is a line break, so each line is a segment. Enter applies the popup as before and Shift+Enter inserts a line break; a pasted line break becomes a line break in the field, and the field's `maxLines` is 8. The description is plain text, trimmed when it is applied, and is part of the same undo step as the rest of the edit.
+
+A single click on a ticket in any view expands it to show its description. On the board the card grows; on the Gantt chart the row grows and pushes the rows below it down; in the calendar the block (Day, Week) or the chip (Month) grows downward over what is below it, drawn above those blocks but not hit-tested, so a click or drag there still reaches the block underneath. One ticket is expanded at a time, and a ticket with no description does not expand. The expansion happens when the mouse button is released, so dragging a bar, block or card never expands it, and the second click of a double click leaves the expansion as it is so that double-click-to-edit still works. Clicking the expanded ticket again keeps it open. Escape, or a click on nothing, folds it away. The Gantt description runs from the name column's edge to the viewport's right edge, so scrolling sideways does not change the row heights; it re-wraps one frame after the window is resized. The expanded view is read-only, so a description is edited through the popup.
 
 The editor reads "now" from a clock, which is the system time unless a test pins it; the today line and the chart span follow it.
 
@@ -80,9 +88,9 @@ Deleting a category leaves its tickets pointing at it. They are shown under the 
 
 The toolbar's "Calendar" button shows the calendar. Its Day, Week and Month buttons choose the span, and `<`, `Today` and `>` step the shown period by a day, a week or a month; the zoom buttons belong to the Gantt chart only. Week is the default span. The calendar opens scrolled to 07:00, and Day or Week reopens at 07:00 after Month.
 
-Day and Week show a time grid. The hours are pinned to the left, and the day names and an all-day strip are pinned to the top. The strip holds all-day tickets and timed tickets of 24 hours or more, packed into lanes. A timed ticket that crosses midnight is drawn as one block per day. A line with a dot marks the current time across today's column, and it moves once a minute so an idle window stays idle. A Week starts on the anchor's Monday.
+Day and Week show a time grid. The hours are pinned to the left, and the day names and an all-day strip are pinned to the top. The strip holds all-day tickets and timed tickets of 24 hours or more, packed into lanes. A timed ticket that crosses midnight is drawn as one block per day. A line with a dot marks the current time across today's column, and it moves once a minute so an idle window stays idle. A Week starts on the anchor's week-start day, which is a setting (Monday, Sunday and so on, or "System" for the OS culture), and that day's column is tinted faintly with its name in bold. While scrolling sideways the slide stays wherever it is left, however slowly it moves. When the scroll gesture ends (the last finger leaves a precision touchpad and its momentum fades, or a mouse wheel is quiet for 0.15 seconds) the slide eases over 0.15 seconds onto the next whole day (Day and Week) or whole week (Month) in the direction it was travelling. The clock, the hour labels and the date order follow the date and time settings.
 
-Month shows a grid of 6 weeks, starting on the Monday on or before the 1st. Each cell has its day number, in Accent for today and muted outside the month, and a chip per ticket, "HH:mm Name" or just the name for an all-day or long ticket. A full cell ends with "+N more".
+Month shows a grid of 6 weeks, starting on the week-start day on or before the 1st. Each cell has its day number, in Accent for today and muted outside the month, and a chip per ticket, "HH:mm Name" or just the name for an all-day or long ticket. A full cell ends with "+N more".
 
 Tickets that overlap in time are packed side by side: they are sorted by start, then longest first, split into clusters of tickets that overlap directly or through others, and each is given the first column that is free. The all-day strip packs its lanes the same way. Packing uses a ticket's time including its attachments.
 
@@ -100,7 +108,9 @@ A ticket can follow one other ticket, chosen in the popup's "Follows" dropdown, 
 
 ## Views and zoom
 
-The zoom sets how wide a day is: 768 pixels at Hour, 32 at Day, 10 at Week and 3 at Month. The chart spans every ticket and today, padded by 4 units, or 6 at Hour. The date header has two bands: the upper band shows days, months or years, and the lower band shows the zoom unit. Weeks start on Monday. Changing the zoom keeps the time at the left edge of the viewport where it was.
+The zoom sets how wide a day is: 768 pixels at Hour, 32 at Day, 10 at Week and 3 at Month. The chart spans every ticket and today, padded by 4 units, or 6 at Hour. The date header has two bands: the upper band shows days, months or years, and the lower band shows the zoom unit. Weeks start on the week-start day from the date and time settings. Changing the zoom keeps the time at the left edge of the viewport where it was.
+
+Separately from that time zoom, all three views follow the document zoom setting that notes and sheets use: sizes, spacing and text in the Gantt chart, the board and the calendar are laid out at that zoom, and Ctrl+wheel over the planner changes it. The toolbar and the popups stay at the app zoom. The Gantt name column and the board column widths are stored at 100%, so a resize drag at 200% stores half the pointer distance.
 
 A board card has a colour strip across its top, then the name, the dates and "by" the creator. When the ticket has assignees, a row of chips follows, one per assignee, showing their initials: the first letters of the first two words of the name, or the first two letters of a one-word name, in capitals, so "Ada Lovelace" is "AL" and "Grexen" is "GR"; an empty name shows "?". A column's heading is its swatch, the category name and the ticket count. The tickets of a column are in `order`, then by start.
 
@@ -122,7 +132,11 @@ The view, zoom and scroll are kept with the session, so a restored tab opens whe
 | `Repath(path)` | public | Points the tab at a renamed file. |
 | `Select(ticket)` | public | Selects a ticket and outlines its bar. |
 | `AddTicket()` | public | Opens the ticket popup for a new ticket. |
-| `EditSelected()` | public | Opens the ticket popup for the selected ticket. |
+| `EditSelected()` | public | Opens the ticket popup for the selected ticket, under its bar, block or card. |
+| `expanded` | property | The ticket whose description is shown, or nothing. |
+| `Expand(ticket)` | public | Shows a ticket's description in every view; nothing, or a ticket with no description, folds it away. |
+| `PlannerBoardControl.CardOf(ticket)` | public | The card of a ticket on the board. |
+| `GanttChartControl.RowHeight(row)` | public | The height of a row, taller for the expanded ticket. |
 | `MoveSelected(category)` | public | Moves the selected ticket to the end of a category, as one undo step. |
 | `MoveTicket(ticket, category, index)` | public | Files a ticket under a category at an index, renumbering that column's `order`, as one undo step. |
 | `AddCategory()` | public | Opens the category popup for a new category. |
@@ -228,6 +242,15 @@ The view, zoom and scroll are kept with the session, so a restored tab opens whe
 	the document raises Changed
 	the chart and the board are drawn again
 
+### Expand
+	if the ticket is null or its description is empty
+		expanded becomes nothing
+	otherwise
+		expanded becomes the ticket
+	the chart, the board and the calendar are drawn again
+
+A change to the document drops `expanded` when its ticket is deleted or its description is emptied, and loading a planner resets it.
+
 ### RebuildSoon
 	if a rebuild is already pending
 		return
@@ -288,7 +311,7 @@ The view, zoom and scroll are kept with the session, so a restored tab opens whe
 
 ## Keys
 
-Delete removes the selected ticket, Ctrl+Z undoes, Ctrl+Y or Ctrl+Shift+Z redoes and Ctrl+S saves. They are second binds beside the sheet and text ones and do nothing unless a planner holds the active control.
+Delete removes the selected ticket, Ctrl+Z undoes, Ctrl+Y or Ctrl+Shift+Z redoes and Ctrl+S saves. They are second binds beside the sheet and text ones and do nothing unless a planner holds the active control. Escape (`Planner.Collapse`) folds an expanded ticket away.
 
 ## Related
 - [[Sheet Editor]] — the editor the planner is built like

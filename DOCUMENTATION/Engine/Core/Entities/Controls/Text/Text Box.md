@@ -116,6 +116,7 @@ A host wanting keyboard focus before the pointer arrives has to hand over the ac
 ```
 
 ## Related
+- `RegexTextControl` — the multi-line sibling (planner descriptions); both implement `ITextField`, which `TextInputActions` resolves
 - [[TextInputControl]] — the editing methods the inner line provides
 - [[TextControl]] — measurement, `OffsetAt`/`CaretAt`, and the `WrapWidth` hook
 - [[Rich Text Document]] — the document-side editing path this one parallels

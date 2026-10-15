@@ -38,7 +38,8 @@ namespace ArctisAurora.Core.UI
         [A_XSDElementProperty("Frontmatter", "UI", "A Markdown note's metadata block as written, delimiter lines included.")]
         public string? frontmatter;
 
-        // a .tex file's line ending and byte-order mark, kept for the save
+        // source text: its code language, line ending and byte-order mark, kept for the save
+        public string? sourceLanguage;
         public string sourceNewline = "\n";
         public bool sourceBom;
 
@@ -51,7 +52,7 @@ namespace ArctisAurora.Core.UI
             {
                 ".md" => DocumentXml.Parse(MarkdownPictures(MarkdownFormat.Read(File.ReadAllText(path), Path.GetFileNameWithoutExtension(path)), path)),
                 ".txt" => DocumentXml.Parse(PlainTextFormat.Read(File.ReadAllText(path), Path.GetFileNameWithoutExtension(path))),
-                ".tex" => TexSource(path),
+                ".tex" => LoadSource(path, "latex"),
                 _ => DocumentXml.Load(path)
             };
 
@@ -60,17 +61,23 @@ namespace ArctisAurora.Core.UI
             return document;
         }
 
-        private static RichTextDocument TexSource(string path)
+        // A file's text as code lines in a language.
+        public static RichTextDocument LoadSource(string path, string language) =>
+            SourceFromBytes(File.ReadAllBytes(path), Path.GetFileNameWithoutExtension(path), language);
+
+        public static RichTextDocument SourceFromBytes(byte[] bytes, string name, string language)
         {
-            byte[] bytes = File.ReadAllBytes(path);
             bool bom = bytes.Length >= 3 && bytes[0] == 0xEF && bytes[1] == 0xBB && bytes[2] == 0xBF;
             string text = Encoding.UTF8.GetString(bytes, bom ? 3 : 0, bytes.Length - (bom ? 3 : 0));
 
-            RichTextDocument document = DocumentXml.Parse(TexSourceFormat.Read(text, Path.GetFileNameWithoutExtension(path)));
+            RichTextDocument document = DocumentXml.Parse(TexSourceFormat.Read(text, name, language));
+            document.sourceLanguage = language;
             document.sourceNewline = text.Contains("\r\n") ? "\r\n" : "\n";
             document.sourceBom = bom;
             return document;
         }
+
+        public string SourceText() => TexSourceFormat.Write(DocumentXml.ToXml(this), sourceNewline);
 
         private static XElement MarkdownPictures(XElement root, string path)
         {
@@ -84,6 +91,12 @@ namespace ArctisAurora.Core.UI
 
         public void Save(string path)
         {
+            if (sourceLanguage != null)
+            {
+                File.WriteAllText(path, SourceText(), new UTF8Encoding(sourceBom));
+                return;
+            }
+
             switch (Path.GetExtension(path).ToLowerInvariant())
             {
                 case ".md":
@@ -92,7 +105,7 @@ namespace ArctisAurora.Core.UI
                     File.WriteAllText(path, MarkdownFormat.Write(root));
                     break;
                 case ".txt": File.WriteAllText(path, PlainTextFormat.Write(DocumentXml.ToXml(this))); break;
-                case ".tex": File.WriteAllText(path, TexSourceFormat.Write(DocumentXml.ToXml(this), sourceNewline), new UTF8Encoding(sourceBom)); break;
+                case ".tex": File.WriteAllText(path, SourceText(), new UTF8Encoding(sourceBom)); break;
                 default: DocumentXml.Save(this, path); break;
             }
         }
@@ -492,6 +505,20 @@ namespace ArctisAurora.Core.UI
             readOnly = value;
             Raise(NoteChangeKind.ReadOnly, 0);
         }
+
+        // Takes on another note's content whole; the source fields stay this note's.
+        public void ReplaceAll(RichTextDocument from)
+        {
+            blocks = from.blocks;
+            name = from.name;
+            layout = from.layout;
+            palette = from.palette;
+            created = from.created;
+            modified = from.modified;
+            readOnly = from.readOnly;
+            frontmatter = from.frontmatter;
+            Raise(NoteChangeKind.Replaced, 0);
+        }
         #endregion
     }
 
@@ -519,6 +546,8 @@ namespace ArctisAurora.Core.UI
         }
 
         public void MarkDirty() => isDirty = true;
+
+        public void MarkSaved() => isDirty = false;
 
         // Follows the file after it is renamed on disk, so the next save writes where the note is now.
         public void Repath(string newPath)

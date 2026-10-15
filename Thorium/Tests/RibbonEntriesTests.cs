@@ -165,8 +165,8 @@ namespace Thorium.Tests
 
             WorkspacePageControl page = workspace.AddPage("Sheets", WorkspaceKind.Sheets);
             TabViewControl view = workspace.LoadPane(page);
-            TabItemControl sheetTab = SessionLayout.tabFactory(sheet);
-            TabItemControl csvTab = SessionLayout.tabFactory(csv);
+            TabItemControl sheetTab = SessionLayout.tabFactory(sheet, false);
+            TabItemControl csvTab = SessionLayout.tabFactory(csv, false);
             view.AddChild(sheetTab);
             view.AddChild(csvTab);
             view.SetActive(sheetTab);

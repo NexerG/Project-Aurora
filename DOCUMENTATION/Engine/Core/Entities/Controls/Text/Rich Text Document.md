@@ -34,7 +34,7 @@ A document is a flat list of blocks; a block of flowing text holds a list of inl
 Planned (not yet in code): `TextRun` gains `FontSize` (0 = inherit block default), `Underline` and a highlight color — mixed fonts/sizes word-by-word are just adjacent runs, with `StyleEquals` merging same-styled neighbours on edit. New blocks arrive via the same free round-trip: `CodeBlock` (Language attribute, monospace, no wrap; syntax coloring is computed at view time and never persisted). Tables landed in a different shape — see [[#Tables]].
 
 ## File formats
-A note file is text in one of three formats, and none of them builds the editor directly. `MarkdownFormat` and `PlainTextFormat` only turn text into the `<Document>`/`<Block>`/`<Run>` tree and back; `DocumentXml.Parse` is the one thing that turns a tree into blocks, whichever file it came from. An `.xml` note is that tree already, so it goes straight to `DocumentXml`.
+A note file is text in one of three formats, and none of them builds the editor directly. `MarkdownFormat` and `PlainTextFormat` only turn text into the `<Document>`/`<Block>`/`<Run>` tree and back; `DocumentXml.Parse` is the one thing that turns a tree into blocks, whichever file it came from. An `.xml` note is that tree already, so it goes straight to `DocumentXml`. Any `.xml` file can also be opened as coloured XML source beside its normal view — see [[Xml Editor]].
 
 The file name becomes the note's `Name` for `.md` and `.txt`, so those notes never ask to be named. New notes from the vault browser are `.md`; a duplicate or a rename keeps the extension it had. Colour, gradient, font and size have nowhere to go in Markdown and are not written — the palette colours a Markdown note.
 

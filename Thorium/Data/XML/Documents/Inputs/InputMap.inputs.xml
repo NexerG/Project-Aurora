@@ -10,6 +10,8 @@
 	<NamedModifier Modifier="Copy" Key="RightControl" />
 	<NamedModifier Modifier="Zoom" Key="LeftControl" />
 	<NamedModifier Modifier="Zoom" Key="RightControl" />
+	<NamedModifier Modifier="AppZoom" Key="LeftShift" />
+	<NamedModifier Modifier="AppZoom" Key="RightShift" />
 
 	<Keybind Trigger="AnySymbol" Action="Text.Write">
 		<Continuous />
@@ -247,6 +249,10 @@
 	</Keybind>
 
 	<Keybind Trigger="Delete" Action="Planner.Delete">
+		<Press />
+	</Keybind>
+
+	<Keybind Trigger="Escape" Action="Planner.Collapse">
 		<Press />
 	</Keybind>
 

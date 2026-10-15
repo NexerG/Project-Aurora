@@ -41,6 +41,8 @@ its own short name, so the grep above applies to every `Entity` subclass, howeve
 
 **It happened again (2026-10-07).** The planner copied `SheetControl`'s private nested `Parts` and `SheetEditorControl`'s private nested `Scroller` unchanged; both collided in `RegisterSerializableTypes` and killed boot (renamed `ChartParts` / `PlannerScroller`). When a new control is built "like" an old one, grep the nested class names it copied too, before the first run.
 
+**And again (2026-10-09).** `RegexTextControl`'s private nested `Layer : ContainerControl` collided with `CustomEntities.Layer` and killed boot (renamed `FieldParts`). `WrappingLabel` was a private nested class of `PlannerBoardControl`; the calendar and the Gantt chart needed it too, so it was moved to namespace level (`internal sealed class WrappingLabel : LabelControl`, same file) and shared instead of duplicated per control.
+
 **Rejected:** keying `GenerateID` on `FullName`. It changes the serialized id of every type at once, so every
 saved note, scene and session file on disk stops reading.
 

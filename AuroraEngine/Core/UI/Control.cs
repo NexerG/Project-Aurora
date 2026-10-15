@@ -882,6 +882,9 @@ namespace ArctisAurora.Core.UI
         // The wheel, carried in PointerEvent.delta. Walks up like every other phase.
         public virtual bool OnPointerScroll(PointerEvent e) => onScroll?.Invoke(e) ?? false;
 
+        // The scroll gesture this control consumed has finished.
+        public virtual void OnPointerScrollEnd() { }
+
         // Decoration drawn inside a control that owns the interaction — a caret, a selection box.
         // Skipped by the hit-test so it does not swallow the click it sits over.
         public bool hitTestable = true;

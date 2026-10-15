@@ -231,6 +231,91 @@ namespace Thorium.Tests
                 $"Home slides the text back to its start: caret {caret.arrangedRect.x}, field {box.arrangedRect.x}");
         }
 
+        [A_XSDActionDependency("RegexText.LinesAndCommit", "Test")]
+        private static IEnumerator<int> RegexTextLinesAndCommit(TestContext t)
+        {
+            string? committed = null;
+            RegexTextControl field = RegexField(240f);
+            field.onCommit = text => committed = text;
+            t.Show(field);
+            yield return 2;
+
+            yield return t.Click(field);
+            float oneLine = field.arrangedRect.height;
+            yield return t.Type("one");
+            yield return t.Key(Keys.Enter, Keys.LeftShift);
+            yield return t.Type("two");
+            yield return 2;
+            t.Check(field.text == "one\ntwo" && field.Segments.Count == 2, $"Shift+Enter starts a new segment: '{field.text}'");
+            t.Check(field.arrangedRect.height > oneLine, $"the field grows with its lines: {oneLine} -> {field.arrangedRect.height}");
+
+            CaretControl caret = field.children.OfType<CaretControl>().First();
+            float lower = caret.arrangedRect.y;
+            yield return t.Key(Keys.Up);
+            yield return 2;
+            t.Check(caret.arrangedRect.y < lower, $"Up moves the caret to the line above: {lower} -> {caret.arrangedRect.y}");
+            yield return t.Type("!");
+            t.Check(field.text == "one!\ntwo", $"the caret keeps its column on the line above: '{field.text}'");
+
+            yield return t.Key(Keys.Enter);
+            t.Check(committed == "one!\ntwo" && !field.isEditing, "Enter commits the field");
+        }
+
+        [A_XSDActionDependency("RegexText.WrapMoves", "Test")]
+        private static IEnumerator<int> RegexTextWrapMoves(TestContext t)
+        {
+            RegexTextControl field = RegexField(120f);
+            field.text = "alpha beta gamma delta epsilon\nzeta";
+            t.Show(field);
+            yield return 2;
+
+            yield return t.Click(field);
+            yield return t.Key(Keys.Home, Keys.LeftControl);
+            yield return t.Key(Keys.Down);
+            yield return t.Type("X");
+            int x = field.text.IndexOf('X');
+            t.Check(x > 0 && x < field.text.IndexOf('\n'), $"Down from the first line stays in a wrapped segment: '{field.text}'");
+
+            yield return t.Key(Keys.End, Keys.LeftControl);
+            yield return t.Key(Keys.Home);
+            yield return t.Key(Keys.Backspace);
+            t.Check(!field.text.Contains('\n') && field.Segments.Count == 1, $"Backspace at a segment's start joins it to the one before: '{field.text}'");
+            yield return t.Key(Keys.Z, Keys.LeftControl);
+            t.Check(field.text.Contains("\nzeta"), $"undo splits them again: '{field.text}'");
+
+            yield return t.Key(Keys.A, Keys.LeftControl);
+            yield return t.Key(Keys.C, Keys.LeftControl);
+            t.Check(ClipboardText.Get() == field.text, "Ctrl+A selects across segments");
+        }
+
+        [A_XSDActionDependency("RegexText.CommaPattern", "Test")]
+        private static IEnumerator<int> RegexTextCommaPattern(TestContext t)
+        {
+            RegexTextControl field = RegexField(240f);
+            field.pattern = new System.Text.RegularExpressions.Regex(@",\s*");
+            field.separator = ", ";
+            t.Show(field);
+            yield return 2;
+
+            yield return t.Click(field);
+            yield return t.Type("ada, bo");
+            t.Check(field.Segments.Count == 2, $"a typed match splits the text live: {field.Segments.Count}");
+            yield return t.Key(Keys.Enter, Keys.LeftShift);
+            yield return t.Type("cy");
+            t.Check(field.text == "ada, bo, cy" && field.Segments.Count == 3, $"Shift+Enter inserts the separator: '{field.text}'");
+
+            yield return t.Key(Keys.Home);
+            yield return t.Key(Keys.Backspace);
+            t.Check(field.text == "ada, bocy", $"Backspace at a segment's start removes the whole match: '{field.text}'");
+        }
+
+        private static RegexTextControl RegexField(float width) => new RegexTextControl
+        {
+            preferredWidth = width,
+            horizontalAlignment = HorizontalAlignment.Left,
+            verticalAlignment = VerticalAlignment.Top
+        };
+
         [A_XSDActionDependency("TextInput.DragMovesText", "Test")]
         private static IEnumerator<int> DragMovesText(TestContext t)
         {
@@ -317,6 +402,29 @@ namespace Thorium.Tests
 
             yield return t.Key(Keys.Z, Keys.LeftControl);
             t.Check(target.text == "to" && source.text == "", "undo in the target takes back only its own half");
+        }
+
+        [A_XSDActionDependency("TextInput.WheelZoom", "Test")]
+        private static IEnumerator<int> WheelZoom(TestContext t)
+        {
+            DocumentEditorControl editor = ShowParagraphs(t, "zoom me");
+            UISettings ui = SettingsRegistry.Get<UISettings>();
+            float note = ui.documentZoom.percent, app = ui.zoom.percent;
+            yield return 2;
+
+            yield return t.Scroll(editor, new Vector2(0f, 1f), new[] { Keys.LeftControl });
+            yield return 2;
+            t.Check(ui.documentZoom.percent == note + 10f && ui.zoom.percent == app,
+                $"Ctrl+wheel over a note zooms the note: {note} -> {ui.documentZoom.percent}, app {app} -> {ui.zoom.percent}");
+
+            yield return t.Scroll(editor, new Vector2(0f, 1f), new[] { Keys.LeftControl, Keys.LeftShift });
+            yield return 2;
+            t.Check(ui.zoom.percent == app + 10f && ui.documentZoom.percent == note + 10f,
+                $"Ctrl+Shift+wheel zooms the app, not the note: app {app} -> {ui.zoom.percent}");
+
+            ui.documentZoom.percent = note;
+            ui.zoom.percent = app;
+            SettingsRegistry.Apply();
         }
 
         [A_XSDActionDependency("TextInput.RightModifiers", "Test")]
@@ -1076,14 +1184,14 @@ namespace Thorium.Tests
             };
             t.Show(workspace);
             SessionLayout.scope = "test-a";
-            workspace.LoadPane()!.AddChild(SessionLayout.tabFactory(first));
+            workspace.LoadPane()!.AddChild(SessionLayout.tabFactory(first, false));
             yield return 2;
 
             bool restored = SessionLayout.ChangeScope("test-b");
             yield return 2;
             t.Check(!restored && workspace.children.Count == 1 && OpenPaths(workspace) == "", "a scope with nothing recorded leaves one empty pane");
 
-            TabViewControl.TabViews(workspace).First().AddChild(SessionLayout.tabFactory(second));
+            TabViewControl.TabViews(workspace).First().AddChild(SessionLayout.tabFactory(second, false));
             yield return 2;
             restored = SessionLayout.ChangeScope("test-a");
             yield return 2;

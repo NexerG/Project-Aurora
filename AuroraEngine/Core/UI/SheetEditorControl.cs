@@ -781,8 +781,8 @@ namespace ArctisAurora.Core.UI
                 {
                     editor.scrollToActivePending = false;
                     LayoutRect cell = sheet.CellRect(editor.activeRow, editor.activeColumn);
-                    ScrollIntoView(new LayoutRect(cell.x - SheetControl.headerWidth, cell.y - SheetControl.headerHeight,
-                        cell.width + SheetControl.headerWidth, cell.height + SheetControl.headerHeight));
+                    ScrollIntoView(new LayoutRect(cell.x - sheet.HeaderWidth, cell.y - sheet.HeaderHeight,
+                        cell.width + sheet.HeaderWidth, cell.height + sheet.HeaderHeight));
                 }
 
                 if (GetScrollOffset() != before) base.ArrangeCore(finalRect);

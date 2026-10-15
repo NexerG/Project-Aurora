@@ -81,6 +81,8 @@ When a cell's value is a number, a number is copied: Copy writes the unformatted
 
 Dragging the right edge of a column header or the bottom edge of a row header resizes that column or row. The grab zone is four pixels either side of the edge, and the cursor turns into a resize shape over it. The size follows the pointer while dragging, never below 8 pixels, and the drag is recorded as one undo step when it ends.
 
+A sheet follows the document zoom: the grid, the headers and the text in them are laid out at that zoom, the same setting notes use, and Ctrl+wheel over the sheet changes it. Column widths and row heights are stored at 100%, so a resize drag at 200% moves the edge twice as far as it stores.
+
 Not done yet: italic, underline, text colour, alignment, borders and font size in cells; dates, custom number formats and increase or decrease decimals; formats do not travel with copy and paste; the open edit field does not show bold; no autofit on a double-click of an edge, no resizing several selected columns at once and no Esc to cancel a drag.
 
 ## Pages and layers

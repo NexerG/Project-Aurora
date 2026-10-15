@@ -39,6 +39,18 @@ namespace ArctisAurora.Core.UI
             else SheetXml.Save(this, path);
         }
 
+        // Takes on another sheet's content whole.
+        public void ReplaceAll(SheetDocument from)
+        {
+            name = from.name;
+            fixedSize = from.fixedSize;
+            pages.Clear();
+            pages.AddRange(from.pages);
+            extra.Clear();
+            extra.AddRange(from.extra);
+            SheetBook.Restructured(this);
+        }
+
         // One page holding one layer.
         public static SheetDocument Blank(string? name, bool fixedSize = false)
         {

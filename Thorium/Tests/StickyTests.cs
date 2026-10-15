@@ -27,7 +27,7 @@ namespace Thorium.Tests
             t.Show(workspace);
             WorkspacePageControl page = workspace.AddPage("General", WorkspaceKind.General);
             TabViewControl view = workspace.LoadPane(page);
-            TabItemControl tab = SessionLayout.tabFactory(path);
+            TabItemControl tab = SessionLayout.tabFactory(path, false);
             view.AddChild(tab);
             yield return 3;
 

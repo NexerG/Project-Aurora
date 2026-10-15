@@ -1,6 +1,7 @@
 using ArctisAurora.Core.Registry;
 using ArctisAurora.Core.Testing;
 using ArctisAurora.Core.UI;
+using System.Text;
 
 namespace ArctisAurora.Tests
 {
@@ -66,6 +67,30 @@ namespace ArctisAurora.Tests
             SyntaxState state = SyntaxState.None;
             t.Check(Tokens(@"\[ a", "latex", ref state) == "ssss" && state == SyntaxState.TexMath, "display math carries down");
             t.Check(Tokens(@"b \] c", "latex", ref state) == "ssss.." && state == SyntaxState.None, "and closes on the next line");
+            yield break;
+        }
+
+        [A_XSDActionDependency("Syntax.XmlSourceRoundTrip", "Test")]
+        private static IEnumerator<int> XmlSourceRoundTrip(TestContext t)
+        {
+            foreach (string source in new[] { "\uFEFF<?xml version=\"1.0\"?>\r\n<A B=\"1\"/>\r\n", "<A>\n  <!-- c -->\n</A>\n", "<A/>", "" })
+            {
+                byte[] bytes = Encoding.UTF8.GetBytes(source);
+                string from = Path.Combine(Path.GetTempPath(), $"aurora-xml-{Guid.NewGuid():N}.xml");
+                string to = Path.Combine(Path.GetTempPath(), $"aurora-xml-{Guid.NewGuid():N}.xml");
+                File.WriteAllBytes(from, bytes);
+
+                RichTextDocument document = RichTextDocument.LoadSource(from, "xml");
+                bool xml = document.blocks.OfType<NoteBlock>().All(b => b.stylingType == TextStyleType.Code && b.language == "xml");
+                document.Save(to);
+                byte[] back = File.ReadAllBytes(to);
+                File.Delete(from);
+                File.Delete(to);
+
+                string shown = source.Replace("\r", "\\r").Replace("\n", "\\n").Replace("\uFEFF", "BOM");
+                t.Check(back.SequenceEqual(bytes), $"'{shown}' saves back byte for byte");
+                t.Check(xml, $"'{shown}' loads as XML code lines");
+            }
             yield break;
         }
     }

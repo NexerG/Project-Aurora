@@ -12,7 +12,7 @@ namespace ArctisAurora.Core.UI
 {
     // A one-line editable field: the text, a caret and a selection box under one control.
     [A_XSDType("TextBox", "UI")]
-    public class TextBoxControl : ContainerControl, IContext, IClipboardTarget
+    public class TextBoxControl : ContainerControl, IContext, IClipboardTarget, ITextField
     {
         // The text itself, handing its presses to the box, which owns the caret.
         private class FieldLine : TextRunControl

@@ -46,11 +46,16 @@ namespace ArctisAurora.Core.UI
         {
             this.editor = editor;
             orientation = Orientation.Horizontal;
-            Spacing = gap;
-            padding = new Thickness(gap);
             alpha = 0f;
             Rebuild();
         }
+
+        // sizes at the content zoom
+        private float Zoom => editor.contentZoom;
+        private int Font(int size) => Math.Max(1, (int)MathF.Round(size * Zoom));
+
+        // Re-lays the board at the editor's content zoom.
+        internal void Rezoom() => Rebuild();
 
         // Tickets or categories changed; the columns are built again next tick, once however many edits land.
         internal void RebuildSoon()
@@ -67,12 +72,21 @@ namespace ArctisAurora.Core.UI
         // Every column built again.
         private void Rebuild()
         {
+            for (Control? control = UIEngine.activeControl?.parent as Control; control != null; control = control.parent as Control)
+                if (ReferenceEquals(control, this))
+                {
+                    UIEngine.SetActiveControl(this);
+                    break;
+                }
+
             foreach (Control column in children.OfType<Control>().ToList())
                 column.Destroy();
             columns.Clear();
             markedColumn = null;
             markedCard = null;
             markedIndex = -1;
+            Spacing = gap * Zoom;
+            padding = new Thickness(gap * Zoom);
 
             PlannerDocument document = editor.document;
             foreach (PlannerCategory category in document.categories)
@@ -80,10 +94,10 @@ namespace ArctisAurora.Core.UI
                 List<PlannerTicket> tickets = document.TicketsIn(category).ToList();
                 StackPanelControl column = new StackPanelControl
                 {
-                    preferredWidth = category.width,
+                    preferredWidth = category.width * Zoom,
                     verticalAlignment = VerticalAlignment.Top,
-                    Spacing = inset,
-                    padding = new Thickness(inset),
+                    Spacing = inset * Zoom,
+                    padding = new Thickness(inset * Zoom),
                     cornerRole = CornerRole.Control
                 };
                 column.PaintOr(null, PaletteRole.Chrome);
@@ -101,11 +115,11 @@ namespace ArctisAurora.Core.UI
                     return true;
                 });
 
-                StackPanelControl heading = new StackPanelControl { orientation = Orientation.Horizontal, Spacing = inset, alpha = 0f, hitTestable = false };
-                PanelControl swatch = new PanelControl { preferredWidth = 10f, preferredHeight = 10f, verticalAlignment = VerticalAlignment.Center, cornerRole = CornerRole.Control, hitTestable = false };
+                StackPanelControl heading = new StackPanelControl { orientation = Orientation.Horizontal, Spacing = inset * Zoom, alpha = 0f, hitTestable = false };
+                PanelControl swatch = new PanelControl { preferredWidth = 10f * Zoom, preferredHeight = 10f * Zoom, verticalAlignment = VerticalAlignment.Center, cornerRole = CornerRole.Control, hitTestable = false };
                 swatch.PaintOr(category.colorHex, PaletteRole.Accent);
                 heading.AddChild(swatch);
-                LabelControl title = Text($"{category.name}  {tickets.Count}", titleSize, PaletteRole.Ink, FontStyle.Bold, true);
+                LabelControl title = Text($"{category.name}  {tickets.Count}", Font(titleSize), PaletteRole.Ink, FontStyle.Bold, true);
                 title.widthStar = 1f;
                 heading.AddChild(title);
                 column.AddChild(heading);
@@ -114,7 +128,7 @@ namespace ArctisAurora.Core.UI
                 foreach (PlannerTicket ticket in tickets)
                 {
                     TicketCard card = new TicketCard(this, ticket);
-                    Fill(card, document, ticket);
+                    Fill(card, document, ticket, ReferenceEquals(ticket, editor.expanded));
                     cards.Add(card);
                     column.AddChild(card);
                 }
@@ -123,29 +137,35 @@ namespace ArctisAurora.Core.UI
             }
         }
 
+        public TicketCard? CardOf(PlannerTicket ticket) =>
+            columns.SelectMany(c => c.cards).FirstOrDefault(card => ReferenceEquals(card.ticket, ticket));
+
         public IReadOnlyList<TicketCard> CardsIn(PlannerCategory category) =>
             columns.Find(c => ReferenceEquals(c.category, category)).cards ?? new List<TicketCard>();
 
         // A colour strip over the name, the dates and the creator.
-        private static void Fill(StackPanelControl card, PlannerDocument document, PlannerTicket ticket)
+        private void Fill(StackPanelControl card, PlannerDocument document, PlannerTicket ticket, bool expanded)
         {
-            PanelControl strip = new PanelControl { preferredHeight = stripWidth, horizontalAlignment = HorizontalAlignment.Stretch, cornerRole = CornerRole.Control, hitTestable = false };
+            PanelControl strip = new PanelControl { preferredHeight = stripWidth * Zoom, horizontalAlignment = HorizontalAlignment.Stretch, cornerRole = CornerRole.Control, hitTestable = false };
             strip.PaintOr(document.ColorOf(ticket), PaletteRole.Accent);
             card.AddChild(strip);
 
-            StackPanelControl body = new StackPanelControl { Spacing = 2f, padding = new Thickness(inset), alpha = 0f, hitTestable = false };
-            body.AddChild(Text(ticket.name, titleSize, PaletteRole.Ink, FontStyle.Regular, true));
-            body.AddChild(Text(Dates(ticket.time), detailSize, PaletteRole.MutedInk, FontStyle.Regular, true));
+            StackPanelControl body = new StackPanelControl { Spacing = 2f * Zoom, padding = new Thickness(inset * Zoom), alpha = 0f, hitTestable = false };
+            body.AddChild(Text(ticket.name, Font(titleSize), PaletteRole.Ink, FontStyle.Regular, true));
+            if (expanded)
+                foreach (string line in ticket.description.Split('\n'))
+                    body.AddChild(Text(line, Font(detailSize), PaletteRole.Ink, FontStyle.Regular, true));
+            body.AddChild(Text(Dates(ticket.time), Font(detailSize), PaletteRole.MutedInk, FontStyle.Regular, true));
             if (ticket.creator is User creator)
-                body.AddChild(Text($"by {creator.name}", detailSize, PaletteRole.MutedInk, FontStyle.Regular, true));
+                body.AddChild(Text($"by {creator.name}", Font(detailSize), PaletteRole.MutedInk, FontStyle.Regular, true));
             if (ticket.assignees.Count > 0)
             {
-                WrapPanelControl chips = new WrapPanelControl { Spacing = 4f, alpha = 0f, hitTestable = false };
+                WrapPanelControl chips = new WrapPanelControl { Spacing = 4f * Zoom, alpha = 0f, hitTestable = false };
                 foreach (User assignee in ticket.assignees)
                 {
-                    StackPanelControl chip = new StackPanelControl { preferredHeight = chipHeight, padding = new Thickness(6f, 0f), cornerRole = CornerRole.Control, hitTestable = false };
+                    StackPanelControl chip = new StackPanelControl { preferredHeight = chipHeight * Zoom, padding = new Thickness(6f * Zoom, 0f), cornerRole = CornerRole.Control, hitTestable = false };
                     chip.PaintOr(null, PaletteRole.SubField);
-                    LabelControl initials = Text(assignee.initials, detailSize, PaletteRole.Ink, FontStyle.Bold);
+                    LabelControl initials = Text(assignee.initials, Font(detailSize), PaletteRole.Ink, FontStyle.Bold);
                     initials.verticalPosition = 0.5f;
                     chip.AddChild(initials);
                     chips.AddChild(chip);
@@ -214,7 +234,7 @@ namespace ArctisAurora.Core.UI
             List<TicketCard> others = columns[column].cards.Where(c => !ReferenceEquals(c, dragged)).ToList();
             if (others.Count == 0) return true;
             markedCard = others[Math.Min(index, others.Count - 1)];
-            markedCard.margin = index < others.Count ? new Thickness(dropGap, 0f, 0f, 0f) : new Thickness(0f, 0f, dropGap, 0f);
+            markedCard.margin = index < others.Count ? new Thickness(dropGap * Zoom, 0f, 0f, 0f) : new Thickness(0f, 0f, dropGap * Zoom, 0f);
             return true;
         }
 
@@ -249,13 +269,20 @@ namespace ArctisAurora.Core.UI
             return base.OnPointerPress(e);
         }
 
+        // A click off every card folds the expanded one away.
+        public override bool OnPointerRelease(PointerEvent e)
+        {
+            if (e.button == PointerEvent.leftButton && e.tapCount == 1) editor.Expand(null);
+            return base.OnPointerRelease(e);
+        }
+
         public override void OnDrag(PointerEvent e)
         {
             base.OnDrag(e);
             if (resizing < 0) return;
-            float width = Math.Clamp(pressWidth + e.point.X - pressX, minColumnWidth, maxColumnWidth);
+            float width = Math.Clamp(pressWidth + (e.point.X - pressX) / Zoom, minColumnWidth, maxColumnWidth);
             columns[resizing].category.width = width;
-            columns[resizing].column.preferredWidth = width;
+            columns[resizing].column.preferredWidth = width * Zoom;
         }
 
         public override void OnDragStop(bool accepted)
@@ -335,10 +362,15 @@ namespace ArctisAurora.Core.UI
                 return base.OnPointerMove(e);
             }
 
+            // A click selects the card and opens its description.
             public override bool OnPointerRelease(PointerEvent e)
             {
                 armed = false;
-                return base.OnPointerRelease(e);
+                if (e.button != PointerEvent.leftButton || e.tapCount != 1) return base.OnPointerRelease(e);
+                base.OnPointerRelease(e);
+                board.editor.Select(ticket);
+                board.editor.Expand(ticket);
+                return true;
             }
 
             public override void OnDragStop(bool accepted)
@@ -346,11 +378,6 @@ namespace ArctisAurora.Core.UI
                 DragGhost.Hide();
                 base.OnDragStop(accepted);
             }
-        }
-
-        private sealed class WrappingLabel : LabelControl
-        {
-            protected override bool Wraps => true;
         }
 
         private static LabelControl Text(string text, int size, PaletteRole role, FontStyle style, bool wraps = false)
@@ -371,10 +398,16 @@ namespace ArctisAurora.Core.UI
             {
                 DateTime last = time.end.AddDays(-1);
                 return last <= time.start
-                    ? time.start.ToString("d MMM yyyy", CultureInfo.InvariantCulture)
-                    : $"{time.start.ToString("d MMM", CultureInfo.InvariantCulture)} - {last.ToString("d MMM yyyy", CultureInfo.InvariantCulture)}";
+                    ? DateFormats.DayMonth(time.start, true)
+                    : $"{DateFormats.DayMonth(time.start, false)} - {DateFormats.DayMonth(last, true)}";
             }
-            return $"{time.start.ToString("d MMM HH:mm", CultureInfo.InvariantCulture)} - {time.end.ToString("d MMM HH:mm", CultureInfo.InvariantCulture)}";
+            return $"{DateFormats.DayMonth(time.start, false)} {DateFormats.Time(time.start)} - {DateFormats.DayMonth(time.end, false)} {DateFormats.Time(time.end)}";
         }
+    }
+
+    // A label that wraps at the width it is measured to.
+    internal sealed class WrappingLabel : LabelControl
+    {
+        protected override bool Wraps => true;
     }
 }

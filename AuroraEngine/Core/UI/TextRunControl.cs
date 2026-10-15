@@ -851,10 +851,10 @@ namespace ArctisAurora.Core.UI
             ref VulkanControl v = ref quads.GetSpan<VulkanControl>()[row];
             v = default;
             v.type = VulkanControlType.ImageControl;
-            v.uvs.uv1 = new Vector2(1f, 1f);
-            v.uvs.uv2 = new Vector2(0f, 0f);
-            v.uvs.uv3 = new Vector2(0f, 1f);
-            v.uvs.uv4 = new Vector2(1f, 0f);
+            v.uvs.uv1 = new Vector2(1f, 0f);
+            v.uvs.uv2 = new Vector2(0f, 1f);
+            v.uvs.uv3 = new Vector2(0f, 0f);
+            v.uvs.uv4 = new Vector2(1f, 1f);
             v.paint = Palettes.Inline(Vector3.One);
             v.alpha = alpha;
             v.textureIndex = picture.textureIndex;

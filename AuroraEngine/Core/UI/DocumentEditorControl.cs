@@ -72,6 +72,18 @@ namespace ArctisAurora.Core.UI
 
         private void NoteChanged(NoteChange change)
         {
+            if (change.kind == NoteChangeKind.Replaced)
+            {
+                Control? active = UIEngine.activeControl;
+                while (active != null && active != this) active = active.parent as Control;
+
+                SessionTab view = ViewState();
+                if (session != null && session.lead == content) session.lead = null;
+                LoadDocument(activeDocument);
+                RestoreView(view);
+                if (active != null) FocusCaret();
+                return;
+            }
             if (change.kind == NoteChangeKind.Palette) ApplyPalette();
             else if (change.kind is NoteChangeKind.Properties or NoteChangeKind.ReadOnly && session?.lead != content) properties?.Refresh();
         }
@@ -100,6 +112,14 @@ namespace ArctisAurora.Core.UI
             LoadDocument(session.document);
         }
 
+        // A session of the caller's own, kept out of NoteSessions.
+        public void LoadSession(DocumentEditSession own)
+        {
+            ReleaseSession();
+            session = own;
+            LoadDocument(session.document);
+        }
+
         private void ReleaseSession()
         {
             if (session == null) return;
@@ -118,7 +138,7 @@ namespace ArctisAurora.Core.UI
             // never rebuilt.
             content?.Destroy();
 
-            if (Extension == ".tex") document.layout.page = new PageLayout { mode = PageMode.Pageless };
+            if (Source) document.layout.page = new PageLayout { mode = PageMode.Pageless };
 
             content = new DocumentControl
             {
@@ -136,9 +156,9 @@ namespace ArctisAurora.Core.UI
             if (session != null && session.lead == null) session.lead = content;
 
             string extension = Extension;
-            content.plainText = extension is ".txt" or ".tex";
+            content.plainText = extension == ".txt" || Source;
             content.readOnly = document.readOnly;
-            properties = extension is ".md" or ".xml" ? new NotePropertiesControl(this, extension == ".md") : null;
+            properties = !Source && extension is ".md" or ".xml" ? new NotePropertiesControl(this, extension == ".md") : null;
             if (properties != null)
             {
                 ExpanderControl expander = new ExpanderControl();
@@ -316,7 +336,7 @@ namespace ArctisAurora.Core.UI
         public TextAlignment CaretBlockAlignment => content?.CaretBlockAlignment ?? TextAlignment.Left;
 
         // Markdown and plain text have no way to write it, so only .xml notes align.
-        public bool CanAlign => content != null && !(Extension is ".md" or ".txt" or ".tex");
+        public bool CanAlign => content != null && !Source && !(Extension is ".md" or ".txt");
 
         public void SetAlignment(TextAlignment alignment)
         {
@@ -360,6 +380,9 @@ namespace ArctisAurora.Core.UI
         }
 
         private string Extension => Path.GetExtension(session?.path ?? string.Empty).ToLowerInvariant();
+
+        // shown as code lines: a .tex file, or any file opened as its source
+        private bool Source => activeDocument?.sourceLanguage != null || Extension == ".tex";
 
         public void SetChecked(BlockControl block, bool value)
         {
@@ -443,7 +466,7 @@ namespace ArctisAurora.Core.UI
         public void InsertTable()
         {
             if (!Writable) return;
-            if (Extension is ".md" or ".txt" or ".tex")
+            if (Source || Extension is ".md" or ".txt")
             {
                 Log.Info($"a {Extension} note cannot store a table; insert refused.");
                 return;
@@ -545,10 +568,21 @@ namespace ArctisAurora.Core.UI
         }
 
         // The document zoom setting, clamped; 1 is 100%.
-        private static float DocumentZoom =>
+        internal static float DocumentZoom =>
             Math.Clamp(SettingsRegistry.Get<UISettings>().documentZoom.percent, 25f, 400f) / 100f;
 
-        [A_XSDActionDependency("Document.Rezoom", "Settings", "Re-lays every open note at the document zoom")]
+        public static void ZoomIn() => StepZoom(10f);
+
+        public static void ZoomOut() => StepZoom(-10f);
+
+        private static void StepZoom(float delta)
+        {
+            DocumentZoomSetting setting = SettingsRegistry.Get<UISettings>().documentZoom;
+            setting.percent = Math.Clamp(setting.percent + delta, 25f, 400f);
+            SettingsRegistry.Apply();
+        }
+
+        [A_XSDActionDependency("Document.Rezoom", "Settings", "Re-lays every open note, sheet and planner at the document zoom")]
         public static void Rezoom()
         {
             foreach (RenderWindow window in Engine.windows.Values)
@@ -564,6 +598,16 @@ namespace ArctisAurora.Core.UI
                 editor.content.zoom = editor.zoomOverride ?? DocumentZoom;
                 editor.content.InvalidateLayout();
                 editor.RequestScrollToCaret();
+                return;
+            }
+            if (control is SheetControl sheet)
+            {
+                sheet.SetZoom(DocumentZoom);
+                return;
+            }
+            if (control is PlannerEditorControl planner)
+            {
+                planner.SetContentZoom(DocumentZoom);
                 return;
             }
 
@@ -876,7 +920,7 @@ namespace ArctisAurora.Core.UI
         private string? AttachmentsFolder(string verb)
         {
             if (content == null || session == null || !Writable) return null;
-            if (Extension is ".txt" or ".tex")
+            if (Source || Extension == ".txt")
             {
                 Log.Info($"a plain text note cannot hold a picture; {verb} refused.");
                 return null;

@@ -19,6 +19,13 @@
       <xs:enumeration value="VSync" />
       <xs:enumeration value="Validation" />
       <xs:enumeration value="Graphics" />
+      <xs:enumeration value="WeekDay" />
+      <xs:enumeration value="ClockFormat" />
+      <xs:enumeration value="DateOrder" />
+      <xs:enumeration value="WeekStart" />
+      <xs:enumeration value="TimeFormat" />
+      <xs:enumeration value="DateFormat" />
+      <xs:enumeration value="DateTime" />
       <xs:enumeration value="DocumentSettings" />
       <xs:enumeration value="SessionTab" />
       <xs:enumeration value="SessionPane" />

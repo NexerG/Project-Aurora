@@ -22,6 +22,7 @@ namespace Thorium.Tests
                 "Start=\"2026-10-05\" End=\"2026-10-08\" AllDay=\"true\" Creator=\"Grexen\" Created=\"2026-10-01T09:30:00\" />" +
                 "<Ticket Id=\"bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb\" Name=\"Review\" Category=\"22222222-2222-2222-2222-222222222222\" Color=\"#FFB224\" " +
                 "Start=\"2026-10-09T14:00\" End=\"2026-10-09T16:30\" TimeZone=\"Europe/Vilnius\" Creator=\"Ada\" Order=\"2\" Follows=\"aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa\">" +
+                "<Description>Walk the deck.\nThen sign off.</Description>" +
                 "<Assignee User=\"Grexen\" /><Assignee User=\"Ada\" />" +
                 "<Attachment Kind=\"Travel\" Side=\"Before\" Minutes=\"30\" /><Attachment Kind=\"Prep\" Side=\"After\" Minutes=\"90\" /><Checklist /></Ticket>" +
                 "<Milestone At=\"2026-11-01\" />" +
@@ -39,6 +40,7 @@ namespace Thorium.Tests
             t.Check(!review.time.allDay && review.time.end - review.time.start == TimeSpan.FromMinutes(150), "a timed ticket keeps its hours and minutes");
             t.Check(ReferenceEquals(sketches.creator, User.current), "the current user's name reads back as the current user");
             t.Check(review.assignees.Count == 2 && review.assignees[1].name == "Ada", "assignees are read in order");
+            t.Check(review.description == "Walk the deck.\nThen sign off." && sketches.description == "", "a description keeps its line break; none reads as empty");
             t.Check(planner.ColorOf(sketches) == "#E5484D" && planner.ColorOf(review) == "#FFB224", "a ticket without a colour takes its category's");
             t.Check(planner.TicketsIn(planner.categories[1]).Single() == review, "a ticket is filed under its category");
             t.Check(review.follows == sketches.id && planner.Followers(sketches).Single() == review, "a ticket's leader is read");
@@ -575,6 +577,98 @@ namespace Thorium.Tests
             t.Check(calendar.first == new DateOnly(2026, 10, 12), $"stepping moves by the span: {calendar.first}");
             editor.GoToday();
             t.Check(calendar.first == new DateOnly(2026, 10, 5), "Today goes back to this week");
+            yield return 2;
+            float mondayX = calendar.PointAt(new DateTime(2026, 10, 5, 12, 0, 0)).X;
+            calendar.OnPointerScroll(new PointerEvent { target = calendar, delta = new Vector2(-2f, 0f) });
+            yield return 2;
+            float slid = mondayX - calendar.PointAt(new DateTime(2026, 10, 5, 12, 0, 0)).X;
+            t.Check(calendar.first == new DateOnly(2026, 10, 5) && MathF.Abs(slid - (calendar.PointAt(new DateTime(2026, 10, 6, 12, 0, 0)).X - calendar.PointAt(new DateTime(2026, 10, 5, 12, 0, 0)).X) * 0.5f) < 0.5f,
+                $"two ticks slide the week half a day without moving its first day: {calendar.first} {slid}");
+            calendar.OnPointerScroll(new PointerEvent { target = calendar, delta = new Vector2(-2f, 0f) });
+            t.Check(calendar.first == new DateOnly(2026, 10, 6), $"four ticks make a day: {calendar.first}");
+            calendar.OnPointerScroll(new PointerEvent { target = calendar, delta = new Vector2(1f, 0f) });
+            t.Check(calendar.first == new DateOnly(2026, 10, 5), $"sliding back crosses the day: {calendar.first}");
+            yield return 2;
+            float oneLane = calendar.TopHeight;
+            planner.tickets.Add(new PlannerTicket { name = "Fair", categoryId = category, time = TimeRange.Days(new DateOnly(2026, 10, 8), new DateOnly(2026, 10, 8)) });
+            calendar.InvalidateLayout();
+            yield return 1;
+            float easing = calendar.TopHeight;
+            yield return 30;
+            t.Check(easing < oneLane + CalendarControl.laneHeight - 0.5f && MathF.Abs(calendar.TopHeight - oneLane - CalendarControl.laneHeight) < 0.5f,
+                $"a new all-day lane eases the top bar open: {oneLane} {easing} {calendar.TopHeight}");
+            editor.ShowSpan(CalendarSpan.Month);
+            calendar.OnPointerScroll(new PointerEvent { target = calendar, delta = new Vector2(-4f, 0f) });
+            t.Check(calendar.first == new DateOnly(2026, 10, 5), $"four ticks slide the month a week: {calendar.first}");
+            editor.GoToday();
+        }
+
+        [A_XSDActionDependency("Planner.CalendarSnap", "Test")]
+        private static IEnumerator<int> CalendarSnap(TestContext t)
+        {
+            PlannerEditorControl editor = Show(t, PlannerDocument.Blank("Snap"));
+            editor.ShowView(PlannerView.Calendar);
+            yield return 3;
+            CalendarControl calendar = editor.calendar!;
+            float columnLeft = calendar.arrangedRect.x + CalendarControl.gutterWidth;
+            float columnWidth = (calendar.arrangedRect.width - CalendarControl.gutterWidth) / 7f;
+
+            DateTime mondayNoon = new DateTime(2026, 10, 5, 12, 0, 0);
+            DateTime tuesdayNoon = new DateTime(2026, 10, 6, 12, 0, 0);
+            float centre = columnLeft + columnWidth * 0.5f;
+
+            calendar.OnPointerScroll(new PointerEvent { target = calendar, delta = new Vector2(-3f, 0f) });
+            for (double until = Engine.totalTime + 1.0; Engine.totalTime < until;) yield return 1;
+            float held = calendar.PointAt(mondayNoon).X;
+            t.Check(calendar.first == new DateOnly(2026, 10, 5) && MathF.Abs(held - (centre - columnWidth * 0.75f)) < 0.5f,
+                $"a slide holds where it is until the gesture ends: {calendar.first} {held}");
+
+            calendar.OnPointerScrollEnd();
+            yield return 1;
+            float moved = (held - calendar.PointAt(mondayNoon).X) / (columnWidth * 0.25f);
+            t.Check(moved >= 0f && moved < 0.9f, $"the settle eases rather than jumping: {moved}");
+            for (double until = Engine.totalTime + 0.3; Engine.totalTime < until;) yield return 1;
+            t.Check(calendar.first == new DateOnly(2026, 10, 6) && MathF.Abs(calendar.PointAt(tuesdayNoon).X - centre) < 0.5f,
+                $"moving forward settles on the next day: {calendar.first}");
+
+            calendar.OnPointerScroll(new PointerEvent { target = calendar, delta = new Vector2(1f, 0f) });
+            calendar.OnPointerScrollEnd();
+            for (double until = Engine.totalTime + 0.3; Engine.totalTime < until;) yield return 1;
+            t.Check(calendar.first == new DateOnly(2026, 10, 5) && MathF.Abs(calendar.PointAt(mondayNoon).X - centre) < 0.5f,
+                $"moving back settles on the day before: {calendar.first}");
+
+            yield return t.Scroll(calendar, new Vector2(-1f, 0f));
+            for (double until = Engine.totalTime + 0.6; Engine.totalTime < until;) yield return 1;
+            t.Check(calendar.first == new DateOnly(2026, 10, 6) && MathF.Abs(calendar.PointAt(tuesdayNoon).X - centre) < 0.5f,
+                $"a wheel scroll ends on its own and reaches the calendar: {calendar.first}");
+
+            editor.ShowSpan(CalendarSpan.Month);
+            editor.GoToday();
+            yield return 2;
+            calendar.OnPointerScroll(new PointerEvent { target = calendar, delta = new Vector2(-2.4f, 0f) });
+            calendar.OnPointerScrollEnd();
+            for (double until = Engine.totalTime + 0.3; Engine.totalTime < until;) yield return 1;
+            t.Check(calendar.first == new DateOnly(2026, 10, 5), $"six tenths of a week settles on the next week: {calendar.first}");
+            editor.ShowSpan(CalendarSpan.Week);
+            editor.GoToday();
+        }
+
+        [A_XSDActionDependency("Planner.WeekStart", "Test")]
+        private static IEnumerator<int> WeekStart(TestContext t)
+        {
+            PlannerEditorControl editor = Show(t, PlannerDocument.Blank("Week start"));
+            editor.ShowView(PlannerView.Calendar);
+            PinDates(WeekDay.Sunday, ClockFormat.H12);
+            DateFormats.Reformat();
+            yield return 3;
+            t.Check(editor.calendar!.first == new DateOnly(2026, 10, 4), $"a Sunday week start begins the week on Sunday: {editor.calendar.first}");
+            t.Check(DateFormats.Hour(new DateTime(2026, 10, 6, 13, 0, 0)) == "1 PM" && DateFormats.Time(new DateTime(2026, 10, 6, 13, 5, 0)) == "1:05 PM",
+                "the 12-hour clock reads PM");
+            t.Check(PlannerBoardControl.Dates(TimeRange.Days(new DateOnly(2026, 10, 5), new DateOnly(2026, 10, 5))) == "5 Oct 2026", "day-month order names the day first");
+            SettingsRegistry.Get<DateTimeSettings>().dateFormat.order = DateOrder.MonthDayYear;
+            t.Check(PlannerBoardControl.Dates(TimeRange.Days(new DateOnly(2026, 10, 5), new DateOnly(2026, 10, 5))) == "Oct 5, 2026"
+                && DateFormats.Date(new DateTime(2026, 10, 5)) == "10/05/2026", "month-day order names the month first");
+            PinDates(WeekDay.Monday, ClockFormat.H24);
         }
 
         [A_XSDActionDependency("Planner.CalendarDragUndo", "Test")]
@@ -779,6 +873,179 @@ namespace Thorium.Tests
             t.Check(ticket.attachments.Count == 0, "one undo removes them");
         }
 
+        [A_XSDActionDependency("Planner.Description", "Test")]
+        private static IEnumerator<int> Description(TestContext t)
+        {
+            (PlannerEditorControl editor, PlannerTicket ticket) = ShowOne(t);
+            yield return 2;
+
+            editor.Select(ticket);
+            editor.EditSelected();
+            yield return 20;
+            RegexTextControl? field = Find<RegexTextControl>(editor).FirstOrDefault();
+            t.Check(field != null && field.text == "", "the popup has an empty description field");
+            if (field == null) yield break;
+
+            yield return t.Click(field);
+            yield return t.Type("Walk the deck.");
+            yield return t.Key(Keys.Enter, Keys.LeftShift);
+            yield return t.Type("Then sign off.");
+            t.Check(field.text == "Walk the deck.\nThen sign off.", $"Shift+Enter adds a line: '{field.text}'");
+
+            yield return t.Key(Keys.Enter);
+            yield return 2;
+            t.Check(ticket.description == "Walk the deck.\nThen sign off.", $"Enter applies the description: '{ticket.description}'");
+            editor.Undo();
+            t.Check(ticket.description == "", "one undo removes it");
+        }
+
+        [A_XSDActionDependency("Planner.ExpandBoard", "Test")]
+        private static IEnumerator<int> ExpandBoard(TestContext t)
+        {
+            (PlannerEditorControl editor, PlannerTicket ticket) = ShowOne(t);
+            ticket.description = "Walk the deck.\nThen sign off.";
+            PlannerTicket bare = new PlannerTicket { name = "Bare", categoryId = ticket.categoryId, time = ticket.time, order = 1 };
+            editor.document.tickets.Add(bare);
+            editor.ShowView(PlannerView.Board);
+            foreach (int wait in TapClear()) yield return wait;
+
+            PlannerBoardControl board = editor.board!;
+            float folded = board.CardOf(ticket)!.arrangedRect.height;
+            yield return t.Click(board.CardOf(ticket)!);
+            yield return 4;
+            PlannerBoardControl.TicketCard? card = board.CardOf(ticket);
+            t.Check(ReferenceEquals(editor.expanded, ticket) && ReferenceEquals(editor.selected, ticket), "a click on a card selects and expands it");
+            t.Check(card != null && card.arrangedRect.height > folded, $"the expanded card grows: {folded} -> {card?.arrangedRect.height}");
+            t.Check(Find<LabelControl>(editor).Any(l => l.text == "Walk the deck.") && Find<LabelControl>(editor).Any(l => l.text == "Then sign off."),
+                "each line of the description shows on the card");
+
+            foreach (int wait in TapClear()) yield return wait;
+            yield return t.Click(board.CardOf(bare)!);
+            yield return 4;
+            t.Check(editor.expanded == null && ReferenceEquals(editor.selected, bare), "a click on a card without a description folds the other away");
+
+            foreach (int wait in TapClear()) yield return wait;
+            yield return t.Click(board.CardOf(ticket)!);
+            yield return 4;
+            yield return t.Key(Keys.Escape);
+            yield return 4;
+            t.Check(editor.expanded == null, "Esc folds it away");
+        }
+
+        [A_XSDActionDependency("Planner.ExpandGantt", "Test")]
+        private static IEnumerator<int> ExpandGantt(TestContext t)
+        {
+            PlannerDocument planner = PlannerDocument.Blank("Gantt");
+            Guid category = planner.categories[0].id;
+            PlannerTicket a = new PlannerTicket { name = "Sketches", categoryId = category, time = TimeRange.Days(new DateOnly(2026, 10, 5), new DateOnly(2026, 10, 7)), order = 0 };
+            a.description = "Three directions for the cover.\nPick one with Ada on Thursday.";
+            PlannerTicket b = new PlannerTicket { name = "Print", categoryId = category, time = TimeRange.Days(new DateOnly(2026, 10, 8), new DateOnly(2026, 10, 9)), order = 1 };
+            planner.tickets.AddRange(new[] { a, b });
+            PlannerEditorControl editor = Show(t, planner);
+            foreach (int wait in TapClear()) yield return wait;
+
+            GanttChartControl chart = editor.chart!;
+            int rowA = chart.RowOf(a);
+            int rowB = chart.RowOf(b);
+            float folded = chart.RowTop(rowB);
+            yield return t.Click(chart, Centre(chart.BarRect(a)));
+            yield return 4;
+            float grown = chart.RowHeight(rowA) - GanttChartControl.rowHeight;
+            t.Check(ReferenceEquals(editor.expanded, a) && grown > 0f, $"a click on a bar expands its row: +{grown}");
+            t.Check(MathF.Abs(chart.RowTop(rowB) - folded - grown) < 0.5f, $"the rows below move down by the description: {folded} -> {chart.RowTop(rowB)}");
+            t.Check(Find<LabelControl>(editor).Any(l => l.text == "Pick one with Ada on Thursday."), "each line of the description shows under the bar");
+            t.Check(ReferenceEquals(chart.TicketAt(new Vector2(chart.BarRect(b).x, chart.RowTop(rowA) + chart.RowHeight(rowA) - 2f)), a)
+                && ReferenceEquals(chart.TicketAt(Centre(chart.BarRect(b))), b), "the description belongs to its row, the next row starts below it");
+            yield return t.Golden("Gantt", chart);
+
+            yield return t.Key(Keys.Escape);
+            yield return 4;
+            t.Check(editor.expanded == null && MathF.Abs(chart.RowTop(rowB) - folded) < 0.5f, "Esc folds the row back");
+        }
+
+        [A_XSDActionDependency("Planner.WheelZoom", "Test")]
+        private static IEnumerator<int> WheelZoom(TestContext t)
+        {
+            PlannerDocument planner = PlannerDocument.Blank("Zoom");
+            PlannerTicket days = new PlannerTicket
+            {
+                name = "Three days",
+                categoryId = planner.categories[0].id,
+                time = TimeRange.Days(new DateOnly(2026, 10, 5), new DateOnly(2026, 10, 7))
+            };
+            planner.tickets.Add(days);
+            PlannerTicket meeting = Timed(planner, "Meeting", new DateTime(2026, 10, 6, 9, 0, 0), 90);
+            PlannerEditorControl editor = Show(t, planner);
+            DocumentZoomSetting zoom = SettingsRegistry.Get<UISettings>().documentZoom;
+            float before = zoom.percent;
+            yield return 2;
+
+            yield return t.Scroll(editor.chart!, new Vector2(0f, 1f), new[] { Keys.LeftControl });
+            yield return 2;
+            t.Check(zoom.percent == before + 10f, $"Ctrl+wheel over the planner steps the content zoom: {before} -> {zoom.percent}");
+
+            zoom.percent = 200f;
+            SettingsRegistry.Apply();
+            yield return 2;
+            GanttChartControl chart = editor.chart!;
+            t.Check(MathF.Abs(chart.BarRect(days).width - 192f) < 0.01f && MathF.Abs(chart.RowHeight(0) - GanttChartControl.rowHeight * 2f) < 0.01f,
+                $"at 200% the Gantt doubles: bar {chart.BarRect(days).width}, row {chart.RowHeight(0)}");
+
+            editor.ShowView(PlannerView.Board);
+            yield return 3;
+            Control column = editor.board!.children.OfType<StackPanelControl>().First();
+            t.Check(MathF.Abs(column.arrangedRect.width - planner.categories[0].width * 2f) < 0.5f, $"at 200% a board column doubles: {column.arrangedRect.width}");
+
+            editor.ShowView(PlannerView.Calendar);
+            yield return 3;
+            LayoutRect block = editor.calendar!.BlockRect(meeting)!.Value;
+            t.Check(MathF.Abs(block.height - CalendarControl.hourHeight * 1.5f * 2f) < 0.5f, $"at 200% a calendar hour doubles: {block.height}");
+
+            zoom.percent = before;
+            SettingsRegistry.Apply();
+        }
+
+        [A_XSDActionDependency("Planner.ExpandCalendar", "Test")]
+        private static IEnumerator<int> ExpandCalendar(TestContext t)
+        {
+            PlannerDocument planner = PlannerDocument.Blank("Calendar");
+            PlannerTicket standup = Timed(planner, "Standup", new DateTime(2026, 10, 6, 9, 0, 0), 30);
+            standup.description = "Walk the board.\nBlockers first, then the demo.";
+            PlannerTicket review = Timed(planner, "Review", new DateTime(2026, 10, 6, 10, 0, 0), 60);
+            PlannerEditorControl editor = Show(t, planner);
+            editor.ShowView(PlannerView.Calendar);
+            editor.Select(standup);
+            foreach (int wait in TapClear()) yield return wait;
+
+            CalendarControl calendar = editor.calendar!;
+            LayoutRect block = calendar.BlockRect(standup)!.Value;
+            yield return t.Click(calendar, Centre(block));
+            yield return 4;
+            LabelControl? line = Find<LabelControl>(editor).FirstOrDefault(l => l.text == "Blockers first, then the demo.");
+            t.Check(ReferenceEquals(editor.expanded, standup), "a click on a block expands it");
+            t.Check(line != null && line.arrangedRect.Bottom > block.Bottom, $"the block grows down to hold its description: block {block.Bottom}, text {line?.arrangedRect.Bottom}");
+            t.Check(ReferenceEquals(calendar.TicketAt(calendar.PointAt(new DateTime(2026, 10, 6, 10, 5, 0))), review), "the block under the card is still hit at its own time");
+            yield return t.Golden("Week", calendar);
+
+            editor.ShowSpan(CalendarSpan.Month);
+            yield return 4;
+            yield return t.Golden("Month", calendar);
+
+            editor.ShowSpan(CalendarSpan.Week);
+            foreach (int wait in TapClear()) yield return wait;
+            yield return t.Click(calendar, calendar.PointAt(new DateTime(2026, 10, 8, 15, 0, 0)));
+            yield return 4;
+            t.Check(editor.expanded == null, "a click on an empty slot folds it away");
+        }
+
+        // Waits out the double-click window, so the next click counts as a single one.
+        private static IEnumerable<int> TapClear()
+        {
+            DateTime clear = DateTime.Now.AddMilliseconds(300);
+            while (DateTime.Now < clear)
+                yield return 1;
+        }
+
         [A_XSDActionDependency("Planner.AttachmentGolden", "Test")]
         private static IEnumerator<int> AttachmentGolden(TestContext t)
         {
@@ -875,10 +1142,20 @@ namespace Thorium.Tests
 
         private static PlannerEditorControl Show(TestContext t, PlannerDocument planner)
         {
+            PinDates(WeekDay.Monday, ClockFormat.H24);
             PlannerEditorControl editor = new PlannerEditorControl { clock = () => new DateTime(2026, 10, 6, 12, 0, 0) };
             editor.Load(planner);
             t.Show(editor);
             return editor;
+        }
+
+        // Fixes the date settings so results do not follow the machine's culture.
+        private static void PinDates(WeekDay weekStart, ClockFormat clock)
+        {
+            DateTimeSettings dates = SettingsRegistry.Get<DateTimeSettings>();
+            dates.weekStart.day = weekStart;
+            dates.timeFormat.clock = clock;
+            dates.dateFormat.order = DateOrder.DayMonthYear;
         }
     }
 }

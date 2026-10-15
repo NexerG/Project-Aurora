@@ -91,10 +91,14 @@ namespace ArctisAurora.Core.UI
         // whether each of the last two left presses was on a + edge, newest in bit 0
         private int growPresses;
 
+        // content zoom, multiplying every design size above and the stored band sizes
+        private float zoom = 1f;
+
         public SheetControl(SheetEditorControl editor, SheetPage page)
         {
             this.editor = editor;
             this.page = page;
+            SetZoom(DocumentEditorControl.DocumentZoom);
 
             selection.PaintOr(null, PaletteRole.Accent);
             field.PaintOr(null, PaletteRole.Field);
@@ -131,8 +135,34 @@ namespace ArctisAurora.Core.UI
             InvalidateLayout();
         }
 
+        // Re-lays the grid at a content zoom.
+        internal void SetZoom(float value)
+        {
+            if (value == zoom) return;
+            zoom = value;
+            int size = FontSize;
+            field.fontSize = size;
+            growRowsMark.fontSize = size;
+            growColumnsMark.fontSize = size;
+            foreach (LabelControl label in labels) label.fontSize = size;
+            foreach (LabelControl label in headerNames) label.fontSize = size;
+            InvalidateLayout();
+        }
+
         #region ---- geometry ----
-        private Vector2 Origin => new Vector2(arrangedRect.x + headerWidth, arrangedRect.y + headerHeight);
+        private int FontSize => Math.Max(1, (int)MathF.Round(fontSize * zoom));
+
+        // zoomed header bands and page geometry
+        public float HeaderWidth => headerWidth * zoom;
+        public float HeaderHeight => headerHeight * zoom;
+        private float ColumnLeft(int column) => page.ColumnLeft(column) * zoom;
+        private float RowTop(int row) => page.RowTop(row) * zoom;
+        private float ColumnWidth(int column) => page.ColumnWidth(column) * zoom;
+        private float RowHeight(int row) => page.RowHeight(row) * zoom;
+        private int ColumnAt(float x) => page.ColumnAt(x / zoom);
+        private int RowAt(float y) => page.RowAt(y / zoom);
+
+        private Vector2 Origin => new Vector2(arrangedRect.x + HeaderWidth, arrangedRect.y + HeaderHeight);
 
         // A spare pooled part: no size, at the grid's corner so it stays inside its layer's bounds.
         private LayoutRect Hidden => new LayoutRect(arrangedRect.x, arrangedRect.y, 0f, 0f);
@@ -144,8 +174,8 @@ namespace ArctisAurora.Core.UI
         public LayoutRect CellRect(int row, int column)
         {
             Vector2 origin = Origin;
-            return new LayoutRect(origin.X + page.ColumnLeft(column), origin.Y + page.RowTop(row),
-                page.ColumnWidth(column), page.RowHeight(row));
+            return new LayoutRect(origin.X + ColumnLeft(column), origin.Y + RowTop(row),
+                ColumnWidth(column), RowHeight(row));
         }
 
         // The cell under a point; false over the headers.
@@ -153,9 +183,9 @@ namespace ArctisAurora.Core.UI
         {
             LayoutRect view = Viewport();
             Vector2 origin = Origin;
-            row = page.RowAt(point.Y - origin.Y);
-            column = page.ColumnAt(point.X - origin.X);
-            return point.X >= view.x + headerWidth && point.Y >= view.y + headerHeight;
+            row = RowAt(point.Y - origin.Y);
+            column = ColumnAt(point.X - origin.X);
+            return point.X >= view.x + HeaderWidth && point.Y >= view.y + HeaderHeight;
         }
 
         // The column or row whose far edge is under a header point.
@@ -164,18 +194,18 @@ namespace ArctisAurora.Core.UI
             LayoutRect view = Viewport();
             Vector2 origin = Origin;
             index = -1;
-            column = point.Y < view.y + headerHeight && point.X >= view.x + headerWidth;
+            column = point.Y < view.y + HeaderHeight && point.X >= view.x + HeaderWidth;
             if (column)
             {
                 float x = point.X - origin.X;
-                int c = page.ColumnAt(x + grabWidth);
-                if (c > 0 && MathF.Abs(x - page.ColumnLeft(c)) <= grabWidth) index = c - 1;
+                int c = ColumnAt(x + grabWidth);
+                if (c > 0 && MathF.Abs(x - ColumnLeft(c)) <= grabWidth) index = c - 1;
             }
-            else if (point.X < view.x + headerWidth && point.Y >= view.y + headerHeight)
+            else if (point.X < view.x + HeaderWidth && point.Y >= view.y + HeaderHeight)
             {
                 float y = point.Y - origin.Y;
-                int r = page.RowAt(y + grabWidth);
-                if (r > 0 && MathF.Abs(y - page.RowTop(r)) <= grabWidth) index = r - 1;
+                int r = RowAt(y + grabWidth);
+                if (r > 0 && MathF.Abs(y - RowTop(r)) <= grabWidth) index = r - 1;
             }
             return index >= 0;
         }
@@ -202,14 +232,14 @@ namespace ArctisAurora.Core.UI
 
             if (editor.document.fixedSize)
             {
-                arrange.desired = new Vector2(headerWidth + page.ColumnLeft(page.columns) + growWidth + growGap * 2f,
-                    headerHeight + page.RowTop(page.rows) + growWidth + growGap * 2f);
+                arrange.desired = new Vector2(HeaderWidth + ColumnLeft(page.columns) + (growWidth + growGap * 2f) * zoom,
+                    HeaderHeight + RowTop(page.rows) + (growWidth + growGap * 2f) * zoom);
                 return arrange.desired;
             }
 
             int rows = Math.Max(used.rows, editor.activeRow + 1) + spareRows;
             int columns = Math.Max(used.columns, editor.activeColumn + 1) + spareColumns;
-            arrange.desired = new Vector2(headerWidth + page.ColumnLeft(columns), headerHeight + page.RowTop(rows));
+            arrange.desired = new Vector2(HeaderWidth + ColumnLeft(columns), HeaderHeight + RowTop(rows));
             return arrange.desired;
         }
 
@@ -222,19 +252,19 @@ namespace ArctisAurora.Core.UI
 
             LayoutRect view = Viewport();
             Vector2 origin = Origin;
-            float cellsLeft = view.x + headerWidth;
-            float cellsTop = view.y + headerHeight;
+            float cellsLeft = view.x + HeaderWidth;
+            float cellsTop = view.y + HeaderHeight;
 
             bool fixedSize = editor.document.fixedSize;
             int columnLimit = fixedSize ? page.columns : int.MaxValue;
             int rowLimit = fixedSize ? page.rows : int.MaxValue;
 
-            int firstColumn = Math.Min(page.ColumnAt(cellsLeft - origin.X), columnLimit - 1);
-            int firstRow = Math.Min(page.RowAt(cellsTop - origin.Y), rowLimit - 1);
+            int firstColumn = Math.Min(ColumnAt(cellsLeft - origin.X), columnLimit - 1);
+            int firstRow = Math.Min(RowAt(cellsTop - origin.Y), rowLimit - 1);
             int lastColumn = firstColumn;
-            while (lastColumn + 1 < columnLimit && origin.X + page.ColumnLeft(lastColumn + 1) < view.Right) lastColumn++;
+            while (lastColumn + 1 < columnLimit && origin.X + ColumnLeft(lastColumn + 1) < view.Right) lastColumn++;
             int lastRow = firstRow;
-            while (lastRow + 1 < rowLimit && origin.Y + page.RowTop(lastRow + 1) < view.Bottom) lastRow++;
+            while (lastRow + 1 < rowLimit && origin.Y + RowTop(lastRow + 1) < view.Bottom) lastRow++;
 
             ArrangeGrid(view, origin, firstRow, lastRow, firstColumn, lastColumn);
             ArrangeSelection();
@@ -257,15 +287,17 @@ namespace ArctisAurora.Core.UI
                 return;
             }
 
-            float right = origin.X + page.ColumnLeft(page.columns);
-            float bottom = origin.Y + page.RowTop(page.rows);
-            float left = MathF.Max(origin.X + growGap, view.x + headerWidth);
-            float top = MathF.Max(origin.Y + growGap, view.y + headerHeight);
+            float gap = growGap * zoom;
+            float width = growWidth * zoom;
+            float right = origin.X + ColumnLeft(page.columns);
+            float bottom = origin.Y + RowTop(page.rows);
+            float left = MathF.Max(origin.X + gap, view.x + HeaderWidth);
+            float top = MathF.Max(origin.Y + gap, view.y + HeaderHeight);
 
-            LayoutRect rows = new LayoutRect(left, bottom + growGap,
-                MathF.Max(0f, MathF.Min(right - growGap, view.Right) - left), growWidth);
-            LayoutRect columns = new LayoutRect(right + growGap, top,
-                growWidth, MathF.Max(0f, MathF.Min(bottom - growGap, view.Bottom) - top));
+            LayoutRect rows = new LayoutRect(left, bottom + gap,
+                MathF.Max(0f, MathF.Min(right - gap, view.Right) - left), width);
+            LayoutRect columns = new LayoutRect(right + gap, top,
+                width, MathF.Max(0f, MathF.Min(bottom - gap, view.Bottom) - top));
             growRows.Arrange(rows);
             growColumns.Arrange(columns);
             PlaceCentred(growRowsMark, "+", rows);
@@ -283,19 +315,19 @@ namespace ArctisAurora.Core.UI
         private void ArrangeGrid(LayoutRect view, Vector2 origin, int firstRow, int lastRow, int firstColumn, int lastColumn)
         {
             bool fixedSize = editor.document.fixedSize;
-            float lineHeight = fixedSize ? MathF.Min(view.Bottom, origin.Y + page.RowTop(page.rows)) - view.y : view.height;
-            float lineLength = fixedSize ? MathF.Min(view.Right, origin.X + page.ColumnLeft(page.columns)) - view.x : view.width;
+            float lineHeight = fixedSize ? MathF.Min(view.Bottom, origin.Y + RowTop(page.rows)) - view.y : view.height;
+            float lineLength = fixedSize ? MathF.Min(view.Right, origin.X + ColumnLeft(page.columns)) - view.x : view.width;
 
             float hairline = UIScaling.Hairline(this, lineWidth);
             int line = 0;
             for (int c = firstColumn; c <= lastColumn; c++)
             {
-                float right = UIScaling.Snap(this, origin.X + page.ColumnLeft(c + 1));
+                float right = UIScaling.Snap(this, origin.X + ColumnLeft(c + 1));
                 Pooled(lines, grid, line++, PaletteRole.Line).Arrange(new LayoutRect(right - hairline, view.y, hairline, MathF.Max(0f, lineHeight)));
             }
             for (int r = firstRow; r <= lastRow; r++)
             {
-                float bottom = UIScaling.Snap(this, origin.Y + page.RowTop(r + 1));
+                float bottom = UIScaling.Snap(this, origin.Y + RowTop(r + 1));
                 Pooled(lines, grid, line++, PaletteRole.Line).Arrange(new LayoutRect(view.x, bottom - hairline, MathF.Max(0f, lineLength), hairline));
             }
             for (int i = line; i < lines.Count; i++)
@@ -365,39 +397,40 @@ namespace ArctisAurora.Core.UI
         // Column letters along the top, row numbers down the side, both pinned to the viewport.
         private void ArrangeHeaders(LayoutRect view, Vector2 origin, int firstRow, int lastRow, int firstColumn, int lastColumn)
         {
-            Pooled(headerParts, headers, 0, PaletteRole.Chrome).Arrange(new LayoutRect(view.x, view.y, view.width, headerHeight));
-            Pooled(headerParts, headers, 1, PaletteRole.Chrome).Arrange(new LayoutRect(view.x, view.y, headerWidth, view.height));
+            Pooled(headerParts, headers, 0, PaletteRole.Chrome).Arrange(new LayoutRect(view.x, view.y, view.width, HeaderHeight));
+            Pooled(headerParts, headers, 1, PaletteRole.Chrome).Arrange(new LayoutRect(view.x, view.y, HeaderWidth, view.height));
             float hairline = UIScaling.Hairline(this, lineWidth);
-            Pooled(headerParts, headers, 2, PaletteRole.Line).Arrange(new LayoutRect(view.x, UIScaling.Snap(this, view.y + headerHeight) - hairline, view.width, hairline));
-            Pooled(headerParts, headers, 3, PaletteRole.Line).Arrange(new LayoutRect(UIScaling.Snap(this, view.x + headerWidth) - hairline, view.y, hairline, view.height));
+            Pooled(headerParts, headers, 2, PaletteRole.Line).Arrange(new LayoutRect(view.x, UIScaling.Snap(this, view.y + HeaderHeight) - hairline, view.width, hairline));
+            Pooled(headerParts, headers, 3, PaletteRole.Line).Arrange(new LayoutRect(UIScaling.Snap(this, view.x + HeaderWidth) - hairline, view.y, hairline, view.height));
 
             int name = 0;
             for (int c = firstColumn; c <= lastColumn; c++)
             {
-                float left = origin.X + page.ColumnLeft(c);
-                if (left + page.ColumnWidth(c) <= view.x + headerWidth) continue;
-                LayoutRect band = new LayoutRect(left, view.y, page.ColumnWidth(c), headerHeight);
+                float left = origin.X + ColumnLeft(c);
+                if (left + ColumnWidth(c) <= view.x + HeaderWidth) continue;
+                LayoutRect band = new LayoutRect(left, view.y, ColumnWidth(c), HeaderHeight);
                 PlaceCentred(Label(headerNames, headers, name++, PaletteRole.MutedInk), SheetDocument.ColumnName(c), band);
             }
             for (int r = firstRow; r <= lastRow; r++)
             {
-                float top = origin.Y + page.RowTop(r);
-                if (top + page.RowHeight(r) <= view.y + headerHeight) continue;
-                LayoutRect band = new LayoutRect(view.x, top, headerWidth, page.RowHeight(r));
+                float top = origin.Y + RowTop(r);
+                if (top + RowHeight(r) <= view.y + HeaderHeight) continue;
+                LayoutRect band = new LayoutRect(view.x, top, HeaderWidth, RowHeight(r));
                 PlaceCentred(Label(headerNames, headers, name++, PaletteRole.MutedInk), (r + 1).ToString(CultureInfo.InvariantCulture), band);
             }
             for (int i = name; i < headerNames.Count; i++)
                 headerNames[i].Arrange(Hidden);
         }
 
-        private static void PlaceText(LabelControl label, string text, LayoutRect cell, bool alignRight)
+        private void PlaceText(LabelControl label, string text, LayoutRect cell, bool alignRight)
         {
             label.text = text;
             label.Measure(unbounded);
 
-            float room = MathF.Max(0f, cell.width - cellInset * 2f);
+            float inset = cellInset * zoom;
+            float room = MathF.Max(0f, cell.width - inset * 2f);
             Vector2 size = label.DesiredSize;
-            float x = alignRight && size.X <= room ? cell.Right - cellInset - size.X : cell.x + cellInset;
+            float x = alignRight && size.X <= room ? cell.Right - inset - size.X : cell.x + inset;
             label.Arrange(new LayoutRect(x, cell.y + (cell.height - size.Y) * 0.5f, MathF.Min(size.X, room), size.Y));
         }
 
@@ -427,7 +460,7 @@ namespace ArctisAurora.Core.UI
         {
             while (pool.Count <= index)
             {
-                LabelControl label = new LabelControl { hitTestable = false, fontSize = fontSize };
+                LabelControl label = new LabelControl { hitTestable = false, fontSize = FontSize };
                 label.PaintOr(null, role);
                 Adopt(layer, label);
                 pool.Add(label);
@@ -496,8 +529,8 @@ namespace ArctisAurora.Core.UI
             if (resizing)
             {
                 Vector2 origin = Origin;
-                float start = resizeColumn ? origin.X + page.ColumnLeft(resizeIndex) : origin.Y + page.RowTop(resizeIndex);
-                float size = MathF.Max(minimumBand, (resizeColumn ? e.point.X : e.point.Y) - start);
+                float start = resizeColumn ? origin.X + ColumnLeft(resizeIndex) : origin.Y + RowTop(resizeIndex);
+                float size = MathF.Max(minimumBand, ((resizeColumn ? e.point.X : e.point.Y) - start) / zoom);
                 (resizeColumn ? page.columnWidths : page.rowHeights)[resizeIndex] = size;
                 InvalidateLayout();
                 return;

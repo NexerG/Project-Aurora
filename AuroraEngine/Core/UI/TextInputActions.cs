@@ -31,6 +31,21 @@ namespace ArctisAurora.Core.UI
         bool PasteImage(Image<Rgba32> image);
     }
 
+    // A standalone editable field the text keybinds reach.
+    public interface ITextField
+    {
+        bool isEditing { get; }
+        void WriteChar(char c);
+        void Backspace(bool word = false);
+        void Delete(bool word = false);
+        void MoveCaret(CaretMove move, bool extend);
+        void SelectAll();
+        void Commit();
+        void Cancel();
+        void Undo();
+        void Redo();
+    }
+
     // Keybind actions for text editing. They live in the engine rather than in a host so an
     // application declares which keys reach them in XML and writes no input code of its own.
     public static class TextInputActions
@@ -57,7 +72,7 @@ namespace ArctisAurora.Core.UI
                 return;
             }
 
-            TextBoxControl nextBox = Box();
+            ITextField nextBox = Box();
             if (nextBox == null) return;
 
             while (input.Count > 0)
@@ -134,7 +149,9 @@ namespace ArctisAurora.Core.UI
                 return;
             }
 
-            Box()?.Commit();
+            ITextField box = Box();
+            if (box is RegexTextControl area && InputHandler.instance.IsModifierDown(InputModifier.Extend)) area.InsertSeparator();
+            else box?.Commit();
         }
 
         [A_XSDActionDependency("Text.SelectAll", "Input", "Selects the whole of the focused note or field")]
@@ -444,7 +461,7 @@ namespace ArctisAurora.Core.UI
                  control != null;
                  control = control.parent as ArctisAurora.Core.UI.Control)
             {
-                if (control is TextBoxControl { isEditing: true }) return null;
+                if (control is ITextField { isEditing: true }) return null;
                 if (control is DocumentEditorControl editor) return editor;
             }
 
@@ -452,12 +469,12 @@ namespace ArctisAurora.Core.UI
         }
 
         // Nearest editing field at or above whatever the new stack last made active.
-        private static TextBoxControl Box()
+        private static ITextField Box()
         {
             for (ArctisAurora.Core.UI.Control control = UIEngine.activeControl;
                  control != null;
                  control = control.parent as ArctisAurora.Core.UI.Control)
-                if (control is TextBoxControl box) return box.isEditing ? box : null;
+                if (control is ITextField box) return box.isEditing ? box : null;
 
             return null;
         }

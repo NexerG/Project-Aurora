@@ -24,6 +24,10 @@ namespace Thorium.Editor.CustomControls
         private const string folderMenu = "vault-folder";
         private const string noteMenu = "vault-note";
         private const string csvMenu = "vault-csv";
+        private const string noteXmlMenu = "vault-note-xml";
+        private const string asNoteMenu = "vault-as-note";
+        private const string asSheetMenu = "vault-as-sheet";
+        private const string asPlannerMenu = "vault-as-planner";
 
         // the shown workspace's kind, which picks the files listed
         private WorkspaceKind filtered;
@@ -77,9 +81,12 @@ namespace Thorium.Editor.CustomControls
                 WorkspaceKind.Sheets => sheet,
                 WorkspaceKind.LaTeX => tex,
                 WorkspaceKind.Manager or WorkspaceKind.Calendar => planner,
+                WorkspaceKind.Xml => IsXml(path),
                 _ => true
             };
         }
+
+        private static bool IsXml(string path) => Path.GetExtension(path).Equals(".xml", StringComparison.OrdinalIgnoreCase);
 
         private static string FilterName(WorkspaceKind kind) => kind switch
         {
@@ -87,6 +94,7 @@ namespace Thorium.Editor.CustomControls
             WorkspaceKind.Sheets => "Sheets",
             WorkspaceKind.LaTeX => "LaTeX",
             WorkspaceKind.Manager or WorkspaceKind.Calendar => "Plans",
+            WorkspaceKind.Xml => "XML",
             _ => "All files"
         };
         #endregion
@@ -130,7 +138,11 @@ namespace Thorium.Editor.CustomControls
         protected override string RowContextMenu(FileObject file) =>
             file.type == FileObject.FileType.Directory ? folderMenu
             : SheetCsv.IsCsv(file.path) ? csvMenu
-            : noteMenu;
+            : !IsXml(file.path) ? noteMenu
+            : filtered != WorkspaceKind.Xml ? noteXmlMenu
+            : SheetDocument.IsSheet(file.path) ? asSheetMenu
+            : PlannerDocument.IsPlanner(file.path) ? asPlannerMenu
+            : asNoteMenu;
 
         #region ---- note operations ----
         [A_XSDActionDependency("Notes.New", "UI", "Creates a note at the vault root and opens it")]
@@ -241,6 +253,20 @@ namespace Thorium.Editor.CustomControls
             if (row != null) Browser()?.DeleteNote(row.file);
         }
 
+        [A_XSDActionDependency("Notes.OpenAsXml", "UI", "Opens the file the menu was opened on as XML source")]
+        public static void OpenAsXml()
+        {
+            FileRowControl row = MenuRow();
+            if (row != null && IsXml(row.file.path)) Open(row.file.path, true);
+        }
+
+        [A_XSDActionDependency("Notes.OpenNormally", "UI", "Opens the file the menu was opened on as a note, sheet or planner")]
+        public static void OpenNormally()
+        {
+            FileRowControl row = MenuRow();
+            if (row != null) Open(row.file.path, false);
+        }
+
         // The row the open menu was opened on, or null when it was opened on the browser's ground.
         private static FileRowControl MenuRow()
         {
@@ -253,14 +279,14 @@ namespace Thorium.Editor.CustomControls
         private static VaultBrowserControl Browser() =>
             Engine.primary.ui.uiRoot?.FindByName(browserName) as VaultBrowserControl;
 
-        private void NewNote(string folder) =>
-            NoteNameWindow.Ask(UIEngine.WindowOf(this), "Untitled", name => CreateNote(folder, name), null, null);
+        private void NewNote(string folder, string extension = ".md") =>
+            NoteNameWindow.Ask(UIEngine.WindowOf(this), "Untitled", name => CreateNote(folder, name, extension), null, null);
 
         // A note needs a block holding a run before it can be typed into — the editor places its
         // caret on a run and builds neither.
-        private void CreateNote(string folder, string name)
+        private void CreateNote(string folder, string name, string extension)
         {
-            string path = FreePath(folder, name, ".md");
+            string path = FreePath(folder, name, extension);
 
             NoteBlock block = new NoteBlock();
             block.AppendRun(new Run());
@@ -372,9 +398,10 @@ namespace Thorium.Editor.CustomControls
 
             foreach ((TabItemControl item, TabViewControl view) in TabViewControl.FindOpenDocuments(path))
             {
-                TabViewControl.FileEditorOf(item).Repath(target, name);
+                IFileEditor editor = TabViewControl.FileEditorOf(item);
+                editor.Repath(target, name);
                 item.name = target;
-                view.Retitle(item, name);
+                view.Retitle(item, editor is XmlEditorControl ? Path.GetFileName(target) : name);
             }
 
             if (SheetDocument.IsSheet(target) || SheetCsv.IsCsv(target))
@@ -391,11 +418,13 @@ namespace Thorium.Editor.CustomControls
 
         // Focuses the note wherever it is on screen, and only opens a tab when it is not. A note open
         // in a hidden workspace gets a second view in the shown one.
-        private static void Open(string notePath)
+        private static void Open(string notePath) => Open(notePath, ShownKind() == WorkspaceKind.Xml && IsXml(notePath));
+
+        private static void Open(string notePath, bool asXml)
         {
             foreach ((TabItemControl already, TabViewControl owner) in TabViewControl.FindOpenDocuments(notePath))
             {
-                if (!Shown(owner)) continue;
+                if (!Shown(owner) || TabViewControl.FileEditorOf(already) is XmlEditorControl != asXml) continue;
                 owner.SetActive(already);
                 UIEngine.WindowOf(owner)?.Focus();
                 return;
@@ -406,7 +435,7 @@ namespace Thorium.Editor.CustomControls
             TabViewControl tabs = (pending?.parent != null ? pending : null) ?? FocusedTabs() ?? ShownTabs();
             if (tabs == null) return;
 
-            TabItemControl tab = BuildTab(notePath);
+            TabItemControl tab = BuildTab(notePath, asXml);
             if (ShownKind() == WorkspaceKind.Calendar && TabViewControl.FileEditorOf(tab) is PlannerEditorControl planner)
                 planner.ShowView(PlannerView.Calendar);
             tabs.AddChild(tab);
@@ -420,6 +449,10 @@ namespace Thorium.Editor.CustomControls
             switch (WorkspacePageControl.Of(view)?.kind ?? WorkspaceKind.General)
             {
                 case WorkspaceKind.Docs: New(); break;
+                case WorkspaceKind.Xml:
+                    VaultBrowserControl? browser = Browser();
+                    browser?.NewNote(browser.RootPath, ".xml");
+                    break;
                 case WorkspaceKind.Sheets: NewSheet(); break;
                 case WorkspaceKind.LaTeX: NewTex(); break;
                 case WorkspaceKind.Manager:
@@ -564,8 +597,9 @@ namespace Thorium.Editor.CustomControls
 
         // One tab holding one note, for whichever view is going to take it. Loaded before the tab is
         // built, so the caption can come from the note's own name.
-        internal static TabItemControl BuildTab(string notePath)
+        internal static TabItemControl BuildTab(string notePath, bool asXml)
         {
+            if (asXml) return BuildXmlTab(notePath);
             if (SheetDocument.IsSheet(notePath) || SheetCsv.IsCsv(notePath)) return BuildSheetTab(notePath);
             if (PlannerDocument.IsPlanner(notePath)) return BuildPlannerTab(notePath);
             if (Path.GetExtension(notePath).Equals(".tex", StringComparison.OrdinalIgnoreCase)) return BuildTexTab(notePath);
@@ -624,6 +658,21 @@ namespace Thorium.Editor.CustomControls
             {
                 name = texPath,
                 header = editor.source.session?.document?.name ?? Path.GetFileNameWithoutExtension(texPath),
+                onRename = name => RenameNote(editor.path, name)
+            };
+            tab.AddChild(editor);
+            return tab;
+        }
+
+        private static TabItemControl BuildXmlTab(string xmlPath)
+        {
+            XmlEditorControl editor = new XmlEditorControl();
+            editor.LoadPath(xmlPath);
+
+            TabItemControl tab = new TabItemControl
+            {
+                name = xmlPath,
+                header = Path.GetFileName(xmlPath),
                 onRename = name => RenameNote(editor.path, name)
             };
             tab.AddChild(editor);

@@ -171,13 +171,13 @@ FillTabs(record, view)
     for i in 0 .. record.tabs.Count - 1
         path = record.tabs[i].path
         if the file does not exist -> log and skip
-        tab = tabFactory(path)
+        tab = tabFactory(path, record.tabs[i].asXml)
         view.AddChild(tab)
         if i is record.active -> active = tab
     if active is not null -> view.SetActive(active)
 ```
 
-`tabFactory` is what the host supplies, because the engine can build the editor but not what the host binds to it — in [[Thorium]] a tab carries an `onRename` that renames a note on disk. The active index is matched against the *recorded* position, so a note deleted between sessions drops out without shifting which of the survivors comes back on top.
+`tabFactory` takes the path and whether the tab is an XML view (`asXml`, see [[Xml Editor]]), and is what the host supplies, because the engine can build the editor but not what the host binds to it — in [[Thorium]] a tab carries an `onRename` that renames a note on disk. The active index is matched against the *recorded* position, so a note deleted between sessions drops out without shifting which of the survivors comes back on top.
 
 ## Placement
 

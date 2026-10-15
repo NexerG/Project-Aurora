@@ -64,6 +64,8 @@ namespace ArctisAurora.Core.UI
                 return parts[used++];
             }
 
+            public IReadOnlyList<T> All => parts;
+
             private void HideRest(LayoutRect hidden)
             {
                 for (int i = used; i < parts.Count; i++)
@@ -105,7 +107,12 @@ namespace ArctisAurora.Core.UI
         private const float grabHeight = 6f;
         private const float textInset = 4f;
         private const float attachmentAlpha = 0.4f;
+        private const float todayAlpha = 0.12f;
         private const int fontSize = 12;
+        private const float slideRate = 0.25f;
+        private const float laneSeconds = 0.08f;
+        private const double snapDuration = 0.15;
+        private const float weekStartAlpha = 0.35f;
 
         public static readonly TimeSpan snap = TimeSpan.FromMinutes(15);
         private static readonly Vector2 unbounded = new Vector2(float.MaxValue, float.MaxValue);
@@ -120,13 +127,18 @@ namespace ArctisAurora.Core.UI
         private readonly CalendarParts texts = new CalendarParts();
         private readonly CalendarParts marks = new CalendarParts();
         private readonly CalendarParts gutter = new CalendarParts();
+        private readonly CalendarParts headerBack = new CalendarParts();
         private readonly CalendarParts header = new CalendarParts();
         private readonly CalendarParts strip = new CalendarParts();
+        private readonly CalendarParts cards = new CalendarParts();
         private readonly PanelControl[] outline = new PanelControl[4];
 
         // pooled parts
         private readonly List<Action<LayoutRect>> hides = new List<Action<LayoutRect>>();
         private readonly CalendarPool<PanelControl> lines;
+        private readonly CalendarPool<PanelControl> weekStartParts;
+        private readonly CalendarPool<PanelControl> todayParts;
+        private readonly CalendarPool<PanelControl> todayDots;
         private readonly CalendarPool<PanelControl> blockParts;
         private readonly CalendarPool<PanelControl> attachmentParts;
         private readonly CalendarPool<LabelControl> blockNames;
@@ -134,9 +146,16 @@ namespace ArctisAurora.Core.UI
         private readonly CalendarPool<PanelControl> nowParts;
         private readonly CalendarPool<LabelControl> hours;
         private readonly CalendarPool<PanelControl> headerParts;
+        private readonly CalendarPool<PanelControl> todayPills;
         private readonly CalendarPool<LabelControl> dayNames;
         private readonly CalendarPool<PanelControl> stripParts;
         private readonly CalendarPool<LabelControl> stripNames;
+        private readonly CalendarPool<PanelControl> cardParts;
+        private readonly CalendarPool<LabelControl> cardNames;
+        private readonly CalendarPool<WrappingLabel> cardTexts;
+
+        // the expanded ticket's card this arrange, empty when none is shown
+        private LayoutRect expandedRect;
 
         // the block being dragged, as it was at the press
         private PlannerTicket? dragged;
@@ -148,6 +167,16 @@ namespace ArctisAurora.Core.UI
 
         // the minute the now line was drawn at
         private DateTime shownMinute;
+        private float slide;
+        private float shownLanes = -1f;
+
+        // the slide easing onto a whole day or week once the scroll gesture ends
+        private bool forward;
+        private bool settling;
+        private float settleFrom;
+        private float settleTo;
+        private double settleStart;
+        private CalendarSpan laidSpan;
 
         public CalendarControl(PlannerEditorControl editor)
         {
@@ -160,8 +189,10 @@ namespace ArctisAurora.Core.UI
             AddChild(texts);
             AddChild(marks);
             AddChild(gutter);
+            AddChild(headerBack);
             AddChild(header);
             AddChild(strip);
+            AddChild(cards);
             for (int i = 0; i < outline.Length; i++)
             {
                 outline[i] = new PanelControl { hitTestable = false };
@@ -170,16 +201,23 @@ namespace ArctisAurora.Core.UI
             }
 
             lines = new CalendarPool<PanelControl>(this, grid, part => part.PaintOr(null, PaletteRole.Line));
+            weekStartParts = new CalendarPool<PanelControl>(this, grid, part => { part.PaintOr(null, PaletteRole.Line); part.alpha = weekStartAlpha; });
+            todayParts = new CalendarPool<PanelControl>(this, grid, part => { part.PaintOr(null, PaletteRole.Accent); part.alpha = todayAlpha; });
+            todayDots = new CalendarPool<PanelControl>(this, grid, part => { part.PaintOr(null, PaletteRole.Accent); part.cornerRole = CornerRole.Control; });
             blockParts = new CalendarPool<PanelControl>(this, blocks, part => { part.PaintOr(null, PaletteRole.Accent); part.cornerRole = CornerRole.Control; });
             attachmentParts = new CalendarPool<PanelControl>(this, blocks, part => { part.PaintOr(null, PaletteRole.Accent); part.alpha = attachmentAlpha; });
             blockNames = new CalendarPool<LabelControl>(this, texts, label => Style(label, PaletteRole.Ink, FontStyle.Regular));
             numbers = new CalendarPool<LabelControl>(this, texts, label => Style(label, PaletteRole.Ink, FontStyle.Regular));
             nowParts = new CalendarPool<PanelControl>(this, marks, part => { part.PaintOr(null, PaletteRole.Danger); part.cornerRole = CornerRole.Control; });
             hours = new CalendarPool<LabelControl>(this, gutter, label => Style(label, PaletteRole.MutedInk, FontStyle.Regular));
-            headerParts = new CalendarPool<PanelControl>(this, header, part => part.PaintOr(null, PaletteRole.Chrome));
+            headerParts = new CalendarPool<PanelControl>(this, headerBack, part => part.PaintOr(null, PaletteRole.Chrome));
+            todayPills = new CalendarPool<PanelControl>(this, headerBack, part => { part.PaintOr(null, PaletteRole.Accent); part.cornerRole = CornerRole.Control; });
             dayNames = new CalendarPool<LabelControl>(this, header, label => Style(label, PaletteRole.Ink, FontStyle.Regular));
             stripParts = new CalendarPool<PanelControl>(this, strip, part => { part.PaintOr(null, PaletteRole.Accent); part.cornerRole = CornerRole.Control; });
             stripNames = new CalendarPool<LabelControl>(this, strip, label => Style(label, PaletteRole.Ink, FontStyle.Regular));
+            cardParts = new CalendarPool<PanelControl>(this, cards, part => { part.PaintOr(null, PaletteRole.Accent); part.cornerRole = CornerRole.Control; });
+            cardNames = new CalendarPool<LabelControl>(this, cards, label => Style(label, PaletteRole.Ink, FontStyle.Regular));
+            cardTexts = new CalendarPool<WrappingLabel>(this, cards, label => Style(label, PaletteRole.Ink, FontStyle.Regular));
 
             SetTicking(true);
         }
@@ -187,10 +225,74 @@ namespace ArctisAurora.Core.UI
         // Tickets, span or anchor changed; the pieces are rebuilt.
         internal void Changed() => InvalidateLayout();
 
+        // Re-lays the calendar at the editor's content zoom.
+        internal void Rezoom()
+        {
+            int size = FontSize;
+            foreach (LabelControl label in blockNames.All.Concat(numbers.All).Concat(hours.All).Concat(dayNames.All)
+                         .Concat(stripNames.All).Concat(cardNames.All).Concat(cardTexts.All))
+                label.fontSize = size;
+            InvalidateLayout();
+        }
+
+        // Horizontal wheel steps through days, or weeks on the Month grid.
+        public override bool OnPointerScroll(PointerEvent e)
+        {
+            if (e.delta.X == 0f) return base.OnPointerScroll(e);
+
+            if (!editor.unsnapped)
+            {
+                slide = 0f;
+                editor.StepDays(first.DayNumber - editor.anchor.DayNumber);
+            }
+            slide -= e.delta.X * slideRate;
+            int steps = (int)MathF.Floor(slide);
+            slide -= steps;
+            if (steps != 0) editor.StepDays(IsMonth ? steps * 7 : steps);
+            forward = e.delta.X < 0f;
+            settling = false;
+            Changed();
+            return true;
+        }
+
+        // Settles the slide onto the next whole day or week in the direction it was moving.
+        public override void OnPointerScrollEnd()
+        {
+            if (!editor.unsnapped || slide <= 0f) return;
+            settleFrom = slide;
+            settleTo = forward ? 1f : 0f;
+            settleStart = Engine.totalTime;
+            settling = true;
+            Changed();
+        }
+
         // Redraws when the minute turns, and asks for a frame then.
         public override void OnTick()
         {
             base.OnTick();
+            if (settling && !editor.unsnapped) settling = false;
+            if (settling)
+            {
+                float t = (float)Math.Min(1.0, (Engine.totalTime - settleStart) / snapDuration);
+                float rest = 1f - t;
+                slide = settleFrom + (settleTo - settleFrom) * (1f - rest * rest * rest);
+                if (t >= 1f)
+                {
+                    settling = false;
+                    slide = 0f;
+                    if (settleTo > 0f) editor.StepDays(IsMonth ? 7 : 1);
+                }
+                else FrameScheduler.RequestFrameAt(Engine.totalTime + 0.001);
+                Changed();
+            }
+            float target = Math.Max(1, lanes);
+            if (shownLanes != target)
+            {
+                shownLanes += (target - shownLanes) * (1f - MathF.Exp(-(float)Engine.deltaTime.TotalSeconds / laneSeconds));
+                if (MathF.Abs(target - shownLanes) < 0.01f) shownLanes = target;
+                else FrameScheduler.RequestFrameAt(Engine.totalTime + 0.001);
+                InvalidateLayout();
+            }
             DateTime now = editor.Now;
             DateTime minute = new DateTime(now.Year, now.Month, now.Day, now.Hour, now.Minute, 0);
             if (minute != shownMinute)
@@ -206,14 +308,15 @@ namespace ArctisAurora.Core.UI
 
         private bool IsMonth => editor.span == CalendarSpan.Month;
 
-        // The first day shown: the anchor, its week's Monday, or the Monday on or before its month's first.
+        // The first day shown: the anchor, its week's start, or the week start on or before its month's first.
         public DateOnly first
         {
             get
             {
                 DateOnly anchor = editor.anchor;
+                if (editor.unsnapped) return Span == CalendarSpan.Month ? DateFormats.WeekStart(anchor) : anchor;
                 DateOnly from = Span == CalendarSpan.Month ? new DateOnly(anchor.Year, anchor.Month, 1) : anchor;
-                return Span == CalendarSpan.Day ? from : from.AddDays(-(((int)from.DayOfWeek + 6) % 7));
+                return Span == CalendarSpan.Day ? from : DateFormats.WeekStart(from);
             }
         }
 
@@ -226,23 +329,43 @@ namespace ArctisAurora.Core.UI
             _ => 42
         };
 
+        // the part of a day (a week on the Month grid) the view has slid past first
+        private float Slide => editor.unsnapped ? slide : 0f;
+
+        private int Shown => Days + (Slide > 0f ? (IsMonth ? 7 : 1) : 0);
+
+        // sizes at the content zoom
+        private float Zoom => editor.contentZoom;
+        private float Gutter => gutterWidth * Zoom;
+        private float HeaderSize => headerHeight * Zoom;
+        private float LaneSize => laneHeight * Zoom;
+        private float HourSize => hourHeight * Zoom;
+        private float BlockInset => blockInset * Zoom;
+        private float MinBlock => minBlockHeight * Zoom;
+        private float LabelSize => labelHeight * Zoom;
+        private float CellHeader => cellHeader * Zoom;
+        private float ChipSize => chipHeight * Zoom;
+        private float DotSize => dotSize * Zoom;
+        private float TextInset => textInset * Zoom;
+        private int FontSize => Math.Max(1, (int)MathF.Round(fontSize * Zoom));
+
         // The pinned header and all-day strip.
-        public float TopHeight => headerHeight + Math.Max(1, lanes) * laneHeight;
+        public float TopHeight => HeaderSize + shownLanes * LaneSize;
 
         public float BodyTop => arrangedRect.y + TopHeight;
 
-        private float ColumnWidth => (arrangedRect.width - gutterWidth) / Days;
+        private float ColumnWidth => (arrangedRect.width - Gutter) / Days;
 
-        private float ColumnX(int day) => arrangedRect.x + gutterWidth + day * ColumnWidth;
+        private float ColumnX(int day) => arrangedRect.x + Gutter + (day - Slide) * ColumnWidth;
 
-        private float Y(DateTime day, DateTime time) => BodyTop + (float)(time - day).TotalHours * hourHeight;
+        private float Y(DateTime day, DateTime time) => BodyTop + (float)(time - day).TotalHours * HourSize;
 
         private float CellWidth => arrangedRect.width / 7f;
 
-        private float CellHeight => (arrangedRect.height - headerHeight) / 6f;
+        private float CellHeight => (arrangedRect.height - HeaderSize) / 6f;
 
         private LayoutRect Cell(int index) =>
-            new LayoutRect(arrangedRect.x + index % 7 * CellWidth, arrangedRect.y + headerHeight + index / 7 * CellHeight, CellWidth, CellHeight);
+            new LayoutRect(arrangedRect.x + index % 7 * CellWidth, arrangedRect.y + HeaderSize + (index / 7 - Slide) * CellHeight, CellWidth, CellHeight);
 
         private LayoutRect Hidden => new LayoutRect(arrangedRect.x, arrangedRect.y, 0f, 0f);
 
@@ -259,8 +382,8 @@ namespace ArctisAurora.Core.UI
         // The time under a point on the Day/Week grid, unsnapped.
         public DateTime TimeAt(Vector2 point)
         {
-            int day = Math.Clamp((int)MathF.Floor((point.X - ColumnX(0)) / ColumnWidth), 0, Days - 1);
-            float hoursIn = Math.Clamp((point.Y - BodyTop) / hourHeight, 0f, 24f);
+            int day = Math.Clamp((int)MathF.Floor((point.X - ColumnX(0)) / ColumnWidth), 0, Shown - 1);
+            float hoursIn = Math.Clamp((point.Y - BodyTop) / HourSize, 0f, 24f);
             return First.AddDays(day).AddHours(hoursIn);
         }
 
@@ -269,9 +392,9 @@ namespace ArctisAurora.Core.UI
 
         private int DayIndex(Vector2 point)
         {
-            if (!IsMonth) return Math.Clamp((int)MathF.Floor((point.X - ColumnX(0)) / ColumnWidth), 0, Days - 1);
+            if (!IsMonth) return Math.Clamp((int)MathF.Floor((point.X - ColumnX(0)) / ColumnWidth), 0, Shown - 1);
             int column = Math.Clamp((int)MathF.Floor((point.X - arrangedRect.x) / CellWidth), 0, 6);
-            int row = Math.Clamp((int)MathF.Floor((point.Y - arrangedRect.y - headerHeight) / CellHeight), 0, 5);
+            int row = Math.Clamp((int)MathF.Floor((point.Y - arrangedRect.y - HeaderSize) / CellHeight + Slide), 0, Shown / 7 - 1);
             return row * 7 + column;
         }
 
@@ -334,7 +457,7 @@ namespace ArctisAurora.Core.UI
             lanes = 0;
             PlannerDocument document = editor.document;
             DateTime start = First;
-            int days = Days;
+            int days = Shown;
 
             if (IsMonth)
             {
@@ -395,48 +518,81 @@ namespace ArctisAurora.Core.UI
         protected override Vector2 MeasureCore(Vector2 availableSize)
         {
             BuildPieces();
+            if (shownLanes < 0f || Span != laidSpan) shownLanes = Math.Max(1, lanes);
+            laidSpan = Span;
             foreach (Entity child in children)
                 if (child is Control control) control.Measure(unbounded);
 
-            arrange.desired = new Vector2(availableSize.X, IsMonth ? availableSize.Y : TopHeight + 24f * hourHeight);
+            arrange.desired = new Vector2(availableSize.X, IsMonth ? availableSize.Y : TopHeight + 24f * HourSize);
             return arrange.desired;
         }
 
         protected override void ArrangeCore(LayoutRect finalRect)
         {
             WriteArranged(finalRect);
-            CalendarParts[] layers = { grid, blocks, texts, marks, gutter, header, strip };
+            CalendarParts[] layers = { grid, blocks, texts, marks, gutter, headerBack, header, strip, cards };
             foreach (CalendarParts layer in layers)
                 layer.Arrange(finalRect);
 
             LayoutRect view = Viewport();
             if (IsMonth) ArrangeMonth();
             else ArrangeWeek(view);
+            ArrangeExpanded(view);
             ArrangeSelection(view);
 
             foreach (Action<LayoutRect> hide in hides)
                 hide(Hidden);
             foreach (CalendarParts layer in layers)
                 layer.Settle(finalRect);
+            if (Slide > 0f) ClipSlid(view);
+            if (!IsMonth) ClipSubtree(strip, new LayoutRect(arrangedRect.x, view.y, arrangedRect.width, TopHeight));
+        }
+
+        // Keeps slid days off the hour gutter, or slid weeks off the weekday header.
+        private void ClipSlid(LayoutRect view)
+        {
+            if (IsMonth)
+            {
+                float top = arrangedRect.y + HeaderSize;
+                LayoutRect cells = new LayoutRect(arrangedRect.x, top, arrangedRect.width, arrangedRect.Bottom - top);
+                foreach (CalendarParts layer in new[] { grid, blocks, texts, marks, cards })
+                    ClipSubtree(layer, cells);
+                return;
+            }
+
+            float left = arrangedRect.x + Gutter;
+            LayoutRect days = new LayoutRect(left, arrangedRect.y, arrangedRect.Right - left, arrangedRect.height);
+            foreach (CalendarParts layer in new[] { grid, blocks, texts, marks, headerBack, header, strip, cards })
+                ClipSubtree(layer, days);
+            float pinned = view.y + TopHeight;
+            ClipSubtree(gutter, new LayoutRect(arrangedRect.x, pinned, Gutter, arrangedRect.Bottom - pinned));
         }
 
         private void ArrangeWeek(LayoutRect view)
         {
             DateTime start = First;
             float columnWidth = ColumnWidth;
-            float left = arrangedRect.x + gutterWidth;
+            float left = arrangedRect.x + Gutter;
             float pinned = view.y + TopHeight;
 
-            int fromHour = Math.Clamp((int)MathF.Floor((pinned - BodyTop) / hourHeight), 0, 24);
-            int toHour = Math.Clamp((int)MathF.Ceiling((view.Bottom - BodyTop) / hourHeight), 0, 24);
+            int fromHour = Math.Clamp((int)MathF.Floor((pinned - BodyTop) / HourSize), 0, 24);
+            int toHour = Math.Clamp((int)MathF.Ceiling((view.Bottom - BodyTop) / HourSize), 0, 24);
             for (int h = fromHour; h <= toHour; h++)
             {
-                float y = BodyTop + h * hourHeight;
-                lines.Next().Arrange(new LayoutRect(left, y, arrangedRect.width - gutterWidth, lineWidth));
-                if (h < 24) PlaceText(hours.Next(), $"{h:00}:00", new LayoutRect(arrangedRect.x, y, gutterWidth, labelHeight));
+                float y = BodyTop + h * HourSize;
+                lines.Next().Arrange(new LayoutRect(left, y, arrangedRect.width - Gutter, lineWidth));
+                if (h < 24) PlaceText(hours.Next(), DateFormats.Hour(start.AddHours(h)), new LayoutRect(arrangedRect.x, y, Gutter, LabelSize));
             }
-            for (int d = 0; d <= Days; d++)
+            for (int d = 0; d <= Shown; d++)
                 lines.Next().Arrange(new LayoutRect(ColumnX(d) - lineWidth, view.y, lineWidth, view.height));
+            int weekStart = ((int)DateFormats.FirstDay - (int)start.DayOfWeek + 7) % 7;
+            for (int d = weekStart; d < Shown; d += 7)
+                weekStartParts.Next().Arrange(new LayoutRect(ColumnX(d), view.y, columnWidth, view.height));
+
+            DateTime now = editor.Now;
+            int today = (now.Date - start).Days;
+            if (today >= 0 && today < Shown)
+                todayParts.Next().Arrange(new LayoutRect(ColumnX(today), view.y, columnWidth, view.height));
 
             PlannerDocument document = editor.document;
             for (int i = 0; i < pieces.Count; i++)
@@ -447,8 +603,8 @@ namespace ArctisAurora.Core.UI
                 PlannerTicket ticket = piece.ticket;
                 DateTime dayStart = start.AddDays(piece.day);
                 DateTime dayEnd = dayStart.AddDays(1);
-                float x = ColumnX(piece.day) + columnWidth * piece.column / piece.columns + blockInset;
-                float width = MathF.Max(0f, columnWidth / piece.columns - blockInset * 2f);
+                float x = ColumnX(piece.day) + columnWidth * piece.column / piece.columns + BlockInset;
+                float width = MathF.Max(0f, columnWidth / piece.columns - BlockInset * 2f);
 
                 DateTime from = Max(ticket.time.start, dayStart);
                 DateTime to = Min(ticket.time.end, dayEnd);
@@ -456,10 +612,10 @@ namespace ArctisAurora.Core.UI
                 if (to > from)
                 {
                     float top = Y(dayStart, from);
-                    piece.rect = new LayoutRect(x, top, width, MathF.Max(minBlockHeight, Y(dayStart, to) - top));
+                    piece.rect = new LayoutRect(x, top, width, MathF.Max(MinBlock, Y(dayStart, to) - top));
                     Paint(blockParts.Next(), document.ColorOf(ticket)).Arrange(piece.rect);
-                    if (piece.rect.height >= labelHeight)
-                        PlaceText(blockNames.Next(), ticket.name, new LayoutRect(x, top, width, labelHeight));
+                    if (piece.rect.height >= LabelSize)
+                        PlaceText(blockNames.Next(), ticket.name, new LayoutRect(x, top, width, LabelSize));
                 }
                 pieces[i] = piece;
 
@@ -476,32 +632,35 @@ namespace ArctisAurora.Core.UI
                 }
             }
 
-            DateTime now = editor.Now;
-            int today = (now.Date - start).Days;
-            if (today >= 0 && today < Days)
+            if (today >= 0 && today < Shown)
             {
                 float y = Y(now.Date, now);
                 nowParts.Next().Arrange(new LayoutRect(ColumnX(today), y - nowWidth * 0.5f, columnWidth, nowWidth));
-                nowParts.Next().Arrange(new LayoutRect(ColumnX(today) - dotSize * 0.5f, y - dotSize * 0.5f, dotSize, dotSize));
+                nowParts.Next().Arrange(new LayoutRect(ColumnX(today) - DotSize * 0.5f, y - DotSize * 0.5f, DotSize, DotSize));
             }
 
             headerParts.Next().Arrange(new LayoutRect(view.x, view.y, view.width, TopHeight));
-            lines.Next().Arrange(new LayoutRect(view.x, view.y + headerHeight - lineWidth, view.width, lineWidth));
+            lines.Next().Arrange(new LayoutRect(view.x, view.y + HeaderSize - lineWidth, view.width, lineWidth));
             lines.Next().Arrange(new LayoutRect(view.x, pinned - lineWidth, view.width, lineWidth));
-            for (int d = 0; d < Days; d++)
+            for (int d = 0; d < Shown; d++)
             {
                 DateTime day = start.AddDays(d);
-                LabelControl name = Role(dayNames.Next(), day == now.Date ? PaletteRole.Accent : PaletteRole.Ink);
-                PlaceCentred(name, day.ToString("ddd d", CultureInfo.InvariantCulture), new LayoutRect(ColumnX(d), view.y, columnWidth, headerHeight));
+                bool startsWeek = (d - weekStart) % 7 == 0;
+                LabelControl name = Role(dayNames.Next(), day == now.Date ? PaletteRole.Chrome : startsWeek ? PaletteRole.MutedInk : PaletteRole.Ink);
+                name.style = day == now.Date || startsWeek ? FontStyle.Bold : FontStyle.Regular;
+                PlaceCentred(name, day.ToString("ddd d", CultureInfo.InvariantCulture), new LayoutRect(ColumnX(d), view.y, columnWidth, HeaderSize));
+                if (day != now.Date) continue;
+                LayoutRect n = name.arrangedRect;
+                todayPills.Next().Arrange(new LayoutRect(n.x - TextInset * 2f, n.y - TextInset * 0.5f, n.width + TextInset * 4f, n.height + TextInset));
             }
 
             for (int i = 0; i < pieces.Count; i++)
             {
                 Piece piece = pieces[i];
                 if (piece.kind != PieceKind.AllDay) continue;
-                float x = ColumnX(piece.day) + blockInset;
-                piece.rect = new LayoutRect(x, view.y + headerHeight + piece.column * laneHeight + blockInset,
-                    ColumnX(piece.lastDay + 1) - x - blockInset, laneHeight - blockInset * 2f);
+                float x = ColumnX(piece.day) + BlockInset;
+                piece.rect = new LayoutRect(x, view.y + HeaderSize + piece.column * LaneSize + BlockInset,
+                    ColumnX(piece.lastDay + 1) - x - BlockInset, LaneSize - BlockInset * 2f);
                 Paint(stripParts.Next(), document.ColorOf(piece.ticket)).Arrange(piece.rect);
                 PlaceText(stripNames.Next(), piece.ticket.name, piece.rect);
                 pieces[i] = piece;
@@ -516,22 +675,29 @@ namespace ArctisAurora.Core.UI
             int month = editor.anchor.Month;
             float cellWidth = CellWidth;
             float cellHeight = CellHeight;
-            int fits = Math.Max(0, (int)MathF.Floor((cellHeight - cellHeader - blockInset) / chipHeight));
+            int fits = Math.Max(0, (int)MathF.Floor((cellHeight - CellHeader - BlockInset) / ChipSize));
 
-            headerParts.Next().Arrange(new LayoutRect(arrangedRect.x, arrangedRect.y, arrangedRect.width, headerHeight));
+            headerParts.Next().Arrange(new LayoutRect(arrangedRect.x, arrangedRect.y, arrangedRect.width, HeaderSize));
             for (int c = 0; c < 7; c++)
-                PlaceCentred(Role(dayNames.Next(), PaletteRole.MutedInk), start.AddDays(c).ToString("ddd", CultureInfo.InvariantCulture),
-                    new LayoutRect(arrangedRect.x + c * cellWidth, arrangedRect.y, cellWidth, headerHeight));
-            for (int r = 0; r <= 6; r++)
-                lines.Next().Arrange(new LayoutRect(arrangedRect.x, arrangedRect.y + headerHeight + r * cellHeight - (r == 6 ? lineWidth : 0f), arrangedRect.width, lineWidth));
+                PlaceCentred(Regular(Role(dayNames.Next(), PaletteRole.MutedInk)), start.AddDays(c).ToString("ddd", CultureInfo.InvariantCulture),
+                    new LayoutRect(arrangedRect.x + c * cellWidth, arrangedRect.y, cellWidth, HeaderSize));
+            for (int r = 0; r <= Shown / 7; r++)
+                lines.Next().Arrange(new LayoutRect(arrangedRect.x, arrangedRect.y + HeaderSize + (r - Slide) * cellHeight - (r == 6 && Slide == 0f ? lineWidth : 0f), arrangedRect.width, lineWidth));
             for (int c = 1; c < 7; c++)
-                lines.Next().Arrange(new LayoutRect(arrangedRect.x + c * cellWidth, arrangedRect.y + headerHeight, lineWidth, arrangedRect.height - headerHeight));
+                lines.Next().Arrange(new LayoutRect(arrangedRect.x + c * cellWidth, arrangedRect.y + HeaderSize, lineWidth, arrangedRect.height - HeaderSize));
+            weekStartParts.Next().Arrange(new LayoutRect(arrangedRect.x, arrangedRect.y + HeaderSize, cellWidth, arrangedRect.height - HeaderSize));
 
-            for (int d = 0; d < 42; d++)
+            for (int d = 0; d < Shown; d++)
             {
                 DateTime day = start.AddDays(d);
-                PaletteRole role = day == today ? PaletteRole.Accent : day.Month == month ? PaletteRole.Ink : PaletteRole.MutedInk;
-                PlaceText(Role(numbers.Next(), role), day.Day.ToString(CultureInfo.InvariantCulture), Cell(d) with { height = cellHeader });
+                PaletteRole role = day == today ? PaletteRole.Chrome : day.Month == month ? PaletteRole.Ink : PaletteRole.MutedInk;
+                LabelControl number = Role(numbers.Next(), role);
+                PlaceText(number, day.Day.ToString(CultureInfo.InvariantCulture), Cell(d) with { height = CellHeader });
+                if (day != today) continue;
+                todayParts.Next().Arrange(Cell(d));
+                LayoutRect n = number.arrangedRect;
+                float side = MathF.Max(n.width, n.height) + TextInset;
+                todayDots.Next().Arrange(new LayoutRect(n.x + (n.width - side) * 0.5f, n.y + (n.height - side) * 0.5f, side, side));
             }
 
             PlannerDocument document = editor.document;
@@ -543,30 +709,64 @@ namespace ArctisAurora.Core.UI
                 piece.rect = Hidden;
                 if (piece.column < shown)
                 {
-                    piece.rect = new LayoutRect(cell.x + blockInset, cell.y + cellHeader + piece.column * chipHeight, cellWidth - blockInset * 2f, chipHeight - blockInset);
+                    piece.rect = new LayoutRect(cell.x + BlockInset, cell.y + CellHeader + piece.column * ChipSize, cellWidth - BlockInset * 2f, ChipSize - BlockInset);
                     Paint(blockParts.Next(), document.ColorOf(piece.ticket)).Arrange(piece.rect);
                     string text = Long(piece.ticket) ? piece.ticket.name
-                        : piece.ticket.time.start.ToString("HH:mm ", CultureInfo.InvariantCulture) + piece.ticket.name;
+                        : DateFormats.Time(piece.ticket.time.start) + " " + piece.ticket.name;
                     PlaceText(blockNames.Next(), text, piece.rect);
                 }
                 else if (piece.column == shown && fits > 0)
                     PlaceText(Role(numbers.Next(), PaletteRole.MutedInk), $"+{piece.columns - shown} more",
-                        new LayoutRect(cell.x, cell.y + cellHeader + shown * chipHeight, cellWidth, chipHeight));
+                        new LayoutRect(cell.x, cell.y + CellHeader + shown * ChipSize, cellWidth, ChipSize));
                 pieces[i] = piece;
             }
         }
 
-        // An outline around the selected ticket's first block that is not under the pinned header.
+        // A ticket's first block that is not under the pinned header.
+        private LayoutRect? ShownBlock(PlannerTicket ticket, LayoutRect view)
+        {
+            foreach (Piece piece in pieces)
+                if (ReferenceEquals(piece.ticket, ticket) && piece.rect.width > 0f && !(piece.kind == PieceKind.Timed && piece.rect.y < view.y + TopHeight))
+                    return piece.rect;
+            return null;
+        }
+
+        // The expanded ticket's block grown down over what lies below it, deep enough for its description.
+        private void ArrangeExpanded(LayoutRect view)
+        {
+            expandedRect = LayoutRect.Empty;
+            if (editor.expanded is not PlannerTicket ticket || ShownBlock(ticket, view) is not LayoutRect block) return;
+
+            PanelControl card = Paint(cardParts.Next(), editor.document.ColorOf(ticket));
+            LabelControl title = cardNames.Next();
+            float room = MathF.Max(0f, block.width - TextInset * 2f);
+            List<WrappingLabel> lines = new List<WrappingLabel>();
+            float height = 0f;
+            foreach (string line in ticket.description.Split('\n'))
+            {
+                WrappingLabel text = cardTexts.Next();
+                text.text = line;
+                height += text.Measure(new Vector2(room, float.MaxValue)).Y;
+                lines.Add(text);
+            }
+            expandedRect = block with { height = MathF.Max(block.height, LabelSize + height + TextInset) };
+
+            card.Arrange(expandedRect);
+            string name = !IsMonth || Long(ticket) ? ticket.name : DateFormats.Time(ticket.time.start) + " " + ticket.name;
+            PlaceText(title, name, expandedRect with { height = LabelSize });
+            float y = expandedRect.y + LabelSize;
+            foreach (WrappingLabel text in lines)
+            {
+                text.Arrange(new LayoutRect(expandedRect.x + TextInset, y, room, text.DesiredSize.Y));
+                y += text.DesiredSize.Y;
+            }
+        }
+
+        // An outline around the selected ticket's first block that is not under the pinned header, or its expanded card.
         private void ArrangeSelection(LayoutRect view)
         {
-            LayoutRect? found = null;
-            if (editor.selected is PlannerTicket selected)
-                foreach (Piece piece in pieces)
-                    if (ReferenceEquals(piece.ticket, selected) && piece.rect.width > 0f && !(piece.kind == PieceKind.Timed && piece.rect.y < view.y + TopHeight))
-                    {
-                        found = piece.rect;
-                        break;
-                    }
+            LayoutRect? found = editor.selected is PlannerTicket selected ? ShownBlock(selected, view) : null;
+            if (found != null && ReferenceEquals(editor.selected, editor.expanded) && expandedRect.width > 0f) found = expandedRect;
 
             if (found is not LayoutRect block)
             {
@@ -597,21 +797,27 @@ namespace ArctisAurora.Core.UI
             return label;
         }
 
-        private static void Style(LabelControl label, PaletteRole role, FontStyle style)
+        private static LabelControl Regular(LabelControl label)
         {
-            label.fontSize = fontSize;
+            label.style = FontStyle.Regular;
+            return label;
+        }
+
+        private void Style(LabelControl label, PaletteRole role, FontStyle style)
+        {
+            label.fontSize = FontSize;
             label.style = style;
             label.PaintOr(null, role);
         }
 
-        private static void PlaceText(LabelControl label, string text, LayoutRect cell)
+        private void PlaceText(LabelControl label, string text, LayoutRect cell)
         {
             label.text = text;
             label.Measure(unbounded);
 
             Vector2 size = label.DesiredSize;
-            float room = MathF.Max(0f, cell.width - textInset * 2f);
-            label.Arrange(new LayoutRect(cell.x + textInset, cell.y + (MathF.Min(cell.height, labelHeight) - size.Y) * 0.5f, MathF.Min(size.X, room), size.Y));
+            float room = MathF.Max(0f, cell.width - TextInset * 2f);
+            label.Arrange(new LayoutRect(cell.x + TextInset, cell.y + (MathF.Min(cell.height, LabelSize) - size.Y) * 0.5f, MathF.Min(size.X, room), size.Y));
         }
 
         private static void PlaceCentred(LabelControl label, string text, LayoutRect band)
@@ -685,6 +891,13 @@ namespace ArctisAurora.Core.UI
             return true;
         }
 
+        // A click on a block opens its description; anywhere else folds it away.
+        public override bool OnPointerRelease(PointerEvent e)
+        {
+            if (e.button == PointerEvent.leftButton && e.tapCount == 1) editor.Expand(TicketAt(e.point));
+            return base.OnPointerRelease(e);
+        }
+
         // Timed blocks move and resize in 15-minute steps; all-day blocks and month chips move by days.
         public override void OnDrag(PointerEvent e)
         {
@@ -748,11 +961,11 @@ namespace ArctisAurora.Core.UI
             LayoutRect view = Viewport();
             if (IsMonth)
             {
-                if (e.point.Y < arrangedRect.y + headerHeight) return base.OnPointerTap(e);
+                if (e.point.Y < arrangedRect.y + HeaderSize) return base.OnPointerTap(e);
                 DateOnly day = DayAt(e.point);
                 editor.NewAt(TimeRange.Days(day, day), this, e.point);
             }
-            else if (e.point.X < arrangedRect.x + gutterWidth || e.point.Y < view.y + headerHeight) return base.OnPointerTap(e);
+            else if (e.point.X < arrangedRect.x + Gutter || e.point.Y < view.y + HeaderSize) return base.OnPointerTap(e);
             else if (e.point.Y < view.y + TopHeight)
             {
                 DateOnly day = DayAt(e.point);

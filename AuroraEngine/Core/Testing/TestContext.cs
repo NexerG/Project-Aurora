@@ -180,6 +180,19 @@ namespace ArctisAurora.Core.Testing
             return Queued();
         }
 
+        // Turns the wheel by delta over the centre of control, with keys held.
+        public int Scroll(Control control, Vector2 delta, Keys[]? held = null,
+            [CallerFilePath] string file = "", [CallerLineNumber] int line = 0)
+        {
+            _steps.Enqueue(() => Point(control, file, line));
+            if (held != null)
+                _steps.Enqueue(() => { foreach (Keys k in held) Raw(k, RawAction.Down); });
+            _steps.Enqueue(() => { if (_window != null) InputHandler.instance.ProcessScrollWheel(_window.os.handle, delta.X, delta.Y); });
+            if (held != null)
+                _steps.Enqueue(() => { foreach (Keys k in held) Raw(k, RawAction.Up); });
+            return Queued();
+        }
+
         // Presses key with modifiers held.
         public int Key(Keys key, params Keys[] modifiers)
         {

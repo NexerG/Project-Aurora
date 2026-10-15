@@ -9,9 +9,13 @@
 	<Test Action="TextInput.PastePlainLines"/>
 	<Test Action="TextInput.FieldClipboardAndUndo"/>
 	<Test Action="TextInput.FieldWordAndScroll"/>
+	<Test Action="RegexText.LinesAndCommit"/>
+	<Test Action="RegexText.WrapMoves"/>
+	<Test Action="RegexText.CommaPattern"/>
 	<Test Action="TextInput.DragMovesText"/>
 	<Test Action="TextInput.DropOntoRule"/>
 	<Test Action="TextInput.DragBetweenNotes"/>
+	<Test Action="TextInput.WheelZoom"/>
 	<Test Action="TextInput.RightModifiers"/>
 	<Test Action="TextInput.StyleSurvivesEnterAndBackspace"/>
 	<Test Action="TextInput.UnderlineToggles"/>

@@ -16,9 +16,9 @@ namespace Thorium.Tests
             string note = TempNote("shared");
             WorkspaceControl workspace = ShowWorkspace(t);
             WorkspacePageControl a = workspace.AddPage("General", WorkspaceKind.General);
-            workspace.LoadPane(a).AddChild(SessionLayout.tabFactory(note));
+            workspace.LoadPane(a).AddChild(SessionLayout.tabFactory(note, false));
             WorkspacePageControl b = workspace.AddPage("Docs", WorkspaceKind.Docs);
-            workspace.LoadPane(b).AddChild(SessionLayout.tabFactory(note));
+            workspace.LoadPane(b).AddChild(SessionLayout.tabFactory(note, false));
             yield return 2;
 
             DocumentEditorControl inA = Editor(a), inB = Editor(b);
@@ -48,7 +48,7 @@ namespace Thorium.Tests
             string note = TempNote("menu");
             WorkspaceControl workspace = ShowWorkspace(t);
             WorkspacePageControl first = workspace.AddPage("General", WorkspaceKind.General);
-            workspace.LoadPane(first).AddChild(SessionLayout.tabFactory(note));
+            workspace.LoadPane(first).AddChild(SessionLayout.tabFactory(note, false));
             yield return 2;
 
             WorkspaceActions.Duplicate();
@@ -90,9 +90,9 @@ namespace Thorium.Tests
             WorkspaceControl workspace = ShowWorkspace(t);
             SessionLayout.scope = "ws-a";
             WorkspacePageControl a = workspace.AddPage("General", WorkspaceKind.General);
-            workspace.LoadPane(a).AddChild(SessionLayout.tabFactory(note));
+            workspace.LoadPane(a).AddChild(SessionLayout.tabFactory(note, false));
             WorkspacePageControl b = workspace.AddPage("Sheets", WorkspaceKind.Sheets);
-            workspace.LoadPane(b).AddChild(SessionLayout.tabFactory(sheet));
+            workspace.LoadPane(b).AddChild(SessionLayout.tabFactory(sheet, false));
             workspace.Rename(b, "Budget");
             workspace.Show(b);
             yield return 2;
@@ -275,7 +275,7 @@ namespace Thorium.Tests
             string note = TempNote("reset");
             WorkspaceControl workspace = ShowWorkspace(t);
             WorkspacePageControl docs = workspace.AddPage("Docs", WorkspaceKind.Docs);
-            workspace.LoadPane(docs).AddChild(SessionLayout.tabFactory(note));
+            workspace.LoadPane(docs).AddChild(SessionLayout.tabFactory(note, false));
             AddEmpty(workspace, "Extra");
             RenderWindow sticky = OpenWithWorkspace("sticky-window");
             RenderWindow torn = OpenWithWorkspace("tab-window");

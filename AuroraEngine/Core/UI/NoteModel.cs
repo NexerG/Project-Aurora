@@ -254,7 +254,8 @@ namespace ArctisAurora.Core.UI
         Palette,
         Layout,
         Properties,
-        ReadOnly
+        ReadOnly,
+        Replaced
     }
 
     // One change the model made, raised after it is made.

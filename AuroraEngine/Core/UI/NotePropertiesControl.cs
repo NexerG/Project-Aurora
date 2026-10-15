@@ -258,7 +258,7 @@ namespace ArctisAurora.Core.UI
 
         private static string Date(string? stamp) =>
             DateTimeOffset.TryParse(stamp, CultureInfo.InvariantCulture, DateTimeStyles.None, out DateTimeOffset time)
-                ? time.LocalDateTime.ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture)
+                ? $"{DateFormats.Date(time.LocalDateTime)} {DateFormats.Time(time.LocalDateTime)}"
                 : stamp ?? "-";
 
         // A press on a row's gap leaves the caret's note active.

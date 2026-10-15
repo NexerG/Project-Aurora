@@ -25,6 +25,9 @@ namespace ArctisAurora.Core.UI
         [A_XSDActionDependency("Workspace.NewCalendar", "UI", "Adds a Calendar workspace and shows it")]
         public static void NewCalendar() => New(WorkspaceKind.Calendar);
 
+        [A_XSDActionDependency("Workspace.NewXml", "UI", "Adds an XML workspace and shows it")]
+        public static void NewXml() => New(WorkspaceKind.Xml);
+
         [A_XSDActionDependency("Workspace.Duplicate", "UI", "Adds a workspace holding the same files in the same arrangement")]
         public static void Duplicate()
         {

@@ -253,8 +253,8 @@ namespace Thorium.Tests
         private static IEnumerator<int> RestoreTwice(TestContext t)
         {
             string path = Fixture("alpha", "beta", "gamma");
-            TabItemControl first = SessionLayout.tabFactory(path);
-            TabItemControl second = SessionLayout.tabFactory(path);
+            TabItemControl first = SessionLayout.tabFactory(path, false);
+            TabItemControl second = SessionLayout.tabFactory(path, false);
             TabViewControl.FileEditorOf(first).RestoreView(new SessionTab { caretBlock = 1, caretOffset = 2, anchorBlock = 1, anchorOffset = 2 });
             TabViewControl.FileEditorOf(second).RestoreView(new SessionTab { caretBlock = 2, caretOffset = 4, anchorBlock = 2, anchorOffset = 4 });
 

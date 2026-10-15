@@ -114,6 +114,7 @@ namespace ArctisAurora.EngineWork.Rendering
 
             RoundCorners();
             AllowSnapping();
+            TouchpadInput.Register();
             SetAppIcon();
             UpdateWindowSize(ref windowSize);
             SetResizeCallback(WindwoResizeCallback);
@@ -252,6 +253,7 @@ namespace ArctisAurora.EngineWork.Rendering
         // reserve and paint nothing. Every other message is the one GLFW installed.
         private IntPtr FrameProc(IntPtr hwnd, uint message, IntPtr wParam, IntPtr lParam)
         {
+            if (message == rawInput) TouchpadInput.Handle(lParam);
             if (message != ncCalcSize || wParam == IntPtr.Zero)
                 return CallWindowProc(previousProc, hwnd, message, wParam, lParam);
 
@@ -273,10 +275,11 @@ namespace ArctisAurora.EngineWork.Rendering
 
         private delegate IntPtr WndProc(IntPtr hwnd, uint message, IntPtr wParam, IntPtr lParam);
 
-        // GWL_STYLE, GWLP_WNDPROC, WM_NCCALCSIZE
+        // GWL_STYLE, GWLP_WNDPROC, WM_NCCALCSIZE, WM_INPUT
         private const int windowStyle = -16;
         private const int windowProcedure = -4;
         private const uint ncCalcSize = 0x0083;
+        private const uint rawInput = 0x00FF;
 
         // WS_POPUP; WS_CAPTION | WS_THICKFRAME | WS_MAXIMIZEBOX; WS_MAXIMIZE
         private static readonly nint popup = (nint)0x80000000L;

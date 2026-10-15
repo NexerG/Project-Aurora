@@ -52,7 +52,7 @@ namespace ArctisAurora.Core.UI
         private static TabItemControl? CopyOf(TabItemControl item)
         {
             IFileEditor? editor = TabViewControl.FileEditorOf(item);
-            if (editor?.path == null || SessionLayout.tabFactory?.Invoke(editor.path) is not TabItemControl copy) return null;
+            if (editor?.path == null || SessionLayout.tabFactory?.Invoke(editor.path, editor is XmlEditorControl) is not TabItemControl copy) return null;
 
             TabViewControl.FileEditorOf(copy)?.RestoreView(editor.ViewState());
             return copy;

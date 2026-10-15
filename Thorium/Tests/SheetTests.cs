@@ -140,7 +140,7 @@ namespace Thorium.Tests
             };
             t.Show(workspace);
             SessionLayout.scope = "sheet-a";
-            workspace.LoadPane()!.AddChild(SessionLayout.tabFactory(path));
+            workspace.LoadPane()!.AddChild(SessionLayout.tabFactory(path, false));
             yield return 2;
 
             SheetEditorControl editor = (SheetEditorControl)TabViewControl.FileEditorOf(TabViewControl.FindOpenDocument(path, out _))!;
@@ -176,7 +176,7 @@ namespace Thorium.Tests
             yield return 2;
             t.Check(SheetDocument.Load(path).pages[0].Shown(4, 1) == "closed", "closing the tab writes the edit");
 
-            view.AddChild(SessionLayout.tabFactory(path));
+            view.AddChild(SessionLayout.tabFactory(path, false));
             yield return 2;
             item = TabViewControl.FindOpenDocument(path, out _);
             editor = (SheetEditorControl)TabViewControl.FileEditorOf(item)!;
@@ -798,7 +798,7 @@ namespace Thorium.Tests
             };
             t.Show(workspace);
             SessionLayout.scope = "note-rename";
-            workspace.LoadPane()!.AddChild(SessionLayout.tabFactory(openPath));
+            workspace.LoadPane()!.AddChild(SessionLayout.tabFactory(openPath, false));
             yield return 2;
             DocumentEditorControl note = (DocumentEditorControl)TabViewControl.FileEditorOf(TabViewControl.FindOpenDocument(openPath, out _))!;
 
@@ -861,7 +861,7 @@ namespace Thorium.Tests
             both.AddChild(sheet);
             t.Show(both);
             SessionLayout.scope = "math-links";
-            workspace.LoadPane()!.AddChild(SessionLayout.tabFactory(notePath));
+            workspace.LoadPane()!.AddChild(SessionLayout.tabFactory(notePath, false));
             yield return 2;
             DocumentEditorControl note = (DocumentEditorControl)TabViewControl.FileEditorOf(TabViewControl.FindOpenDocument(notePath, out _))!;
 
@@ -1313,7 +1313,7 @@ namespace Thorium.Tests
 
             string csvPath = Path.Combine(folder, "data.csv");
             File.WriteAllText(csvPath, "name;cost\r\nrent;\"1,5\"\r\nfee;=2*3\r\n", new System.Text.UTF8Encoding(false));
-            TabItemControl tab = SessionLayout.tabFactory(csvPath);
+            TabItemControl tab = SessionLayout.tabFactory(csvPath, false);
             SheetEditorControl csv = (SheetEditorControl)TabViewControl.FileEditorOf(tab)!;
             t.Show(tab);
             yield return 2;
@@ -1569,6 +1569,38 @@ namespace Thorium.Tests
             static string? FocusedCaption() => UIEngine.activeControl is TextBoxControl box && box.parent is Control row
                 ? row.children.OfType<LabelControl>().FirstOrDefault()?.text
                 : null;
+        }
+
+        [A_XSDActionDependency("Sheet.WheelZoom", "Test")]
+        private static IEnumerator<int> WheelZoom(TestContext t)
+        {
+            string path = TempSheet(SheetDocument.Blank("Zoom"));
+            SheetEditorControl editor = ShowSheet(t, path);
+            DocumentZoomSetting zoom = SettingsRegistry.Get<UISettings>().documentZoom;
+            float before = zoom.percent;
+            yield return 2;
+
+            SheetControl grid = Grid(editor);
+            SheetPage page = editor.document.pages[0];
+            yield return t.Scroll(editor, new Vector2(0f, 1f), new[] { Keys.LeftControl });
+            yield return 2;
+            t.Check(zoom.percent == before + 10f, $"Ctrl+wheel over a sheet steps the content zoom: {before} -> {zoom.percent}");
+
+            zoom.percent = 200f;
+            SettingsRegistry.Apply();
+            yield return 2;
+            LayoutRect b1 = grid.CellRect(0, 1);
+            t.Check(MathF.Abs(b1.width - page.ColumnWidth(1) * 2f) < 0.5f && MathF.Abs(b1.height - page.RowHeight(0) * 2f) < 0.5f,
+                $"at 200% a cell is drawn twice its size: {b1.width} x {b1.height}");
+
+            float edge = b1.Right;
+            float headerY = grid.arrangedRect.y + grid.HeaderHeight * 0.5f;
+            yield return t.Drag(grid, new Vector2(edge, headerY), new Vector2(edge + 60f, headerY));
+            yield return 2;
+            t.Check(page.ColumnWidth(1) == SheetPage.defaultColumnWidth + 30f, $"a 60 px resize at 200% stores 30: {page.ColumnWidth(1)}");
+
+            zoom.percent = before;
+            SettingsRegistry.Apply();
         }
 
         [A_XSDActionDependency("Sheet.InsertShifts", "Test")]

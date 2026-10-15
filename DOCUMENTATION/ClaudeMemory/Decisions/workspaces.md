@@ -160,4 +160,4 @@ Moves dispatch to the hovered control, so a flick that leaves a narrow tab befor
 - W2: full Thorium suite 262 passed / 3 failed / 40 skipped; the 3 were the pre-existing baseline (Boot, Sheet.FixedSize, Perf.TypeLargeNote).
 - W3/W4: full Thorium suite 279 passed / 2 failed / 40 skipped; the 2 (Boot: default sampler error; Perf.TypeLargeNote: 3 errors) predate this work. 11 Ribbon-suite tests pass; 4 goldens approved by the user after reading.
 
-Related: [[session-restore]], [[note-model]], [[tab-view-control]], [[planner]], [[sheets]], [[document-format-bar]], [[splitter-and-pane-sizing]], [[destroyed-parent-orphans]], [[note-images]]
+Related: [[session-restore]], [[note-model]], [[tab-view-control]], [[planner]], [[sheets]], [[document-format-bar]], [[splitter-and-pane-sizing]], [[destroyed-parent-orphans]], [[note-images]], [[xml-editor]]

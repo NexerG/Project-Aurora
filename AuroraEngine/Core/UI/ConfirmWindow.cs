@@ -2,6 +2,7 @@ using ArctisAurora.Core.ECS.EngineEntity;
 using ArctisAurora.EngineWork;
 using ArctisAurora.EngineWork.Rendering;
 using Silk.NET.Vulkan;
+using System.Numerics;
 
 namespace ArctisAurora.Core.UI
 {
@@ -10,9 +11,8 @@ namespace ArctisAurora.Core.UI
     public static class ConfirmWindow
     {
         private const string windowName = "confirm";
-        private const uint windowWidth = 380;
-        private const uint windowHeight = 100;
-        private const uint checkHeight = 28;
+        private const uint windowWidth = 260;
+        private const uint windowHeight = 82;
 
         private static RenderWindow _window = null!;
         private static RenderWindow? _source;
@@ -36,8 +36,9 @@ namespace ArctisAurora.Core.UI
             _source = source;
             Fill(message, check, answers);
 
-            uint width = UIScaling.ToPixels(source, windowWidth);
-            uint height = UIScaling.ToPixels(source, windowHeight + (check != null ? checkHeight : 0));
+            Vector2 size = _column.Measure(new Vector2(windowWidth, float.MaxValue));
+            uint width = UIScaling.ToPixels(source, Math.Max(windowWidth, (uint)MathF.Ceiling(size.X)));
+            uint height = UIScaling.ToPixels(source, (uint)MathF.Ceiling(size.Y));
             _window.os.Resize(width, height);
             UIScaling.Apply(_window);
 
@@ -127,7 +128,7 @@ namespace ArctisAurora.Core.UI
                 {
                     orientation = StackPanelControl.Orientation.Horizontal,
                     alpha = 0f,
-                    preferredHeight = 18,
+                    preferredHeight = 22,
                     Spacing = 8
                 };
                 _check = new CheckBoxControl { role = PaletteRole.SubField };
@@ -140,7 +141,7 @@ namespace ArctisAurora.Core.UI
             {
                 orientation = StackPanelControl.Orientation.Horizontal,
                 alpha = 0f,
-                preferredHeight = 30,
+                preferredHeight = 24,
                 Spacing = 8
             };
 
@@ -158,8 +159,8 @@ namespace ArctisAurora.Core.UI
         {
             ButtonControl button = new ButtonControl
             {
-                preferredWidth = 90,
-                preferredHeight = 30,
+                preferredHeight = 24,
+                padding = new Thickness(12f, 0f),
                 role = PaletteRole.Chrome,
                 cornerRole = CornerRole.Control
             };

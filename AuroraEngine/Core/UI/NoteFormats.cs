@@ -927,10 +927,10 @@ namespace ArctisAurora.Core.UI
         }
     }
 
-    // LaTeX source <-> <Document> tree: one wrapping LaTeX code block per line.
+    // Source text <-> <Document> tree: one wrapping code block per line.
     public static class TexSourceFormat
     {
-        public static XElement Read(string text, string name)
+        public static XElement Read(string text, string name, string language = "latex")
         {
             XElement root = new XElement("Document", new XAttribute("Name", name));
 
@@ -940,7 +940,7 @@ namespace ArctisAurora.Core.UI
                 XElement run = new XElement("Run");
                 if (content.Length > 0) run.SetAttributeValue("Text", content);
                 root.Add(new XElement("Block",
-                    new XAttribute("StylingType", "Code"), new XAttribute("Language", "latex"), new XAttribute("Wrap", "true"), run));
+                    new XAttribute("StylingType", "Code"), new XAttribute("Language", language), new XAttribute("Wrap", "true"), run));
             }
 
             return root;

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ContextMenu>
+	<ContextButton Text="Open as sheet" Action="Notes.OpenNormally"/>
+	<ContextLine/>
+	<ContextButton Text="New note" Action="Notes.NewHere"/>
+	<ContextButton Text="Rename note" Action="Notes.Rename"/>
+	<ContextButton Text="Duplicate note" Action="Notes.Duplicate"/>
+	<ContextLine/>
+	<ContextButton Text="Delete note" Action="Notes.Delete"/>
+</ContextMenu>

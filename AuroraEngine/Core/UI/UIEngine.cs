@@ -165,6 +165,9 @@ namespace ArctisAurora.Core.UI
         // the drag target's own window-space point, so the release does not have to recompute it
         private static Vector2 _dragPoint;
 
+        // what consumed the last scroll, told when its gesture ends
+        private static Control scrollOwner;
+
         // The window the pointer is over while a drag runs, null when it is over none or when an
         // overlap makes the answer ambiguous. Only meaningful mid-drag — a captured pointer is what
         // makes the geometry search necessary, and it costs a position query per window per tick.
@@ -232,6 +235,12 @@ namespace ArctisAurora.Core.UI
 
             if (window.scrollDelta.X != 0 || window.scrollDelta.Y != 0)
                 SolveScroll(point, window.scrollDelta);
+            if (InputHandler.instance.scrollEnded && scrollOwner != null)
+            {
+                Control owner = scrollOwner;
+                scrollOwner = null;
+                owner.OnPointerScrollEnd();
+            }
         }
 
         private static void SolveHover(Vector2 point, Vector2 delta, WindowRoot root)
@@ -474,12 +483,47 @@ namespace ArctisAurora.Core.UI
         {
             if (InputHandler.instance.IsModifierDown(InputModifier.Zoom))
             {
-                if (offset.Y > 0) UIScaling.ZoomIn();
-                else if (offset.Y < 0) UIScaling.ZoomOut();
+                if (InputHandler.instance.IsModifierDown(InputModifier.AppZoom))
+                {
+                    if (offset.Y > 0) UIScaling.ZoomIn();
+                    else if (offset.Y < 0) UIScaling.ZoomOut();
+                }
+                else if (offset.Y != 0)
+                    ZoomContent(offset.Y > 0);
                 return;
             }
             if (hovering == null) return;
-            Dispatch(Event(hovering, point, offset, 0, 0), PointerPhase.Scroll);
+            PointerEvent e = Event(hovering, point, offset, 0, 0);
+            for (Control control = hovering; control != null; control = control.parent as Control)
+                if (control.OnPointerScroll(e))
+                {
+                    scrollOwner = control;
+                    return;
+                }
+        }
+
+        // Steps the zoom of the editor under the pointer.
+        private static void ZoomContent(bool larger)
+        {
+            for (Control c = hovering; c != null; c = c.parent as Control)
+            {
+                if (c is DocumentEditorControl { zoomOverride: float own })
+                {
+                    for (Control t = c; t != null; t = t.parent as Control)
+                        if (t is TexEditorControl tex)
+                        {
+                            tex.SetPreviewZoom((int)Math.Clamp(MathF.Round(own * 100f) + (larger ? 10f : -10f), 25f, 400f));
+                            return;
+                        }
+                    return;
+                }
+                if (c is DocumentEditorControl or SheetEditorControl or PlannerEditorControl)
+                {
+                    if (larger) DocumentEditorControl.ZoomIn();
+                    else DocumentEditorControl.ZoomOut();
+                    return;
+                }
+            }
         }
 
         // Also called with no click behind it, by anything that has to hold the active context before
@@ -514,6 +558,7 @@ namespace ArctisAurora.Core.UI
             if (ReferenceEquals(pressTarget, control)) pressTarget = null;
             if (ReferenceEquals(dragging, control)) dragging = null;
             if (ReferenceEquals(_dragTarget, control)) _dragTarget = null;
+            if (ReferenceEquals(scrollOwner, control)) scrollOwner = null;
             Context.Forget(control);
         }
 

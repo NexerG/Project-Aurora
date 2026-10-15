@@ -1,5 +1,6 @@
 ﻿using ArctisAurora.Core.Registry;
 using ArctisAurora.Core.Filing.Serialization;
+using ArctisAurora.Core.Threading;
 using ArctisAurora.EngineWork.Rendering;
 using Silk.NET.GLFW;
 using System.Numerics;
@@ -582,7 +583,8 @@ namespace ArctisAurora.EngineWork
         Extend,
         Word,
         Copy,
-        Zoom
+        Zoom,
+        AppZoom
     }
 
     [A_XSDType("NamedModifier", "Input", description: "Binds a key to a modifier role the engine queries by name")]
@@ -1190,13 +1192,90 @@ namespace ArctisAurora.EngineWork
             RenderWindow target = Engine.WindowFor(window);
             if (target == null) return;
 
+            double now = ScrollClock;
+            if (swallowMomentum)
+            {
+                if (!TouchpadInput.down && now - lastScrollAt < momentumGap)
+                {
+                    lastScrollAt = now;
+                    return;
+                }
+                swallowMomentum = false;
+            }
+            if (scrollLifted && MathF.Max(MathF.Abs((float)offsetX), MathF.Abs((float)offsetY)) < momentumFloor)
+            {
+                scrollEndWrite = true;
+                swallowMomentum = true;
+                lastScrollAt = now;
+                return;
+            }
+
             target.scrollDeltaWrite.X += (float)offsetX;
             target.scrollDeltaWrite.Y += (float)offsetY;
+            if (!scrollOpen)
+            {
+                scrollOpen = true;
+                scrollTouched = false;
+                scrollLifted = false;
+            }
+            if (TouchpadInput.down) scrollTouched = true;
+            lastScrollAt = now;
+        }
+        #endregion
+
+        #region ---- scroll gestures ----
+        // wheel quiet period, and the touchpad momentum that may follow a lift
+        private const double wheelQuiet = 0.15;
+        private const double momentumGap = 0.05;
+        private const float momentumFloor = 0.15f;
+
+        private bool scrollOpen;
+        private bool scrollTouched;
+        private bool scrollLifted;
+        private bool scrollEndWrite;
+        private bool swallowMomentum;
+        private int seenLifts;
+        private double lastScrollAt;
+        private double liftAt;
+
+        // True for the tick a scroll gesture finished on.
+        public bool scrollEnded { get; private set; }
+
+        private static double ScrollClock => System.Diagnostics.Stopwatch.GetTimestamp() / (double)System.Diagnostics.Stopwatch.Frequency;
+
+        // A wheel gesture ends after a quiet period; a touchpad one once the fingers lift and the momentum fades.
+        private void SettleScroll()
+        {
+            scrollEnded = false;
+            double now = ScrollClock;
+            if (TouchpadInput.lifts != seenLifts)
+            {
+                seenLifts = TouchpadInput.lifts;
+                if (scrollOpen && scrollTouched)
+                {
+                    scrollLifted = true;
+                    liftAt = now;
+                }
+            }
+            if (scrollLifted && TouchpadInput.down) scrollLifted = false;
+            if (!scrollOpen) return;
+
+            double quiet = scrollTouched ? momentumGap : wheelQuiet;
+            double since = now - Math.Max(lastScrollAt, scrollLifted ? liftAt : 0.0);
+            if (scrollEndWrite || (!scrollTouched || scrollLifted) && since >= quiet)
+            {
+                scrollEnded = true;
+                swallowMomentum |= scrollTouched && !TouchpadInput.down;
+                scrollOpen = scrollTouched = scrollLifted = scrollEndWrite = false;
+            }
+            else if (!scrollTouched || scrollLifted)
+                FrameScheduler.RequestFrameAt(Engine.totalTime + quiet - since);
         }
         #endregion
 
         public void ActivateKeybinds()
         {
+            SettleScroll();
             lock (charInputWriteQueue)
             {
                 (charInputWriteQueue, charInputReadQueue) = (charInputReadQueue, charInputWriteQueue);

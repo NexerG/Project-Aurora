@@ -21,6 +21,8 @@
 	<Test Action="Planner.AssigneeGolden"/>
 	<Test Action="Planner.CalendarPack"/>
 	<Test Action="Planner.CalendarGeometry"/>
+	<Test Action="Planner.CalendarSnap"/>
+	<Test Action="Planner.WeekStart"/>
 	<Test Action="Planner.CalendarDragUndo"/>
 	<Test Action="Planner.CalendarCreate"/>
 	<Test Action="Planner.CalendarMonth"/>
@@ -28,6 +30,11 @@
 	<Test Action="Planner.FollowersMove"/>
 	<Test Action="Planner.FollowCycle"/>
 	<Test Action="Planner.AttachmentText"/>
+	<Test Action="Planner.Description"/>
+	<Test Action="Planner.ExpandBoard"/>
+	<Test Action="Planner.ExpandGantt"/>
+	<Test Action="Planner.ExpandCalendar"/>
 	<Test Action="Planner.AttachmentGolden"/>
 	<Test Action="Planner.TwoViews"/>
+	<Test Action="Planner.WheelZoom"/>
 </TestSuite>

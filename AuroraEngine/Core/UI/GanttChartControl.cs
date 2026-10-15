@@ -56,6 +56,7 @@ namespace ArctisAurora.Core.UI
         private const float grabWidth = 6f;
         private const float elbowWidth = 8f;
         private const float attachmentAlpha = 0.4f;
+        private const float rowGlowAlpha = 0.15f;
         private const int fontSize = 13;
 
         private static readonly Vector2 unbounded = new Vector2(float.MaxValue, float.MaxValue);
@@ -66,12 +67,21 @@ namespace ArctisAurora.Core.UI
         private readonly List<(PlannerCategory category, PlannerTicket? ticket)> rows = new List<(PlannerCategory, PlannerTicket?)>();
         private bool rowsStale = true;
 
+        // the expanded ticket's row, the height its description adds, and the width that was wrapped to
+        private int expandedRow = -1;
+        private float expandedExtra;
+        private int expandedLines;
+        private float wrappedWidth;
+        private bool rewrapPending;
+        private readonly List<WrappingLabel> descriptionLines = new List<WrappingLabel>();
+
         // the time span drawn, rebuilt with the rows
         public DateTime origin { get; private set; }
         public DateTime end { get; private set; }
 
         // parts, in draw order
         private readonly ChartParts bands = new ChartParts();
+        private readonly PanelControl rowGlow = new PanelControl { hitTestable = false };
         private readonly ChartParts grid = new ChartParts();
         private readonly ChartParts bars = new ChartParts();
         private readonly PanelControl[] outline = new PanelControl[4];
@@ -127,8 +137,11 @@ namespace ArctisAurora.Core.UI
             contextMenu = "planner";
             stopsContextMenu = true;
             today.PaintOr(null, PaletteRole.Danger);
+            rowGlow.PaintOr(null, PaletteRole.Accent);
+            rowGlow.alpha = rowGlowAlpha;
 
             AddChild(bands);
+            AddChild(rowGlow);
             AddChild(grid);
             AddChild(bars);
             for (int i = 0; i < outline.Length; i++)
@@ -165,16 +178,36 @@ namespace ArctisAurora.Core.UI
             InvalidateLayout();
         }
 
-        #region ---- geometry ----
-        public float nameWidth => editor.document.nameWidth;
+        // Re-lays the chart at the editor's content zoom.
+        internal void Rezoom()
+        {
+            int size = FontSize;
+            foreach (LabelControl label in categoryNames.Concat(ticketNames).Concat(unitNames).Concat(upperNames).Concat(descriptionLines))
+                label.fontSize = size;
+            RowsChanged();
+        }
 
-        private float DayWidth => editor.zoom switch
+        #region ---- geometry ----
+        // sizes at the content zoom
+        private float Zoom => editor.contentZoom;
+        private float BandSize => bandHeight * Zoom;
+        private float HeaderSize => headerHeight * Zoom;
+        private float RowSize => rowHeight * Zoom;
+        private float BarInset => barInset * Zoom;
+        private float TextInset => textInset * Zoom;
+        private float Indent => ticketIndent * Zoom;
+        private float Elbow => elbowWidth * Zoom;
+        private int FontSize => Math.Max(1, (int)MathF.Round(fontSize * Zoom));
+
+        public float nameWidth => editor.document.nameWidth * Zoom;
+
+        private float DayWidth => Zoom * (editor.zoom switch
         {
             PlannerZoom.Hour => 768f,
             PlannerZoom.Day => 32f,
             PlannerZoom.Week => 10f,
             _ => 3f
-        };
+        });
 
         private Unit Lower => (Unit)editor.zoom;
 
@@ -192,7 +225,20 @@ namespace ArctisAurora.Core.UI
 
         public DateTime TimeAt(float x) => origin.AddDays((x - arrangedRect.x - nameWidth) / DayWidth);
 
-        public float RowTop(int row) => arrangedRect.y + headerHeight + row * rowHeight;
+        public float RowTop(int row) => arrangedRect.y + HeaderSize + row * RowSize + (expandedRow >= 0 && row > expandedRow ? expandedExtra : 0f);
+
+        public float RowHeight(int row) => row == expandedRow ? RowSize + expandedExtra : RowSize;
+
+        // The row a y falls in, unclamped.
+        private int RowIndex(float y)
+        {
+            float offset = y - RowTop(0);
+            if (expandedRow >= 0 && offset >= (expandedRow + 1) * RowSize)
+                offset = offset < (expandedRow + 1) * RowSize + expandedExtra ? expandedRow * RowSize : offset - expandedExtra;
+            return (int)MathF.Floor(offset / RowSize);
+        }
+
+        private float DescriptionWidth => MathF.Max(0f, Viewport().width - nameWidth - TextInset * 2f);
 
         public int RowOf(PlannerTicket ticket) => rows.FindIndex(row => ReferenceEquals(row.ticket, ticket));
 
@@ -200,7 +246,7 @@ namespace ArctisAurora.Core.UI
         {
             float left = X(ticket.time.start);
             float top = RowTop(RowOf(ticket));
-            return new LayoutRect(left, top + barInset, MathF.Max(2f, X(ticket.time.end) - left), rowHeight - barInset * 2f);
+            return new LayoutRect(left, top + BarInset, MathF.Max(2f, X(ticket.time.end) - left), RowSize - BarInset * 2f);
         }
 
         private LayoutRect Hidden => new LayoutRect(arrangedRect.x, arrangedRect.y, 0f, 0f);
@@ -212,7 +258,7 @@ namespace ArctisAurora.Core.UI
         {
             Unit.Hour => new DateTime(time.Year, time.Month, time.Day, time.Hour, 0, 0),
             Unit.Day => time.Date,
-            Unit.Week => time.Date.AddDays(-(((int)time.DayOfWeek + 6) % 7)),
+            Unit.Week => DateFormats.WeekStart(time),
             Unit.Month => new DateTime(time.Year, time.Month, 1),
             _ => new DateTime(time.Year, 1, 1)
         };
@@ -228,7 +274,7 @@ namespace ArctisAurora.Core.UI
 
         private static string Name(DateTime time, Unit unit) => unit switch
         {
-            Unit.Hour => time.ToString("HH", CultureInfo.InvariantCulture),
+            Unit.Hour => DateFormats.ShortHour(time),
             Unit.Day => time.Day.ToString(CultureInfo.InvariantCulture),
             Unit.Week => time.ToString("d MMM", CultureInfo.InvariantCulture),
             Unit.Month => time.ToString("MMM", CultureInfo.InvariantCulture),
@@ -280,9 +326,37 @@ namespace ArctisAurora.Core.UI
 
             foreach (Entity child in children)
                 if (child is Control control) control.Measure(unbounded);
+            MeasureDescription();
 
-            arrange.desired = new Vector2(nameWidth + Offset(end), headerHeight + rows.Count * rowHeight);
+            arrange.desired = new Vector2(nameWidth + Offset(end), HeaderSize + rows.Count * RowSize + expandedExtra);
             return arrange.desired;
+        }
+
+        // The expanded ticket's row, and its description wrapped across the viewport's body, a label per line.
+        private void MeasureDescription()
+        {
+            expandedRow = editor.expanded is PlannerTicket open ? RowOf(open) : -1;
+            expandedExtra = 0f;
+            expandedLines = 0;
+            if (expandedRow < 0) return;
+
+            string[] lines = editor.expanded!.description.Split('\n');
+            while (descriptionLines.Count < lines.Length)
+            {
+                WrappingLabel label = new WrappingLabel { hitTestable = false, fontSize = FontSize };
+                label.PaintOr(null, PaletteRole.Ink);
+                Adopt(bars, label);
+                descriptionLines.Add(label);
+            }
+
+            wrappedWidth = DescriptionWidth;
+            for (int i = 0; i < lines.Length; i++)
+            {
+                descriptionLines[i].text = lines[i];
+                expandedExtra += descriptionLines[i].Measure(new Vector2(wrappedWidth, float.MaxValue)).Y;
+            }
+            expandedLines = lines.Length;
+            expandedExtra += TextInset;
         }
 
         protected override void ArrangeCore(LayoutRect finalRect)
@@ -295,9 +369,9 @@ namespace ArctisAurora.Core.UI
             headers.Arrange(finalRect);
 
             LayoutRect view = Viewport();
-            float bodyTop = view.y + headerHeight;
-            int firstRow = Math.Max(0, (int)MathF.Floor((bodyTop - RowTop(0)) / rowHeight));
-            int lastRow = Math.Min(rows.Count - 1, (int)MathF.Floor((view.Bottom - RowTop(0)) / rowHeight));
+            float bodyTop = view.y + HeaderSize;
+            int firstRow = Math.Max(0, RowIndex(bodyTop));
+            int lastRow = Math.Min(rows.Count - 1, RowIndex(view.Bottom));
             DateTime from = TimeAt(view.x + nameWidth);
             DateTime to = TimeAt(view.Right);
             if (from < origin) from = origin;
@@ -306,6 +380,7 @@ namespace ArctisAurora.Core.UI
             ArrangeUnits(view, from, to, ArrangeRows(view, firstRow, lastRow));
             ArrangeLinks(firstRow, lastRow);
             ArrangeBars(firstRow, lastRow);
+            ArrangeDescription(view, firstRow, lastRow);
             ArrangeSelection();
             ArrangeToday(view);
             ArrangeNames(view, firstRow, lastRow);
@@ -327,8 +402,8 @@ namespace ArctisAurora.Core.UI
             {
                 float top = RowTop(r);
                 if (rows[r].ticket == null)
-                    Pooled(bandParts, bands, band++, PaletteRole.Chrome).Arrange(new LayoutRect(view.x, top, view.width, rowHeight));
-                float bottom = UIScaling.Snap(this, top + rowHeight);
+                    Pooled(bandParts, bands, band++, PaletteRole.Chrome).Arrange(new LayoutRect(view.x, top, view.width, RowSize));
+                float bottom = UIScaling.Snap(this, top + RowHeight(r));
                 Pooled(lines, grid, line++, PaletteRole.Line).Arrange(new LayoutRect(view.x, bottom - hairline, view.width, hairline));
             }
             for (int i = band; i < bandParts.Count; i++)
@@ -388,6 +463,32 @@ namespace ArctisAurora.Core.UI
                 attachmentParts[i].Arrange(Hidden);
         }
 
+        // The expanded ticket's description under its bar, pinned to the viewport's body; a width change re-wraps it next frame.
+        private void ArrangeDescription(LayoutRect view, int firstRow, int lastRow)
+        {
+            int shown = 0;
+            if (expandedRow >= firstRow && expandedRow <= lastRow)
+            {
+                float y = RowTop(expandedRow) + RowSize;
+                for (; shown < expandedLines; shown++)
+                {
+                    WrappingLabel line = descriptionLines[shown];
+                    line.Arrange(new LayoutRect(view.x + nameWidth + TextInset, y, wrappedWidth, line.DesiredSize.Y));
+                    y += line.DesiredSize.Y;
+                }
+            }
+            for (int i = shown; i < descriptionLines.Count; i++)
+                descriptionLines[i].Arrange(Hidden);
+
+            if (expandedRow < 0 || rewrapPending || MathF.Abs(DescriptionWidth - wrappedWidth) < 0.5f) return;
+            rewrapPending = true;
+            Engine.Post(() =>
+            {
+                rewrapPending = false;
+                if (!destroyed) InvalidateLayout();
+            });
+        }
+
         // An elbow from each leader's end to its follower's start, when either row is in view.
         private void ArrangeLinks(int firstRow, int lastRow)
         {
@@ -402,10 +503,10 @@ namespace ArctisAurora.Core.UI
                 if (from < 0 || to < 0 || Math.Max(from, to) < firstRow || Math.Min(from, to) > lastRow) continue;
 
                 float startX = UIScaling.Snap(this, X(leader.time.end));
-                float bendX = UIScaling.Snap(this, startX + elbowWidth);
+                float bendX = UIScaling.Snap(this, startX + Elbow);
                 float endX = UIScaling.Snap(this, X(follower.time.start));
-                float fromY = UIScaling.Snap(this, RowTop(from) + rowHeight * 0.5f);
-                float toY = UIScaling.Snap(this, RowTop(to) + rowHeight * 0.5f);
+                float fromY = UIScaling.Snap(this, RowTop(from) + RowSize * 0.5f);
+                float toY = UIScaling.Snap(this, RowTop(to) + RowSize * 0.5f);
                 Pooled(linkParts, grid, link++, PaletteRole.MutedInk).Arrange(new LayoutRect(startX, fromY, bendX - startX, hairline));
                 Pooled(linkParts, grid, link++, PaletteRole.MutedInk).Arrange(new LayoutRect(bendX, MathF.Min(fromY, toY), hairline, MathF.Abs(toY - fromY) + hairline));
                 Pooled(linkParts, grid, link++, PaletteRole.MutedInk).Arrange(new LayoutRect(MathF.Min(bendX, endX), toY, MathF.Abs(endX - bendX), hairline));
@@ -418,12 +519,17 @@ namespace ArctisAurora.Core.UI
         private void ArrangeSelection()
         {
             PlannerTicket? ticket = editor.selected;
-            if (ticket == null || RowOf(ticket) < 0)
+            int row = ticket == null ? -1 : RowOf(ticket);
+            if (ticket == null || row < 0)
             {
+                rowGlow.Arrange(Hidden);
                 foreach (PanelControl edge in outline)
                     edge.Arrange(Hidden);
                 return;
             }
+
+            LayoutRect view = Viewport();
+            rowGlow.Arrange(new LayoutRect(view.x + nameWidth, RowTop(row), view.width - nameWidth, RowHeight(row)));
 
             LayoutRect bar = BarRect(ticket);
             float left = UIScaling.Snap(this, bar.x - outlineWidth);
@@ -452,13 +558,18 @@ namespace ArctisAurora.Core.UI
             float hairline = UIScaling.Hairline(this, lineWidth);
             Pooled(nameParts, names, 1, PaletteRole.Line).Arrange(new LayoutRect(UIScaling.Snap(this, view.x + nameWidth) - hairline, view.y, hairline, view.height));
 
+            PanelControl nameGlow = Pooled(nameParts, names, 2, PaletteRole.Accent);
+            nameGlow.alpha = rowGlowAlpha;
+            int selectedRow = editor.selected == null ? -1 : RowOf(editor.selected);
+            nameGlow.Arrange(selectedRow < 0 ? Hidden : new LayoutRect(view.x, RowTop(selectedRow), nameWidth, RowHeight(selectedRow)));
+
             int category = 0;
             int ticket = 0;
             for (int r = firstRow; r <= lastRow; r++)
             {
-                LayoutRect cell = new LayoutRect(view.x, RowTop(r), nameWidth, rowHeight);
+                LayoutRect cell = new LayoutRect(view.x, RowTop(r), nameWidth, RowSize);
                 if (rows[r].ticket is PlannerTicket shown)
-                    PlaceText(Label(ticketNames, names, ticket++, PaletteRole.Ink, FontStyle.Regular), shown.name, cell, ticketIndent);
+                    PlaceText(Label(ticketNames, names, ticket++, PaletteRole.Ink, FontStyle.Regular), shown.name, cell, Indent);
                 else
                     PlaceText(Label(categoryNames, names, category++, PaletteRole.Ink, FontStyle.Bold), rows[r].category.name, cell, 0f);
             }
@@ -471,12 +582,12 @@ namespace ArctisAurora.Core.UI
         // Two bands pinned to the viewport's top: the larger unit above, the zoom's unit below.
         private void ArrangeHeader(LayoutRect view, DateTime from, DateTime to)
         {
-            Pooled(headerParts, headers, 0, PaletteRole.Chrome).Arrange(new LayoutRect(view.x, view.y, view.width, headerHeight));
+            Pooled(headerParts, headers, 0, PaletteRole.Chrome).Arrange(new LayoutRect(view.x, view.y, view.width, HeaderSize));
             float hairline = UIScaling.Hairline(this, lineWidth);
             float nameEdge = UIScaling.Snap(this, view.x + nameWidth);
-            Pooled(headerParts, headers, 1, PaletteRole.Line).Arrange(new LayoutRect(view.x + nameWidth, UIScaling.Snap(this, view.y + bandHeight) - hairline, view.width - nameWidth, hairline));
-            Pooled(headerParts, headers, 2, PaletteRole.Line).Arrange(new LayoutRect(view.x, UIScaling.Snap(this, view.y + headerHeight) - hairline, view.width, hairline));
-            Pooled(headerParts, headers, 3, PaletteRole.Line).Arrange(new LayoutRect(nameEdge - hairline, view.y, hairline, headerHeight));
+            Pooled(headerParts, headers, 1, PaletteRole.Line).Arrange(new LayoutRect(view.x + nameWidth, UIScaling.Snap(this, view.y + BandSize) - hairline, view.width - nameWidth, hairline));
+            Pooled(headerParts, headers, 2, PaletteRole.Line).Arrange(new LayoutRect(view.x, UIScaling.Snap(this, view.y + HeaderSize) - hairline, view.width, hairline));
+            Pooled(headerParts, headers, 3, PaletteRole.Line).Arrange(new LayoutRect(nameEdge - hairline, view.y, hairline, HeaderSize));
 
             float left = view.x + nameWidth;
             Unit lower = Lower;
@@ -487,7 +598,7 @@ namespace ArctisAurora.Core.UI
                 float width = X(Next(t, lower)) - x;
                 if (x < left) continue;
                 PlaceCentred(Label(unitNames, headers, unit++, PaletteRole.MutedInk, FontStyle.Regular), Name(t, lower),
-                    new LayoutRect(x, view.y + bandHeight, width, bandHeight));
+                    new LayoutRect(x, view.y + BandSize, width, BandSize));
             }
             for (int i = unit; i < unitNames.Count; i++)
                 unitNames[i].Arrange(Hidden);
@@ -500,20 +611,20 @@ namespace ArctisAurora.Core.UI
                 float stop = MathF.Min(view.Right, X(Next(t, upper)));
                 if (stop <= start) continue;
                 PlaceText(Label(upperNames, headers, name++, PaletteRole.Ink, FontStyle.Regular), UpperName(t, upper),
-                    new LayoutRect(start, view.y, stop - start, bandHeight), 0f);
+                    new LayoutRect(start, view.y, stop - start, BandSize), 0f);
             }
             for (int i = name; i < upperNames.Count; i++)
                 upperNames[i].Arrange(Hidden);
         }
 
-        private static void PlaceText(LabelControl label, string text, LayoutRect cell, float indent)
+        private void PlaceText(LabelControl label, string text, LayoutRect cell, float indent)
         {
             label.text = text;
             label.Measure(unbounded);
 
-            float room = MathF.Max(0f, cell.width - textInset * 2f - indent);
+            float room = MathF.Max(0f, cell.width - TextInset * 2f - indent);
             Vector2 size = label.DesiredSize;
-            label.Arrange(new LayoutRect(cell.x + textInset + indent, cell.y + (cell.height - size.Y) * 0.5f, MathF.Min(size.X, room), size.Y));
+            label.Arrange(new LayoutRect(cell.x + TextInset + indent, cell.y + (cell.height - size.Y) * 0.5f, MathF.Min(size.X, room), size.Y));
         }
 
         private static void PlaceCentred(LabelControl label, string text, LayoutRect band)
@@ -542,7 +653,7 @@ namespace ArctisAurora.Core.UI
         {
             while (pool.Count <= index)
             {
-                LabelControl label = new LabelControl { hitTestable = false, fontSize = fontSize, style = style };
+                LabelControl label = new LabelControl { hitTestable = false, fontSize = FontSize, style = style };
                 label.PaintOr(null, role);
                 Adopt(layer, label);
                 pool.Add(label);
@@ -568,8 +679,8 @@ namespace ArctisAurora.Core.UI
 
         private int? RowAt(Vector2 point)
         {
-            if (point.Y < Viewport().y + headerHeight) return null;
-            int row = (int)MathF.Floor((point.Y - RowTop(0)) / rowHeight);
+            if (point.Y < Viewport().y + HeaderSize) return null;
+            int row = RowIndex(point.Y);
             return row >= 0 && row < rows.Count ? row : null;
         }
 
@@ -605,7 +716,7 @@ namespace ArctisAurora.Core.UI
             if (OnNameEdge(e.point))
             {
                 resizingNames = true;
-                pressNameWidth = nameWidth;
+                pressNameWidth = editor.document.nameWidth;
                 pressX = e.point.X;
                 StartDrag();
             }
@@ -628,7 +739,7 @@ namespace ArctisAurora.Core.UI
             base.OnDrag(e);
             if (resizingNames)
             {
-                editor.document.nameWidth = Math.Clamp(pressNameWidth + e.point.X - pressX, minNameWidth, maxNameWidth);
+                editor.document.nameWidth = Math.Clamp(pressNameWidth + (e.point.X - pressX) / Zoom, minNameWidth, maxNameWidth);
                 InvalidateLayout();
                 return;
             }
@@ -654,7 +765,7 @@ namespace ArctisAurora.Core.UI
             if (resizingNames)
             {
                 resizingNames = false;
-                if (nameWidth != pressNameWidth) editor.document.unsaved = true;
+                if (editor.document.nameWidth != pressNameWidth) editor.document.unsaved = true;
                 ShowCursor(CursorShape.Arrow);
                 return;
             }
@@ -680,6 +791,13 @@ namespace ArctisAurora.Core.UI
         {
             if (dragged == null && !resizingNames) ShowCursor(CursorShape.Arrow);
             return base.OnPointerExit(e);
+        }
+
+        // A click on a ticket's row opens its description; anywhere else folds it away.
+        public override bool OnPointerRelease(PointerEvent e)
+        {
+            if (e.button == PointerEvent.leftButton && e.tapCount == 1 && !OnNameEdge(e.point)) editor.Expand(TicketAt(e.point));
+            return base.OnPointerRelease(e);
         }
 
         public override bool OnPointerTap(PointerEvent e)

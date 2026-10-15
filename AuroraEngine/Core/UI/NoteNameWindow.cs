@@ -1,6 +1,7 @@
 using ArctisAurora.EngineWork;
 using ArctisAurora.EngineWork.Rendering;
 using Silk.NET.Vulkan;
+using System.Numerics;
 
 namespace ArctisAurora.Core.UI
 {
@@ -9,15 +10,15 @@ namespace ArctisAurora.Core.UI
     public static class NoteNameWindow
     {
         private const string windowName = "note-name";
-        private const uint windowWidth = 380;
-        private const uint windowHeight = 140;
-        private const int discardWidth = 100;
+        private const uint windowWidth = 300;
+        private const uint windowHeight = 134;
 
         private static RenderWindow _window = null!;
         private static RenderWindow? _source;
         private static Control? _restoreActive;
         private static TextBoxControl _field = null!;
         private static ButtonControl _discard = null!;
+        private static StackPanelControl _column = null!;
 
         private static Action<string>? _onConfirm;
         private static Action? _onDiscard;
@@ -43,8 +44,9 @@ namespace ArctisAurora.Core.UI
 
             _field.text = suggestion ?? string.Empty;
 
-            uint width = UIScaling.ToPixels(source, windowWidth);
-            uint height = UIScaling.ToPixels(source, windowHeight);
+            Vector2 size = _column.Measure(new Vector2(windowWidth, float.MaxValue));
+            uint width = UIScaling.ToPixels(source, Math.Max(windowWidth, (uint)MathF.Ceiling(size.X)));
+            uint height = UIScaling.ToPixels(source, (uint)MathF.Ceiling(size.Y));
             _window.os.Resize(width, height);
             UIScaling.Apply(_window);
 
@@ -128,7 +130,7 @@ namespace ArctisAurora.Core.UI
                 verticalAlignment = VerticalAlignment.Stretch
             };
 
-            StackPanelControl column = new StackPanelControl
+            _column = new StackPanelControl
             {
                 orientation = StackPanelControl.Orientation.Vertical,
                 alpha = 0f,
@@ -138,7 +140,7 @@ namespace ArctisAurora.Core.UI
                 Spacing = 10
             };
 
-            column.AddChild(new LabelControl
+            _column.AddChild(new LabelControl
             {
                 text = "Name this note",
                 fontSize = 15,
@@ -156,35 +158,35 @@ namespace ArctisAurora.Core.UI
             };
             _field.onCommit = _ => Confirm();
             _field.onCancel = Cancel;
-            column.AddChild(_field);
+            _column.AddChild(_field);
 
             StackPanelControl buttons = new StackPanelControl
             {
                 orientation = StackPanelControl.Orientation.Horizontal,
                 alpha = 0f,
-                preferredHeight = 30,
+                preferredHeight = 24,
                 Spacing = 8
             };
 
             // The row fills the column, so the buttons are pushed right by a star child rather than
             // by aligning the row itself.
             buttons.AddChild(new PanelControl { widthStar = 1, alpha = 0f });
-            _discard = Button("Don't save", Discard, discardWidth);
+            _discard = Button("Don't save", Discard);
             buttons.AddChild(_discard);
             buttons.AddChild(Button("Cancel", Cancel));
             buttons.AddChild(Button("Save", Confirm));
-            column.AddChild(buttons);
+            _column.AddChild(buttons);
 
-            ground.AddChild(column);
+            ground.AddChild(_column);
             return ground;
         }
 
-        private static ButtonControl Button(string caption, Action action, int width = 90)
+        private static ButtonControl Button(string caption, Action action)
         {
             ButtonControl button = new ButtonControl
             {
-                preferredWidth = width,
-                preferredHeight = 30,
+                preferredHeight = 24,
+                padding = new Thickness(12f, 0f),
                 role = PaletteRole.Chrome,
                 cornerRole = CornerRole.Control
             };

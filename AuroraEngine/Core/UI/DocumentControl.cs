@@ -3217,6 +3217,8 @@ namespace ArctisAurora.Core.UI
         // Brings the controls in line with a change the model made.
         private void OnNoteChanged(NoteChange change)
         {
+            if (change.kind == NoteChangeKind.Replaced) return;
+
             bool follows = session == null || session.lead == null || session.lead == this;
             DocumentAddress caretTo = default, anchorTo = default, pressTo = default;
             bool remap = !follows && caretBlock != null && MapAddress(change, out caretTo, out anchorTo, out pressTo);

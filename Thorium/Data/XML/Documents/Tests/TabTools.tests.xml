@@ -7,4 +7,5 @@
 	<Test Action="TabTools.AutoSum"/>
 	<Test Action="TabTools.FormulaBar"/>
 	<Test Action="TabTools.Tex"/>
+	<Test Action="TabTools.PreviewWheelZoom"/>
 </TestSuite>

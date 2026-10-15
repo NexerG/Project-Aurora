@@ -284,13 +284,20 @@ namespace ArctisAurora.Core.UI
         #region ---- write ----
         public static void Save(RichTextDocument document, string path)
         {
-            XNamespace ns = XSDGenerator.NamespaceFor("UI");
-            XElement root = ToXml(document);
-            RelativePictures(root, Path.GetDirectoryName(Path.GetFullPath(path))!);
-
             string dir = Path.GetDirectoryName(path);
             if (!string.IsNullOrEmpty(dir))
                 Directory.CreateDirectory(dir);
+
+            ToFile(document, path).Save(path);
+        }
+
+        // The note as Save writes it to this path.
+        public static XDocument ToFile(RichTextDocument document, string path)
+        {
+            XNamespace ns = XSDGenerator.NamespaceFor("UI");
+            XElement root = ToXml(document);
+            RelativePictures(root, Path.GetDirectoryName(Path.GetFullPath(path))!);
+            string dir = Path.GetDirectoryName(path);
 
             // Bind the note to its schema so an editor can validate it on open. Resolved relative to
             // the note rather than fixed, because a vault sits wherever the user put it.
@@ -301,7 +308,7 @@ namespace ArctisAurora.Core.UI
             root.SetAttributeValue(XNamespace.Xmlns + "xsi", xsi.NamespaceName);
             root.SetAttributeValue(xsi + "schemaLocation", $"{ns.NamespaceName} {relative}");
 
-            new XDocument(new XDeclaration("1.0", "utf-8", null), root).Save(path);
+            return new XDocument(new XDeclaration("1.0", "utf-8", null), root);
         }
 
         // The note as a <Document> tree, for any file format to write out.

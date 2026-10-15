@@ -12,6 +12,8 @@ namespace ArctisAurora.Core.UI
         private const float buttonHeight = 20f;
         private const float buttonInset = 8f;
         private const int fontSize = 13;
+        private const float chevronSize = 12f;
+        private const float trackInset = 2f;
 
         public PlannerDocument document { get; private set; } = null!;
         public string? path { get; private set; }
@@ -22,12 +24,15 @@ namespace ArctisAurora.Core.UI
 
         public PlannerView view { get; private set; }
         public PlannerZoom zoom { get; private set; } = PlannerZoom.Day;
+        public float contentZoom { get; private set; } = DocumentEditorControl.DocumentZoom;
         public PlannerTicket? selected { get; private set; }
+        public PlannerTicket? expanded { get; private set; }
 
         // the calendar's span and the day it shows; no anchor means today
         public CalendarSpan span { get; private set; } = CalendarSpan.Week;
         private DateOnly? anchorDay;
         public DateOnly anchor => anchorDay ?? DateOnly.FromDateTime(Now);
+        public bool unsnapped { get; private set; }
 
         // the category last pressed on, and where, for the category popup
         public PlannerCategory? pickedCategory { get; private set; }
@@ -51,6 +56,8 @@ namespace ArctisAurora.Core.UI
         private readonly ButtonControl[] stepButtons = new ButtonControl[3];
         private readonly ButtonControl addButton;
         private readonly ButtonControl addCategoryButton;
+        private readonly StackPanelControl spanTrack;
+        private readonly StackPanelControl zoomTrack;
 
         // honoured at the end of the scroller's Arrange
         private SessionTab? pendingView;
@@ -68,30 +75,31 @@ namespace ArctisAurora.Core.UI
             viewButtons[0] = Button("Gantt", () => ShowView(PlannerView.Gantt));
             viewButtons[1] = Button("Board", () => ShowView(PlannerView.Board));
             viewButtons[2] = Button("Calendar", () => ShowView(PlannerView.Calendar));
-            foreach (ButtonControl button in viewButtons)
-                toolbar.AddChild(button);
+            toolbar.AddChild(Segment(viewButtons));
             addButton = Button("+ Ticket", AddTicket);
             toolbar.AddChild(addButton);
             addCategoryButton = Button("+ Category", AddCategory);
             toolbar.AddChild(addCategoryButton);
             toolbar.Separator();
-            stepButtons[0] = Button("<", () => Step(-1));
+            stepButtons[0] = Chevron("chevron-left-outline", () => Step(-1));
             stepButtons[1] = Button("Today", GoToday);
-            stepButtons[2] = Button(">", () => Step(1));
+            stepButtons[2] = Chevron("chevron-right-outline", () => Step(1));
             foreach (ButtonControl button in stepButtons)
                 toolbar.AddChild(button);
             for (int i = 0; i < spanButtons.Length; i++)
             {
                 CalendarSpan shown = (CalendarSpan)i;
                 spanButtons[i] = Button(shown.ToString(), () => ShowSpan(shown));
-                toolbar.AddChild(spanButtons[i]);
             }
+            spanTrack = Segment(spanButtons);
+            toolbar.AddChild(spanTrack);
             for (int i = 0; i < zoomButtons.Length; i++)
             {
                 PlannerZoom level = (PlannerZoom)i;
                 zoomButtons[i] = Button(level.ToString(), () => SetZoom(level));
-                toolbar.AddChild(zoomButtons[i]);
             }
+            zoomTrack = Segment(zoomButtons);
+            toolbar.AddChild(zoomTrack);
 
             scroller = new PlannerScroller(this);
             AddChild(scroller);
@@ -110,6 +118,7 @@ namespace ArctisAurora.Core.UI
             document = loaded;
             document.changed += DocumentChanged;
             selected = null;
+            expanded = null;
             Build();
         }
 
@@ -134,6 +143,7 @@ namespace ArctisAurora.Core.UI
         {
             document.unsaved = true;
             if (selected != null && !document.tickets.Contains(selected)) selected = null;
+            if (expanded != null && (!document.tickets.Contains(expanded) || expanded.description.Length == 0)) expanded = null;
             chart?.RowsChanged();
             board?.RebuildSoon();
             calendar?.Changed();
@@ -170,7 +180,18 @@ namespace ArctisAurora.Core.UI
         }
 
         // The day grid's scroll that shows 07:00 at the top.
-        private static float MorningTop() => 7f * CalendarControl.hourHeight;
+        private float MorningTop() => 7f * CalendarControl.hourHeight * contentZoom;
+
+        // Re-lays the shown view at a content zoom.
+        internal void SetContentZoom(float value)
+        {
+            if (value == contentZoom) return;
+            contentZoom = value;
+            chart?.Rezoom();
+            board?.Rezoom();
+            calendar?.Rezoom();
+            scroller.InvalidateArrange();
+        }
 
         public void ShowView(PlannerView shown)
         {
@@ -196,6 +217,7 @@ namespace ArctisAurora.Core.UI
             if (shown == span) return;
             if (span == CalendarSpan.Month) pendingTop = MorningTop();
             span = shown;
+            unsnapped = false;
             calendar?.Changed();
             scroller.InvalidateArrange();
             Light();
@@ -210,12 +232,22 @@ namespace ArctisAurora.Core.UI
                 CalendarSpan.Week => anchor.AddDays(7 * direction),
                 _ => anchor.AddMonths(direction)
             };
+            unsnapped = false;
+            calendar?.Changed();
+        }
+
+        // Moves by days whatever the span, starting the view at the anchor.
+        public void StepDays(int days)
+        {
+            anchorDay = anchor.AddDays(days);
+            unsnapped = true;
             calendar?.Changed();
         }
 
         public void GoToday()
         {
             anchorDay = null;
+            unsnapped = false;
             calendar?.Changed();
         }
 
@@ -225,6 +257,17 @@ namespace ArctisAurora.Core.UI
             if (ReferenceEquals(selected, ticket)) return;
             selected = ticket;
             chart?.InvalidateLayout();
+        }
+
+        // Shows a ticket's description in every view; null, or a ticket without one, folds it away.
+        public void Expand(PlannerTicket? ticket)
+        {
+            if (ticket != null && ticket.description.Length == 0) ticket = null;
+            if (ReferenceEquals(expanded, ticket)) return;
+            expanded = ticket;
+            chart?.RowsChanged();
+            board?.RebuildSoon();
+            calendar?.Changed();
         }
 
         // Opens the ticket popup for a new ticket under the toolbar button.
@@ -242,6 +285,8 @@ namespace ArctisAurora.Core.UI
             }
             else if (calendar?.BlockRect(selected) is LayoutRect block)
                 PlannerTicketPopup.Open(this, calendar, new Vector2(block.x, block.Bottom), selected);
+            else if (board?.CardOf(selected) is PlannerBoardControl.TicketCard card)
+                PlannerTicketPopup.Open(this, card, new Vector2(card.arrangedRect.x, card.arrangedRect.Bottom), selected);
         }
 
         // Opens the ticket popup for a new ticket over a time.
@@ -426,9 +471,35 @@ namespace ArctisAurora.Core.UI
         #region ---- toolbar ----
         private ButtonControl Button(string text, Action press)
         {
-            ButtonControl button = new ButtonControl { preferredHeight = buttonHeight, verticalAlignment = VerticalAlignment.Center, padding = new Thickness(buttonInset, 0f) };
-            button.PaintOr(null, PaletteRole.Chrome);
+            ButtonControl button = Pressable(press);
+            button.padding = new Thickness(buttonInset, 0f);
             button.AddChild(new LabelControl { text = text, fontSize = fontSize, role = PaletteRole.MutedInk, hitTestable = false, verticalPosition = 0.5f });
+            return button;
+        }
+
+        private static ButtonControl Chevron(string icon, Action press)
+        {
+            ButtonControl button = Pressable(press);
+            button.preferredWidth = buttonHeight;
+            IconControl ink = new IconControl
+            {
+                setName = "default",
+                iconName = icon,
+                preferredWidth = chevronSize,
+                preferredHeight = chevronSize,
+                hitTestable = false,
+                horizontalPosition = 0.5f,
+                verticalPosition = 0.5f
+            };
+            ink.PaintOr(null, PaletteRole.MutedInk);
+            button.AddChild(ink);
+            return button;
+        }
+
+        private static ButtonControl Pressable(Action press)
+        {
+            ButtonControl button = new ButtonControl { preferredHeight = buttonHeight, verticalAlignment = VerticalAlignment.Center, cornerRole = CornerRole.Tab };
+            button.PaintOr(null, PaletteRole.Clear);
             button.RegisterOnPress(e =>
             {
                 if (e.button != PointerEvent.leftButton) return false;
@@ -438,25 +509,41 @@ namespace ArctisAurora.Core.UI
             return button;
         }
 
+        // Recessed track holding one pick-one button set.
+        private static StackPanelControl Segment(ButtonControl[] buttons)
+        {
+            StackPanelControl track = new StackPanelControl
+            {
+                orientation = Orientation.Horizontal,
+                Spacing = trackInset,
+                padding = new Thickness(trackInset),
+                verticalAlignment = VerticalAlignment.Center,
+                cornerRole = CornerRole.Control
+            };
+            track.PaintOr(null, PaletteRole.Field);
+            foreach (ButtonControl button in buttons)
+            {
+                button.cornerRole = CornerRole.Control;
+                track.AddChild(button);
+            }
+            return track;
+        }
+
         private void Light()
         {
             for (int i = 0; i < viewButtons.Length; i++)
                 Light(viewButtons[i], i == (int)view);
             for (int i = 0; i < zoomButtons.Length; i++)
-            {
                 Light(zoomButtons[i], i == (int)zoom);
-                ShowIf(zoomButtons[i], view == PlannerView.Gantt);
-            }
+            ShowIf(zoomTrack, view == PlannerView.Gantt);
             for (int i = 0; i < spanButtons.Length; i++)
-            {
                 Light(spanButtons[i], i == (int)span);
-                ShowIf(spanButtons[i], view == PlannerView.Calendar);
-            }
+            ShowIf(spanTrack, view == PlannerView.Calendar);
             foreach (ButtonControl button in stepButtons)
                 ShowIf(button, view == PlannerView.Calendar);
         }
 
-        private static void ShowIf(ButtonControl button, bool shown)
+        private static void ShowIf(Control button, bool shown)
         {
             if (shown) button.Show();
             else button.Hide();
@@ -464,7 +551,7 @@ namespace ArctisAurora.Core.UI
 
         private static void Light(ButtonControl button, bool on)
         {
-            button.PaintOr(null, on ? PaletteRole.Surface : PaletteRole.Chrome);
+            button.PaintOr(null, on ? PaletteRole.Surface : PaletteRole.Clear);
             foreach (LabelControl caption in button.children.OfType<LabelControl>())
                 caption.PaintOr(null, on ? PaletteRole.Ink : PaletteRole.MutedInk);
         }

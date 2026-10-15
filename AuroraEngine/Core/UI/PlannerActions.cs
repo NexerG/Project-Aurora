@@ -17,6 +17,9 @@ namespace ArctisAurora.Core.UI
         [A_XSDActionDependency("Planner.Edit", "Input", "Opens the selected ticket's popup")]
         public static void Edit() => Editor()?.EditSelected();
 
+        [A_XSDActionDependency("Planner.Collapse", "Input", "Folds away the expanded ticket's description")]
+        public static void Collapse() => Editor()?.Expand(null);
+
         [A_XSDActionDependency("Planner.EditCategory", "Input", "Opens the popup of the category last pressed on")]
         public static void EditCategory() => Editor()?.EditPickedCategory();
 

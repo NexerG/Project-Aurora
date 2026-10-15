@@ -37,6 +37,8 @@
 | Thorium idle wait, caret blinking | 0.008 | 0.05 |
 | Carbon idle wait | 0.006 | 0.04 |
 
+**A control easing itself in `OnTick` must request a wake time each frame it is still moving (2026-10-10).** `LayoutDirty` does not survive the frame — `Main.Layout` drains the row the same frame `OnTick` set it, so `Pending` sees nothing and main sleeps. `CalendarControl` (scroll settle, all-day-lane easing) is a caller of `RequestFrameAt(Engine.totalTime + 0.001)`; `--test` cannot detect a miss since it runs with `idle.wait = false`. See [[ontick-easing-sleeps-under-idle-wait]]. **Rejected:** `Animations.Tween` for the calendar — it needs an `[A_Animatable]` pool column per float.
+
 ## Known gaps
 - **A `Loop`/`PingPong` GPU effect freezes while idle** — only `Once` effects request a wake time. None is used today.
 - **A secondary window's OS window is reaped on Main's next frame.** Render frees its GPU side without waking Main; in testing the Vaults window's close still went away with no further input, but nothing guarantees a frame follows.

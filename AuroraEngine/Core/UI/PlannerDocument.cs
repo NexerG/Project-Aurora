@@ -37,6 +37,20 @@ namespace ArctisAurora.Core.UI
 
         public void Save(string path) => PlannerXml.Save(this, path);
 
+        // Takes on another planner's content whole.
+        public void ReplaceAll(PlannerDocument from)
+        {
+            name = from.name;
+            nameWidth = from.nameWidth;
+            categories.Clear();
+            categories.AddRange(from.categories);
+            tickets.Clear();
+            tickets.AddRange(from.tickets);
+            extra.Clear();
+            extra.AddRange(from.extra);
+            Changed();
+        }
+
         // One category and no tickets.
         public static PlannerDocument Blank(string? name)
         {
@@ -93,6 +107,7 @@ namespace ArctisAurora.Core.UI
     {
         public Guid id = Guid.NewGuid();
         public string name = "";
+        public string description = "";
         public Guid categoryId;
         public string? colorHex;
         public TimeRange time;
@@ -133,6 +148,7 @@ namespace ArctisAurora.Core.UI
         {
             id = other.id;
             name = other.name;
+            description = other.description;
             categoryId = other.categoryId;
             colorHex = other.colorHex;
             time = other.time;

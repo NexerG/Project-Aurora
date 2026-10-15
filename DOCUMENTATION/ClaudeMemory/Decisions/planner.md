@@ -9,7 +9,7 @@
 - `PlannerCategory` (`id` Guid, `name`, `colorHex`); `PlannerTicket` (`id` Guid, `name`, `categoryId`, `colorHex?`, `time`, `creator`, `created`, `assignees`, `order` = position in its board column, `extra`).
 - `TimeRange` — `readonly record struct (start, end, allDay, timeZone)`; wall-clock start, **exclusive** end; all-day runs midnight to midnight; `Days(first, last)`. `timeZone` is stored and round-tripped, never converted.
 - `PlannerXml` (`Load`, `Save`, `Parse`, `ToXml`): `<Planner Name><Category Id Name Color/><Ticket Id Name Category Color Start End AllDay TimeZone Creator Created Order><Assignee User/></Ticket></Planner>`. All-day Start/End `yyyy-MM-dd`, timed `yyyy-MM-ddTHH:mm`, Created ISO "s". A ticket without readable Start/End is kept as an unknown element; no categories → "General" added; written order categories, tickets, unknown.
-- `GanttChartControl` (built like `SheetControl`): `PlannerZoom { Hour, Day, Week, Month }` (day widths 768 / 32 / 10 / 3 px), `nameWidth` (see 2026-10-09 below), `bandHeight` 22, `headerHeight` 44, `rowHeight` 28; span = every ticket and today, padded 4 units (6 at Hour); rows = each category (shaded) then its tickets; only rows/units in the viewport get pooled `ChartParts`; name column pinned left, two-band date header pinned top, weeks start Monday, today line in Accent. Geometry: `Offset`, `X`, `TimeAt`, `RowTop`, `RowOf`, `BarRect`, internal `RowsChanged`.
+- `GanttChartControl` (built like `SheetControl`): `PlannerZoom { Hour, Day, Week, Month }` (day widths 768 / 32 / 10 / 3 px), `nameWidth` (see 2026-10-09 below), `bandHeight` 22, `headerHeight` 44, `rowHeight` 28; span = every ticket and today, padded 4 units (6 at Hour); rows = each category (shaded) then its tickets; only rows/units in the viewport get pooled `ChartParts`; name column pinned left, two-band date header pinned top, weeks start on the week-start setting (`DateFormats.WeekStart`; Monday until 2026-10-09), today line in Accent. Geometry: `Offset`, `X`, `TimeAt`, `RowTop`, `RowOf`, `BarRect`, internal `RowsChanged`.
 - 2026-10-09: name column is resizable — drag ±3 px of its right edge (HResize cursor), clamped 80–600; width lives on `PlannerDocument.nameWidth` (default `defaultNameWidth` 200), written as `<Planner NameWidth>` only when not default. A resize marks the file unsaved but is not an undo step. The now line is Danger (matches the Calendar) and ticks: `OnTick` re-arranges when the minute turns, as `CalendarControl` does. Every Gantt line (grid, header, name edge, links, now line, selection ring) follows `SheetControl`'s rule: thickness `UIScaling.Hairline` (≥1 device px), position `UIScaling.Snap`.
 - 2026-10-09: board columns have a width each — `PlannerCategory.width` (default `defaultWidth` 260), `<Category Width>` only when not default; drag ±3 px of a column's right edge, clamped 160–600, marks unsaved, no undo (same as `NameWidth`). Card name, dates and "by" lines wrap through a private `PlannerBoardControl.WrappingLabel` (`LabelControl` with `Wraps => true`), so cards grow downward with their text. The column heading label wraps too (`widthStar = 1` so the horizontal heading stack offers it the leftover width), and the initials chips sit in a `WrapPanelControl` — so nothing on the board widens a column past its set width.
 - 2026-10-09: board column menu (`PlannerCategory.menu.xml`) has "Add ticket" → `Planner.AddTicketHere` → `PlannerEditorControl.AddTicketToPickedCategory`, opening `PlannerTicketPopup` at the press point with the new ticket filed in that column (`Open(..., category:)`). Board only; the Gantt menu is unchanged.
@@ -185,7 +185,7 @@ So parent controls add nothing to the planner menus.
 ### What changed
 - A third planner view, Calendar (Gantt | Board | Calendar): Day / Week time grids and a Month grid over the planner's tickets, overlap packing, a now line redrawn once a minute, create / move / resize with undo. Calendar C1 of [[calendar-plan]] is superseded by it.
 - `CalendarSpan { Day, Week, Month }`; `CalendarControl : ContainerControl` (`ArctisAurora.Core.UI`). Consts: public `gutterWidth` 56, `headerHeight` 24, `laneHeight` 22, `hourHeight` 48; private `blockInset` 2, `labelHeight` 18, `cellHeader` 20, `chipHeight` 18, `nowWidth` 2, `dotSize` 8, `outlineWidth` 2, `grabHeight` 6, `attachmentAlpha` 0.4. `public static readonly TimeSpan snap` = 15 min.
-- `CalendarControl` public members: `first` (`DateOnly`; Day = anchor, Week = the anchor's Monday, Month = the Monday on or before the 1st, 6×7 cells), `TopHeight` (pinned header + all-day strip, at least 1 lane), `BodyTop`, `PointAt(DateTime)`, `TimeAt(Vector2)` (unsnapped), `DayAt(Vector2)`, `BlockRect(ticket)` (first shown block, nullable), `TicketAt(point)`, static `Pack(IReadOnlyList<(DateTime start, DateTime end)>) → (int column, int columns)[]`; internal `Changed()`. `PointAt`, `BodyTop` and `TopHeight` are public for the tests.
+- `CalendarControl` public members: `first` (`DateOnly`; Day = anchor, Week = the anchor's week start (`DateFormats.WeekStart`; was Monday until 2026-10-09), Month = the week start on or before the 1st, 6×7 cells), `TopHeight` (pinned header + all-day strip, at least 1 lane), `BodyTop`, `PointAt(DateTime)`, `TimeAt(Vector2)` (unsnapped), `DayAt(Vector2)`, `BlockRect(ticket)` (first shown block, nullable), `TicketAt(point)`, static `Pack(IReadOnlyList<(DateTime start, DateTime end)>) → (int column, int columns)[]`; internal `Changed()`. `PointAt`, `BodyTop` and `TopHeight` are public for the tests.
 - Overrides: `OnTick` (invalidates arrange when the minute of `editor.Now` changes; `FrameScheduler.RequestFrameAt` for the next minute boundary; `SetTicking(true)` in the ctor), `OnPointerPress`, `OnDrag`, `OnDragStop`, `OnPointerMove`, `OnPointerExit`, `OnPointerTap`. `contextMenu = "planner"`, `stopsContextMenu = true`.
 - Private nested `CalendarParts` (the layer; renamed from a `ChartParts` copy, see [[parallel-stack-name-collisions]]), `CalendarPool<T>` (pooled parts per layer; hides what an arrange did not take), `Piece` struct, `PieceKind { Timed, AllDay, Chip }`, `Grip { Move, Start, End }`. Pieces are built in Measure (all-day lanes packed, then per-day timed pieces packed), rects in Arrange.
 - Day / Week: hour gutter pinned left, day-name header and all-day strip pinned top. The strip holds all-day tickets and timed tickets of 24 h or more, packed into lanes. A timed ticket crossing midnight is one piece per day. Timed blocks under the pinned header are not hit. Now line + dot in Danger across today's column.
@@ -265,4 +265,91 @@ An engine file plus an optional host file, loaded by a bootstrap step (the agree
 - The Gantt link elbow's first segment sits under an after-attachment block (it starts at the leader's end).
 - Verification: see the PC section.
 
-Related: [[planner-plan]], [[calendar-plan]], [[sheets]], [[context-menus]], [[parallel-stack-name-collisions]], [[rebuild-inside-pointer-dispatch]], [[star-child-in-unbounded-stack]], [[ui-engine-stack]]
+## D1/D2 — descriptions and click to expand (landed 2026-10-09)
+
+### What changed
+- D1: `PlannerTicket.description` (string, default ""), copied in `CopyFrom`. `PlannerXml`: Ticket child `<Description>text</Description>`, written first among the ticket's children (before `Assignee`), only when non-empty; newlines kept. Format comment: `<Ticket …><Description/><Assignee User/><Attachment …/></Ticket>`.
+- NEW `ArctisAurora.Core.UI.RegexTextControl` (sealed, ContainerControl, `IContext`, `IClipboardTarget`, `ITextField`; no XML element): an editable field a regex cuts into segments, each a wrapping run, stacked vertically. Public `pattern` (default `\n`), `separator` (default "\n", what Shift+Enter inserts), `text`, `fontSize`, `isEditing`, `Segments`, `onCommit`/`onCancel`/`onBlur`/`onEdited`, `Focus`, `SelectAll`, `WriteChar`, `InsertSeparator`, `Backspace(word)`, `Delete(word)`, `MoveCaret`, `Commit`, `Cancel`, `Undo`, `Redo`, `Copy`/`Cut`/`Paste`, const `maxLines` 8. Private nested `FieldParts`, `FieldEdit`.
+- NEW interface `ITextField` (in `TextInputActions.cs` beside `IClipboardTarget`): `isEditing`, `WriteChar`, `Backspace`, `Delete`, `MoveCaret`, `SelectAll`, `Commit`, `Cancel`, `Undo`, `Redo`. `TextBoxControl` implements it; `TextInputActions.Box()` returns `ITextField`; `Editor()` stops at any editing `ITextField`. `TextInputActions.NewBlock` (Enter): a focused `RegexTextControl` with Shift (Extend modifier) held → `InsertSeparator()`, else `Commit()` as before.
+- `PlannerTicketPopup`: private `description` (`RegexTextControl`), "Description" row under Name, min height 3 rows (`descriptionRows`); `Finish` writes `draft.description = description.text.Trim()` in the same undo step.
+- D2: `PlannerEditorControl.expanded` (public get), `Expand(PlannerTicket?)` (null, or a ticket with an empty description, folds away; redraws chart / board / calendar); `DocumentChanged` drops `expanded` when the ticket is deleted or its description emptied; `Load` resets it; `EditSelected` gains a board branch (popup under `board.CardOf(selected)`). `PlannerActions.Collapse` = action `Planner.Collapse`, bound to Escape (Press) in Thorium `InputMap.inputs.xml`, calls `Expand(null)`.
+- `PlannerBoardControl`: public `CardOf(ticket)`; `Fill(card, document, ticket, bool expanded)` adds one wrapped label per description line under the name; `TicketCard.OnPointerRelease` (left, tapCount 1) selects + expands and returns handled; board `OnPointerRelease` (left, tapCount 1, off any card) folds away; `Rebuild` makes the board the active control when the active one was inside it. `WrappingLabel` moved from a private nested class to namespace level (`internal sealed class WrappingLabel : LabelControl`, same file).
+- `GanttChartControl`: public `RowHeight(row)`; private `expandedRow`, `expandedExtra`, `expandedLines`, `wrappedWidth`, `rewrapPending`, `descriptionLines` (`WrappingLabel` pool in the `bars` layer), `RowIndex(y)`, `DescriptionWidth`, `MeasureDescription()`, `ArrangeDescription(view, firstRow, lastRow)`, `OnPointerRelease` (left, tapCount 1, not on the name edge → `editor.Expand(TicketAt(point))`). `RowTop` adds `expandedExtra` below the expanded row; `RowAt`, first / last visible row, row lines and the chart's desired height use the cumulative geometry.
+- `CalendarControl`: new layer `cards` (above `strip`, below the selection outline), pools `cardParts`, `cardNames`, `cardTexts` (`WrappingLabel`), field `expandedRect`, private `ShownBlock(ticket, view)` (extracted from `ArrangeSelection`), `ArrangeExpanded(view)`, `OnPointerRelease` (left, tapCount 1 → `editor.Expand(TicketAt(point))`). `ArrangeSelection` outlines the card when the selected ticket is the expanded one; `ClipSlid` clips `cards` too.
+- Tests: `Thorium.Tests.TextInputTests` — `RegexText.LinesAndCommit`, `RegexText.WrapMoves`, `RegexText.CommaPattern`; `Thorium.Tests.PlannerTests` — `Planner.Description`, `Planner.ExpandBoard`, `Planner.ExpandGantt`, `Planner.ExpandCalendar`, `Planner.XmlRoundTrip` extended with a two-line description, helper `TapClear()` (waits 300 ms of wall time so the next click is a single one). Goldens `Planner.ExpandGantt.Gantt.png`, `Planner.ExpandCalendar.Week.png`, `Planner.ExpandCalendar.Month.png`.
+
+### Why
+
+**Multi-line editing is a new control, not a change to `TextMeasurer` or `TextBoxControl`.**
+`TextRunControl` wraps but has no hard line break (notes avoid it because each paragraph is a block). Rejected: teaching `TextMeasurer` to break on `\n` (touches the layout core that notes and Tex depend on — greedy, optimal and around-slots paths) and a multi-line mode on `TextBoxControl`. The user asked for the generic form: a field whose segments come from a regex, so the same control can later split e.g. assignees on `,\s*`. Matched text is not drawn; a caret offset inside a match snaps to the nearest segment edge; Backspace at a segment's start / Delete at its end remove the whole match; pasted line breaks become `separator`.
+
+**Segments stack vertically only.**
+Inline flow (chips) was left out — not asked for.
+
+**Enter applies, Shift+Enter inserts a line break.**
+The user chose Enter as the universal confirm key. Shift is read inside `Text.NewBlock` off the plain Enter bind (same pattern as `Sheet.Enter`), so there is no new keybind and notes are unaffected (their branch runs first). Rejected: Ctrl+Enter to apply; Ctrl+Enter for newline; no line breaks.
+
+**Storage is a `<Description>` child element, not an attribute.**
+XML normalises newlines inside attributes to spaces.
+
+**Vertical caret moves and Home/End read the runs' last measured lines.**
+If an edit in the same frame left them stale, the move is skipped rather than measuring outside the layout pass (measuring touches the `UIElements` pool, which `Main.Input` does not declare).
+
+**Expand happens on pointer release, not on tap.**
+`UIEngine` dispatches `Tap` only for tapCount ≥ 2; single clicks arrive as `Release`, and a drag past the click slop never releases onto the control — so dragging a bar, block or card never expands it. The second click of a double click (tapCount 2) does not change the expansion, so double-click-to-edit still works. Clicking the already-expanded ticket keeps it open (no toggle) for the same reason.
+
+**The Gantt description is pinned to the viewport's body.**
+It runs from the name column's edge to the viewport's right edge, like the name column is pinned, not wrapped "from the bar's left edge to the viewport's right edge" as first planned. Found in implementation: that width changes with horizontal scroll, so the row height would change and rows below jump while scrolling, and the height would need re-measuring from inside arrange (layout trap). Also rejected: bar-left with a fixed 360 px width (can run off-screen). A viewport width change (window resize) posts one `InvalidateLayout` (`rewrapPending`), so the height catches up one frame later.
+
+**The calendar card grows downward over the blocks below and draws above them; hit-testing still follows each block's real time range.**
+The card is not hit-testable, so drags and clicks on the covered block keep working. Card width = the block's width (narrow when packed into columns). Month: the chip grows down over the cells below.
+
+**Display labels split the description on `\n`.**
+One wrapping label per line, because labels don't break on newlines either.
+
+**Pooled part order is draw order.**
+The calendar card panel is taken from its pool before the text labels, else the labels are adopted first and draw under the card (found in the first golden).
+
+**A nested class name collided again.**
+A nested `Layer` in `RegexTextControl` crashed boot (`AssetRegistries.RegisterSerializableTypes` keys every `Entity` subclass by bare `Type.Name`; `CustomEntities.Layer` exists); renamed `FieldParts`. `WrappingLabel` was hoisted to namespace level so calendar and Gantt share it with the board. See [[parallel-stack-name-collisions]].
+
+**The board rebuild stole focus back.**
+Expanding rebuilds the board, destroying the clicked card that was the active control and leaving no parent chain for `PlannerActions.Editor()` (Esc / Delete did nothing). `Rebuild` now sets the board active first. See [[rebuild-inside-pointer-dispatch]].
+
+### Known gaps
+- Description is plain text; no rich text, no styling of matches.
+- `RegexTextControl` segments stack vertically only; no inline (chip) flow; no `<RegexText>` XML element.
+- No editing in the expanded view; edit through the popup.
+- Calendar card width is the block width, so a packed narrow block gives a tall narrow card; a card disappears when its block's top scrolls under the pinned header (same rule as the selection outline).
+- Gantt today line and grid lines draw across the description text.
+- Gantt description re-wraps one frame late after a window resize.
+- A vertical caret move in the same frame as an edit is skipped (stale lines).
+- The taller popup (Description row adds ~78 px) opens in its own OS window more often when it doesn't fit below the click (pre-existing behaviour).
+- Board has no double-click-to-edit on cards still (pre-existing WIP item); a selected card has no outline.
+- **Verified:** test-verified and golden-verified. Full run 304 passed, 1 failed (Boot — the baseline default-sampler error), 1 skipped (`Perf.AtlasBake`, unoptimized JIT); no `[Vulkan]` lines. Planner suite 32 passed + Boot; TextInput suite 94 passed + Boot. Goldens `Planner.ExpandGantt.Gantt`, `Planner.ExpandCalendar.Week`, `Planner.ExpandCalendar.Month` approved after reading the PNGs (Gantt row grown with two pinned lines, Print row pushed down; Week card over the Review block's top with the selection outline; Month card over the cell). Synthetic input (t.Click / t.Key / t.Type) drove the popup, Shift+Enter, Enter, Esc, clicks.
+- **NOT GUI-verified:** real mouse/keyboard in a running Thorium — typing into the description box, Shift+Enter, caret Up/Down feel, selection across lines, scrolling past 8 lines, clicking cards / bars / blocks, Esc, window resize re-wrap of the Gantt description.
+
+## Calendar snap and week start (landed 2026-10-09; snap superseded 2026-10-10)
+
+The snap described below (quiet period, `lastScroll`, `snapDelay`, `snapSeconds`, nearest-day rounding) was replaced on 2026-10-10: the calendar now holds the slide while scrolling and, on `OnPointerScrollEnd`, eases over 0.15 s (cubic ease-out) onto the next whole day (Day/Week) or week (Month) in the direction of travel. See [[scroll-gesture-end]]. The week-start part is unchanged.
+
+### What changed
+- `CalendarControl` (superseded, see above): `OnPointerScroll` recorded `lastScroll` and called `FrameScheduler.RequestFrameAt(lastScroll + snapDelay)`; `OnTick` eased `slide` to `MathF.Round(slide)` after the quiet period. Const `weekStartAlpha` 0.35 remains. New pool `weekStartParts` (grid layer, `PaletteRole.Line` at 0.35 alpha) tints the week-start day's column; its header name is bold.
+- The week start is now `DateFormats.WeekStart` (a setting), not a hard-coded Monday: `CalendarControl.first` and `GanttChartControl.Floor` (Week unit). Month view: the week start is always column 0.
+- Date and time display on the board, Gantt and calendar follows `DateTimeSettings` — see [[date-time-settings]].
+- Tests: `Planner.CalendarSnap`, `Planner.WeekStart`; helper `PinDates` called from `Show`.
+
+### Why
+**(Superseded 2026-10-10 by [[scroll-gesture-end]]) Snap to the nearest whole day or week (`MathF.Round`).**
+Rejected then: a direction-based snap, which needs velocity tracking for no asked-for gain. Quiet-period detection was time-based with an explicit `RequestFrameAt`. Both reversed: the snap is now direction-of-travel and starts on gesture end.
+
+**The week-start highlight is a faint whole-column tint, not a stronger divider line.**
+Alpha 0.5 looked too heavy in the golden, so 0.35.
+
+### Known gaps
+- Snap tests wait about 1 s of real time per step via `Engine.totalTime` loops.
+- The existing CalendarGeometry slide check (half a day after 2 frames) can in principle be snapped back if 2 frames take over 0.15 s.
+- **Verified:** test-verified and golden-verified. `_Build/test.sh` full run 306 passed, 1 failed (Boot — the baseline default-sampler error), 1 skipped; no `[Vulkan]` lines. Goldens re-approved after reading diffs (only the tint changed): `Planner.CalendarGolden.Week/Month`, `Planner.ExpandCalendar.Week/Month`, `Planner.AttachmentGolden.Week`.
+- **Not checked:** real wheel/trackpad feel of the snap.
+
+Related: [[date-time-settings]], [[planner-plan]], [[calendar-plan]], [[sheets]], [[context-menus]], [[note-naming-and-text-field]], [[parallel-stack-name-collisions]], [[rebuild-inside-pointer-dispatch]], [[star-child-in-unbounded-stack]], [[ui-engine-stack]]

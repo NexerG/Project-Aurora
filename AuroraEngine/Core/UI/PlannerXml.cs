@@ -4,7 +4,7 @@ using System.Xml.Linq;
 
 namespace ArctisAurora.Core.UI
 {
-    // <Planner Name NameWidth><Category Id Name Color Width/><Ticket Id Name Category Color Start End AllDay TimeZone Creator Created Order Follows><Assignee User/><Attachment Kind Side Minutes/></Ticket></Planner>
+    // <Planner Name NameWidth><Category Id Name Color Width/><Ticket Id Name Category Color Start End AllDay TimeZone Creator Created Order Follows><Description/><Assignee User/><Attachment Kind Side Minutes/></Ticket></Planner>
     public static class PlannerXml
     {
         private const string dayFormat = "yyyy-MM-dd";
@@ -77,7 +77,9 @@ namespace ArctisAurora.Core.UI
 
             foreach (XElement child in element.Elements())
             {
-                if (child.Name.LocalName == "Assignee" && (string?)child.Attribute("User") is string user && user.Length > 0)
+                if (child.Name.LocalName == "Description")
+                    ticket.description = child.Value;
+                else if (child.Name.LocalName == "Assignee" && (string?)child.Attribute("User") is string user && user.Length > 0)
                     ticket.assignees.Add(User.Named(user));
                 else if (child.Name.LocalName == "Attachment" && ReadAttachment(child) is PlannerAttachment attachment)
                     ticket.attachments.Add(attachment);
@@ -146,6 +148,7 @@ namespace ArctisAurora.Core.UI
                 if (ticket.order != 0) element.SetAttributeValue("Order", ticket.order.ToString(CultureInfo.InvariantCulture));
                 element.SetAttributeValue("Follows", ticket.follows);
 
+                if (ticket.description.Length > 0) element.Add(new XElement("Description", ticket.description));
                 foreach (User assignee in ticket.assignees)
                     element.Add(new XElement("Assignee", new XAttribute("User", assignee.name)));
                 foreach (PlannerAttachment attachment in ticket.attachments)

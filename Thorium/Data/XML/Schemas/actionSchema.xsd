@@ -52,6 +52,8 @@
           <xs:enumeration value="Planner.AssigneeGolden" />
           <xs:enumeration value="Planner.CalendarPack" />
           <xs:enumeration value="Planner.CalendarGeometry" />
+          <xs:enumeration value="Planner.CalendarSnap" />
+          <xs:enumeration value="Planner.WeekStart" />
           <xs:enumeration value="Planner.CalendarDragUndo" />
           <xs:enumeration value="Planner.CalendarCreate" />
           <xs:enumeration value="Planner.CalendarMonth" />
@@ -59,6 +61,11 @@
           <xs:enumeration value="Planner.FollowersMove" />
           <xs:enumeration value="Planner.FollowCycle" />
           <xs:enumeration value="Planner.AttachmentText" />
+          <xs:enumeration value="Planner.Description" />
+          <xs:enumeration value="Planner.ExpandBoard" />
+          <xs:enumeration value="Planner.ExpandGantt" />
+          <xs:enumeration value="Planner.WheelZoom" />
+          <xs:enumeration value="Planner.ExpandCalendar" />
           <xs:enumeration value="Planner.AttachmentGolden" />
           <xs:enumeration value="Planner.GanttGolden" />
           <xs:enumeration value="Note.NumbersToggle" />
@@ -97,6 +104,7 @@
           <xs:enumeration value="Sheet.CsvLinks" />
           <xs:enumeration value="Sheet.FixedSize" />
           <xs:enumeration value="Sheet.GrowPopup" />
+          <xs:enumeration value="Sheet.WheelZoom" />
           <xs:enumeration value="Sheet.InsertShifts" />
           <xs:enumeration value="Sticky.PinPinRestore" />
           <xs:enumeration value="TabTools.Mount" />
@@ -104,6 +112,7 @@
           <xs:enumeration value="TabTools.AutoSum" />
           <xs:enumeration value="TabTools.FormulaBar" />
           <xs:enumeration value="TabTools.Tex" />
+          <xs:enumeration value="TabTools.PreviewWheelZoom" />
           <xs:enumeration value="TextInput.TypeWritesText" />
           <xs:enumeration value="TextInput.WordMoves" />
           <xs:enumeration value="TextInput.UndoReselects" />
@@ -111,9 +120,13 @@
           <xs:enumeration value="TextInput.PastePlainLines" />
           <xs:enumeration value="TextInput.FieldClipboardAndUndo" />
           <xs:enumeration value="TextInput.FieldWordAndScroll" />
+          <xs:enumeration value="RegexText.LinesAndCommit" />
+          <xs:enumeration value="RegexText.WrapMoves" />
+          <xs:enumeration value="RegexText.CommaPattern" />
           <xs:enumeration value="TextInput.DragMovesText" />
           <xs:enumeration value="TextInput.DropOntoRule" />
           <xs:enumeration value="TextInput.DragBetweenNotes" />
+          <xs:enumeration value="TextInput.WheelZoom" />
           <xs:enumeration value="TextInput.RightModifiers" />
           <xs:enumeration value="TextInput.StyleSurvivesEnterAndBackspace" />
           <xs:enumeration value="TextInput.UnderlineToggles" />
@@ -203,6 +216,11 @@
           <xs:enumeration value="Workspace.MoveAcross" />
           <xs:enumeration value="Workspace.TearOff" />
           <xs:enumeration value="Workspace.Reset" />
+          <xs:enumeration value="Xml.NoteSync" />
+          <xs:enumeration value="Xml.Invalid" />
+          <xs:enumeration value="Xml.SheetSync" />
+          <xs:enumeration value="Xml.PlannerSync" />
+          <xs:enumeration value="Xml.Restore" />
           <xs:enumeration value="Perf.AtlasBake" />
           <xs:enumeration value="Background.HideShow" />
           <xs:enumeration value="Background.MenuClamp" />
@@ -298,6 +316,7 @@
           <xs:enumeration value="Syntax.CommentSpansLines" />
           <xs:enumeration value="Syntax.Languages" />
           <xs:enumeration value="Syntax.Latex" />
+          <xs:enumeration value="Syntax.XmlSourceRoundTrip" />
           <xs:enumeration value="Tex.SourceRoundTrip" />
           <xs:enumeration value="Tex.Catcodes" />
           <xs:enumeration value="Tex.DelimitedDef" />
@@ -362,6 +381,7 @@
           <xs:enumeration value="Planner.Redo" />
           <xs:enumeration value="Planner.Delete" />
           <xs:enumeration value="Planner.Edit" />
+          <xs:enumeration value="Planner.Collapse" />
           <xs:enumeration value="Planner.EditCategory" />
           <xs:enumeration value="Planner.AddTicketHere" />
           <xs:enumeration value="Planner.DeleteCategoryWithTickets" />
@@ -498,6 +518,8 @@
           <xs:enumeration value="Notes.Rename" />
           <xs:enumeration value="Notes.Duplicate" />
           <xs:enumeration value="Notes.Delete" />
+          <xs:enumeration value="Notes.OpenAsXml" />
+          <xs:enumeration value="Notes.OpenNormally" />
           <xs:enumeration value="Settings.Open" />
           <xs:enumeration value="Settings.Save" />
           <xs:enumeration value="Settings.Apply" />
@@ -520,6 +542,7 @@
           <xs:enumeration value="Workspace.NewLaTeX" />
           <xs:enumeration value="Workspace.NewManager" />
           <xs:enumeration value="Workspace.NewCalendar" />
+          <xs:enumeration value="Workspace.NewXml" />
           <xs:enumeration value="Workspace.Duplicate" />
           <xs:enumeration value="Workspace.Rename" />
           <xs:enumeration value="Workspace.Close" />
@@ -586,6 +609,7 @@
       <xs:simpleType>
         <xs:restriction base="xs:string">
           <xs:enumeration value="Renderer.RequestSwapchainRebuild" />
+          <xs:enumeration value="Planner.Reformat" />
           <xs:enumeration value="Document.Rezoom" />
           <xs:enumeration value="UI.Rescale" />
         </xs:restriction>

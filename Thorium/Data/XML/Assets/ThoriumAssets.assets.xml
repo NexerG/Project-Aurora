@@ -29,6 +29,10 @@
 	<Asset Type="ContextMenuAsset" Name="vault-folder" Source="XML/Documents/Menus/VaultFolder.menu.xml"/>
 	<Asset Type="ContextMenuAsset" Name="vault-note"   Source="XML/Documents/Menus/VaultNote.menu.xml"/>
 	<Asset Type="ContextMenuAsset" Name="vault-csv"    Source="XML/Documents/Menus/VaultCsv.menu.xml"/>
+	<Asset Type="ContextMenuAsset" Name="vault-note-xml"   Source="XML/Documents/Menus/VaultNoteXml.menu.xml"/>
+	<Asset Type="ContextMenuAsset" Name="vault-as-note"    Source="XML/Documents/Menus/VaultAsNote.menu.xml"/>
+	<Asset Type="ContextMenuAsset" Name="vault-as-sheet"   Source="XML/Documents/Menus/VaultAsSheet.menu.xml"/>
+	<Asset Type="ContextMenuAsset" Name="vault-as-planner" Source="XML/Documents/Menus/VaultAsPlanner.menu.xml"/>
 
 	<!-- Latin Modern, baked from _Build/FontSources -->
 	<Asset Type="FontAsset" Name="latin-modern"      Source="Fonts/lmroman10-regular"/>

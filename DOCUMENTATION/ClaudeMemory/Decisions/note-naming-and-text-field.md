@@ -185,6 +185,7 @@ Both fixtures were restored from `HEAD`.
 - `TextBoxControl` has no clipboard, no double-click-to-select-word, and no horizontal scroll when
   the text outruns the box.
 - `ResolveOnDoubleClick` is still dispatched from nowhere.
+- 2026-10-09: `TextBoxControl` now implements `ITextField`, and the multi-line sibling `RegexTextControl` was added (planner descriptions) — see [[planner]].
 
 Related: [[file-browser-tree]], [[vault-browser-and-shell]], [[engine-side-text-input]],
 [[document-selection]], [[tab-view-control]], [[xml-save-skips-defaults]], [[window-chrome-and-label]]

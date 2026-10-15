@@ -12,6 +12,7 @@ namespace ArctisAurora.Core.UI
         private const float width = 320f;
         private const float rowHeight = 26f;
         private const float captionWidth = 90f;
+        private const int descriptionRows = 3;
         private const int fontSize = 14;
 
         private const string dayFormat = "yyyy-MM-dd";
@@ -23,6 +24,7 @@ namespace ArctisAurora.Core.UI
         private readonly PlannerTicket draft;
         private readonly Guid filedUnder;
         private readonly TextBoxControl name = new TextBoxControl();
+        private readonly RegexTextControl description = new RegexTextControl();
         private readonly TextBoxControl start = new TextBoxControl();
         private readonly TextBoxControl end = new TextBoxControl();
         private readonly TextBoxControl assignees = new TextBoxControl();
@@ -67,6 +69,15 @@ namespace ArctisAurora.Core.UI
         {
             StackPanelControl content = new StackPanelControl { alpha = 0f, Spacing = 4f, horizontalAlignment = HorizontalAlignment.Stretch };
             content.AddChild(Row("Name", Box(name, draft.name)));
+
+            description.text = draft.description;
+            description.fontSize = fontSize;
+            description.role = PaletteRole.Field;
+            description.widthStar = 1f;
+            description.minHeight = rowHeight * descriptionRows;
+            description.onCommit = _ => Finish();
+            description.onCancel = Cancel;
+            content.AddChild(Row("Description", description));
 
             List<PlannerCategory> categories = editor.document.categories;
             DropdownControl category = new DropdownControl
@@ -171,6 +182,7 @@ namespace ArctisAurora.Core.UI
 
             if (draft.categoryId != filedUnder) draft.order = editor.document.NextOrder(editor.document.CategoryOf(draft));
             draft.name = name.text.Trim();
+            draft.description = description.text.Trim();
             draft.time = Parse(start.text, end.text, draft.time);
             draft.assignees.Clear();
             foreach (string assignee in assignees.text.Split(','))

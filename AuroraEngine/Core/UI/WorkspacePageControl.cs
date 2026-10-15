@@ -6,7 +6,7 @@ namespace ArctisAurora.Core.UI
     [A_XSDType("WorkspaceKind", "UI")]
     public enum WorkspaceKind
     {
-        General, Docs, Sheets, LaTeX, Manager, Calendar
+        General, Docs, Sheets, LaTeX, Manager, Calendar, Xml
     }
 
     // One workspace of a WorkspaceControl: a name, a kind and one pane tree.
