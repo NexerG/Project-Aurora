@@ -47,11 +47,15 @@ it — the same garbage the split exists to remove, just rarer and harder to cat
 
 **Slots are still overwritten in place under the reader.** The count is coherent; the rows it points
 at can be a mix of this frame's and last frame's, because `Next()` hands back the same slots the
-mirror is copying. A control that moved can sit a frame apart from its neighbour. Judged acceptable
+mirror is copying. A control that moved can sit a frame apart from its neighbour. Was judged acceptable
 once the blanking stopped.
 
 Tear-free needs a double buffer — two array pairs, the walk fills the back one, `Publish()` swaps the
 reference. Roughly 48 KB at the current 256-slot capacity. Not built.
+
+**Retraction (2026-10-16): the tear is visible, not "invisible", when every slot changes each frame.**
+Planner Gantt scrolling is the worst case — every visible label changes slot every frame. `UIEngineModule.MirrorDrawList` copies the `ControlGeometry` column, then the `VulkanControl` column, while `Main.DrawLists` rewrites the same rows in place. Rows copied between the two passes pair one frame's position with the other frame's glyph, so wrong glyphs show for a frame.
+Reported while investigating Gantt scroll glitches (user asked whether it was the unsynchronized CPU-pool to GPU transfer). Separate from the stale-`subtreeBounds` layout errors, which are CPU-only and fixed in [[ref-across-pool-growth]]. Not fixed; user deferred it. The double buffer above is still the fix.
 
 **A capacity growth still swaps the arrays mid-read.** `Next()` resizes when `_cursor` reaches the
 end and the mirror holds the old reference; `Math.Min(Count, geometry.Length)` keeps it in bounds.
@@ -61,7 +65,7 @@ Rare and transient, left alone.
 
 | Alternative | Why not |
 |---|---|
-| A ring of 3 lists — what [ui-draw-list](ui-draw-list.md) predicted | Three full copies to remove a tear the two-field split already reduces to invisibility. A ring answers a pipelining problem the engine does not have: render is one frame behind main, not three |
+| A ring of 3 lists — what [ui-draw-list](ui-draw-list.md) predicted | Three full copies to remove a tear the two-field split already reduces (not to invisibility when every slot changes per frame — see the 2026-10-16 retraction). A ring answers a pipelining problem the engine does not have: render is one frame behind main, not three |
 | A lock around the walk and the mirror | Puts the render thread's copy behind a whole tree walk, which is the expensive half of the frame edge |
 | Park the render thread across `BuildDrawLists` | Reinstates the stall `DataManager.FrameEdge` was reworked to remove |
 

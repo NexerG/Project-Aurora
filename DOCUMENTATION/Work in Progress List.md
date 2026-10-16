@@ -175,6 +175,9 @@ This file holds **open work**. A landed entry moves to [[Changelog]]; one that s
 - [ ] **SVG parser: command after Z without M fails** — legal SVG (new subpath starts at the last start point) gives "line before any moveto" → `svg-import`
 - [ ] **SVG: `<use>`, nested viewports, percentage lengths** — also `preserveAspectRatio`, `display="none"`/`visibility`, mixed fill rules in one icon → `svg-import`
 - [ ] **default icon atlas copies differ across the four projects** — AuroraEngine and AuroraEditor hold an older `default_atlas.png`/`default.aid` than Thorium and Carbon → `svg-import`
+- [ ] **planner Gantt scroll shows wrong glyphs for a frame (2026-10-16)** — UIQuads tear: `MirrorDrawList` copies two columns while `Main.DrawLists` rewrites them in place; double buffer not built, deferred → `ui-draw-list-publish`
+- [ ] **`Planner.CalendarSnap` is flaky (2026-10-16)** — fails ~2 of 4 runs, "a wheel scroll ends on its own and reaches the calendar: 10/05/2026" (PlannerTests.cs:643); predates the layout fix, not investigated
+- [ ] **layout stale-ref fix (ref re-taken after child measure/arrange) NOT GUI-verified (2026-10-16)** — landed, test-verified; by hand: scroll a large planner Gantt in Thorium, no jolt → `ref-across-pool-growth`
 
 ---
 # PHASE B — ECS rework + renderer/settings foundation (~Jul–Sep 2026)

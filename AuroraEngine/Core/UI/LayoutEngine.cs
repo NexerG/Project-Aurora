@@ -144,6 +144,7 @@ namespace ArctisAurora.Core.UI
                 _ => (control ?? (Control)pool.OwnerAt(row)).CallMeasureCore(offer),
             };
 
+            a = ref pool.GetSpan<ArrangeData>()[row];
             a.measuredOffer = offer;
             a.flags = (byte)(((ArrangeFlags)a.flags & ~ArrangeFlags.MeasureDirty) | ArrangeFlags.Remeasured);
             return desired;
@@ -177,6 +178,7 @@ namespace ArctisAurora.Core.UI
             }
 
             arrange = pool.GetSpan<ArrangeData>();
+            a = ref arrange[row];
             LayoutRect bounds = a.arranged;
             if (((ArrangeFlags)a.flags & ArrangeFlags.Rotated) != 0)
                 bounds = bounds.Turned((control ?? (Control)pool.OwnerAt(row)).rotation);
@@ -221,6 +223,7 @@ namespace ArctisAurora.Core.UI
                 Vector2 childDesired = MeasureRow(pool, child, childControl, new Vector2(
                     MathF.Max(0, w - a.padding.totalHorizontal),
                     MathF.Max(0, h - a.padding.totalVertical)));
+                a = ref pool.GetSpan<ArrangeData>()[row];
                 if (a.preferredWidth == 0) w = childDesired.X + a.padding.totalHorizontal;
                 if (a.preferredHeight == 0) h = childDesired.Y + a.padding.totalVertical;
             }
@@ -315,6 +318,7 @@ namespace ArctisAurora.Core.UI
                 }
             }
 
+            a = ref arrange[row];
             float w = vertical ? maxCross + a.padding.totalHorizontal : totalMain + a.padding.totalHorizontal;
             float h = vertical ? totalMain + a.padding.totalVertical : maxCross + a.padding.totalVertical;
             if (a.preferredWidth > 0) w = MathF.Max(w, a.preferredWidth);

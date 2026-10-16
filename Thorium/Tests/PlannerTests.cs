@@ -1,3 +1,4 @@
+using ArctisAurora.Core.Data;
 using ArctisAurora.Core.ECS.EngineEntity;
 using ArctisAurora.Core.Registry;
 using ArctisAurora.Core.Testing;
@@ -1003,6 +1004,33 @@ namespace Thorium.Tests
 
             zoom.percent = before;
             SettingsRegistry.Apply();
+        }
+
+        [A_XSDActionDependency("Planner.GanttScrollGrow", "Test")]
+        private static IEnumerator<int> GanttScrollGrow(TestContext t)
+        {
+            PlannerDocument planner = PlannerDocument.Blank("Scroll");
+            Guid general = planner.categories[0].id;
+            for (int i = 0; i < 60; i++)
+                planner.tickets.Add(new PlannerTicket { name = $"Ticket {i}", categoryId = general, time = TimeRange.Days(new DateOnly(2026, 10, 5), new DateOnly(2026, 10, 7)), order = i });
+            for (int i = 0; i < 60; i++)
+                planner.categories.Add(new PlannerCategory { name = $"Empty {i}", colorHex = "#30A46C" });
+            PlannerEditorControl editor = Show(t, planner);
+            yield return 2;
+
+            DataPool pool = UIEngine.Elements;
+            List<PanelControl> fillers = new List<PanelControl>();
+            while (pool.Count < pool.Capacity)
+                fillers.Add(new PanelControl());
+            int capacity = pool.Capacity;
+
+            editor.scroller.SetScrollOffset(new Vector2(0f, 90f * GanttChartControl.rowHeight));
+            yield return 2;
+            t.Check(pool.Capacity > capacity, $"the scroll creates parts while the pool is full: capacity {capacity} -> {pool.Capacity}");
+            t.Check(Find<LabelControl>(editor.chart!).Any(l => l.text == "Empty 40" && l.arrangedRect.width > 0f), "the category rows scrolled into view have names");
+
+            foreach (PanelControl filler in fillers)
+                filler.Destroy();
         }
 
         [A_XSDActionDependency("Planner.ExpandCalendar", "Test")]

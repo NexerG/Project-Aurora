@@ -66,6 +66,7 @@
           <xs:enumeration value="Planner.ExpandBoard" />
           <xs:enumeration value="Planner.ExpandGantt" />
           <xs:enumeration value="Planner.WheelZoom" />
+          <xs:enumeration value="Planner.GanttScrollGrow" />
           <xs:enumeration value="Planner.ExpandCalendar" />
           <xs:enumeration value="Planner.AttachmentGolden" />
           <xs:enumeration value="Planner.GanttGolden" />
