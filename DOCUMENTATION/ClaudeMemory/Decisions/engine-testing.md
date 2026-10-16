@@ -129,6 +129,47 @@ slice 3: `TestContext` input helpers, `UI.WindowRoot.ToWindowSpace`, `AGlfwWindo
 - Budget rule as above (P95 = 2× worst p95, Max 8, AllocKB = 2× worst frame), per machine. Back-to-back saves overstate file-open cost: see [[benchmark-back-to-back-file-saves]]; a mid-run one-off spike: see [[perf-spike-is-osr]]. Detail in [[note-live-sync]] § Measured.
 - Also failing in the same `--test=Perf` run, pre-existing and not investigated: `Perf.RelayoutLabels` max 9.2 ms, `Perf.TypeLargeNote` max 11.6 ms, `Perf.RewrapLargeNote` max 16.3 ms, `Perf.Controls.Table.Relayout` alloc 176.7 KB > 65.
 
+### Planner Gantt targets (2026-10-16)
+- `Perf.Planner.Gantt.*` (`ArctisAurora.Tests.PlannerPerfTests`, data in `Perf.tests.xml`). Engine-side and in the `Perf` suite on purpose: `VirtualFileSystem.EnumerateAll` dedups by file name, so a host cannot add its own `Perf.tests.xml`, and any other suite name runs in plain `--test` (only `Perf` is skipped there).
+- Fixture `LargePlanner(perCategory)`: 20 categories × 100 tickets (2,000; `Huge` = 500 each, 10,000) over 365 days from 2026-01-05, 1–5 days each; every 10th has a 3-line description, `User.current` as assignee and a 30 min `Travel` attachment; every 20th (`n % 20 == 1`) follows the one before. `Show` pins the clock to 2026-10-06 12:00 and the date settings, as `PlannerTests.Show` does. 30 warm-up + 120 measured ticks.
+- New zones in `GanttChartControl`: `Gantt.BuildRows` (around `BuildRows` in `MeasureCore`, runs only when rows are stale) and `Gantt.Arrange` (all of `ArrangeCore`). `Planner.Load` / `Planner.Save` are test-side zones around `PlannerXml.Load` / `PlannerXml.Save` on a temp file.
+- Budgets: `Step.Main.Input`, `Step.Main.Layout`, `Step.Main.DrawLists`, Render `Draw`, plus `Gantt.Arrange` where the chart re-arranges and `Gantt.BuildRows` where rows rebuild; `Static` has neither (a pinned clock never re-arranges). The edit cost of `Apply` itself runs in the test body and is not budgeted.
+
+Baseline before the row-index fix below:
+
+| Test | Work per tick | worst p95 / worst max (ms), worst-frame KB — Release+PROFILE, 3 runs |
+|---|---|---|
+| `Static` / `Static.Huge` | nothing | Layout 0.002 / 0.004; Draw 0.70 / 1.6 (Huge 1.05 / 2.8) |
+| `ScrollVertical` | `scroller` Y ±1 row a tick, 30 down, 30 up | Layout 1.00 / 7.7, 31; Arrange 0.98 |
+| `ScrollVertical.Huge` | same, 10,000 tickets | **Layout 12.6 / 15.7, 144; Arrange 12.5 — fails** |
+| `ScrollHorizontal` | `scroller` X ±1 day a tick | Layout 0.96 / 1.8, 31; Arrange 0.94 |
+| `Zoom` | `SetZoom` cycles Hour/Day/Week/Month | Layout 3.85 / 4.4, 3,561; BuildRows 2.94, 3,497 |
+| `ContentZoom` | `SetContentZoom` 1.0 / 1.1 | Layout 3.20 / 4.4, 3,528; BuildRows 2.80 |
+| `Resize` | editor `preferredWidth` 1000 / 999 | Layout 0.91 / 1.3, 31; Arrange 0.90 |
+| `Expand` | `Expand` a described ticket on / off | Layout 3.22 / 3.9, 3,528; BuildRows 2.89 |
+| `DragBar` | one `t.Drag` of a bar 10 days over 120 steps | Layout 0.98 / 3.5; Arrange 0.92; BuildRows once at the drop |
+| `Edit` | `Apply` shifts a ticket (with a follower) ±1 day | Layout 3.41 / 4.0, 3,528; BuildRows 3.08 |
+| `Load` | `PlannerXml.Load` of the 2,000-ticket file | 6.30 / **14.1 (one-off spikes) — fails Max**, 3,013 |
+| `Save` | `PlannerXml.Save` of the same | **18.6 / 21.7, 2,046 — fails** |
+
+### What the Gantt targets found (2026-10-16)
+- `Gantt.Arrange` scales with the ticket count, not the viewport: 0.98 ms at 2,000, 12.5 ms at 10,000. `ArrangeLinks` walks every ticket and, per follower, runs `document.Find` plus `RowOf` twice, all linear scans — O(followers × tickets). `BarRect` also goes through `RowOf` per visible bar.
+- `Gantt.BuildRows` is ~2.9 ms and 3.5 MB per rebuild at 2,000 tickets: `TicketsIn` per category filters all tickets through `CategoryOf` (linear `categories.Find`) and LINQ-sorts them. Every zoom, content zoom, expand or edit pays it.
+- `PlannerXml.Save` is ~18 ms for 2,000 tickets on the main thread (no segment patching like notes have); `Load` ~4 ms p50 with 14–15 ms spikes.
+- **Fixed 2026-10-16 (arrange and rebuild):** `BuildRows` now files every ticket into a per-category bucket in one pass (`categoryIndex`, first id wins like `categories.Find`; unknown id → category 0 like `CategoryOf`), sorts each bucket by order, start, then document index (= the stable `OrderBy().ThenBy()` of `TicketsIn`), and fills `rowOf` (ticket → row) and `links` (leader, follower, rows; `ticketById` first id wins like `Find`). `RowOf` is a dictionary lookup; `ArrangeLinks` walks `links`, reading the tickets' times live so a dragged bar keeps its elbow. All three are as fresh as `rows`: every edit and undo reaches `DocumentChanged` → `RowsChanged`. Arrange is now O(visible rows + links), a rebuild O(T log T) with no per-ticket allocation. `PlannerDocument.TicketsIn` is unchanged — the board, `NextOrder`, `MoveTicket` and `ConfirmDeletePickedCategory` still pay categories × tickets.
+- `Load` / `Save` are not fixed: they need saving off the main thread or segment patching, a design change of their own.
+
+| zone (Release+PROFILE, 3 runs each) | before worst p95 / max, KB | after worst p95 / max, KB |
+|---|---|---|
+| `ScrollVertical.Huge` `Gantt.Arrange` | 12.54 / 15.73, 144 | 0.16 / 0.43, 2.5 |
+| `ScrollVertical` `Gantt.Arrange` | 0.98 / 7.67, 31 | 0.18 / 0.26, 2.5 |
+| `Zoom` `Gantt.BuildRows` | 2.94 / 3.54, 3,497 | 0.80 / 3.50, 0.1 |
+| `Edit` `Step.Main.Layout` | 3.41 / 4.01, 3,528 | 0.52 / 0.61, 2.6 |
+| `ContentZoom` `Step.Main.Layout` | 3.20 / 4.37, 3,528 | 0.79 / 2.08, 2.6 |
+| `Expand` `Step.Main.Layout` | 3.22 / 3.94, 3,528 | 0.48 / 2.15, 2.6 |
+
+- Budgets of every `Perf.Planner.Gantt.*` view test re-derived from the after runs (same rule); `Load` / `Save` keep theirs.
+
 ### Slice 5 — goldens (2026-09-28)
 - `yield return t.Golden(shot, region = null)` sets `Engine.clockHeld` and `ScreenReadback.Request(Engine.primary)`
   (`readbackEpoch = mainSystem.Epoch + 1`). `Session.Step` holds the test (timeout still counting) until

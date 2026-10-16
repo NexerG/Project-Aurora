@@ -1,3 +1,4 @@
+using ArctisAurora.Core.Diagnostics;
 using ArctisAurora.Core.ECS.EngineEntity;
 using ArctisAurora.Core.Filing;
 using ArctisAurora.Core.Threading;
@@ -66,6 +67,13 @@ namespace ArctisAurora.Core.UI
         // the rows, top to bottom: a category, then its tickets
         private readonly List<(PlannerCategory category, PlannerTicket? ticket)> rows = new List<(PlannerCategory, PlannerTicket?)>();
         private bool rowsStale = true;
+
+        // indexes rebuilt with the rows: ticket rows, resolved links, and the per-category buckets they are filed from
+        private readonly Dictionary<PlannerTicket, int> rowOf = new Dictionary<PlannerTicket, int>();
+        private readonly List<(PlannerTicket leader, PlannerTicket follower, int from, int to)> links = new List<(PlannerTicket, PlannerTicket, int, int)>();
+        private readonly Dictionary<Guid, int> categoryIndex = new Dictionary<Guid, int>();
+        private readonly Dictionary<Guid, PlannerTicket> ticketById = new Dictionary<Guid, PlannerTicket>();
+        private readonly List<List<(PlannerTicket ticket, int index)>> filed = new List<List<(PlannerTicket, int)>>();
 
         // the expanded ticket's row, the height its description adds, and the width that was wrapped to
         private int expandedRow = -1;
@@ -240,7 +248,7 @@ namespace ArctisAurora.Core.UI
 
         private float DescriptionWidth => MathF.Max(0f, Viewport().width - nameWidth - TextInset * 2f);
 
-        public int RowOf(PlannerTicket ticket) => rows.FindIndex(row => ReferenceEquals(row.ticket, ticket));
+        public int RowOf(PlannerTicket ticket) => rowOf.TryGetValue(ticket, out int row) ? row : -1;
 
         public LayoutRect BarRect(PlannerTicket ticket)
         {
@@ -294,13 +302,42 @@ namespace ArctisAurora.Core.UI
         private void BuildRows()
         {
             rows.Clear();
+            rowOf.Clear();
+            links.Clear();
+            categoryIndex.Clear();
+            ticketById.Clear();
             PlannerDocument document = editor.document;
-            foreach (PlannerCategory category in document.categories)
+
+            for (int c = 0; c < document.categories.Count; c++)
             {
-                rows.Add((category, null));
-                foreach (PlannerTicket ticket in document.TicketsIn(category))
-                    rows.Add((category, ticket));
+                categoryIndex.TryAdd(document.categories[c].id, c);
+                if (filed.Count <= c) filed.Add(new List<(PlannerTicket, int)>());
+                else filed[c].Clear();
             }
+            if (document.categories.Count > 0)
+                for (int i = 0; i < document.tickets.Count; i++)
+                {
+                    PlannerTicket ticket = document.tickets[i];
+                    filed[categoryIndex.TryGetValue(ticket.categoryId, out int c) ? c : 0].Add((ticket, i));
+                    ticketById.TryAdd(ticket.id, ticket);
+                }
+
+            for (int c = 0; c < document.categories.Count; c++)
+            {
+                PlannerCategory category = document.categories[c];
+                rows.Add((category, null));
+                filed[c].Sort(BoardOrder);
+                foreach ((PlannerTicket ticket, _) in filed[c])
+                {
+                    rowOf[ticket] = rows.Count;
+                    rows.Add((category, ticket));
+                }
+            }
+
+            foreach (PlannerTicket follower in document.tickets)
+                if (follower.follows is Guid id && ticketById.TryGetValue(id, out PlannerTicket? leader)
+                    && rowOf.TryGetValue(leader, out int from) && rowOf.TryGetValue(follower, out int to))
+                    links.Add((leader, follower, from, to));
 
             DateTime now = editor.Now;
             DateTime first = document.tickets.Count == 0 ? now : document.tickets.Min(ticket => ticket.OuterStart);
@@ -316,11 +353,22 @@ namespace ArctisAurora.Core.UI
             for (int i = 0; i <= pad; i++) end = Next(end, lower);
         }
 
+        // Board order, then start, then document order.
+        private static int BoardOrder((PlannerTicket ticket, int index) a, (PlannerTicket ticket, int index) b)
+        {
+            int byOrder = a.ticket.order.CompareTo(b.ticket.order);
+            if (byOrder != 0) return byOrder;
+            int byStart = a.ticket.time.start.CompareTo(b.ticket.time.start);
+            return byStart != 0 ? byStart : a.index.CompareTo(b.index);
+        }
+
         protected override Vector2 MeasureCore(Vector2 availableSize)
         {
             if (rowsStale)
             {
+                Profiling.Zone.Start("Gantt.BuildRows");
                 BuildRows();
+                Profiling.Zone.End("Gantt.BuildRows");
                 rowsStale = false;
             }
 
@@ -361,6 +409,7 @@ namespace ArctisAurora.Core.UI
 
         protected override void ArrangeCore(LayoutRect finalRect)
         {
+            Profiling.Zone.Start("Gantt.Arrange");
             WriteArranged(finalRect);
             bands.Arrange(finalRect);
             grid.Arrange(finalRect);
@@ -390,6 +439,7 @@ namespace ArctisAurora.Core.UI
             bars.Settle(finalRect);
             names.Settle(finalRect);
             headers.Settle(finalRect);
+            Profiling.Zone.End("Gantt.Arrange");
         }
 
         // Category rows shaded, a line under every row.
@@ -492,15 +542,11 @@ namespace ArctisAurora.Core.UI
         // An elbow from each leader's end to its follower's start, when either row is in view.
         private void ArrangeLinks(int firstRow, int lastRow)
         {
-            PlannerDocument document = editor.document;
             int link = 0;
             float hairline = UIScaling.Hairline(this, lineWidth);
-            foreach (PlannerTicket follower in document.tickets)
+            foreach ((PlannerTicket leader, PlannerTicket follower, int from, int to) in links)
             {
-                if (follower.follows is not Guid id || document.Find(id) is not PlannerTicket leader) continue;
-                int from = RowOf(leader);
-                int to = RowOf(follower);
-                if (from < 0 || to < 0 || Math.Max(from, to) < firstRow || Math.Min(from, to) > lastRow) continue;
+                if (Math.Max(from, to) < firstRow || Math.Min(from, to) > lastRow) continue;
 
                 float startX = UIScaling.Snap(this, X(leader.time.end));
                 float bendX = UIScaling.Snap(this, startX + Elbow);

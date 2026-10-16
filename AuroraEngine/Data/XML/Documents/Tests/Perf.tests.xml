@@ -235,4 +235,90 @@
 		<Budget Zone="Step.Main.DrawLists" P95="0.5" Max="8" AllocKB="1"/>
 		<Budget Zone="Draw" Thread="Render" P95="3" Max="8" AllocKB="4"/>
 	</Test>
+	<Test Action="Perf.Planner.Gantt.Static">
+		<Budget Zone="Step.Main.Input" P95="0.5" Max="8" AllocKB="1"/>
+		<Budget Zone="Step.Main.Layout" P95="0.5" Max="8" AllocKB="1"/>
+		<Budget Zone="Step.Main.DrawLists" P95="0.5" Max="8" AllocKB="1"/>
+		<Budget Zone="Draw" Thread="Render" P95="2.5" Max="8" AllocKB="1"/>
+	</Test>
+	<Test Action="Perf.Planner.Gantt.Static.Huge">
+		<Budget Zone="Step.Main.Input" P95="0.5" Max="8" AllocKB="1"/>
+		<Budget Zone="Step.Main.Layout" P95="0.5" Max="8" AllocKB="1"/>
+		<Budget Zone="Step.Main.DrawLists" P95="0.5" Max="8" AllocKB="1"/>
+		<Budget Zone="Draw" Thread="Render" P95="2.5" Max="8" AllocKB="1"/>
+	</Test>
+	<Test Action="Perf.Planner.Gantt.ScrollVertical">
+		<Budget Zone="Step.Main.Input" P95="0.5" Max="8" AllocKB="1"/>
+		<Budget Zone="Step.Main.Layout" P95="0.5" Max="8" AllocKB="6"/>
+		<Budget Zone="Step.Main.DrawLists" P95="0.5" Max="8" AllocKB="1"/>
+		<Budget Zone="Draw" Thread="Render" P95="2.5" Max="8" AllocKB="1"/>
+		<Budget Zone="Gantt.Arrange" P95="0.5" Max="8" AllocKB="5"/>
+	</Test>
+	<Test Action="Perf.Planner.Gantt.ScrollVertical.Huge">
+		<Budget Zone="Step.Main.Input" P95="0.5" Max="8" AllocKB="1"/>
+		<Budget Zone="Step.Main.Layout" P95="0.5" Max="8" AllocKB="6"/>
+		<Budget Zone="Step.Main.DrawLists" P95="0.5" Max="8" AllocKB="1"/>
+		<Budget Zone="Draw" Thread="Render" P95="2.5" Max="8" AllocKB="1"/>
+		<Budget Zone="Gantt.Arrange" P95="0.5" Max="8" AllocKB="5"/>
+	</Test>
+	<Test Action="Perf.Planner.Gantt.ScrollHorizontal">
+		<Budget Zone="Step.Main.Input" P95="0.5" Max="8" AllocKB="1"/>
+		<Budget Zone="Step.Main.Layout" P95="0.5" Max="8" AllocKB="5"/>
+		<Budget Zone="Step.Main.DrawLists" P95="0.5" Max="8" AllocKB="1"/>
+		<Budget Zone="Draw" Thread="Render" P95="2.5" Max="8" AllocKB="1"/>
+		<Budget Zone="Gantt.Arrange" P95="0.5" Max="8" AllocKB="5"/>
+	</Test>
+	<Test Action="Perf.Planner.Gantt.Zoom">
+		<Budget Zone="Step.Main.Input" P95="0.5" Max="8" AllocKB="1"/>
+		<Budget Zone="Step.Main.Layout" P95="2.5" Max="8" AllocKB="15"/>
+		<Budget Zone="Step.Main.DrawLists" P95="0.5" Max="8" AllocKB="1"/>
+		<Budget Zone="Draw" Thread="Render" P95="2" Max="8" AllocKB="1"/>
+		<Budget Zone="Gantt.Arrange" P95="0.5" Max="8" AllocKB="14"/>
+		<Budget Zone="Gantt.BuildRows" P95="2" Max="8" AllocKB="1"/>
+	</Test>
+	<Test Action="Perf.Planner.Gantt.ContentZoom">
+		<Budget Zone="Step.Main.Input" P95="0.5" Max="8" AllocKB="1"/>
+		<Budget Zone="Step.Main.Layout" P95="2" Max="8" AllocKB="6"/>
+		<Budget Zone="Step.Main.DrawLists" P95="0.5" Max="8" AllocKB="1"/>
+		<Budget Zone="Draw" Thread="Render" P95="2.5" Max="8" AllocKB="1"/>
+		<Budget Zone="Gantt.Arrange" P95="0.5" Max="8" AllocKB="5"/>
+		<Budget Zone="Gantt.BuildRows" P95="1.5" Max="8" AllocKB="1"/>
+	</Test>
+	<Test Action="Perf.Planner.Gantt.Resize">
+		<Budget Zone="Step.Main.Input" P95="0.5" Max="8" AllocKB="1"/>
+		<Budget Zone="Step.Main.Layout" P95="0.5" Max="8" AllocKB="5"/>
+		<Budget Zone="Step.Main.DrawLists" P95="0.5" Max="8" AllocKB="1"/>
+		<Budget Zone="Draw" Thread="Render" P95="2" Max="8" AllocKB="1"/>
+		<Budget Zone="Gantt.Arrange" P95="0.5" Max="8" AllocKB="5"/>
+	</Test>
+	<Test Action="Perf.Planner.Gantt.Expand">
+		<Budget Zone="Step.Main.Input" P95="0.5" Max="8" AllocKB="1"/>
+		<Budget Zone="Step.Main.Layout" P95="1" Max="8" AllocKB="6"/>
+		<Budget Zone="Step.Main.DrawLists" P95="0.5" Max="8" AllocKB="1"/>
+		<Budget Zone="Draw" Thread="Render" P95="2" Max="8" AllocKB="1"/>
+		<Budget Zone="Gantt.Arrange" P95="0.5" Max="8" AllocKB="5"/>
+		<Budget Zone="Gantt.BuildRows" P95="1" Max="8" AllocKB="1"/>
+	</Test>
+	<Test Action="Perf.Planner.Gantt.DragBar">
+		<Budget Zone="Step.Main.Input" P95="0.5" Max="8" AllocKB="2"/>
+		<Budget Zone="Step.Main.Layout" P95="0.5" Max="8" AllocKB="6"/>
+		<Budget Zone="Step.Main.DrawLists" P95="0.5" Max="8" AllocKB="1"/>
+		<Budget Zone="Draw" Thread="Render" P95="2" Max="8" AllocKB="1"/>
+		<Budget Zone="Gantt.Arrange" P95="0.5" Max="8" AllocKB="5"/>
+		<Budget Zone="Gantt.BuildRows" P95="1" Max="8" AllocKB="1"/>
+	</Test>
+	<Test Action="Perf.Planner.Gantt.Edit">
+		<Budget Zone="Step.Main.Input" P95="0.5" Max="8" AllocKB="1"/>
+		<Budget Zone="Step.Main.Layout" P95="1.5" Max="8" AllocKB="6"/>
+		<Budget Zone="Step.Main.DrawLists" P95="0.5" Max="8" AllocKB="1"/>
+		<Budget Zone="Draw" Thread="Render" P95="2" Max="8" AllocKB="1"/>
+		<Budget Zone="Gantt.Arrange" P95="0.5" Max="8" AllocKB="5"/>
+		<Budget Zone="Gantt.BuildRows" P95="1" Max="8" AllocKB="1"/>
+	</Test>
+	<Test Action="Perf.Planner.Gantt.Load">
+		<Budget Zone="Planner.Load" P95="8" Max="8" AllocKB="6026"/>
+	</Test>
+	<Test Action="Perf.Planner.Gantt.Save">
+		<Budget Zone="Planner.Save" P95="8" Max="8" AllocKB="4093"/>
+	</Test>
 </TestSuite>
