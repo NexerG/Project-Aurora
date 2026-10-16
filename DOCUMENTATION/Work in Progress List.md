@@ -179,6 +179,11 @@ This file holds **open work**. A landed entry moves to [[Changelog]]; one that s
 - [ ] **planner Gantt scroll shows wrong glyphs for a frame (2026-10-16)** — UIQuads tear: `MirrorDrawList` copies two columns while `Main.DrawLists` rewrites them in place; double buffer not built, deferred → `ui-draw-list-publish`
 - [ ] **`Planner.CalendarSnap` is flaky (2026-10-16)** — fails ~2 of 4 runs, "a wheel scroll ends on its own and reaches the calendar: 10/05/2026" (PlannerTests.cs:643); predates the layout fix, not investigated
 - [ ] **layout stale-ref fix (ref re-taken after child measure/arrange) NOT GUI-verified (2026-10-16)** — landed, test-verified; by hand: scroll a large planner Gantt in Thorium, no jolt → `ref-across-pool-growth`
+- [ ] **encryption NOT GUI-verified (2026-10-16)** — landed, test-verified; by hand: encrypt/unlock a note in its tab, Encrypt blocks + click [ENCRYPTED], lock a vault (recovery window), restart into the unlock prompt, enable and use Windows Hello → `encryption`
+- [ ] **encryption E4: seal parts of sheets, by page** — not started → encryption
+- [ ] **server replication key exchange** — ML-KEM-768 hybrid with X25519/ECDH over TLS 1.3, on top of `Cipher` → encryption
+- [ ] **sealed blocks: visual marker, remove-seal command, remember checkbox** — unlocked seals look like plain text, no way to unseal blocks, `PasswordWindow` has no remember option → encryption
+- [ ] **Windows Hello prompt is not parented to the app window** — may appear behind it → encryption
 
 ---
 # PHASE B — ECS rework + renderer/settings foundation (~Jul–Sep 2026)

@@ -90,6 +90,11 @@ namespace ArctisAurora.Core.UI
                     view.AddChild(table.Hosted());
                     continue;
                 }
+                if (entry is NoteSealed locked)
+                {
+                    view.AddChild(new SealedControl(locked));
+                    continue;
+                }
                 BlockControl block = new BlockControl((NoteBlock)entry);
                 block.StartEffects();
                 block.ApplyLayout(document.layout);
@@ -252,14 +257,15 @@ namespace ArctisAurora.Core.UI
                 try
                 {
                     string extension = Path.GetExtension(path).ToLowerInvariant();
-                    ImageInfo info = SixLabors.ImageSharp.Image.Identify(path);
+                    byte[] bytes = VaultFiles.ReadBytes(path);
+                    ImageInfo info = SixLabors.ImageSharp.Image.Identify(bytes);
                     int bits = info.PixelType.BitsPerPixel;
                     if (extension is ".jpg" or ".jpeg" && bits is 24 or 8)
                         id = pdf.AddStream($"/Type /XObject /Subtype /Image /Width {info.Width} /Height {info.Height} " +
                                            $"/ColorSpace /{(bits == 8 ? "DeviceGray" : "DeviceRGB")} /BitsPerComponent 8 /Filter /DCTDecode",
-                                           File.ReadAllBytes(path), false);
+                                           bytes, false);
                     else
-                        id = Decoded(path);
+                        id = Decoded(bytes);
                 }
                 catch (Exception e)
                 {
@@ -270,9 +276,9 @@ namespace ArctisAurora.Core.UI
                 return id;
             }
 
-            private int Decoded(string path)
+            private int Decoded(byte[] bytes)
             {
-                using Image<Rgba32> image = SixLabors.ImageSharp.Image.Load<Rgba32>(path);
+                using Image<Rgba32> image = SixLabors.ImageSharp.Image.Load<Rgba32>(bytes);
                 int width = image.Width, height = image.Height;
                 byte[] rgb = new byte[width * height * 3];
                 byte[] alpha = new byte[width * height];

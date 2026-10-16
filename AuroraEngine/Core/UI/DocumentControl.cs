@@ -3558,6 +3558,7 @@ namespace ArctisAurora.Core.UI
                     table.ApplyLayout(document.layout);
                     added = table.Hosted();
                 }
+                else if (node is NoteSealed locked) added = new SealedControl(locked);
                 else
                 {
                     BlockControl block = new BlockControl((NoteBlock)node);
@@ -3578,7 +3579,12 @@ namespace ArctisAurora.Core.UI
             ListsChanged();
         }
 
-        private static NoteNode? NodeOf(Entity child) => child is BlockControl block ? block.note : TableIn(child)?.model;
+        private static NoteNode? NodeOf(Entity child) => child switch
+        {
+            BlockControl block => block.note,
+            SealedControl locked => locked.note,
+            _ => TableIn(child)?.model
+        };
 
         // A note-level entry as it sits among the children: a block itself, a table its viewport.
         private static Entity Hosting(Control entry) => entry is TableControl table ? table.parent : entry;
@@ -3589,6 +3595,7 @@ namespace ArctisAurora.Core.UI
             foreach (Entity child in children)
             {
                 if (child is BlockControl block && block.note == node) return block;
+                if (child is SealedControl locked && locked.note == node) return locked;
                 if (TableIn(child) is TableControl table && table.model == node) return table;
             }
 
@@ -3660,7 +3667,8 @@ namespace ArctisAurora.Core.UI
                 Entity child = children[c];
                 BlockControl block = child as BlockControl;
                 TableControl table = block == null ? TableIn(child) : null;
-                if (block == null && table == null) continue;
+                SealedControl locked = block == null && table == null ? child as SealedControl : null;
+                if (block == null && table == null && locked == null) continue;
                 if (IsInsert(child))
                 {
                     if (placer == null || !placer.starts.TryGetValue(child, out PageFloats.Group? group)) continue;
@@ -3687,8 +3695,8 @@ namespace ArctisAurora.Core.UI
                     continue;
                 }
 
-                float? before = block != null ? block.spaceBefore : table.spaceBefore;
-                PageBreak pageBreak = block != null ? block.pageBreak : table.pageBreak;
+                float? before = block != null ? block.spaceBefore : table != null ? table.spaceBefore : locked.note.spaceBefore;
+                PageBreak pageBreak = block != null ? block.pageBreak : table != null ? table.pageBreak : locked.note.pageBreak;
                 if (index > 0 && paged && pageBreak != PageBreak.None)
                 {
                     if (pageBreak == PageBreak.Clear && placer is { Waiting: true }) y = placer.Flush(bands.PageOf(bands.Break(y)));
@@ -3699,6 +3707,7 @@ namespace ArctisAurora.Core.UI
                 Control item = block ?? (Control)child;
                 float blockTop = y;
                 if (table != null) blockTop = space?.Push(bands, y, table.FirstRowHeight) ?? bands.Push(y, table.FirstRowHeight);
+                else if (locked != null) blockTop = space?.Push(bands, y, locked.DesiredSize.Y) ?? bands.Push(y, locked.DesiredSize.Y);
                 else if (block.Lines is { Count: > 0 } lines) blockTop = space?.Push(bands, y, lines[0].height) ?? bands.Push(y, lines[0].height);
 
                 if (index > to && blockTops[index] == blockTop && !FloatsBelow(blockTop) && block is not { laidAround: true })
@@ -3718,6 +3727,7 @@ namespace ArctisAurora.Core.UI
                         space.Reserve(bands.PageOf(blockTop), cells.SelectMany(c => c.Anchors()).Select(a => a.id));
                     }
                 }
+                else if (locked != null) height = locked.DesiredSize.Y;
                 else
                 {
                     RegisterFloats(block, blockTop);
@@ -4122,6 +4132,7 @@ namespace ArctisAurora.Core.UI
                         table.SetZoom(zoom);
                         item = (Control)child;
                     }
+                    else if (child is SealedControl locked) item = locked;
                     else continue;
 
                     item.Measure(new Vector2(textWidth, float.MaxValue));
@@ -4186,9 +4197,10 @@ namespace ArctisAurora.Core.UI
             int index = 0;
             foreach (Entity child in children)
             {
-                if ((child is not BlockControl && TableIn(child) == null) || IsInsert(child) || index >= blockTops.Count) continue;
+                if ((child is not BlockControl && child is not SealedControl && TableIn(child) == null) || IsInsert(child) || index >= blockTops.Count) continue;
 
-                float width = child is BlockControl { stylingType: TextStyleType.Code, codeWrap: false } code ? CodeWidth(code, textWidth) : textWidth;
+                float width = child is BlockControl { stylingType: TextStyleType.Code, codeWrap: false } code ? CodeWidth(code, textWidth)
+                    : child is SealedControl locked ? MathF.Min(textWidth, locked.DesiredSize.X) : textWidth;
                 ((Control)child).Arrange(new LayoutRect(textX, top + blockTops[index], width, blockHeights[index]));
                 index++;
             }

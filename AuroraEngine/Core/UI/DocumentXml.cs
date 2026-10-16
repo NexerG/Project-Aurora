@@ -1,7 +1,9 @@
 using ArctisAurora.Core.ECS.EngineEntity;
+using ArctisAurora.Core.Filing;
 using ArctisAurora.Core.Filing.Serialization;
 using ArctisAurora.Core.Filing.Xml;
 using ArctisAurora.Core.Registry;
+using ArctisAurora.Core.Security;
 using System.Globalization;
 using System.Numerics;
 using System.Reflection;
@@ -20,11 +22,13 @@ namespace ArctisAurora.Core.UI
     public static class DocumentXml
     {
         #region ---- parse ----
-        public static RichTextDocument Load(string path)
+        public static RichTextDocument Load(string path, PasswordKey? key = null)
         {
-            XElement root = XDocument.Load(path).Root ?? throw new Exception($"Note '{path}' is empty.");
+            XElement root = EncryptedFile.LoadXml(path, LoadOptions.None, ref key).Root ?? throw new Exception($"Note '{path}' is empty.");
             ResolvePictures(root, Path.GetDirectoryName(Path.GetFullPath(path))!);
-            return Parse(root);
+            RichTextDocument document = Parse(root);
+            document.encryption = key;
+            return document;
         }
 
         // Picture paths in a note's tree: relative to its folder on disk, absolute in memory.
@@ -58,6 +62,7 @@ namespace ArctisAurora.Core.UI
                     case "Table": blocks.Add(ReadTable(element)); break;
                     case "Footnote":
                     case "Float": blocks.AddRange(ReadInsert(element)); break;
+                    case "Sealed": blocks.Add(new NoteSealed(new XElement(element))); break;
                     default: throw new Exception($"Unknown document element '{element.Name.LocalName}'.");
                 }
 
@@ -291,8 +296,7 @@ namespace ArctisAurora.Core.UI
                 Directory.CreateDirectory(dir);
 
             XmlWriterSettings settings = new XmlWriterSettings { Indent = true, IndentChars = XMLWriter.Indent, NewLineChars = XMLWriter.Newline };
-            using XmlWriter writer = XmlWriter.Create(path, settings);
-            ToFile(document, path).Save(writer);
+            VaultFiles.SaveXml(ToFile(document, path), path, document.encryption, settings);
         }
 
         // The note as Save writes it to this path.
@@ -363,9 +367,12 @@ namespace ArctisAurora.Core.UI
             for (int i = 0; i < blocks.Length;)
             {
                 PageInsert? insert = blocks[i].insert;
+                NoteSeal? seal = insert == null ? blocks[i].seal : null;
                 int end = i + 1;
                 if (insert != null)
                     while (end < blocks.Length && blocks[end].insert == insert) end++;
+                else if (seal != null)
+                    while (end < blocks.Length && blocks[end].seal == seal && blocks[end].insert == null) end++;
 
                 yield return (insert, blocks[i..end]);
                 i = end;
@@ -374,7 +381,7 @@ namespace ArctisAurora.Core.UI
 
         internal static XElement WriteGroup(XNamespace ns, PageInsert? insert, NoteNode[] nodes)
         {
-            if (insert == null) return WriteNode(ns, nodes[0]);
+            if (insert == null) return nodes[0].seal is NoteSeal seal ? NoteSeals.Write(ns, seal, nodes) : WriteNode(ns, nodes[0]);
 
             XElement group = insert.footnote != null ? new XElement(ns + "Footnote", new XAttribute("Id", insert.footnote))
                 : new XElement(ns + "Float", new XAttribute("Kind", insert.floatKind ?? "figure"), new XAttribute("Placement", insert.placement));
@@ -383,8 +390,20 @@ namespace ArctisAurora.Core.UI
             return group;
         }
 
-        private static XElement WriteNode(XNamespace ns, NoteNode node) =>
-            node is NoteTable table ? WriteTable(ns, table) : WriteBlock(ns, (NoteBlock)node);
+        internal static XElement WriteNode(XNamespace ns, NoteNode node) => node switch
+        {
+            NoteTable table => WriteTable(ns, table),
+            NoteSealed locked => new XElement(locked.element),
+            _ => WriteBlock(ns, (NoteBlock)node)
+        };
+
+        // A <Block> or <Table> read back; null for anything else.
+        internal static NoteNode? ReadEntry(XElement element) => element.Name.LocalName switch
+        {
+            "Block" => ReadBlock(element),
+            "Table" => ReadTable(element),
+            _ => null
+        };
 
         private static XElement WriteBlock(XNamespace ns, NoteBlock block)
         {

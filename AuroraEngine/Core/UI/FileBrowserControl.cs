@@ -49,7 +49,7 @@ namespace ArctisAurora.Core.UI
         public string? rowFieldColorHex { get => field; set { field = value; RestyleRows(); } }
         #endregion
 
-        private readonly StackPanelControl rows = new StackPanelControl();
+        protected readonly StackPanelControl rows = new StackPanelControl();
 
         // Vault, project folder or whatever else the derivative lists.
         protected FileObject? root;
@@ -70,6 +70,8 @@ namespace ArctisAurora.Core.UI
 
         // Files a row is built for. Folders are the derivative's business.
         protected virtual bool Accepts(FileObject file) => true;
+
+        protected virtual bool AcceptsFolder(FileObject folder) => true;
 
         protected virtual string DisplayName(FileObject file) => file.name;
 

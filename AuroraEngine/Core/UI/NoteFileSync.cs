@@ -1,6 +1,7 @@
 using ArctisAurora.Core.Diagnostics;
 using ArctisAurora.Core.Filing;
 using ArctisAurora.Core.Registry;
+using ArctisAurora.Core.Security;
 using ArctisAurora.EngineWork;
 using System.Collections.Concurrent;
 using System.Diagnostics;
@@ -56,7 +57,7 @@ namespace ArctisAurora.Core.UI
         }
 
         // .xml notes are written by segment, every other format whole
-        internal bool Segmented => session.document.sourceLanguage == null
+        internal bool Segmented => session.document.sourceLanguage == null && session.document.encryption == null && !VaultLock.Covers(session.path) && !VaultLock.Refuses(session.path)
             && Path.GetExtension(session.path).Equals(".xml", StringComparison.OrdinalIgnoreCase);
 
         internal void Edited()
@@ -211,7 +212,7 @@ namespace ArctisAurora.Core.UI
             RichTextDocument fresh;
             try
             {
-                fresh = RichTextDocument.Load(session.path);
+                fresh = RichTextDocument.Load(session.path, session.document.encryption);
             }
             catch (Exception e)
             {

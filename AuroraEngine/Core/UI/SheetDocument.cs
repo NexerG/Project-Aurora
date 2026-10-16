@@ -1,5 +1,6 @@
 using ArctisAurora.Core.Editing;
 using ArctisAurora.Core.Registry;
+using ArctisAurora.Core.Security;
 using System.Globalization;
 using System.Text;
 using System.Xml.Linq;
@@ -24,6 +25,9 @@ namespace ArctisAurora.Core.UI
         public readonly UndoStack undo = new UndoStack();
         public bool unsaved;
 
+        // the key the file is encrypted under; null for a plain file
+        public PasswordKey? encryption;
+
         // a CSV file, and how it was written, kept for writing it back
         public bool isCsv;
         public char csvDelimiter = ',';
@@ -31,7 +35,7 @@ namespace ArctisAurora.Core.UI
 
         public static bool IsSheet(string path) => path.EndsWith(extension, StringComparison.OrdinalIgnoreCase);
 
-        public static SheetDocument Load(string path) => SheetCsv.IsCsv(path) ? SheetCsv.Load(path) : SheetXml.Load(path);
+        public static SheetDocument Load(string path, PasswordKey? key = null) => SheetCsv.IsCsv(path) ? SheetCsv.Load(path) : SheetXml.Load(path, key);
 
         public void Save(string path)
         {

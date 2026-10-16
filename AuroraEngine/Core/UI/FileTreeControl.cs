@@ -42,6 +42,7 @@ namespace ArctisAurora.Core.UI
             {
                 if (child.type == FileObject.FileType.Directory)
                 {
+                    if (!AcceptsFolder(child)) continue;
                     bool isOpen = expanded.Contains(child.path);
                     Track(AddRow(child, depth, isOpen ? openPrefix : closedPrefix, () => Toggle(child.path)), depth, grow);
                     if (isOpen) AddEntries(child, depth + 1, grow || child.path == growing);

@@ -1,9 +1,13 @@
+using ArctisAurora.Core.Diagnostics;
 using ArctisAurora.Core.Filing;
 using ArctisAurora.Core.Registry;
+using ArctisAurora.Core.Security;
 using ArctisAurora.Core.UI;
 using ArctisAurora.EngineWork;
+using ArctisAurora.EngineWork.Rendering;
 using Microsoft.VisualBasic.FileIO;
 using System.Numerics;
+using System.Security.Cryptography;
 using System.Xml.Linq;
 
 namespace Thorium.Editor.CustomControls
@@ -12,6 +16,8 @@ namespace Thorium.Editor.CustomControls
     [A_XSDType("VaultBrowser", "UI")]
     public class VaultBrowserControl : FileTreeControl
     {
+        private static readonly LogChannel Log = LogChannel.For("Vault");
+
         // control names in UI.ui.xml
         private const string browserName = "Browser";
         private const string filterName = "VaultFilter";
@@ -117,6 +123,30 @@ namespace Thorium.Editor.CustomControls
 
         protected override string RootPath =>
             KnownVaults.Resolve(SettingsRegistry.Get<ThoriumSettings>().vault.path);
+
+        protected override bool AcceptsFolder(FileObject folder) => !folder.name.StartsWith('.');
+
+        // A locked vault lists nothing but the way in.
+        protected override void PopulateRows()
+        {
+            if (!VaultLock.HasLock(RootPath) || VaultLock.IsOpen(RootPath))
+            {
+                base.PopulateRows();
+                return;
+            }
+
+            ButtonControl unlock = new ButtonControl
+            {
+                preferredHeight = 26,
+                padding = new Thickness(12f, 0f),
+                role = PaletteRole.Chrome,
+                cornerRole = CornerRole.Control,
+                horizontalAlignment = HorizontalAlignment.Left
+            };
+            unlock.AddChild(new LabelControl { text = "Vault locked - Unlock", fontSize = 14, role = PaletteRole.MutedInk });
+            unlock.RegisterOnRelease(_ => { Engine.Post(UnlockVault); return true; });
+            rows.AddChild(unlock);
+        }
 
         protected override bool Accepts(FileObject file) =>
             (RichTextDocument.extensions.Contains(Path.GetExtension(file.path).ToLowerInvariant()) || SheetCsv.IsCsv(file.path))
@@ -260,6 +290,184 @@ namespace Thorium.Editor.CustomControls
             if (row != null && IsXml(row.file.path)) Open(row.file.path, true);
         }
 
+        [A_XSDActionDependency("Notes.Encrypt", "UI", "Asks for a new password and encrypts the note, sheet or planner the menu was opened on")]
+        public static void Encrypt()
+        {
+            FileRowControl row = MenuRow();
+            if (row == null || !IsXml(row.file.path) || EncryptedFile.IsEncrypted(row.file.path)) return;
+
+            string path = row.file.path;
+            PasswordWindow.Ask(UIActions.Invoking(), $"Encrypt {Path.GetFileName(path)}", true, null,
+                password => Task.Run(() => PasswordKey.Create(password)).ContinueWith(task => Engine.Post(() => SetEncryption(path, task.Result, null))), null);
+        }
+
+        [A_XSDActionDependency("Notes.Decrypt", "UI", "Asks for the password and stores the file the menu was opened on unencrypted")]
+        public static void Decrypt()
+        {
+            FileRowControl row = MenuRow();
+            if (row != null && EncryptedFile.IsEncrypted(row.file.path)) AskToDecrypt(UIActions.Invoking(), row.file.path, null);
+        }
+
+        private static void AskToDecrypt(RenderWindow source, string path, string? error) =>
+            PasswordWindow.Ask(source, $"Remove encryption from {Path.GetFileName(path)}", false, error,
+                password => Task.Run(() => EncryptedFile.Unlock(path, password)).ContinueWith(task => Engine.Post(() =>
+                {
+                    if (task.Result is PasswordKey opener) SetEncryption(path, null, opener);
+                    else AskToDecrypt(source, path, "Wrong password");
+                })), null);
+
+        // Re-saves the file under key, or plain when key is null; opener reads it while it is still encrypted.
+        private static void SetEncryption(string path, PasswordKey? key, PasswordKey? opener)
+        {
+            FileWriteQueue.Drain();
+            PasswordKey? old;
+            if (SheetDocument.IsSheet(path))
+            {
+                SheetDocument sheet = SheetBook.Get(path, opener);
+                old = sheet.encryption;
+                sheet.encryption = key;
+                sheet.Save(path);
+            }
+            else if (PlannerDocument.IsPlanner(path))
+            {
+                PlannerDocument planner = PlannerBook.Open(path, opener);
+                old = planner.encryption;
+                planner.encryption = key;
+                planner.Save(path);
+                PlannerBook.Close(path, planner);
+            }
+            else
+            {
+                DocumentEditSession session = NoteSessions.Open(path, opener);
+                old = session.document.encryption;
+                session.document.encryption = key;
+                session.Save();
+                NoteSessions.Close(session);
+            }
+
+            if (old != null && !FileKeys.IsRemembered(old)) old.Dispose();
+            if (opener != null && opener != old) opener.Dispose();
+        }
+
+        #region ---- vault lock ----
+        private static string CurrentVault() => KnownVaults.Resolve(SettingsRegistry.Get<ThoriumSettings>().vault.path);
+
+        [A_XSDActionDependency("Vault.Unlock", "UI", "Asks for the password or recovery key of the locked vault and opens it")]
+        public static void UnlockVault()
+        {
+            string vault = CurrentVault();
+            if (!VaultLock.HasLock(vault) || VaultLock.IsOpen(vault)) return;
+
+            AskVaultKey(vault, "Unlock vault", null, master =>
+            {
+                VaultLock.Use(vault, master);
+                Browser()?.Rebuild();
+                if (!SessionLayout.paused) return;
+                SessionLayout.paused = false;
+                SessionLayout.Restore();
+            });
+        }
+
+        // Asks for a locked vault's password or recovery key, again after a wrong one; opened takes its master key.
+        internal static void AskVaultKey(string vault, string title, string? error, Action<byte[]> opened) =>
+            PasswordWindow.Ask(Engine.primary, $"{title}: password or recovery key", false, error,
+                secret => Task.Run(() => VaultLock.Open(vault, secret)).ContinueWith(task =>
+                {
+                    byte[]? master = task.IsCompletedSuccessfully ? task.Result : null;
+                    Engine.Post(() =>
+                    {
+                        if (master == null) AskVaultKey(vault, title, "Wrong password or recovery key", opened);
+                        else opened(master);
+                    });
+                }), null,
+                VaultLock.HelloOf(vault) is (string credential, string id) ? ("Use Windows Hello", () => HelloKey(vault, title, credential, id, opened)) : null);
+
+        // Asks Windows Hello for the vault's signature; back to the password prompt when it does not open the vault.
+        private static void HelloKey(string vault, string title, string credential, string id, Action<byte[]> opened) =>
+            Task.Run(() => WindowsHello.Sign(credential, id, false)).ContinueWith(task =>
+            {
+                byte[]? signature = task.IsCompletedSuccessfully ? task.Result : null;
+                Engine.Post(() =>
+                {
+                    byte[]? master = signature != null ? VaultLock.OpenWithHello(vault, signature) : null;
+                    if (master == null) AskVaultKey(vault, title, "Windows Hello did not open the vault", opened);
+                    else opened(master);
+                });
+            });
+
+        [A_XSDActionDependency("Vault.EnableHello", "UI", "Adds Windows Hello as a way to unlock the open encrypted vault")]
+        public static void EnableHello()
+        {
+            string vault = CurrentVault();
+            if (!VaultLock.IsOpen(vault)) return;
+
+            string credential = VaultLock.HelloCredential(vault);
+            string id = VaultLock.IdOf(vault);
+            Task.Run(async () => await WindowsHello.IsAvailable() ? await WindowsHello.Sign(credential, id, true) : null).ContinueWith(task =>
+            {
+                byte[]? signature = task.IsCompletedSuccessfully ? task.Result : null;
+                Engine.Post(() =>
+                {
+                    if (signature == null) Log.Warn($"Windows Hello is not set up or was cancelled; the vault keeps its other ways in.");
+                    else VaultLock.AddHello(vault, credential, signature);
+                });
+            });
+        }
+
+        [A_XSDActionDependency("Vault.Lock", "UI", "Asks for a password, shows a recovery key, then encrypts every file of the vault")]
+        public static void LockVault()
+        {
+            string vault = CurrentVault();
+            if (VaultLock.HasLock(vault)) return;
+
+            PasswordWindow.Ask(Engine.primary, "Lock vault", true, null, password =>
+                Task.Run(() => PasswordKey.Create(password)).ContinueWith(task => Engine.Post(() =>
+                {
+                    PasswordKey key = task.Result;
+                    byte[] recovery = VaultLock.NewRecovery();
+                    void Forget()
+                    {
+                        key.Dispose();
+                        CryptographicOperations.ZeroMemory(recovery);
+                    }
+
+                    RecoveryKeyWindow.Show(Engine.primary, VaultLock.FormatRecovery(recovery), () =>
+                    {
+                        VaultLock.Create(vault, key, recovery);
+                        Forget();
+                        Browser()?.Rebuild();
+                    }, Forget);
+                })), null);
+        }
+
+        [A_XSDActionDependency("Vault.ChangePassword", "UI", "Asks for a new password for the open encrypted vault")]
+        public static void ChangeVaultPassword()
+        {
+            string vault = CurrentVault();
+            if (!VaultLock.IsOpen(vault)) return;
+
+            PasswordWindow.Ask(Engine.primary, "New vault password", true, null, password =>
+                Task.Run(() => PasswordKey.Create(password)).ContinueWith(task => Engine.Post(() =>
+                {
+                    using PasswordKey key = task.Result;
+                    VaultLock.ChangePassword(vault, key);
+                })), null);
+        }
+
+        [A_XSDActionDependency("Vault.RemoveLock", "UI", "Asks for the password or recovery key, then decrypts every file of the vault")]
+        public static void RemoveVaultLock()
+        {
+            string vault = CurrentVault();
+            if (!VaultLock.IsOpen(vault)) return;
+
+            AskVaultKey(vault, "Remove vault lock", null, master =>
+            {
+                CryptographicOperations.ZeroMemory(master);
+                VaultLock.Remove(vault);
+            });
+        }
+        #endregion
+
         [A_XSDActionDependency("Notes.OpenNormally", "UI", "Opens the file the menu was opened on as a note, sheet or planner")]
         public static void OpenNormally()
         {
@@ -318,7 +526,7 @@ namespace Thorium.Editor.CustomControls
         private void CreateTex(string folder, string name)
         {
             string path = FreePath(folder, name, ".tex");
-            File.WriteAllText(path, "\\documentclass{article}\n\n\\begin{document}\n\n\\end{document}\n");
+            VaultFiles.WriteText(path, "\\documentclass{article}\n\n\\begin{document}\n\n\\end{document}\n");
 
             Expand(folder);
             Rebuild();
@@ -395,6 +603,7 @@ namespace Thorium.Editor.CustomControls
             string target = FreePath(Path.GetDirectoryName(path)!, name, Extension(path));
             FileWriteQueue.Drain();
             File.Move(path, target);
+            FileKeys.Renamed(path, target);
             WriteName(target, name);
 
             foreach ((TabItemControl item, TabViewControl view) in TabViewControl.FindOpenDocuments(path))
@@ -600,6 +809,11 @@ namespace Thorium.Editor.CustomControls
         // built, so the caption can come from the note's own name.
         internal static TabItemControl BuildTab(string notePath, bool asXml)
         {
+            if (EncryptedFile.IsEncrypted(notePath))
+            {
+                asXml = false;
+                if (Locked(notePath)) return BuildLockedTab(notePath);
+            }
             if (asXml) return BuildXmlTab(notePath);
             if (SheetDocument.IsSheet(notePath) || SheetCsv.IsCsv(notePath)) return BuildSheetTab(notePath);
             if (PlannerDocument.IsPlanner(notePath)) return BuildPlannerTab(notePath);
@@ -663,6 +877,23 @@ namespace Thorium.Editor.CustomControls
             return tab;
         }
 
+        // An encrypted file with no key to hand and no unlocked tab already holding it.
+        private static bool Locked(string path)
+        {
+            if (FileKeys.Has(path)) return false;
+            foreach ((TabItemControl open, TabViewControl _) in TabViewControl.FindOpenDocuments(path))
+                if (TabViewControl.FileEditorOf(open) is not LockedFileControl) return false;
+            return true;
+        }
+
+        private static TabItemControl BuildLockedTab(string path)
+        {
+            LockedFileControl locked = new LockedFileControl(path, false);
+            TabItemControl tab = new TabItemControl { name = path, header = BaseName(path) };
+            tab.AddChild(locked);
+            return tab;
+        }
+
         private static TabItemControl BuildXmlTab(string xmlPath)
         {
             XmlEditorControl editor = new XmlEditorControl();
@@ -699,11 +930,12 @@ namespace Thorium.Editor.CustomControls
         // Only XML carries a name of its own; other formats are named by their file.
         private static void WriteName(string path, string name)
         {
-            if (!Path.GetExtension(path).Equals(".xml", StringComparison.OrdinalIgnoreCase)) return;
+            if (!Path.GetExtension(path).Equals(".xml", StringComparison.OrdinalIgnoreCase) || EncryptedFile.IsEncrypted(path)) return;
 
-            XDocument xml = XDocument.Load(path);
+            PasswordKey? none = null;
+            XDocument xml = EncryptedFile.LoadXml(path, LoadOptions.None, ref none);
             xml.Root!.SetAttributeValue("Name", name);
-            xml.Save(path);
+            VaultFiles.SaveXml(xml, path, null, null);
         }
     }
 }

@@ -4,6 +4,7 @@ using ArctisAurora.Core.Editing;
 using ArctisAurora.Core.Filing;
 using ArctisAurora.Core.Filing.Serialization;
 using ArctisAurora.Core.Registry;
+using ArctisAurora.Core.Security;
 using ArctisAurora.EngineWork;
 using ArctisAurora.EngineWork.Rendering;
 using SixLabors.ImageSharp;
@@ -175,6 +176,11 @@ namespace ArctisAurora.Core.UI
                     content.AddChild(table.Hosted());
                     continue;
                 }
+                if (entry is NoteSealed locked)
+                {
+                    content.AddChild(new SealedControl(locked));
+                    continue;
+                }
 
                 BlockControl block = new BlockControl((NoteBlock)entry);
                 block.StartEffects();
@@ -247,6 +253,78 @@ namespace ArctisAurora.Core.UI
             content?.DisarmStyle();
             MarkDirty();
             RequestScrollToCaret();
+        }
+        #endregion
+
+        #region ---- encryption ----
+        // Asks for a new password and seals the note-level entries the caret or selection touches; .xml notes only.
+        public void EncryptBlocks()
+        {
+            if (session == null || !Writable || Source || Extension != ".xml" || content.caretBlock == null) return;
+
+            if (!content.OrderedSelection(out DocumentAddress from, out DocumentAddress to))
+                from = to = content.AddressOf(content.caretBlock, 0);
+            int first = activeDocument.NodeIndexOf(from.block);
+            NoteNode[] nodes = activeDocument.blocks[first..(activeDocument.NodeIndexOf(to.block) + 1)];
+            if (nodes.Any(n => n.insert != null || n.seal != null || n is NoteSealed)) return;
+
+            PasswordWindow.Ask(UIEngine.WindowOf(this) ?? Engine.primary, "Encrypt blocks", true, null,
+                password => Task.Run(() => PasswordKey.Create(password)).ContinueWith(task => Engine.Post(() => Seal(nodes, task.Result))), null);
+        }
+
+        private void Seal(NoteNode[] nodes, PasswordKey key)
+        {
+            int first = session != null && !destroyed ? Array.IndexOf(activeDocument.blocks, nodes[0]) : -1;
+            if (first < 0 || first + nodes.Length > activeDocument.blocks.Length || !activeDocument.blocks.AsSpan(first, nodes.Length).SequenceEqual(nodes))
+            {
+                key.Dispose();
+                return;
+            }
+
+            NoteSeal seal = new NoteSeal(key);
+            SealEdit edit = new SealEdit(activeDocument, first, new NoteSeal?[nodes.Length], Enumerable.Repeat<NoteSeal?>(seal, nodes.Length).ToArray());
+            using (BeginStep("Encrypt blocks")) session.undo.Push(edit);
+            edit.Redo();
+            MarkDirty();
+        }
+
+        // Asks for a sealed run's password and puts its entries in its place, one undo step.
+        public void UnlockSeal(NoteSealed node, string? error)
+        {
+            if (session == null) return;
+
+            PasswordWindow.Ask(UIEngine.WindowOf(this) ?? Engine.primary, "Unlock encrypted blocks", false, error, password =>
+                Task.Run(() =>
+                {
+                    PasswordKey? key = NoteSeals.Unlock(node.element, password, out byte[] plain);
+                    return (key, plain);
+                }).ContinueWith(task =>
+                {
+                    (PasswordKey? key, byte[] plain) = task.IsCompletedSuccessfully ? task.Result : (null, Array.Empty<byte>());
+                    Engine.Post(() => Unsealed(node, key, plain));
+                }), null);
+        }
+
+        private void Unsealed(NoteSealed node, PasswordKey? key, byte[] plain)
+        {
+            if (key == null)
+            {
+                UnlockSeal(node, "Wrong password");
+                return;
+            }
+
+            int index = session != null && !destroyed ? Array.IndexOf(activeDocument.blocks, node) : -1;
+            if (index < 0)
+            {
+                key.Dispose();
+                return;
+            }
+
+            NoteHeader header = NoteHeader.Of(activeDocument);
+            NodesEdit edit = new NodesEdit(activeDocument, index, [node], NoteSeals.Entries(plain, key), header, header);
+            using (BeginStep("Unlock encrypted blocks")) session.undo.Push(edit);
+            edit.Redo();
+            MarkDirty();
         }
         #endregion
 
@@ -874,7 +952,7 @@ namespace ArctisAurora.Core.UI
                 string stem = Path.GetFileNameWithoutExtension(source), extension = Path.GetExtension(source);
                 for (int n = 2; File.Exists(file); n++)
                     file = Path.Combine(folder, $"{stem} ({n}){extension}");
-                File.Copy(source, file);
+                VaultFiles.Copy(source, file);
             }
             return PutPicture(file, "Insert picture");
         }

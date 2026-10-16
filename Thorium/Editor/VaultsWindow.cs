@@ -1,6 +1,7 @@
 using ArctisAurora.Core.ECS.EngineEntity;
 using ArctisAurora.Core.Filing;
 using ArctisAurora.Core.Registry;
+using ArctisAurora.Core.Security;
 using ArctisAurora.Core.UI;
 using ArctisAurora.EngineWork;
 using ArctisAurora.EngineWork.Registry;
@@ -94,7 +95,7 @@ namespace Thorium.Editor
 
             content.AddChild(new LabelControl
             {
-                text = path,
+                text = VaultLock.HasLock(KnownVaults.Resolve(path)) ? path + "  (encrypted)" : path,
                 fontSize = 11,
                 role = PaletteRole.MutedInk,
                 preferredHeight = pathHeight,
@@ -122,18 +123,25 @@ namespace Thorium.Editor
         // The vault is the setting, so switching writes it and everything downstream re-reads it.
         private static void Switch(string path)
         {
-            if (!KnownVaults.SamePath(path, Current()))
-                NoteActions.SettleAll(() => Enter(path));
-
             if (Engine.windows.TryGetValue(windowName, out RenderWindow window)) Engine.CloseWindow(window);
+            if (KnownVaults.SamePath(path, Current())) return;
+
+            string vault = KnownVaults.Resolve(path);
+            if (VaultLock.HasLock(vault))
+                VaultBrowserControl.AskVaultKey(vault, "Open vault", null, master => NoteActions.SettleAll(() => Enter(path, master)));
+            else NoteActions.SettleAll(() => Enter(path, null));
         }
 
-        // Writes the vault and swaps the session to it.
-        private static void Enter(string path)
+        // Writes the vault and swaps the session to it; an encrypted one opens with its master key.
+        private static void Enter(string path, byte[]? master)
         {
             SettingsRegistry.Get<ThoriumSettings>().vault.path = path;
             SheetBook.Clear();
+            FileKeys.Clear();
+            VaultLock.Close();
+            if (master != null) VaultLock.Use(KnownVaults.Resolve(path), master);
             bool restored = SessionLayout.ChangeScope(KnownVaults.Resolve(path));
+            SessionLayout.paused = false;
             SettingsRegistry.Commit();
 
             VaultBrowserControl browser = Engine.primary.ui.uiRoot.FindByName(browserName) as VaultBrowserControl;

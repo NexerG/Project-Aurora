@@ -1,6 +1,7 @@
 using ArctisAurora.Core.Editing;
 using ArctisAurora.Core.Filing;
 using ArctisAurora.Core.Registry;
+using ArctisAurora.Core.Security;
 using System.Globalization;
 using System.Numerics;
 using System.Runtime.InteropServices;
@@ -44,18 +45,21 @@ namespace ArctisAurora.Core.UI
         public string sourceNewline = "\n";
         public bool sourceBom;
 
+        // the key the file is encrypted under; null for a plain file
+        public PasswordKey? encryption;
+
         // note file extensions the editor opens
         public static readonly string[] extensions = { ".xml", ".md", ".txt", ".tex" };
 
-        public static RichTextDocument Load(string path)
+        public static RichTextDocument Load(string path, PasswordKey? key = null)
         {
             FileJournal.Replay(path);
             RichTextDocument document = Path.GetExtension(path).ToLowerInvariant() switch
             {
-                ".md" => DocumentXml.Parse(MarkdownPictures(MarkdownFormat.Read(File.ReadAllText(path), Path.GetFileNameWithoutExtension(path)), path)),
-                ".txt" => DocumentXml.Parse(PlainTextFormat.Read(File.ReadAllText(path), Path.GetFileNameWithoutExtension(path))),
+                ".md" => DocumentXml.Parse(MarkdownPictures(MarkdownFormat.Read(VaultFiles.ReadText(path), Path.GetFileNameWithoutExtension(path)), path)),
+                ".txt" => DocumentXml.Parse(PlainTextFormat.Read(VaultFiles.ReadText(path), Path.GetFileNameWithoutExtension(path))),
                 ".tex" => LoadSource(path, "latex"),
-                _ => DocumentXml.Load(path)
+                _ => DocumentXml.Load(path, key)
             };
 
             document.created ??= Stamp(File.GetCreationTime(path));
@@ -65,7 +69,7 @@ namespace ArctisAurora.Core.UI
 
         // A file's text as code lines in a language.
         public static RichTextDocument LoadSource(string path, string language) =>
-            SourceFromBytes(File.ReadAllBytes(path), Path.GetFileNameWithoutExtension(path), language);
+            SourceFromBytes(VaultFiles.ReadBytes(path), Path.GetFileNameWithoutExtension(path), language);
 
         public static RichTextDocument SourceFromBytes(byte[] bytes, string name, string language)
         {
@@ -95,7 +99,7 @@ namespace ArctisAurora.Core.UI
         {
             if (sourceLanguage != null)
             {
-                File.WriteAllText(path, SourceText(), new UTF8Encoding(sourceBom));
+                VaultFiles.WriteText(path, SourceText(), new UTF8Encoding(sourceBom));
                 return;
             }
 
@@ -104,10 +108,10 @@ namespace ArctisAurora.Core.UI
                 case ".md":
                     XElement root = DocumentXml.ToXml(this);
                     DocumentXml.RelativePictures(root, Path.GetDirectoryName(Path.GetFullPath(path))!);
-                    File.WriteAllText(path, MarkdownFormat.Write(root));
+                    VaultFiles.WriteText(path, MarkdownFormat.Write(root));
                     break;
-                case ".txt": File.WriteAllText(path, PlainTextFormat.Write(DocumentXml.ToXml(this))); break;
-                case ".tex": File.WriteAllText(path, SourceText(), new UTF8Encoding(sourceBom)); break;
+                case ".txt": VaultFiles.WriteText(path, PlainTextFormat.Write(DocumentXml.ToXml(this))); break;
+                case ".tex": VaultFiles.WriteText(path, SourceText(), new UTF8Encoding(sourceBom)); break;
                 default: DocumentXml.Save(this, path); break;
             }
         }
@@ -299,6 +303,7 @@ namespace ArctisAurora.Core.UI
             tail.run.RemoveText(0, to.offset);
             head.run.AppendSpans(tail.run.spans, tail.run.text ?? string.Empty);
             if (head.stylingType == TextStyleType.Rule) head.TakeKind(tail.SliceSnapshot(0, 0));
+            head.seal ??= tail.seal;
 
             for (int i = to.block; i > from.block; i--)
                 Detach(flat[i]);
@@ -347,7 +352,10 @@ namespace ArctisAurora.Core.UI
 
             NoteBlock[] added = new NoteBlock[fragment.blocks.Count - 1];
             for (int i = 1; i < fragment.blocks.Count; i++)
+            {
                 added[i - 1] = NoteBlock.From(fragment.blocks[i]);
+                added[i - 1].seal = head.seal;
+            }
             added[^1].run.AppendSpans(rest.spans, rest.text);
             InsertAfter(head, added);
 
@@ -392,6 +400,7 @@ namespace ArctisAurora.Core.UI
             NoteBlock tail = flat[at.block + 1];
 
             head.run.AppendSpans(tail.run.spans, tail.run.text ?? string.Empty);
+            head.seal ??= tail.seal;
             Detach(tail);
 
             Raise(NoteChangeKind.Removed, at.block + 1, at: at);
@@ -516,12 +525,15 @@ namespace ArctisAurora.Core.UI
         // Takes the table at a note-level index out when present, and puts one built from xml there.
         public NoteTable? PutTable(int index, bool present, XElement? xml, DocumentAddress? caret = null)
         {
+            NoteSeal? seal = present ? blocks[index].seal
+                : index > 0 && index < blocks.Length && blocks[index - 1].seal == blocks[index].seal ? blocks[index].seal : null;
             if (present && blocks[index] is NoteTable old) blocks = Removed(blocks, old);
 
             NoteTable? table = null;
             if (xml != null)
             {
                 table = DocumentXml.ReadTable(xml);
+                table.seal = seal;
                 blocks = Inserted(blocks, index, [table]);
             }
 
@@ -541,8 +553,39 @@ namespace ArctisAurora.Core.UI
             Raise(NoteChangeKind.Nodes, flat, gone, length: added.Sum(FlatCount));
         }
 
-        private static int FlatCount(NoteNode node) =>
-            node is NoteTable table ? table.rows.Sum(row => row.Sum(cell => cell.blocks.Length)) : 1;
+        private static int FlatCount(NoteNode node) => node switch
+        {
+            NoteTable table => table.rows.Sum(row => row.Sum(cell => cell.blocks.Length)),
+            NoteSealed => 0,
+            _ => 1
+        };
+
+        // The note-level entry holding a flat block.
+        public int NodeIndexOf(int flat)
+        {
+            for (int i = 0; i < blocks.Length; i++)
+            {
+                int count = FlatCount(blocks[i]);
+                if (flat < count) return i;
+                flat -= count;
+            }
+            return blocks.Length - 1;
+        }
+
+        // Puts entries into a sealed run, or takes them out of one with null; one seal per entry from first.
+        public void SetSeals(int first, NoteSeal?[] seals)
+        {
+            int flat = 0;
+            for (int i = 0; i < first; i++) flat += FlatCount(blocks[i]);
+            int count = 0;
+            for (int i = 0; i < seals.Length; i++)
+            {
+                blocks[first + i].seal = seals[i];
+                blocks[first + i].dirty = true;
+                count += FlatCount(blocks[first + i]);
+            }
+            Raise(NoteChangeKind.Kind, flat, count);
+        }
 
         public void SetPage(PageLayout? page)
         {
@@ -652,11 +695,11 @@ namespace ArctisAurora.Core.UI
         private static readonly Dictionary<string, DocumentEditSession> open =
             new Dictionary<string, DocumentEditSession>(StringComparer.OrdinalIgnoreCase);
 
-        public static DocumentEditSession Open(string path)
+        public static DocumentEditSession Open(string path, PasswordKey? key = null)
         {
             if (!open.TryGetValue(path, out DocumentEditSession? session))
             {
-                session = new DocumentEditSession(RichTextDocument.Load(path), path);
+                session = new DocumentEditSession(RichTextDocument.Load(path, key), path);
                 session.sync = new NoteFileSync(session);
                 open[path] = session;
             }
@@ -671,6 +714,9 @@ namespace ArctisAurora.Core.UI
             session.sync?.Dispose();
             session.sync = null;
             if (open.TryGetValue(session.path, out DocumentEditSession? held) && held == session) open.Remove(session.path);
+            if (session.document.encryption is PasswordKey key && !FileKeys.IsRemembered(key)) key.Dispose();
+            foreach (NoteSeal seal in session.document.blocks.Select(b => b.seal).OfType<NoteSeal>().Distinct())
+                seal.key.Dispose();
         }
 
         internal static void Rekey(DocumentEditSession session, string newPath)

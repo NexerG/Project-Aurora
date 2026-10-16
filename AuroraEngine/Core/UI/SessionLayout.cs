@@ -149,6 +149,9 @@ namespace ArctisAurora.Core.UI
         // the host binds to it, so restoring tabs needs this set.
         public static Func<string, bool, TabItemControl> tabFactory;
 
+        // set while the scope's layout is not on screen yet, so a capture does not record the empty windows over it
+        public static bool paused;
+
         // secondary windows are renamed on restore, so a later tear-off cannot collide with one
         private const string restoredWindow = "session-";
         private static int restoredCount;
@@ -387,7 +390,7 @@ namespace ArctisAurora.Core.UI
         [A_XSDActionDependency("Session.Capture", "Shutdown", "Records every open window's placement and panes")]
         public static bool Capture()
         {
-            SettingsRegistry.Get<SessionLayout>().Record();
+            if (!paused) SettingsRegistry.Get<SessionLayout>().Record();
             return true;
         }
 

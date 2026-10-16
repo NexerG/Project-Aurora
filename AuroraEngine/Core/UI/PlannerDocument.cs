@@ -1,4 +1,5 @@
 using ArctisAurora.Core.Editing;
+using ArctisAurora.Core.Security;
 using ArctisAurora.Core.Users;
 using System.Xml.Linq;
 
@@ -23,6 +24,9 @@ namespace ArctisAurora.Core.UI
         public readonly UndoStack undo = new UndoStack();
         public bool unsaved;
 
+        // the key the file is encrypted under; null for a plain file
+        public PasswordKey? encryption;
+
         // open views of this copy, counted by PlannerBook
         internal int views;
 
@@ -33,7 +37,7 @@ namespace ArctisAurora.Core.UI
 
         public static bool IsPlanner(string path) => path.EndsWith(extension, StringComparison.OrdinalIgnoreCase);
 
-        public static PlannerDocument Load(string path) => PlannerXml.Load(path);
+        public static PlannerDocument Load(string path, PasswordKey? key = null) => PlannerXml.Load(path, key);
 
         public void Save(string path) => PlannerXml.Save(this, path);
 
@@ -171,11 +175,11 @@ namespace ArctisAurora.Core.UI
         private static readonly Dictionary<string, PlannerDocument> open =
             new Dictionary<string, PlannerDocument>(StringComparer.OrdinalIgnoreCase);
 
-        public static PlannerDocument Open(string path)
+        public static PlannerDocument Open(string path, PasswordKey? key = null)
         {
             if (!open.TryGetValue(path, out PlannerDocument? document))
             {
-                document = PlannerDocument.Load(path);
+                document = PlannerDocument.Load(path, key);
                 open[path] = document;
             }
 
@@ -187,6 +191,7 @@ namespace ArctisAurora.Core.UI
         {
             if (--document.views > 0) return;
             if (open.TryGetValue(path, out PlannerDocument? held) && held == document) open.Remove(path);
+            if (document.encryption is PasswordKey key && !FileKeys.IsRemembered(key)) key.Dispose();
         }
 
         public static void Renamed(string from, string to)

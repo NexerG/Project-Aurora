@@ -1,4 +1,5 @@
-﻿using ArctisAurora.Core.Filing.Serialization;
+﻿using ArctisAurora.Core.Filing;
+using ArctisAurora.Core.Filing.Serialization;
 using ArctisAurora.Core.Registry;
 using ArctisAurora.EngineWork.Registry;
 using ArctisAurora.EngineWork.Rendering;
@@ -62,7 +63,7 @@ namespace ArctisAurora.Core.Registry.Assets
 
             try
             {
-                Image<Rgba32> source = Image.Load<Rgba32>(full);
+                Image<Rgba32> source = Image.Load<Rgba32>(VaultFiles.ReadBytes(full));
                 TextureAsset texture = new TextureAsset { _opaqueRows = OpaqueRowsOf(source) };
                 texture.LoadImage(source, Format.R8G8B8A8Unorm, true);
                 _byFile.Add(full, texture);

@@ -406,6 +406,16 @@ namespace ArctisAurora.Core.UI
                         marks.Add((NoteSegmentKind.Entry, blocks[next].insert, blocks[next..(next + count)], at));
                         next += count;
                         break;
+                    case "Sealed":
+                        if (next >= blocks.Length) return null;
+                        int end = next + 1;
+                        if (blocks[next].seal is NoteSeal seal)
+                            while (end < blocks.Length && blocks[end].seal == seal) end++;
+                        else if (blocks[next] is not NoteSealed) return null;
+                        marks.Add((NoteSegmentKind.Entry, null, blocks[next..end], at));
+                        next = end;
+                        reader.Skip();
+                        break;
                     default:
                         return null;
                 }

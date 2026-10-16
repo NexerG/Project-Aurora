@@ -1,3 +1,4 @@
+using ArctisAurora.Core.Filing;
 using System.Text;
 
 namespace ArctisAurora.Core.UI
@@ -109,7 +110,7 @@ namespace ArctisAurora.Core.UI
         // A CSV file as one page of one layer, named after the file; cells hold the text as read.
         public static SheetDocument Load(string path)
         {
-            byte[] bytes = File.ReadAllBytes(path);
+            byte[] bytes = VaultFiles.ReadBytes(path);
             bool bom = bytes.Length >= 3 && bytes[0] == 0xEF && bytes[1] == 0xBB && bytes[2] == 0xBF;
             string text = Encoding.UTF8.GetString(bytes, bom ? 3 : 0, bytes.Length - (bom ? 3 : 0));
             char delimiter = Delimiter(text);
@@ -139,7 +140,7 @@ namespace ArctisAurora.Core.UI
                     line[c] = page.Shown(r, c) ?? string.Empty;
                 lines.Add(line);
             }
-            File.WriteAllText(path, Write(lines, document.csvDelimiter), new UTF8Encoding(document.csvBom));
+            VaultFiles.WriteText(path, Write(lines, document.csvDelimiter), new UTF8Encoding(document.csvBom));
         }
 
         // The page's used range as the values it shows, numbers unformatted; UTF-8 with a BOM, comma-separated.

@@ -64,15 +64,47 @@ namespace ArctisAurora.Core.UI
 
         public bool isEditing { get; private set; }
 
+        // a masked field's string, shown as one mask character per character
+        private bool _masked;
+        private string secret = string.Empty;
+        private const char maskChar = '*';
+
         [A_XSDElementProperty("Text", "UI", "The string being edited.")]
         public string text
         {
-            get => line.text;
+            get => content;
             set
             {
-                line.text = value ?? string.Empty;
-                committed = line.text;
-                anchor = cursor = line.text.Length;
+                content = value ?? string.Empty;
+                committed = content;
+                anchor = cursor = content.Length;
+            }
+        }
+
+        [A_XSDElementProperty("Masked", "UI", "Shows a mask character in place of each character and refuses copy.")]
+        public bool masked
+        {
+            get => _masked;
+            set
+            {
+                string current = content;
+                _masked = value;
+                content = current;
+            }
+        }
+
+        private string content
+        {
+            get => _masked ? secret : line.text;
+            set
+            {
+                if (!_masked)
+                {
+                    line.text = value;
+                    return;
+                }
+                secret = value;
+                line.text = new string(maskChar, value.Length);
             }
         }
 
@@ -148,7 +180,7 @@ namespace ArctisAurora.Core.UI
 
             var before = State();
             DeleteSelection();
-            line.text = line.text[..cursor] + c + line.text[cursor..];
+            content = content[..cursor] + c + content[cursor..];
             cursor++;
             anchor = cursor;
             Record(before);
@@ -161,7 +193,7 @@ namespace ArctisAurora.Core.UI
             if (!DeleteSelection() && cursor > 0)
             {
                 int from = word ? TextInputActions.WordEdge(line.text, cursor, -1) : cursor - 1;
-                line.text = line.text[..from] + line.text[cursor..];
+                content = content[..from] + content[cursor..];
                 cursor = from;
             }
             anchor = cursor;
@@ -175,7 +207,7 @@ namespace ArctisAurora.Core.UI
             if (!DeleteSelection() && cursor < line.text.Length)
             {
                 int to = word ? TextInputActions.WordEdge(line.text, cursor, 1) : cursor + 1;
-                line.text = line.text[..cursor] + line.text[to..];
+                content = content[..cursor] + content[to..];
             }
 
             anchor = cursor;
@@ -208,7 +240,7 @@ namespace ArctisAurora.Core.UI
             isEditing = false;
             caret.Blur();
             history.Clear();
-            committed = line.text;
+            committed = content;
             onCommit?.Invoke(committed);
         }
 
@@ -218,7 +250,7 @@ namespace ArctisAurora.Core.UI
             isEditing = false;
             caret.Blur();
             history.Clear();
-            line.text = committed;
+            content = committed;
             anchor = cursor = committed.Length;
             onCancel?.Invoke();
             InvalidateLayout();
@@ -228,38 +260,38 @@ namespace ArctisAurora.Core.UI
 
         public void Redo() => history.Redo();
 
-        private (string text, int anchor, int cursor) State() => (line.text, anchor, cursor);
+        private (string text, int anchor, int cursor) State() => (content, anchor, cursor);
 
         private void Restore((string text, int anchor, int cursor) state)
         {
-            line.text = state.text;
+            content = state.text;
             anchor = state.anchor;
             cursor = state.cursor;
             InvalidateLayout();
-            onEdited?.Invoke(line.text);
+            onEdited?.Invoke(content);
         }
 
         // One step per change; a key that changed nothing records nothing.
         private void Record((string text, int anchor, int cursor) before)
         {
-            if (before.text == line.text) return;
+            if (before.text == content) return;
 
             using (history.Begin("Edit"))
                 history.Push(new FieldEdit(this, before, State()));
-            onEdited?.Invoke(line.text);
+            onEdited?.Invoke(content);
         }
 
         public bool Copy()
         {
             if (!isEditing) return false;
-            if (anchor != cursor) ClipboardText.Set(Selected());
+            if (anchor != cursor && !_masked) ClipboardText.Set(Selected());
             return true;
         }
 
         public bool Cut()
         {
             if (!isEditing) return false;
-            if (anchor == cursor) return true;
+            if (anchor == cursor || _masked) return true;
 
             var before = State();
             ClipboardText.Set(Selected());
@@ -281,7 +313,7 @@ namespace ArctisAurora.Core.UI
 
             var before = State();
             DeleteSelection();
-            line.text = line.text[..cursor] + flat + line.text[cursor..];
+            content = content[..cursor] + flat + content[cursor..];
             cursor += flat.Length;
             anchor = cursor;
             Record(before);
@@ -291,7 +323,7 @@ namespace ArctisAurora.Core.UI
 
         public bool PasteImage(Image<Rgba32> image) => false;
 
-        private string Selected() => line.text[Math.Min(anchor, cursor)..Math.Max(anchor, cursor)];
+        private string Selected() => content[Math.Min(anchor, cursor)..Math.Max(anchor, cursor)];
 
         private bool DeleteSelection()
         {
@@ -299,7 +331,7 @@ namespace ArctisAurora.Core.UI
             int to = Math.Max(anchor, cursor);
             if (from == to) return false;
 
-            line.text = line.text[..from] + line.text[to..];
+            content = content[..from] + content[to..];
             cursor = anchor = from;
             return true;
         }

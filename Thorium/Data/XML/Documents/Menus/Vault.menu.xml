@@ -6,4 +6,10 @@
 		<ContextButton Text="Unfixed" Action="Sheets.New"/>
 	</ContextSubmenu>
 	<ContextButton Text="New planner" Action="Planners.New"/>
+	<ContextLine/>
+	<ContextButton Text="Lock vault..." Action="Vault.Lock"/>
+	<ContextButton Text="Unlock vault..." Action="Vault.Unlock"/>
+	<ContextButton Text="Change vault password..." Action="Vault.ChangePassword"/>
+	<ContextButton Text="Use Windows Hello for this vault..." Action="Vault.EnableHello"/>
+	<ContextButton Text="Remove vault lock..." Action="Vault.RemoveLock"/>
 </ContextMenu>

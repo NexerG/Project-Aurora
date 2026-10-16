@@ -31,6 +31,7 @@ namespace ArctisAurora.Core.UI
         public string? markLeft;
         public string? markRight;
         public PageInsert? insert;
+        public NoteSeal? seal;
         public string? language;
         public bool codeWrap;
         public ListKind listKind;
@@ -337,6 +338,27 @@ namespace ArctisAurora.Core.UI
         }
 
         private static IEnumerable<string> Keys(string? block) => Frontmatter.Entries(block).Where(e => e.editable).Select(e => e.key);
+    }
+
+    // Entries put into a sealed run or taken out of one.
+    public sealed class SealEdit : IEditRecord
+    {
+        private readonly RichTextDocument document;
+        private readonly int first;
+        private readonly NoteSeal?[] before;
+        private readonly NoteSeal?[] after;
+
+        public SealEdit(RichTextDocument document, int first, NoteSeal?[] before, NoteSeal?[] after)
+        {
+            this.document = document;
+            this.first = first;
+            this.before = before;
+            this.after = after;
+        }
+
+        public void Undo() => document.SetSeals(first, before);
+
+        public void Redo() => document.SetSeals(first, after);
     }
 
     // Note-level entries swapped with the header, as a reload from disk does.

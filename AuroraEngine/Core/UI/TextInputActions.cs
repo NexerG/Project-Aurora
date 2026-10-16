@@ -363,6 +363,9 @@ namespace ArctisAurora.Core.UI
         [A_XSDActionDependency("Text.Save", "Input", "Writes the focused note back to the file it was loaded from")]
         public static void Save() => Editor()?.Save();
 
+        [A_XSDActionDependency("Notes.EncryptBlocks", "Input", "Asks for a password and encrypts the paragraphs and tables the selection touches")]
+        public static void EncryptBlocks() => Editor()?.EncryptBlocks();
+
         [A_XSDActionDependency("Tex.ExportPdf", "Input", "Writes the focused LaTeX file's preview as a PDF beside it")]
         public static void ExportPdf()
         {

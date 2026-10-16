@@ -1,3 +1,5 @@
+using ArctisAurora.Core.Filing;
+using ArctisAurora.Core.Security;
 using System.Globalization;
 using System.Xml.Linq;
 
@@ -6,15 +8,19 @@ namespace ArctisAurora.Core.UI
     // <Sheet Name Fixed><Page Name Rows Columns><Column At Width/><Row At Height/><Format At Bold Fill Number/><Layer Name Visible><Cell At>text</Cell></Layer></Page></Sheet>
     public static class SheetXml
     {
-        public static SheetDocument Load(string path) =>
-            Parse(XDocument.Load(path, LoadOptions.PreserveWhitespace).Root ?? throw new Exception($"Sheet '{path}' is empty."));
+        public static SheetDocument Load(string path, PasswordKey? key = null)
+        {
+            SheetDocument document = Parse(EncryptedFile.LoadXml(path, LoadOptions.PreserveWhitespace, ref key).Root ?? throw new Exception($"Sheet '{path}' is empty."));
+            document.encryption = key;
+            return document;
+        }
 
         public static void Save(SheetDocument document, string path)
         {
             string? dir = Path.GetDirectoryName(path);
             if (!string.IsNullOrEmpty(dir)) Directory.CreateDirectory(dir);
 
-            new XDocument(new XDeclaration("1.0", "utf-8", null), ToXml(document)).Save(path);
+            VaultFiles.SaveXml(new XDocument(new XDeclaration("1.0", "utf-8", null), ToXml(document)), path, document.encryption, null);
         }
 
         #region ---- read ----

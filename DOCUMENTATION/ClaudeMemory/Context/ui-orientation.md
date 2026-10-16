@@ -171,7 +171,7 @@ Why: [[ui-palettes]].
   selection. `Focus`, `SelectAll`, `WriteChar`, `Backspace(word)`, `Delete(word)`, `MoveCaret`, `Commit`, `Cancel`, `onEdited` (every text change),
   `Undo`/`Redo` (`history` of nested `FieldEdit`, cleared on focus/commit/cancel), `Copy`/`Cut`/`Paste`,
   `OnContextAdded`/`OnContextRemoved`; nested `FieldLine` carries the run and lets presses through to the box.
-  `OnPointerTap`: double click selects the word (`SelectWordAt`, via `TextInputActions.WordEdge`), triple the field.
+  `OnPointerTap`: double click selects the word (`SelectWordAt`, via `TextInputActions.WordEdge`), triple the field. `masked` draws '*' and refuses copy/cut.
   `scrollX` slides the line left so the caret stays inside (`FollowCaret`, reset when not editing).
   XML `Text`, `FontSize`,
   `TextColorHex`, `SelectionColorHex`, `CaretColorHex`. Old `TextBoxControl`, [[note-naming-and-text-field]] (old).
@@ -412,6 +412,10 @@ Why: [[ui-palettes]].
   and rebuilds on the last one's `onDone`. `listed` = rows with depth; `turning` puts an `expander-*`
   effect on the toggled folder's `gutter`. Old `FileTreeControl`.
 - **FileRowControl** `<FileRow>` · ButtonControl — one file or folder row. Old `FileRowControl`.
+- **PasswordWindow** (static `Ask`) — modal password prompt: `Ask(source, title, twice, error, onConfirm, onCancel, alternative)`; masked `TextBoxControl`s, no remember checkbox. See [[encryption]].
+- **RecoveryKeyWindow** (static `Show`) — shows a new vault recovery key once. See [[encryption]].
+- **LockedFileControl** · IFileEditor — placeholder tab for a password-encrypted file: masked field, "Remember password for this session" checkbox, Unlock. `UnlockPrompts.Ask` queues prompts for cross-file rewrites.
+- **SealedControl** — the `[ENCRYPTED]` button standing in for a locked `NoteSealed` node in `DocumentControl`; click unlocks through `DocumentEditorControl.UnlockSeal`.
 
 ## Context menus
 

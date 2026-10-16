@@ -1,3 +1,5 @@
+using ArctisAurora.Core.Security;
+
 namespace ArctisAurora.Core.UI
 {
     // Every sheet the vault has loaded, one copy per file, and the formula graph across them.
@@ -16,13 +18,17 @@ namespace ArctisAurora.Core.UI
         private static readonly Dictionary<string, SheetDocument> documents = new Dictionary<string, SheetDocument>(StringComparer.OrdinalIgnoreCase);
         private static readonly Dictionary<SheetPage, SheetDocument> owners = new Dictionary<SheetPage, SheetDocument>();
 
+        // encrypted files found locked, with the length and write time they had then
+        private static readonly Dictionary<string, (long length, DateTime written)> lockedSeen = new Dictionary<string, (long, DateTime)>(StringComparer.OrdinalIgnoreCase);
+
         // The loaded copy of a file, loading it on first use.
-        public static SheetDocument Get(string path)
+        public static SheetDocument Get(string path, PasswordKey? key = null)
         {
             path = Path.GetFullPath(path);
             if (documents.TryGetValue(path, out SheetDocument? document)) return document;
 
-            document = SheetDocument.Load(path);
+            document = SheetDocument.Load(path, key);
+            lockedSeen.Remove(path);
             documents[path] = document;
             Register(document);
             return document;
@@ -42,7 +48,47 @@ namespace ArctisAurora.Core.UI
         public static SheetDocument? Resolve(string file)
         {
             string? path = findSheet?.Invoke(file);
-            return path != null && File.Exists(path) ? Get(path) : null;
+            if (path == null || !File.Exists(path)) return null;
+            path = Path.GetFullPath(path);
+            if (!documents.ContainsKey(path) && KnownLocked(path)) return null;
+            try
+            {
+                return Get(path);
+            }
+            catch (LockedFileException)
+            {
+                SeenLocked(path);
+                return null;
+            }
+        }
+
+        // A reference's file that is encrypted and not loaded.
+        public static bool IsLocked(string file)
+        {
+            string? path = findSheet?.Invoke(file);
+            if (path == null) return false;
+            path = Path.GetFullPath(path);
+            if (documents.ContainsKey(path)) return false;
+            if (KnownLocked(path)) return true;
+            if (!EncryptedFile.IsEncrypted(path)) return false;
+            SeenLocked(path);
+            return true;
+        }
+
+        // Whether a path is still the locked file it was last seen as: a stat, never an open. A key to hand drops the entry.
+        private static bool KnownLocked(string path)
+        {
+            if (!lockedSeen.TryGetValue(path, out (long length, DateTime written) seen)) return false;
+            FileInfo info = new FileInfo(path);
+            if (!FileKeys.Has(path) && info.Exists && info.Length == seen.length && info.LastWriteTimeUtc == seen.written) return true;
+            lockedSeen.Remove(path);
+            return false;
+        }
+
+        private static void SeenLocked(string path)
+        {
+            FileInfo info = new FileInfo(path);
+            if (info.Exists) lockedSeen[path] = (info.Length, info.LastWriteTimeUtc);
         }
 
         // Cells written by an edit, an undo or a redo.
@@ -93,8 +139,7 @@ namespace ArctisAurora.Core.UI
                 {
                     string path = Path.GetFullPath(file);
                     if (documents.ContainsKey(path) || !File.Exists(path)) continue;
-                    SheetDocument other = SheetDocument.Load(path);
-                    if (RewritePages(other, RenameIn(other))) other.Save(path);
+                    RewriteOnDisk(path, other => RewritePages(other, RenameIn(other)));
                 }
                 SheetLinks.PageRenamed(home, oldName, newName, vaultNotes?.Invoke() ?? Enumerable.Empty<string>());
             }
@@ -130,8 +175,7 @@ namespace ArctisAurora.Core.UI
                 {
                     string path = Path.GetFullPath(file);
                     if (documents.ContainsKey(path) || !File.Exists(path)) continue;
-                    SheetDocument other = SheetDocument.Load(path);
-                    if (RewriteFormulas(other, ShiftIn(other))) other.Save(path);
+                    RewriteOnDisk(path, other => RewriteFormulas(other, ShiftIn(other)));
                 }
                 SheetLinks.Shifted(home, shifted.name, column, at, count, vaultNotes?.Invoke() ?? Enumerable.Empty<string>());
             }
@@ -154,6 +198,7 @@ namespace ArctisAurora.Core.UI
         public static void Deleted(string path)
         {
             path = Path.GetFullPath(path);
+            lockedSeen.Remove(path);
             if (documents.Remove(path, out SheetDocument? document)) Unregister(document);
             calc.RecalcAll();
             RaiseAll();
@@ -174,6 +219,7 @@ namespace ArctisAurora.Core.UI
             string oldName = BaseName(oldPath);
             string newName = BaseName(newPath);
             bool pageFollows = SheetCsv.IsCsv(oldPath) && SheetCsv.IsCsv(newPath);
+            lockedSeen.Remove(oldPath);
 
             if (documents.Remove(oldPath, out SheetDocument? moved))
             {
@@ -199,8 +245,7 @@ namespace ArctisAurora.Core.UI
             {
                 string path = Path.GetFullPath(file);
                 if (documents.ContainsKey(path) || !File.Exists(path)) continue;
-                SheetDocument document = SheetDocument.Load(path);
-                if (RewriteFormulas(document, RenameIn(document))) document.Save(path);
+                RewriteOnDisk(path, document => RewriteFormulas(document, RenameIn(document)));
             }
 
             calc.RecalcAll();
@@ -212,7 +257,35 @@ namespace ArctisAurora.Core.UI
         {
             documents.Clear();
             owners.Clear();
+            lockedSeen.Clear();
             calc.Clear();
+        }
+
+        // A sheet on disk loaded, rewritten and saved; an encrypted one once its password is given, or the loaded copy if it opened meanwhile.
+        private static void RewriteOnDisk(string path, Func<SheetDocument, bool> rewrite)
+        {
+            SheetDocument document;
+            try
+            {
+                document = SheetDocument.Load(path);
+            }
+            catch (LockedFileException)
+            {
+                UnlockPrompts.Ask(path, "Update references in", key =>
+                {
+                    if (documents.TryGetValue(path, out SheetDocument? loaded))
+                    {
+                        if (!rewrite(loaded)) return;
+                        if (TabViewControl.FindOpenDocument(path, out _) == null) loaded.Save(path);
+                        changed?.Invoke(loaded);
+                        return;
+                    }
+                    SheetDocument unlocked = SheetDocument.Load(path, key);
+                    if (rewrite(unlocked)) unlocked.Save(path);
+                });
+                return;
+            }
+            if (rewrite(document)) document.Save(path);
         }
 
         private static bool RewriteFormulas(SheetDocument document, Func<string, string> rewrite) =>

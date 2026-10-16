@@ -1,3 +1,5 @@
+using ArctisAurora.Core.Filing;
+using ArctisAurora.Core.Security;
 using ArctisAurora.Core.Users;
 using System.Globalization;
 using System.Xml.Linq;
@@ -10,15 +12,19 @@ namespace ArctisAurora.Core.UI
         private const string dayFormat = "yyyy-MM-dd";
         private const string timeFormat = "yyyy-MM-ddTHH:mm";
 
-        public static PlannerDocument Load(string path) =>
-            Parse(XDocument.Load(path, LoadOptions.PreserveWhitespace).Root ?? throw new Exception($"Planner '{path}' is empty."));
+        public static PlannerDocument Load(string path, PasswordKey? key = null)
+        {
+            PlannerDocument document = Parse(EncryptedFile.LoadXml(path, LoadOptions.PreserveWhitespace, ref key).Root ?? throw new Exception($"Planner '{path}' is empty."));
+            document.encryption = key;
+            return document;
+        }
 
         public static void Save(PlannerDocument document, string path)
         {
             string? dir = Path.GetDirectoryName(path);
             if (!string.IsNullOrEmpty(dir)) Directory.CreateDirectory(dir);
 
-            new XDocument(new XDeclaration("1.0", "utf-8", null), ToXml(document)).Save(path);
+            VaultFiles.SaveXml(new XDocument(new XDeclaration("1.0", "utf-8", null), ToXml(document)), path, document.encryption, null);
         }
 
         #region ---- read ----

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<TestSuite xmlns="http://arctisaurora/AuroraTestTypes"
+		  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+		  xsi:schemaLocation="http://arctisaurora/AuroraTestTypes ../../Schemas/TestTypeSchema.xsd" >
+	<Test Action="Crypto.RoundTrip"/>
+	<Test Action="Crypto.Rejects"/>
+	<Test Action="Crypto.Argon2idVector"/>
+	<Test Action="Crypto.PasswordKey"/>
+	<Test Action="Crypto.EncryptedFiles"/>
+	<Test Action="Crypto.SealedBlocks"/>
+</TestSuite>

@@ -1,3 +1,5 @@
+using ArctisAurora.Core.Filing;
+using ArctisAurora.Core.Security;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Xml.Linq;
@@ -74,7 +76,7 @@ namespace ArctisAurora.Core.UI
             if (!Parse(reference, out string file, out string pageName, out int top, out int left, out int bottom, out int right)
                 || PageOf(file, pageName) is not SheetPage page)
             {
-                Inline(box, SheetFormula.reference, true, run);
+                Inline(box, Missing(file), true, run);
                 return box;
             }
 
@@ -148,6 +150,9 @@ namespace ArctisAurora.Core.UI
             return advance;
         }
 
+        private static string Missing(string? file) =>
+            !string.IsNullOrEmpty(file) && SheetBook.IsLocked(file) ? SheetFormula.locked : SheetFormula.reference;
+
         private static SheetPage? PageOf(string file, string name)
         {
             SheetDocument? document = SheetBook.Resolve(file);
@@ -162,7 +167,7 @@ namespace ArctisAurora.Core.UI
         {
             if (!Parse(reference, out string file, out string pageName, out int top, out int left, out int bottom, out int right)
                 || PageOf(file, pageName) is not SheetPage page)
-                return SheetFormula.reference;
+                return Missing(file);
 
             StringBuilder text = new StringBuilder();
             for (int r = top; r <= bottom; r++)
@@ -188,7 +193,7 @@ namespace ArctisAurora.Core.UI
         {
             if (!Parse(reference, out string file, out string pageName, out int top, out int left, out int bottom, out int right)
                 || PageOf(file, pageName) is not SheetPage page)
-                return @"\text{" + SheetFormula.reference + "}";
+                return @"\text{" + Missing(file) + "}";
             if (top != bottom || left != right) return @"\text{" + SheetFormula.value + "}";
 
             SheetValue value = SheetBook.calc.Value(page, top, left);
@@ -285,13 +290,29 @@ namespace ArctisAurora.Core.UI
         private static void RewriteFile(string path, Func<string, string?> rename)
         {
             if (!File.Exists(path)) return;
+            if (EncryptedFile.IsEncrypted(path))
+            {
+                if (TabViewControl.FindOpenDocument(path, out _) is not TabItemControl open || TabViewControl.EditorOf(open) == null)
+                    UnlockPrompts.Ask(path, "Update sheet links in", key =>
+                    {
+                        if (EncryptedFile.TryRead(path, key, out byte[] plain) && Rewritten(plain, false, rename) is byte[] changed)
+                            EncryptedFile.Write(path, key, changed);
+                    });
+                return;
+            }
 
-            byte[] bytes = File.ReadAllBytes(path);
+            byte[] bytes = VaultFiles.ReadBytes(path);
+            if (Rewritten(bytes, path.EndsWith(".md", StringComparison.OrdinalIgnoreCase), rename) is not byte[] rewrittenBytes) return;
+            VaultFiles.WriteBytes(path, rewrittenBytes);
+        }
+
+        // The file's bytes with its links renamed, BOM kept; null when nothing changed.
+        private static byte[]? Rewritten(byte[] bytes, bool markdown, Func<string, string?> rename)
+        {
             bool bom = bytes.Length >= 3 && bytes[0] == 0xEF && bytes[1] == 0xBB && bytes[2] == 0xBF;
             int skip = bom ? 3 : 0;
             string text = Encoding.UTF8.GetString(bytes, skip, bytes.Length - skip);
 
-            bool markdown = path.EndsWith(".md", StringComparison.OrdinalIgnoreCase);
             bool any = false;
             string rewritten = (markdown ? mdLink : xmlLink).Replace(text, match =>
             {
@@ -322,12 +343,10 @@ namespace ArctisAurora.Core.UI
                     any = true;
                     return match.Groups[1].Value + Escaped(renamed) + match.Groups[3].Value;
                 });
-            if (!any) return;
+            if (!any) return null;
 
             byte[] body = Encoding.UTF8.GetBytes(rewritten);
-            using FileStream stream = File.Create(path);
-            if (bom) stream.Write(bytes, 0, 3);
-            stream.Write(body);
+            return bom ? [.. bytes.AsSpan(0, 3), .. body] : body;
         }
 
         // An attribute value as XML writes it, line breaks included.

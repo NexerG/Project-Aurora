@@ -6,5 +6,8 @@
 	<ContextButton Text="Rename note" Action="Notes.Rename"/>
 	<ContextButton Text="Duplicate note" Action="Notes.Duplicate"/>
 	<ContextLine/>
+	<ContextButton Text="Encrypt..." Action="Notes.Encrypt"/>
+	<ContextButton Text="Remove encryption..." Action="Notes.Decrypt"/>
+	<ContextLine/>
 	<ContextButton Text="Delete note" Action="Notes.Delete"/>
 </ContextMenu>

@@ -1,5 +1,7 @@
 using ArctisAurora.Core.Filing;
+using ArctisAurora.Core.Security;
 using System.Numerics;
+using System.Xml.Linq;
 
 namespace ArctisAurora.Core.UI
 {
@@ -13,8 +15,27 @@ namespace ArctisAurora.Core.UI
         public PageBreak pageBreak;
         public PageInsert? insert;
 
+        // the password-sealed run the entry is written into; null when it is plain
+        public NoteSeal? seal;
+
         // edited in place since its segment was last written
         internal bool dirty;
+    }
+
+    // The key of a sealed run of entries while it is unlocked.
+    public sealed class NoteSeal
+    {
+        public readonly PasswordKey key;
+
+        public NoteSeal(PasswordKey key) => this.key = key;
+    }
+
+    // A sealed run still locked: its <Sealed> element as read, written back unchanged.
+    public sealed class NoteSealed : NoteNode
+    {
+        public readonly XElement element;
+
+        public NoteSealed(XElement element) => this.element = element;
     }
 
     // One block of a note as data: its string, spans and block properties.
@@ -101,6 +122,7 @@ namespace ArctisAurora.Core.UI
                 firstIndent = firstIndent,
                 spaceBefore = spaceBefore,
                 insert = insert,
+                seal = seal,
                 language = language,
                 codeWrap = codeWrap,
                 listKind = listKind,
@@ -142,6 +164,7 @@ namespace ArctisAurora.Core.UI
                 markLeft = markLeft,
                 markRight = markRight,
                 insert = insert,
+                seal = seal,
                 language = language,
                 codeWrap = codeWrap,
                 listKind = listKind,
@@ -193,6 +216,7 @@ namespace ArctisAurora.Core.UI
             markLeft = kind.markLeft;
             markRight = kind.markRight;
             insert = kind.insert;
+            seal = kind.seal;
             language = kind.language;
             codeWrap = kind.codeWrap;
             listKind = kind.listKind;

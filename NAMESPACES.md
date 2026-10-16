@@ -53,6 +53,7 @@ ArctisAurora.Core.Filing -> AuroraEngine/Core/Filing/FolderPicker.cs
 ArctisAurora.Core.Filing -> AuroraEngine/Core/Filing/Glyph.cs
 ArctisAurora.Core.Filing -> AuroraEngine/Core/Filing/IconSet.cs
 ArctisAurora.Core.Filing -> AuroraEngine/Core/Filing/MathConstants.cs
+ArctisAurora.Core.Filing -> AuroraEngine/Core/Filing/VaultFiles.cs
 ArctisAurora.Core.Filing.Serialization -> AuroraEngine/Core/Filing/Serialization/AssetImporter.cs
 ArctisAurora.Core.Filing.Serialization -> AuroraEngine/Core/Filing/Serialization/ImportManifest.cs
 ArctisAurora.Core.Filing.Serialization -> AuroraEngine/Core/Filing/Serialization/MeshImporter.cs
@@ -81,6 +82,13 @@ ArctisAurora.Core.Registry.Assets -> AuroraEngine/Core/Registry/Assets/TextureAs
 ArctisAurora.Core.Registry.Assets -> AuroraEngine/Core/Registry/Assets/UIDocumentAsset.cs
 ArctisAurora.Core.Rendering.Helpers -> AuroraEngine/Core/Rendering/Helpers/QueueAllocator.cs
 ArctisAurora.Core.Rendering.Modules -> AuroraEngine/Core/Rendering/Modules/CompositorModule.cs
+ArctisAurora.Core.Security -> AuroraEngine/Core/Security/Cipher.cs
+ArctisAurora.Core.Security -> AuroraEngine/Core/Security/EncryptedFile.cs
+ArctisAurora.Core.Security -> AuroraEngine/Core/Security/FileKeys.cs
+ArctisAurora.Core.Security -> AuroraEngine/Core/Security/LockedFileException.cs
+ArctisAurora.Core.Security -> AuroraEngine/Core/Security/PasswordKey.cs
+ArctisAurora.Core.Security -> AuroraEngine/Core/Security/VaultLock.cs
+ArctisAurora.Core.Security -> AuroraEngine/Core/Security/WindowsHello.cs
 ArctisAurora.Core.Testing -> AuroraEngine/Core/Testing/ScreenReadback.cs
 ArctisAurora.Core.Testing -> AuroraEngine/Core/Testing/TestContext.cs
 ArctisAurora.Core.Testing -> AuroraEngine/Core/Testing/TestResultsReader.cs
@@ -152,6 +160,7 @@ ArctisAurora.Core.UI -> AuroraEngine/Core/UI/InspectorControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/KeyCaptureControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/LabelControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/LayoutEngine.cs
+ArctisAurora.Core.UI -> AuroraEngine/Core/UI/LockedFileControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/MathLayout.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/MathParser.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/MathSymbols.cs
@@ -163,10 +172,12 @@ ArctisAurora.Core.UI -> AuroraEngine/Core/UI/NoteFormats.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/NoteModel.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/NoteNameWindow.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/NotePropertiesControl.cs
+ArctisAurora.Core.UI -> AuroraEngine/Core/UI/NoteSeals.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/NoteSegments.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/NoteToolsControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/Palettes.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/PanelControl.cs
+ArctisAurora.Core.UI -> AuroraEngine/Core/UI/PasswordWindow.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/PdfExport.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/PlannerActions.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/PlannerAttachments.cs
@@ -178,11 +189,13 @@ ArctisAurora.Core.UI -> AuroraEngine/Core/UI/PlannerEdits.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/PlannerTicketPopup.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/PlannerXml.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/PointerEvent.cs
+ArctisAurora.Core.UI -> AuroraEngine/Core/UI/RecoveryKeyWindow.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/RegexTextControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/RibbonControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/RichTextDocument.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/ScrollableControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/ScrollThumbControl.cs
+ArctisAurora.Core.UI -> AuroraEngine/Core/UI/SealedControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/SessionLayout.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/SettingsWindow.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/SheetActions.cs
@@ -224,6 +237,7 @@ ArctisAurora.Core.UI -> AuroraEngine/Core/UI/UIEngine.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/UIScaling.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/UISettings.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/UITreeDump.cs
+ArctisAurora.Core.UI -> AuroraEngine/Core/UI/UnlockPrompts.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/ViewActions.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/WindowActions.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/WindowFrameControl.cs
@@ -286,6 +300,7 @@ ArctisAurora.Tests -> AuroraEngine/Tests/AtlasPerfTests.cs
 ArctisAurora.Tests -> AuroraEngine/Tests/BackgroundTests.cs
 ArctisAurora.Tests -> AuroraEngine/Tests/CommandTests.cs
 ArctisAurora.Tests -> AuroraEngine/Tests/ConsoleTests.cs
+ArctisAurora.Tests -> AuroraEngine/Tests/CryptoTests.cs
 ArctisAurora.Tests -> AuroraEngine/Tests/FontTests.cs
 ArctisAurora.Tests -> AuroraEngine/Tests/InputTests.cs
 ArctisAurora.Tests -> AuroraEngine/Tests/LayoutTests.cs
@@ -296,6 +311,7 @@ ArctisAurora.Tests -> AuroraEngine/Tests/PlannerPerfTests.cs
 ArctisAurora.Tests -> AuroraEngine/Tests/SvgTests.cs
 ArctisAurora.Tests -> AuroraEngine/Tests/SyntaxTests.cs
 ArctisAurora.Tests -> AuroraEngine/Tests/TexTests.cs
+ArctisAurora.Tests -> AuroraEngine/Tests/VaultTests.cs
 ArctisAurora.Tests -> AuroraEngine/Tests/VisualTests.cs
 AuroraEditor -> AuroraEditor/Editor.cs
 AuroraEditor.EditorProgram.Components -> AuroraEditor/EditorProgram/Components/AsmTestComp.cs
@@ -317,6 +333,7 @@ Thorium.Editor -> Thorium/Editor/Decorations.cs
 Thorium.Editor -> Thorium/Editor/StatusBarActions.cs
 Thorium.Editor -> Thorium/Editor/VaultsWindow.cs
 Thorium.Editor.CustomControls -> Thorium/Editor/CustomControls/VaultBrowserControl.cs
+Thorium.Tests -> Thorium/Tests/EncryptionTests.cs
 Thorium.Tests -> Thorium/Tests/LatinModernTests.cs
 Thorium.Tests -> Thorium/Tests/NoteModelTests.cs
 Thorium.Tests -> Thorium/Tests/PaletteTests.cs

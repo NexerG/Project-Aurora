@@ -298,6 +298,10 @@ record one `BlockStateEdit` if anything changed
 
 Tab and Shift+Tab are `Text.Indent` and `Text.Outdent` in Thorium's input map.
 
+## Encryption
+
+A note can be encrypted as a whole file with a password, or have runs of blocks sealed under their own password; a locked seal is a single `NoteSealed` node shown as an [ENCRYPTED] button and stored as a `<Sealed>` segment. See [[ENCRYPTION]].
+
 ## Persistence — `DocumentXml`
 Load and save are attribute-driven reflection (the same pattern as [[Vulkan Control]] `ParseXML`), so new blocks / inlines / run styles round-trip automatically once they carry the attributes. NOTE: the binary [[Serializer]] is unrelated — notes are XML, never routed through `Serializer`.
 

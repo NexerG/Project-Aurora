@@ -1,4 +1,5 @@
 ﻿using ArctisAurora.Core.Registry;
+using ArctisAurora.Core.Security;
 using ArctisAurora.Core.UI;
 using ArctisAurora.EngineWork;
 using Thorium.Editor.CustomControls;
@@ -43,7 +44,12 @@ namespace Thorium
 
             Engine.primary.uiDocument = "main";
             Engine.primary.ui.uiRoot = (WindowRoot)Control.ParseXML("main");
-            SessionLayout.Restore();
+            if (VaultLock.HasLock(SessionLayout.scope))
+            {
+                SessionLayout.paused = true;
+                Engine.Post(VaultBrowserControl.UnlockVault);
+            }
+            else SessionLayout.Restore();
 
             engine.Run();
         }

@@ -1,4 +1,5 @@
 using ArctisAurora.Core.Diagnostics;
+using ArctisAurora.Core.Filing;
 using System.Globalization;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -1641,7 +1642,7 @@ namespace ArctisAurora.Core.Tex
                     expander.Error($"I couldn't open database file {name}");
                     continue;
                 }
-                TexBibliography.Parse(File.ReadAllText(path), entries, message => expander.Error($"{message} in {name}"));
+                TexBibliography.Parse(VaultFiles.ReadText(path), entries, message => expander.Error($"{message} in {name}"));
             }
             if (!TexBibliography.styles.Contains(bibStyle))
             {

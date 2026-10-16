@@ -761,6 +761,7 @@
   <xs:attributeGroup name="TextBox.Attributes">
     <xs:attributeGroup ref="EntityRegistry:Control.Attributes" />
     <xs:attribute name="Text" type="xs:string" />
+    <xs:attribute name="Masked" type="xs:boolean" />
     <xs:attribute name="FontSize" type="xs:int" />
     <xs:attribute name="TextColorHex" type="xs:string" />
     <xs:attribute name="SelectionColorHex" type="xs:string" />

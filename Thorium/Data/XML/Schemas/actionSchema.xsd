@@ -10,6 +10,9 @@
     <xs:union memberTypes="actions:Any">
       <xs:simpleType>
         <xs:restriction base="xs:string">
+          <xs:enumeration value="Encryption.LockedTab" />
+          <xs:enumeration value="Encryption.LockedSheets" />
+          <xs:enumeration value="Encryption.SealedView" />
           <xs:enumeration value="LatinModern.Baked" />
           <xs:enumeration value="LatinModern.Draws" />
           <xs:enumeration value="Tex.Preview" />
@@ -233,6 +236,12 @@
           <xs:enumeration value="Commands.ArgumentsConvert" />
           <xs:enumeration value="Commands.WaitResumesOnTime" />
           <xs:enumeration value="Console.ToggleAndAnswer" />
+          <xs:enumeration value="Crypto.RoundTrip" />
+          <xs:enumeration value="Crypto.Rejects" />
+          <xs:enumeration value="Crypto.Argon2idVector" />
+          <xs:enumeration value="Crypto.PasswordKey" />
+          <xs:enumeration value="Crypto.EncryptedFiles" />
+          <xs:enumeration value="Crypto.SealedBlocks" />
           <xs:enumeration value="Fonts.MathFontBaked" />
           <xs:enumeration value="Fonts.CffCharstring" />
           <xs:enumeration value="Input.ClickFiresRelease" />
@@ -388,6 +397,10 @@
           <xs:enumeration value="Tex.Lowering.Float" />
           <xs:enumeration value="Tex.FloatPlacement" />
           <xs:enumeration value="Tex.RunningHeads" />
+          <xs:enumeration value="Vault.LockRoundTrip" />
+          <xs:enumeration value="Vault.WrongPassword" />
+          <xs:enumeration value="Vault.ConvertResumes" />
+          <xs:enumeration value="Vault.HelloSlot" />
           <xs:enumeration value="Visual.PanelAndLabel" />
           <xs:enumeration value="Visual.TabStrip" />
           <xs:enumeration value="Visual.Expander" />
@@ -501,6 +514,7 @@
           <xs:enumeration value="Text.Redo" />
           <xs:enumeration value="Text.Cancel" />
           <xs:enumeration value="Text.Save" />
+          <xs:enumeration value="Notes.EncryptBlocks" />
           <xs:enumeration value="Tex.ExportPdf" />
           <xs:enumeration value="Text.CaretLeft" />
           <xs:enumeration value="Text.CaretRight" />
@@ -544,6 +558,13 @@
           <xs:enumeration value="Notes.Duplicate" />
           <xs:enumeration value="Notes.Delete" />
           <xs:enumeration value="Notes.OpenAsXml" />
+          <xs:enumeration value="Notes.Encrypt" />
+          <xs:enumeration value="Notes.Decrypt" />
+          <xs:enumeration value="Vault.Unlock" />
+          <xs:enumeration value="Vault.EnableHello" />
+          <xs:enumeration value="Vault.Lock" />
+          <xs:enumeration value="Vault.ChangePassword" />
+          <xs:enumeration value="Vault.RemoveLock" />
           <xs:enumeration value="Notes.OpenNormally" />
           <xs:enumeration value="Settings.Open" />
           <xs:enumeration value="Settings.Save" />
