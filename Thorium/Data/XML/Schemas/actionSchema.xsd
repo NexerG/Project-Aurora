@@ -227,6 +227,12 @@
           <xs:enumeration value="Xml.SheetSync" />
           <xs:enumeration value="Xml.PlannerSync" />
           <xs:enumeration value="Xml.Restore" />
+          <xs:enumeration value="Arx.XmlRoundTrip" />
+          <xs:enumeration value="Arx.BlobRoundTrip" />
+          <xs:enumeration value="Arx.MountResolves" />
+          <xs:enumeration value="Arx.TamperedEntryRefused" />
+          <xs:enumeration value="Arx.TamperedTocRefused" />
+          <xs:enumeration value="Arx.WrongKeyRefused" />
           <xs:enumeration value="Perf.AtlasBake" />
           <xs:enumeration value="Background.HideShow" />
           <xs:enumeration value="Background.MenuClamp" />

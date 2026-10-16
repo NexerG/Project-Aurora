@@ -1,4 +1,5 @@
 ﻿using ArctisAurora.Core.Diagnostics;
+using ArctisAurora.Core.Filing.Serialization;
 using ArctisAurora.Core.Registry;
 using System.Diagnostics;
 using System.Reflection;
@@ -53,7 +54,7 @@ namespace ArctisAurora.EngineWork
                 }
             }
 
-            XElement root = XElement.Load(xmlPath);
+            XElement root = DataFiles.LoadXml(xmlPath);
             XNamespace ns = root.GetDefaultNamespace();
             foreach (XElement phaseElem in root.Elements(ns + "Phase"))
             {

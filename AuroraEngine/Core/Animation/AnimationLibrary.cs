@@ -130,7 +130,7 @@ namespace ArctisAurora.Core.Animation
 
             foreach (string file in VirtualFileSystem.EnumerateAll("XML/Documents/Animations", "*.anim.xml"))
             {
-                foreach (XElement element in XElement.Load(file).Elements())
+                foreach (XElement element in DataFiles.LoadXml(file).Elements())
                 {
                     if (element.Name.LocalName == "Clip")
                     {

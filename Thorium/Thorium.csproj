@@ -18,6 +18,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <AssemblyMetadata Include="ArxKey" Value="$(ArxKey)" />
+    <AssemblyMetadata Include="ArxPublicKey" Value="$(ArxPublicKey)" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Folder Include="Editor\CustomControls\" />
   </ItemGroup>
 

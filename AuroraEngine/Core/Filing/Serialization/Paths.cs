@@ -1,3 +1,5 @@
+using ArctisAurora.Core.Diagnostics;
+using ArctisAurora.Core.Filing.Arx;
 using ArctisAurora.EngineWork;
 
 namespace ArctisAurora.Core.Filing.Serialization
@@ -7,6 +9,8 @@ namespace ArctisAurora.Core.Filing.Serialization
         // Mount the virtual file system before any path constant below is resolved.
         // (Static field initializers run in textual order, so this must stay first.)
         private static readonly bool _mounted = Mount();
+
+        public static bool packed { get; private set; }
 
         public static readonly string DATA = GetPath("Data");
         public static readonly string BUILD_UI = GetPath("Data\\XML");
@@ -66,6 +70,29 @@ namespace ArctisAurora.Core.Filing.Serialization
                 {
                     VirtualFileSystem.Mount(new DirectoryMount(engineData));
                 }
+            }
+            else
+            {
+                string[] archives = Directory.GetFiles(AppContext.BaseDirectory, "*.arx");
+                if (archives.Length > 0) packed = MountArchives(archives);
+            }
+            return true;
+        }
+
+        // Mounts the archives beside the exe below the loose Data folder; exits when one fails its checks.
+        private static bool MountArchives(string[] archives)
+        {
+            try
+            {
+                ArxKeys keys = ArxKeys.FromEntryAssembly() ?? throw new InvalidDataException("this build carries no archive keys.");
+                foreach (string file in archives)
+                    VirtualFileSystem.Mount(new ArxMount(ArxArchive.Open(file, keys)));
+            }
+            catch (Exception e)
+            {
+                LogChannel.For("Arx").Fatal($"cannot mount the app's archives: {e.Message}");
+                LogSpool.Flush();
+                Environment.Exit(1);
             }
             return true;
         }

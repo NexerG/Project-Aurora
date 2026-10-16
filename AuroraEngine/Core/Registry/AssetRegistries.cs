@@ -105,7 +105,7 @@ namespace ArctisAurora.EngineWork.Registry
             //parse the XML and create the registries
             string path = Paths.Doc(xmlName);
             AssetRegistries registries = new AssetRegistries();
-            XElement root = XElement.Load(path);
+            XElement root = DataFiles.LoadXml(path);
             XNamespace ns = root.GetDefaultNamespace();
             foreach (var dictElem in root.Elements(ns + "Dictionary"))
             {
@@ -186,7 +186,7 @@ namespace ArctisAurora.EngineWork.Registry
             Dictionary<(string, string), AssetManifestEntry> entries = new Dictionary<(string, string), AssetManifestEntry>();
             foreach (string file in VirtualFileSystem.EnumerateAll("XML/Assets", "*.assets.xml"))
             {
-                XElement root = XElement.Load(file);
+                XElement root = DataFiles.LoadXml(file);
                 XNamespace ns = root.GetDefaultNamespace();
                 foreach (XElement element in root.Elements(ns + "Asset"))
                 {

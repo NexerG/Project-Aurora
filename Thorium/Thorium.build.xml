@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Build xmlns="http://arctisaurora/AuroraBuildTypes"
+	   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	   xsi:schemaLocation="http://arctisaurora/AuroraBuildTypes Data/XML/Schemas/BuildTypeSchema.xsd"
+	   App="Thorium" Project="Thorium.csproj" Output="../Ship/Thorium">
+	<Data Source="Data"/>
+	<Data Source="../AuroraEngine/Data"/>
+	<Shaders Source="Shaders"/>
+	<Loose Include="XML/Documents/UI/**"/>
+</Build>

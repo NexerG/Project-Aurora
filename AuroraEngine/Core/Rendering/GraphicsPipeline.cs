@@ -1,4 +1,5 @@
 ﻿using Silk.NET.Core.Native;
+using ArctisAurora.Core.Filing.Serialization;
 using Silk.NET.Vulkan;
 
 // Legacy renderer, kept as a working reference until the migration. Deprecation warnings inside the
@@ -366,7 +367,7 @@ namespace ArctisAurora.EngineWork.Rendering
 
         private byte[] ReadFile(string FileName)
         {
-            byte[] contents = File.ReadAllBytes(Path.Combine(AppContext.BaseDirectory, FileName));
+            byte[] contents = DataFiles.ReadShader(FileName);
             return contents;
         }
     }

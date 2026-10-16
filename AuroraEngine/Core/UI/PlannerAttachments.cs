@@ -48,7 +48,7 @@ namespace ArctisAurora.Core.UI
         // A later kind of the same name replaces the earlier one.
         private static void LoadFile(string path)
         {
-            foreach (XElement element in XElement.Load(path).Elements())
+            foreach (XElement element in DataFiles.LoadXml(path).Elements())
             {
                 PlannerAttachmentKind kind = new PlannerAttachmentKind
                 {

@@ -159,7 +159,7 @@ namespace ArctisAurora.Core.Filing
         internal static Glyph[] ReadFaceGlyphs(AuroraFont fontData, string path)
         {
             Glyph[] faceGlyphs;
-            using (BinaryReader reader = new BinaryReader(new FileStream(path, FileMode.Open, FileAccess.Read)))
+            using (BinaryReader reader = new BinaryReader(DataFiles.Open(path)))
             {
                 TableEntry maxp = fontData.tableEntries.First(t => t.name == "maxp");
                 reader.BaseStream.Position = maxp.offset + 4;

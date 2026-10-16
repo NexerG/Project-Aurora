@@ -54,7 +54,13 @@ ArctisAurora.Core.Filing -> AuroraEngine/Core/Filing/Glyph.cs
 ArctisAurora.Core.Filing -> AuroraEngine/Core/Filing/IconSet.cs
 ArctisAurora.Core.Filing -> AuroraEngine/Core/Filing/MathConstants.cs
 ArctisAurora.Core.Filing -> AuroraEngine/Core/Filing/VaultFiles.cs
+ArctisAurora.Core.Filing.Arx -> AuroraEngine/Core/Filing/Arx/AppBuilder.cs
+ArctisAurora.Core.Filing.Arx -> AuroraEngine/Core/Filing/Arx/ArxFormat.cs
+ArctisAurora.Core.Filing.Arx -> AuroraEngine/Core/Filing/Arx/ArxKeys.cs
+ArctisAurora.Core.Filing.Arx -> AuroraEngine/Core/Filing/Arx/ArxMount.cs
+ArctisAurora.Core.Filing.Arx -> AuroraEngine/Core/Filing/Arx/ArxXml.cs
 ArctisAurora.Core.Filing.Serialization -> AuroraEngine/Core/Filing/Serialization/AssetImporter.cs
+ArctisAurora.Core.Filing.Serialization -> AuroraEngine/Core/Filing/Serialization/DataFiles.cs
 ArctisAurora.Core.Filing.Serialization -> AuroraEngine/Core/Filing/Serialization/ImportManifest.cs
 ArctisAurora.Core.Filing.Serialization -> AuroraEngine/Core/Filing/Serialization/MeshImporter.cs
 ArctisAurora.Core.Filing.Serialization -> AuroraEngine/Core/Filing/Serialization/Paths.cs
@@ -296,6 +302,7 @@ ArctisAurora.Properties { -> AuroraEngine/Properties/Resources.Designer.cs
 ArctisAurora.Simulators -> AuroraEngine/Simulators/Simulator_DEPRECATED.cs
 ArctisAurora.Simulators.ParticleTypes -> AuroraEngine/Simulators/ParticleTypes/Particle2D.cs
 ArctisAurora.Simulators.Vulkan -> AuroraEngine/Simulators/Vulkan/Simulator3D.cs
+ArctisAurora.Tests -> AuroraEngine/Tests/ArxTests.cs
 ArctisAurora.Tests -> AuroraEngine/Tests/AtlasPerfTests.cs
 ArctisAurora.Tests -> AuroraEngine/Tests/BackgroundTests.cs
 ArctisAurora.Tests -> AuroraEngine/Tests/CommandTests.cs

@@ -1,4 +1,5 @@
 ﻿using ArctisAurora.Core.ECS.EngineEntity;
+using ArctisAurora.Core.Filing.Serialization;
 using ArctisAurora.Core.Rendering.Helpers;
 using ArctisAurora.EngineWork.Rendering.Helpers;
 using Silk.NET.Vulkan;
@@ -352,7 +353,7 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
 
         internal static byte[] ReadFile(string FileName)
         {
-            byte[] contents = File.ReadAllBytes(Path.Combine(AppContext.BaseDirectory, FileName));
+            byte[] contents = DataFiles.ReadShader(FileName);
             return contents;
         }
 

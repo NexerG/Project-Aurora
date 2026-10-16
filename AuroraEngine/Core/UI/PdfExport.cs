@@ -226,9 +226,9 @@ namespace ArctisAurora.Core.UI
 
                 PdfType3Font? face = null;
                 string stampPath = Paths.Font(font.folder, font.folder + ".import.xml");
-                if (File.Exists(stampPath))
+                if (DataFiles.Exists(stampPath))
                 {
-                    XElement stamp = XElement.Load(stampPath);
+                    XElement stamp = DataFiles.LoadXml(stampPath);
                     string file = (string?)stamp.Attribute(style switch
                     {
                         FontStyle.Bold => "BoldSource",
@@ -238,7 +238,7 @@ namespace ArctisAurora.Core.UI
                     }) ?? string.Empty;
                     int index = style == FontStyle.Regular ? (int?)stamp.Attribute("Face") ?? 0 : 0;
                     string shipped = Paths.Font(font.folder, file);
-                    string? path = file.Length == 0 ? null : File.Exists(shipped) ? shipped : AssetImporter.ResolveSystemFont(file);
+                    string? path = file.Length == 0 ? null : DataFiles.Exists(shipped) ? shipped : AssetImporter.ResolveSystemFont(file);
                     if (path != null) face = new PdfType3Font(pdf, path, index);
                     else Log.Warn($"font '{font.folder}' {style}: source '{file}' not found, its text is left out.");
                 }

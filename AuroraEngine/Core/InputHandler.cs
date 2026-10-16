@@ -1281,7 +1281,7 @@ namespace ArctisAurora.EngineWork
 
             foreach (string path in VirtualFileSystem.EnumerateAll("XML/Documents/Inputs", "*.inputs.xml"))
             {
-                XElement root = XElement.Load(path);
+                XElement root = DataFiles.LoadXml(path);
                 XNamespace ns = root.GetDefaultNamespace();
                 string groupName = Paths.DocName(path);
 

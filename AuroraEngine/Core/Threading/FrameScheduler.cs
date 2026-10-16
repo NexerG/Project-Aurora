@@ -4,6 +4,7 @@ using System.Runtime.InteropServices;
 using System.Xml.Linq;
 using ArctisAurora.Core.Data;
 using ArctisAurora.Core.Diagnostics;
+using ArctisAurora.Core.Filing.Serialization;
 using ArctisAurora.Core.Registry;
 using ArctisAurora.EngineWork;
 
@@ -95,7 +96,7 @@ namespace ArctisAurora.Core.Threading
         // Reads the graph, resolves each step's columns and places the steps into stages.
         public static void Load(string path)
         {
-            XElement root = XElement.Load(path);
+            XElement root = DataFiles.LoadXml(path);
             XNamespace ns = root.GetDefaultNamespace();
 
             foreach (XElement element in root.Elements(ns + "Dedicated"))

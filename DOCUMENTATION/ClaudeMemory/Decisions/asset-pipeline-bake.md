@@ -1,7 +1,7 @@
 # Decision — the pak file is a pre-concatenated cook cache; GPU offsets are assigned, never baked
 
 **Date:** 2026-08-03
-**Status:** DESIGN ONLY — nothing here is implemented.
+**Status:** DESIGN ONLY except the pack layer, which landed 2026-10-16 as `.arx` — see the amendment at the end and [[arx-archives]].
 **Scope:** future asset bake/cook pipeline; `ArctisAurora.EngineWork.Registry.AssetRegistries`;
 `AVulkanMesh`; the Editor's import path.
 
@@ -100,4 +100,10 @@ offsets. `CmdBindVertexBuffers` then happens once for the whole scene and meshes
 `firstIndex`/`vertexOffset` — which is also exactly the shape `CmdDrawIndexedIndirect` needs later.
 The bake is not only an I/O optimisation; it is what makes the draw path collapse.
 
-Related: [[engine-resource-manager]], [[world-streaming-prefetch]]
+## Amendment 2026-10-16 — the pack layer exists
+
+- The pak / `PackSource` layer is built as `.arx`: `ArxWriter` packs, `ArxArchive` reads, `ArxMount` plugs it into `VirtualFileSystem`. See [[arx-archives]].
+- Payloads are per file (XML as a binary tree, everything else as-is), not per mesh record. There is no pre-concatenated vertex blob and no cook cache.
+- Still unbuilt: the residency layer, the suballocator, `IAssetSource`, cooked meshes (FBX is still read through `DataFiles.Open`) and pre-decoded textures (still PNG).
+
+Related: [[engine-resource-manager]], [[world-streaming-prefetch]], [[arx-archives]]

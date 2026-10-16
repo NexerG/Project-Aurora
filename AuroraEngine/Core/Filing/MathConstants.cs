@@ -231,7 +231,7 @@ namespace ArctisAurora.Core.Filing
         public static MathConstants Load(string path)
         {
             MathConstants constants = new MathConstants();
-            XmlReflection.ApplyAttributes(XElement.Load(path), constants);
+            XmlReflection.ApplyAttributes(DataFiles.LoadXml(path), constants);
             return constants;
         }
     }

@@ -10,6 +10,7 @@ using Buffer = Silk.NET.Vulkan.Buffer;
 using Image = Silk.NET.Vulkan.Image;
 using ImageLayout = Silk.NET.Vulkan.ImageLayout;
 using ArctisAurora.Core.ECS.EngineEntity;
+using ArctisAurora.Core.Filing.Serialization;
 
 // Legacy renderer, kept as a working reference until the migration.
 #pragma warning disable CS0618
@@ -1791,7 +1792,7 @@ namespace ArctisAurora.EngineWork.Rendering.RendererTypes
 
         private ShaderModule LoadShader(string path)
         {
-            byte[] code = File.ReadAllBytes(Path.Combine(AppContext.BaseDirectory, path));
+            byte[] code = DataFiles.ReadShader(path);
             fixed (byte* codePtr = code)
             {
                 ShaderModuleCreateInfo createInfo = new ShaderModuleCreateInfo

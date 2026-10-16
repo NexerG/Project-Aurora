@@ -38,12 +38,12 @@ namespace ArctisAurora.Core.Tex
         // <Hyphenation LeftMin RightMin><Patterns/><Exceptions/></Hyphenation>, each list whitespace-separated.
         public static TexHyphenator? Load(string path)
         {
-            if (!File.Exists(path))
+            if (!DataFiles.Exists(path))
             {
                 Log.Warn($"no hyphenation patterns at {path}; LaTeX is not hyphenated");
                 return null;
             }
-            XElement root = XElement.Load(path);
+            XElement root = DataFiles.LoadXml(path);
             string[] List(string name) => (root.Element(name)?.Value ?? string.Empty).Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries);
             return new TexHyphenator(List("Patterns"), List("Exceptions"),
                 (int?)root.Attribute("LeftMin") ?? 2, (int?)root.Attribute("RightMin") ?? 3);

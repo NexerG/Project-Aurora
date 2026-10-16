@@ -147,7 +147,7 @@ namespace ArctisAurora.Core.Testing
                 if (filter == null && string.Equals(suite, "Perf", StringComparison.OrdinalIgnoreCase)) continue;
                 found = true;
 
-                XElement root = XElement.Load(path);
+                XElement root = DataFiles.LoadXml(path);
                 XNamespace ns = root.GetDefaultNamespace();
                 foreach (XElement test in root.Elements(ns + "Test"))
                 {
@@ -306,9 +306,10 @@ namespace ArctisAurora.Core.Testing
                 string diff = Path.Combine(action, $"{shot.name}.diff.png");
                 string? mismatch = null;
                 Image<Rgba32>? diffImage = null;
-                if (File.Exists(shot.golden))
+                if (DataFiles.Exists(shot.golden))
                 {
-                    using Image<Rgba32> expected = Image.Load<Rgba32>(shot.golden);
+                    using Stream goldenStream = DataFiles.Open(shot.golden);
+                    using Image<Rgba32> expected = Image.Load<Rgba32>(goldenStream);
                     mismatch = Compare(expected, frame, out diffImage);
                     if (mismatch == null)
                     {

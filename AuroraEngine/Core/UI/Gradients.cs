@@ -136,7 +136,7 @@ namespace ArctisAurora.Core.UI
 
         private static void LoadFile(string path)
         {
-            XElement root = XElement.Load(path);
+            XElement root = DataFiles.LoadXml(path);
             foreach (XElement element in root.Elements())
             {
                 GradientDefinition definition = ParseGradient(element);

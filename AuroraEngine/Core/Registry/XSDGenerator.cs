@@ -326,6 +326,7 @@ namespace ArctisAurora.Core.Registry
 
         public static void GenerateXSD()
         {
+            if (Paths.packed) return;
             Type[] allTypes = AppDomain.CurrentDomain.GetAssemblies().SelectMany(a => a.GetTypes()).ToArray();
             LoadHashes();
             GenerateDependencyXSD(allTypes);

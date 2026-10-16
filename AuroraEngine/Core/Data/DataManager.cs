@@ -33,7 +33,7 @@ namespace ArctisAurora.Core.Data
         private static void LoadManifest(string xmlName)
         {
             string path = Paths.Doc(xmlName);
-            XElement root = XElement.Load(path);
+            XElement root = DataFiles.LoadXml(path);
             XNamespace ns = root.GetDefaultNamespace();
 
             foreach (XElement poolElem in root.Elements(ns + "Pool"))

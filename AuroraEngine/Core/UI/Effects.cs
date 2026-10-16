@@ -121,7 +121,7 @@ namespace ArctisAurora.Core.UI
 
             foreach (string path in VirtualFileSystem.EnumerateAll("XML/Documents/Effects", "*.effects.xml"))
             {
-                foreach (XElement element in XElement.Load(path).Elements())
+                foreach (XElement element in DataFiles.LoadXml(path).Elements())
                 {
                     EffectDefinition definition = Parse(element);
                     int row = Pool.Append();

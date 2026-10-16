@@ -184,6 +184,10 @@ This file holds **open work**. A landed entry moves to [[Changelog]]; one that s
 - [ ] **server replication key exchange** — ML-KEM-768 hybrid with X25519/ECDH over TLS 1.3, on top of `Cipher` → encryption
 - [ ] **sealed blocks: visual marker, remove-seal command, remember checkbox** — unlocked seals look like plain text, no way to unseal blocks, `PasswordWindow` has no remember option → encryption
 - [ ] **Windows Hello prompt is not parented to the app window** — may appear behind it → encryption
+- [ ] **arx: build files for Carbon and AuroraEditor (2026-10-16)** — only Thorium has a `*.build.xml` and the `ArxKey`/`ArxPublicKey` `AssemblyMetadata` lines → arx-archives
+- [ ] **arx: compression (2026-10-16)** — the `Compressed` flag bit is reserved and never set; must run before encryption → arx-archives
+- [ ] **arx: source generation from XML in the builder (2026-10-16)** — turn UI documents, bootstrap, palettes into C# so a shipped app builds trees without parsing; binary XML entries are the step before, no code stub → arx-archives
+- [ ] **arx: packed-path writes, default vault and unrun checks (2026-10-16)** — writes into a packed path (`--test-approve`) cannot work; shipped default vault path unlooked at; committed `Thorium.build.xml`, PDF export, meshes, pathtracer/RC2D shaders, editor-control open from a packed path unchecked → arx-archives
 
 ---
 # PHASE B — ECS rework + renderer/settings foundation (~Jul–Sep 2026)

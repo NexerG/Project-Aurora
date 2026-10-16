@@ -139,7 +139,7 @@ namespace ArctisAurora.Core.Pdf
         // The face's table directory and units per em, read from the source file itself.
         private AuroraFont ReadDirectory(out float unitsPerEm)
         {
-            using BinaryReader reader = new BinaryReader(File.OpenRead(path));
+            using BinaryReader reader = new BinaryReader(DataFiles.Open(path));
             reader.BaseStream.Position = AssetImporter.FaceOffset(reader, face);
 
             AuroraFont font = new AuroraFont();

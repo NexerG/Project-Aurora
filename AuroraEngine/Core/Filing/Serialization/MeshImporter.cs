@@ -16,7 +16,8 @@ namespace ArctisAurora.Core.Filing.Serialization
         internal Scene ImportFBX(string filePath)
         {
             AssimpContext importer  = new AssimpContext();
-            Scene scene = importer.ImportFile(filePath, PostProcessPreset.TargetRealTimeMaximumQuality);
+            using Stream stream = DataFiles.Open(filePath);
+            Scene scene = importer.ImportFileFromStream(stream, PostProcessPreset.TargetRealTimeMaximumQuality, Path.GetExtension(filePath).TrimStart('.'));
             if (scene != null )
             {
                 return scene;

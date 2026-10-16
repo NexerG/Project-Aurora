@@ -76,7 +76,7 @@ namespace ArctisAurora.Core.Registry.Assets
             string[] files = VirtualFileSystem.EnumerateAll("XML/Documents/Samplers", "*.sampler.xml").ToArray();
             for (int i = 0; i < files.Length; i++)
             {
-                XElement samplerRoot = XElement.Load(files[i]);
+                XElement samplerRoot = DataFiles.LoadXml(files[i]);
                 XNamespace sns = samplerRoot.GetDefaultNamespace();
                 SamplerAsset sa = new SamplerAsset();
                 foreach (XAttribute attr in samplerRoot.Attributes())

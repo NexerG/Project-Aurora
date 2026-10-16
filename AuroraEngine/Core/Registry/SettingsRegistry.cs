@@ -177,7 +177,7 @@ namespace ArctisAurora.Core.Registry
         #region ---- read ----
         private static void ApplyFile(string path, bool fromWriteRoot)
         {
-            XElement root = XElement.Load(path);
+            XElement root = DataFiles.LoadXml(path);
             HashSet<(object, FieldInfo)> clearedLists = new HashSet<(object, FieldInfo)>();
 
             foreach (XElement element in root.Elements())

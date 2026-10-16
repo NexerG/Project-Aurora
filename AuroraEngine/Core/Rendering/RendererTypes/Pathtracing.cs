@@ -12,6 +12,7 @@ using System.Numerics;
 using System.Runtime.CompilerServices;
 using ArctisAurora.EngineWork.Rendering.MeshSubComponents;
 using ArctisAurora.Core.ECS.EngineEntity;
+using ArctisAurora.Core.Filing.Serialization;
 
 // Legacy renderer, kept as a working reference until the migration.
 #pragma warning disable CS0618
@@ -1143,7 +1144,7 @@ namespace ArctisAurora.EngineWork.Rendering.RendererTypes
 
         private byte[] ReadFile(string FileName)
         {
-            byte[] contents = File.ReadAllBytes(Path.Combine(AppContext.BaseDirectory, FileName));
+            byte[] contents = DataFiles.ReadShader(FileName);
             return contents;
         }
     }

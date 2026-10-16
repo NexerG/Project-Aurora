@@ -137,7 +137,7 @@ namespace ArctisAurora.Core.Registry
         {
             foreach (string file in VirtualFileSystem.EnumerateAll("XML/Documents/Contexts", "*.contexts.xml"))
             {
-                XElement root = XElement.Load(file);
+                XElement root = DataFiles.LoadXml(file);
                 foreach (XElement element in root.Elements())
                 {
                     ContextDefinition definition = new ContextDefinition

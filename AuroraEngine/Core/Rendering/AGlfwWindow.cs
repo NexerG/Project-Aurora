@@ -82,7 +82,8 @@ namespace ArctisAurora.EngineWork.Rendering
             List<Silk.NET.GLFW.Image> icons = new List<Silk.NET.GLFW.Image>();
             foreach (string file in VirtualFileSystem.EnumerateAll("Icons/app", "*.png"))
             {
-                using SixLabors.ImageSharp.Image<Rgba32> image = SixLabors.ImageSharp.Image.Load<Rgba32>(file);
+                using Stream iconStream = DataFiles.Open(file);
+                using SixLabors.ImageSharp.Image<Rgba32> image = SixLabors.ImageSharp.Image.Load<Rgba32>(iconStream);
                 byte[] pixels = GC.AllocateUninitializedArray<byte>(image.Width * image.Height * 4, pinned: true);
                 image.CopyPixelDataTo(pixels);
                 _appIconPixels.Add(pixels);

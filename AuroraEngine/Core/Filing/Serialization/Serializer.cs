@@ -234,12 +234,12 @@ namespace ArctisAurora.Core.Filing.Serialization
 
         public static void DeserializeAttributed<T>(string path, ref T obj)
         {
-            FileStream stream = new FileStream(path, FileMode.Open, FileAccess.Read);
+            Stream stream = DataFiles.Open(path);
             RecursiveDeserializeAttributed<T>(stream, ref obj);
             stream.Close();
         }
 
-        private static T RecursiveDeserializeAttributed<T>(FileStream stream, ref T obj)
+        private static T RecursiveDeserializeAttributed<T>(Stream stream, ref T obj)
         {
             Type t = typeof(T);
             var fields = t.GetFields(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);

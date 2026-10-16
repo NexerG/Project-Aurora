@@ -68,10 +68,10 @@ Thin wrappers over `VirtualFileSystem.ResolveFile(...)` for documents under `XML
 Every data file under `Data/XML` is named `[name].[type].xml`, where the type half says which loader owns it. `DocName` hands back the name half, and it cuts at the **first** dot rather than the last — which is what `Path.GetFileNameWithoutExtension` would do, and it would return `InputMap.inputs` where the caller wanted `InputMap`. The rule that falls out is that a name half may not contain a dot. Used wherever the file name is an identity and not just a location, which today is the keybind group in [[INPUT]] and nothing else — a [[UI Document]] is keyed by the name its manifest gives it, not by its file name.
 
 ### `Mount` *(private)*
-Mounts the app `Data` (primary) and, in Debug, the engine project's `Data` (fallback). Skipped if the engine folder doesn't exist or equals the primary.
+Mounts the app `Data` (primary) and, in Debug, the engine project's `Data` (fallback). Skipped if the engine folder doesn't exist or equals the primary. In Release it mounts the loose `Data/` folder first, then every `*.arx` beside the exe as an `ArxMount`; a failed check logs `FATAL [Arx] cannot mount the app's archives` and exits 1. `Paths.packed` is the static flag a packed app is told by. See [[Arx Archives]].
 
 ### `GetPath` *(private)*
-Debug â†’ path relative to the running app's source (`../../../Data`). Release â†’ relative to `AppContext.BaseDirectory`. (Shipping bundles data into archives â€” a future `PakMount` â€” instead.)
+Debug â†’ path relative to the running app's source (`../../../Data`). Release â†’ relative to `AppContext.BaseDirectory`. (A shipped app bundles data into an `.arx` archive, mounted by `Mount` — see [[Arx Archives]].)
 
 ## Related
 - [[Virtual File System]] â€” the mount layer `Paths` configures

@@ -31,7 +31,7 @@ This is [[asset-pipeline-bake]]'s layer 1→2 split arriving early, for fonts ra
 
 | Piece | Where | State |
 |-------|-------|-------|
-| Mount/priority resolution | `VirtualFileSystem`, `DirectoryMount` | works; `PakMount` is a documented drop-in |
+| Mount/priority resolution | `VirtualFileSystem`, `DirectoryMount`, `ArxMount` | works; the pak drop-in landed 2026-10-16 as `ArxMount` ([[arx-archives]]) |
 | Typed registries | `AssetRegistries` + `Registry.xml` | works |
 | Declarative boot order | `Bootstrap.xml` | works; `PrepareDefaultAssets`/`PrepareAllAssets` are steps |
 | Reflection XML→object | `DocumentXml.ApplyAttributes` | works, but `private` and document-scoped |
@@ -282,4 +282,10 @@ scoped to fonts.
   handle. Adding an id layer before the resource manager is speculative.
 - **Hot reload, refcounting/unload, cook cache, pak.** The VFS is already the seam for the last two.
 
-Related: [[asset-pipeline-bake]], [[engine-resource-manager]], [[glyphs-as-pool-data]]
+## Amendment 2026-10-16 — the pak drop-in landed
+
+- `PakMount` was built as `ArxMount : IDataMount`; no call site above `VirtualFileSystem` changed.
+- Data reads go through `DataFiles` (`Exists`, `Open`, `LoadXml`), which take a disk path or an archive-entry path. Import-only, vault, note and results reads stay on the disk APIs.
+- Release with an `.arx` beside the exe mounts the loose `Data/` folder first, then each archive. See [[arx-archives]].
+
+Related: [[asset-pipeline-bake]], [[engine-resource-manager]], [[glyphs-as-pool-data]], [[arx-archives]]

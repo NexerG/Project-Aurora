@@ -25,7 +25,7 @@ VerifiedAgainst: 2026-05-30
 ---
 ## Description
 
-A **layered virtual file system** for engine + application data. It holds an ordered list of *mounts*; a single-file lookup returns the first mount that has the file (so an application can override an engine default by relative path), and an "enumerate all" unions across mounts. Today the only backend is `DirectoryMount` (a folder on disk); a `PakMount` (Valve-style archive) can be added later with **no call-site changes**, because everything goes through `VirtualFileSystem` instead of touching disk directly. Logical paths are forward-slash, relative to a `Data` root (e.g. `"XML/Documents/UI/UI.ui.xml"`).
+A **layered virtual file system** for engine + application data. It holds an ordered list of *mounts*; a single-file lookup returns the first mount that has the file (so an application can override an engine default by relative path), and an "enumerate all" unions across mounts. There are two backends: `DirectoryMount` (a folder on disk) and `ArxMount` (the entries of an [[Arx Archives]] file, in a packed Release app). The second was added with **no call-site changes**, because everything goes through `VirtualFileSystem` instead of touching disk directly. Logical paths are forward-slash, relative to a `Data` root (e.g. `"XML/Documents/UI/UI.ui.xml"`).
 
 Every file under `Data/XML` is named `[name].[type].xml`, so `EnumerateAll` is asked for `*.ui.xml` or `*.settings.xml` rather than `*.xml` and a file of the wrong kind is passed over instead of handed to a parser that will die on it. The pattern is the only thing that decides which loader claims a file; a folder no longer has to be single-kind for anything in it to be found, and `Documents/` holds seven kinds side by side. What the folders still carry is the *composition policy*, which differs per kind — see below.
 
@@ -48,7 +48,10 @@ See [[Paths]] for how the mounts are set up, and [[Attributes & Conventions]] fo
 `FileExists(rel)` Â· `DirExists(rel)` Â· `Open(rel)` â†’ `Stream` Â· `GetFullPath(rel)`Â· `Enumerate(relDir, pattern)`.
 
 ### `DirectoryMount : IDataMount`
-Maps logical paths onto a real folder (`Root`). The current (and only) backend.
+Maps logical paths onto a real folder (`Root`).
+
+### `ArxMount : IDataMount`
+Maps logical paths onto the entries of one `.arx` archive. An entry's full path is `<archive file>\<logical path>`, so the archive acts like a folder, and `TryLocate(fullPath, out archive, out entry)` finds the entry from such a path. See [[Arx Archives]].
 
 ## Fields & Properties
 

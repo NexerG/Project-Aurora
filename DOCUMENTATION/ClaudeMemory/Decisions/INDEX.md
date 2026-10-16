@@ -109,6 +109,7 @@ Standing constraints (ECS storage, Vulkan internals, physics, XSD-not-JSON) are 
 | Note | Settles | Key symbols |
 |---|---|---|
 | [[asset-manifest-and-import]] | assets are declared in manifests, cooked by importers, resolved through the VFS | `AssetRegistries`, `AssetImporter`, `Paths`, `VirtualFileSystem` |
+| [[arx-archives]] | an app ships as one encrypted (AES-256-GCM per entry), ECDsa-signed `.arx` per app, built by `_Build arx`; XML stored as a binary tree, the rest as-is; entries read through `ArxMount` as `<archive>\<path>`; one stable key set per project in `%APPDATA%`; source generation is a later stage | `ArxWriter`, `ArxArchive`, `ArxMount`, `ArxKeys`, `AppBuilder`, `DataFiles`, `Paths.packed` |
 | [[atlas-bake-one-edge-pass]] | the MTSDF bake evaluates each edge once per texel and allocates nothing; byte-identical output, ~3× faster | `MTSDFGen.GenerateCell`, `ComputeWindingNumber`, `SolveCubic`, `Perf.AtlasBake` |
 | [[svg-import]] | the SVG icon importer reads inherited fills, transforms, arcs and basic shapes; evenodd is per glyph; strokes are baked as a signed distance from the centreline (single-channel, per-subpath local space), dashes next | `SvgPath.TryLoad`, `ShapeData`, `AddArc`, `Glyph.evenOdd`, `Glyph.strokes`, `StrokeRun`, `MTSDFGen.GenerateCell`, `MTSDFGen.StrokeDistance`, `Svg.tests.xml` |
 | [[ui-document-registry]] | a UI document is a registry asset; assigning a window's root destroys the old one | `UIDocumentAsset`, `VulkanControl.ParseXML`, `UIModule` |
@@ -119,7 +120,7 @@ Standing constraints (ECS storage, Vulkan internals, physics, XSD-not-JSON) are 
 | [[ecs-rework-data-pools]] | **PARTIAL** — OO components become pooled columns; handles, compaction; command lanes (deleted 2026-09-23); a typed column found by `ColumnKey<T>` index, not `Dictionary<Type>` (2026-09-26) | `DataPool`, `DataPool.Write`, `DataManager`, `PoolColumn`, `ColumnKey`, `TransformData`, `Entity.RemoveComponent` |
 | [[pool-shrink]] | pools double when full, halve after 2 s at a quarter full; lowest free stableId first | `DataPool.TryShrink`, `Resize`, `Truncate`, `UIEngineModule.MirrorTooBig`, `Animations.Release` |
 | [[cross-system-change-notification]] | no bus, no subscribers — consumers poll a per-pool version | `DataPool` version, `ThreadedSystem` |
-| [[asset-pipeline-bake]] | **FUTURE** — the pak is a pre-concatenated cook cache; GPU offsets assigned, never baked | `AssetRegistries`, `AVulkanMesh` |
+| [[asset-pipeline-bake]] | **PARTIAL** — the pak is a pre-concatenated cook cache; GPU offsets assigned, never baked (the pack layer landed as `.arx`, see [[arx-archives]]; GPU residency unbuilt) | `AssetRegistries`, `AVulkanMesh` |
 | [[world-streaming-prefetch]] | **FUTURE** — streaming predicts by reachability, not visibility; runtime grid over baked PVS | — |
 
 ## Serialization and XML

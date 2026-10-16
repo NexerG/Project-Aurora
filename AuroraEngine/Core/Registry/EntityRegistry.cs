@@ -213,7 +213,7 @@ namespace ArctisAurora.Core.Registry
         {
             string path = Paths.Doc(xmlName);
             EntityRegistry registry = new EntityRegistry();
-            XElement root = XElement.Load(path);
+            XElement root = DataFiles.LoadXml(path);
             XNamespace ns = root.GetDefaultNamespace();
 
             foreach (XElement listElem in root.Elements(ns + "List"))

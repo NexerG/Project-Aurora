@@ -202,7 +202,7 @@ namespace ArctisAurora.Core.UI
 
             foreach (string file in VirtualFileSystem.EnumerateAll("XML/Documents/Palettes", "*.palette.xml"))
             {
-                PaletteDefinition palette = Parse(XElement.Load(file));
+                PaletteDefinition palette = Parse(DataFiles.LoadXml(file));
                 palette.firstSlot = (uint)Paints.Count;
                 Bake(palette);
                 byName[palette.name] = palette;

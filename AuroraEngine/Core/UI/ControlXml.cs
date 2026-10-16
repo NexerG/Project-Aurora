@@ -1,3 +1,4 @@
+using ArctisAurora.Core.Filing.Serialization;
 using ArctisAurora.Core.Registry;
 using ArctisAurora.Core.Registry.Assets;
 using ArctisAurora.EngineWork.Registry;
@@ -25,7 +26,7 @@ namespace ArctisAurora.Core.UI
         public static Control ParseXML(string document)
         {
             UIDocumentAsset asset = AssetRegistries.GetAsset<UIDocumentAsset>(document);
-            return Parse(XDocument.Load(asset.path).Root);
+            return Parse(DataFiles.LoadXml(asset.path));
         }
 
         // Builds a tree from a document's root element, which names its own type.
@@ -50,7 +51,7 @@ namespace ArctisAurora.Core.UI
         internal static ContextMenu ParseMenu(string path)
         {
             ContextMenu menu = new ContextMenu();
-            RecursiveParse(XDocument.Load(path).Root, menu, TaggedActions);
+            RecursiveParse(DataFiles.LoadXml(path), menu, TaggedActions);
             return menu;
         }
 

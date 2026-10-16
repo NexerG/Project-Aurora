@@ -115,10 +115,11 @@ namespace ArctisAurora.Core.Registry.Assets
         // Non-colour images (distance fields) must pass a UNORM format.
         public void LoadFile(string path, Format format = Format.R8G8B8A8Srgb, bool mipmaps = false)
         {
-            if (!File.Exists(path))
+            if (!DataFiles.Exists(path))
                 throw new Exception("Texture not found: " + path);
 
-            LoadImage(Image.Load<Rgba32>(path), format, mipmaps);
+            using (Stream stream = DataFiles.Open(path))
+                LoadImage(Image.Load<Rgba32>(stream), format, mipmaps);
         }
 
         // Uploads a decoded image and claims a table slot; takes ownership of it.
