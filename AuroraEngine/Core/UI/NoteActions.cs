@@ -5,37 +5,11 @@ using ArctisAurora.EngineWork.Rendering;
 
 namespace ArctisAurora.Core.UI
 {
-    // Settling open notes: naming the ones that have never been named, and writing the ones that were
-    // edited. Shared by the shutdown sequence, which settles every window, and by closing a single
-    // window, which settles only that one.
+    // Settling open notes: writing the ones that were edited. Shared by the shutdown sequence, which
+    // settles every window, and by closing a single window, which settles only that one.
     public static class NoteActions
     {
-        // Notes the user chose not to save. Remembered for the length of one shutdown attempt, or the
-        // walk finds them again and never gets past them.
-        private static readonly HashSet<DocumentEditSession> discarded = new HashSet<DocumentEditSession>();
-
-        internal static void ForgetDiscarded()
-        {
-            discarded.Clear();
-        }
-
         #region ---- shutdown steps ----
-        // One prompt per attempt: the answer re-enters the sequence, which finds the next unnamed
-        // note, so they are named one at a time in the order they are found. Cancelling never
-        // re-enters, which is what leaves the application running.
-        [A_XSDActionDependency("Notes.SettleUnnamed", "Shutdown", "Asks for a name for every open note that has never had one")]
-        public static bool SettleUnnamed()
-        {
-            ArctisAurora.Core.UI.DocumentEditorControl unnamed = FirstUnnamed();
-            if (unnamed == null) return true;
-
-            unnamed.SaveNamed(
-                Shutdown.Resume,
-                () => { discarded.Add(unnamed.session); Shutdown.Resume(); });
-
-            return false;
-        }
-
         [A_XSDActionDependency("Notes.SaveEdited", "Shutdown", "Writes every open note that was edited since its last save")]
         public static bool SaveEdited()
         {
@@ -49,7 +23,6 @@ namespace ArctisAurora.Core.UI
         // Every window settled in turn, then onSettled; cancelling a prompt stops the chain.
         public static void SettleAll(Action onSettled)
         {
-            discarded.Clear();
             SettleNext(Engine.windows.Values.ToList(), 0, onSettled);
         }
 
@@ -61,54 +34,20 @@ namespace ArctisAurora.Core.UI
 
         #region ---- one window ----
         // Settles a single window and then runs onSettled, for a window closing on its own rather
-        // than the application going. Same one-prompt-at-a-time shape as the shutdown step.
+        // than the application going.
         internal static void SettleWindow(RenderWindow window, Action onSettled)
         {
-            ArctisAurora.Core.UI.DocumentEditorControl unnamed = FirstUnnamed(window.ui?.uiRoot);
-            if (unnamed != null)
-            {
-                unnamed.SaveNamed(
-                    () => SettleWindow(window, onSettled),
-                    () => { discarded.Add(unnamed.session); SettleWindow(window, onSettled); });
-                return;
-            }
-
             SaveEditedIn(window.ui?.uiRoot);
             onSettled?.Invoke();
         }
         #endregion
-
-        private static ArctisAurora.Core.UI.DocumentEditorControl FirstUnnamed()
-        {
-            foreach (RenderWindow window in Engine.windows.Values)
-                if (FirstUnnamed(window.ui?.uiRoot) is ArctisAurora.Core.UI.DocumentEditorControl found)
-                    return found;
-
-            return null;
-        }
-
-        private static ArctisAurora.Core.UI.DocumentEditorControl FirstUnnamed(ArctisAurora.Core.UI.Control control)
-        {
-            if (control == null) return null;
-            if (control is ArctisAurora.Core.UI.DocumentEditorControl editor
-                && editor.needsNaming && !discarded.Contains(editor.session))
-                return editor;
-
-            foreach (Entity child in control.children)
-                if (child is ArctisAurora.Core.UI.Control childControl
-                    && FirstUnnamed(childControl) is ArctisAurora.Core.UI.DocumentEditorControl found)
-                    return found;
-
-            return null;
-        }
 
         // Only what was actually edited. A first save of a hand-authored note does not reproduce its
         // bytes, so writing untouched ones would rewrite every open file on every close.
         private static void SaveEditedIn(ArctisAurora.Core.UI.Control control)
         {
             if (control == null) return;
-            if (control is IFileEditor file && file.isDirty
-                && !(control is ArctisAurora.Core.UI.DocumentEditorControl editor && discarded.Contains(editor.session)))
+            if (control is IFileEditor file && file.isDirty)
                 file.Save();
 
             foreach (Entity child in control.children)

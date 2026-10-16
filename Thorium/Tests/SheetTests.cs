@@ -921,8 +921,9 @@ namespace Thorium.Tests
 
             SessionLayout.scope = scope;
             t.Show(new StackPanelControl());
-            t.Check(File.ReadAllText(notePath).StartsWith("x $a = \\sheet{Money.sheet.xml#Data!B1}$"),
-                $"a .md note's formula is rewritten: {File.ReadAllText(notePath)}");
+            string written = File.ReadAllText(notePath);
+            string body = Frontmatter.Split(written, out _, out string rest) ? rest : written;
+            t.Check(body.StartsWith("x $a = \\sheet{Money.sheet.xml#Data!B1}$"), $"a .md note's formula is rewritten: {written}");
             SheetBook.findSheet = before;
             SheetBook.Deleted(moneyPath);
             Directory.Delete(folder, true);

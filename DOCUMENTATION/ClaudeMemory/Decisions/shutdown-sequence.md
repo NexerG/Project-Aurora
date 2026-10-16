@@ -2,6 +2,8 @@
 
 **Date:** 2026-08-21
 **Status:** LANDED. Builds clean, boots, all three action names resolve. **No exit path GUI-verified.**
+**Amended 2026-10-15:** `Notes.SettleUnnamed` (and `FirstUnnamed`, `discarded`, `ForgetDiscarded`; `Shutdown.Request` no longer calls the last) was removed from `Shutdown.shutdown.xml` and `NoteActions`, so the `SettleUnnamed` example in decision 4 and the discarded-set consequence no longer exist in code. `<Phase Name="Request">` stays as an empty element, because a missing phase makes `RunPhase` log an error and return false and the app could never quit. `Shutdown.Resume` has no callers now but stays as the Request-phase re-entry mechanism. See [[note-live-sync]].
+**Amended 2026-10-16:** the `Commit` phase gained `<Step Action="Files.Drain"/>` right after `Notes.SaveEdited` (`FileWriteQueue.DrainAll`, `[A_XSDActionDependency("Files.Drain", "Shutdown")]`). Autosave of an open `.xml` note now runs on a background writer thread, and process exit would kill that thread mid-write, so the sequence waits until nothing is pending. See [[note-live-sync]].
 **Scope:** `ArctisAurora.EngineWork` (`Shutdown`, `Bootstrapper`),
 `ArctisAurora.Core.UISystem.Actions` (`NoteActions`, `WindowActions`),
 `ArctisAurora.Core.Registry` (`SettingsRegistry`), `Paths`, `Engine`,

@@ -19,6 +19,7 @@ namespace ArctisAurora.Core.Filing.Serialization
         public static readonly string XMLDOCUMENTS_INPUTS = GetPath("Data\\XML\\Documents\\Inputs");
         public static readonly string XMLDOCUMENTS_SAMPLERS = GetPath("Data\\XML\\Documents\\Samplers");
         public static readonly string SCENES = GetPath("Data\\Scenes");
+        public static readonly string JOURNAL = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Arktis", "Journal");
 
         // Engine-owned config (Bootstrap, registries, default samplers) can live in the engine
         // project's Data folder rather than the running app's, so resolve it through the VFS

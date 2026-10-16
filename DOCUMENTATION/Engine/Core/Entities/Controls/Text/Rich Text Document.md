@@ -20,7 +20,7 @@ The model / view split it was designed around did not ship at first: blocks and 
 A document is a flat list of blocks; a block of flowing text holds a list of inline runs.
 
 - `RichTextDocument` — `NoteNode[] blocks`. `[A_XSDType("Document")]`, category `UI`. The entries are plain model objects, not controls; the editor builds a control per entry as its view.
-- `RichTextDocument.Name` — the note's own name, and the only identity it has that survives the file being renamed. It is authored or absent and is **never derived**: a note's first heading is not its name, and nothing writes the file name into it, so an unnamed note stays detectably unnamed however many times it is saved. Display falls back to the file name at the point of use — a browser row shows the file, a tab caption shows the name. An edited note that has never been named is prompted for one on Ctrl+S and on window close; see `ClaudeMemory/Decisions/note-naming-and-text-field.md`.
+- `RichTextDocument.Name` — the note's own name, and the only identity it has that survives the file being renamed. It is authored or absent and is **never derived**: a note's first heading is not its name, and nothing writes the file name into it, so an unnamed note stays detectably unnamed however many times it is saved. Display falls back to the file name at the point of use — a browser row shows the file, a tab caption shows the name. A note is named when it is created, by the vault's F5 / New prompt; nothing asks on Ctrl+S or on close, and a note with no `Name` keeps showing its file name. See `ClaudeMemory/Decisions/note-naming-and-text-field.md` and `ClaudeMemory/Decisions/note-live-sync.md`.
 - `Block` (abstract, no `[A_XSDType]`) inherits [[TextBlockControl]] (a `PanelControl` derivative that flows runs) → `ContentBlock` (`[A_XSDType("Block")]`), the one concrete block, whose runs are its children. A heading is not a class of its own: a block carries a `StylingType` (`Text`, `Heading1`-`Heading6`, `Comment`, `Code`, `Quote`) and the styles file says how big that is, so adding a level is data rather than a new type. All category `UI`.
 - `TextRun` (`[A_XSDType("Run")]`) → inherits [[TextInputControl]]: `Text`, `Bold`, `Italic`, `Strikethrough`, `FontName`, `FontSize` all come from the control, so the run adds no fields of its own (there is no `Inline` base anymore). Colour is the ordinary `ColorHex` every control has — a run that sets it repoints the colour onto each of its glyph children, since the run itself draws an invisible mask and only the glyphs reach the screen.
 - `Block` carries no `[A_XSDType]` so it is never emitted as an element — it is an `AllowedChildren` target the [[XSDGenerator]] scans for concrete blocks; content blocks use `typeof(TextInputControl)` as their inline `AllowedChildren` (expands to the one `[A_XSDType]` subtype, `Run`).
@@ -36,9 +36,10 @@ Planned (not yet in code): `TextRun` gains `FontSize` (0 = inherit block default
 ## File formats
 A note file is text in one of three formats, and none of them builds the editor directly. `MarkdownFormat` and `PlainTextFormat` only turn text into the `<Document>`/`<Block>`/`<Run>` tree and back; `DocumentXml.Parse` is the one thing that turns a tree into blocks, whichever file it came from. An `.xml` note is that tree already, so it goes straight to `DocumentXml`. Any `.xml` file can also be opened as coloured XML source beside its normal view — see [[Xml Editor]].
 
-The file name becomes the note's `Name` for `.md` and `.txt`, so those notes never ask to be named. New notes from the vault browser are `.md`; a duplicate or a rename keeps the extension it had. Colour, gradient, font and size have nowhere to go in Markdown and are not written — the palette colours a Markdown note.
+The file name becomes the note's `Name` for `.md` and `.txt`, so those notes are never unnamed. New notes from the vault browser are `.md`; a duplicate or a rename keeps the extension it had. Colour, gradient, font and size have nowhere to go in Markdown and are not written — the palette colours a Markdown note.
 
 #### Load (path)
+`FileJournal.Replay` (`path`)
 switch on the extension of `path`
 	`.md` → `DocumentXml.Parse` (`MarkdownFormat.Read` (file text, file name))
 	`.txt` → `DocumentXml.Parse` (`PlainTextFormat.Read` (file text, file name))
@@ -395,7 +396,73 @@ An open note is `{ document, path }` and a `Save()` that writes the one to the o
 
 `DocumentEditorControl.LoadPath` gets the session from `NoteSessions.Open(path)`, which hands every view of one path the same session — one model, one undo stack, one dirty flag, one save — and counts the views; the editor releases it on `LoadPath` and when it is destroyed, and the last release drops it. `Save()` on the editor forwards to it.
 
-A change made in one view moves the caret, the selection anchor and the text-drag press in every other view by address mapping (`NoteChange.Map`); an insert exactly at another view's caret leaves that caret in front of the insert. Only the session's `lead` view — the one whose editor last became the active control — obeys the caret an edit names. "Split right / down" in the tab menu on a note or `.tex` tab opens a second view of the same note in the new pane; closing a view that is not the last skips the naming prompt. `LoadDocument` on its own leaves the editor sessionless and unsavable, which is what a preview of a document that came from nowhere should do.
+A change made in one view moves the caret, the selection anchor and the text-drag press in every other view by address mapping (`NoteChange.Map`); an insert exactly at another view's caret leaves that caret in front of the insert. Only the session's `lead` view — the one whose editor last became the active control — obeys the caret an edit names. "Split right / down" in the tab menu on a note or `.tex` tab opens a second view of the same note in the new pane. `LoadDocument` on its own leaves the editor sessionless and unsavable, which is what a preview of a document that came from nowhere should do.
+
+## Live sync with the file — `NoteFileSync`
+An open `.xml` note and its file on disk stay in step both ways, as groundwork for network replication. Each session owns one `NoteFileSync`, created by `NoteSessions.Open` and disposed by `NoteSessions.Close`; disposing flushes. Ctrl+S still saves at once.
+
+In-app edits autosave almost immediately: the first edit saves on the next tick, then at most once every 250 ms, with a final save after the last edit. A save writes only the changed top-level segments of the file, in place. The segments are the header, the `<DocumentLayout>`, each `<Block>` and `<Table>`, and each `<Footnote>` / `<Float>` group. Each node carries an internal `dirty` flag, set from `RichTextDocument.Raise` — the one exit every model edit passes — so a run never tells its block. The header and the layout are compared with the file at write time instead of being flagged, and a column drag marks its table in `TableControl.EndResize`.
+
+A segment has slack: trailing spaces after its element. An edit that fits is overwritten in place; one that outgrows its segment shifts the rest of the file once, from the first hole that changed size, so that is meant to be rare. A grown segment is given slack of `max(64 B, 25%)`, and slack left over beyond `max(256 B, 50%)` is trimmed by shifting left. The first write of a note has no map of the file and writes the whole thing. A failed write — the folder deleted, the file locked — is caught, logs one warning and leaves the note dirty for the next try.
+
+Crash safety comes from a journal rather than a temp file and an atomic replace, because replacing the file rewrites all of it. `FileJournal` is held open for the session, one journal file per note under `Paths.JOURNAL`. A commit writes a record — a magic number, a SHA-256 of its body, and the body (the path, the new length and each offset with its bytes) — and forces it to disk once, applies the writes to the note and forces that, then zeroes the record's magic without forcing. There is no commit marker: `RichTextDocument.Load` replays a leftover record before it reads, deletes a zeroed one, and warns about one that is cut off or fails its checksum, applying nothing. Replay is idempotent, because the offsets are absolute and the length is final, which is why zeroing needs no flush. Disposing the journal deletes its file.
+
+The write runs off the main thread. The main thread does the matching and serialises the dirty elements into a `SegmentPatch` (the writes, the new length, the new segment map and the new file bytes), keeps the file's bytes in memory so a partial save never opens the note to read it, and hands the patch to `FileWriteQueue`, one background thread that applies patches in order. The autosave timer returns without waiting. Ctrl+S, closing a tab or window, disposing the session, `Notes.SaveEdited`, an overwrite and a vault rename wait for the queue, so "saved" still means on disk and a failure still surfaces. A background failure drops the map and the file bytes, marks the note unsaved again and warns once. Shutdown waits for the queue through the `Files.Drain` step. The note itself is not held open between saves, so a program that writes it with a shared read lock still gets in.
+
+A write by another program reaches the open note through a `FileSystemWatcher`. When the note has no unsaved edits the new file is parsed and matched against the open nodes from both ends by their XML, widened to whole footnote / float groups, and only the middle is swapped in through `ReplaceNodes`. That raises `NoteChangeKind.Nodes`, `DocumentControl.ShowNodes` reconciles the views, and the whole reload is one undo step named "Reloaded from disk", carrying the header with it. A write that does not parse as a note is ignored. When the note does have unsaved edits the app wins: they are written back over the outside write, reusing the segments that still match.
+
+#### Edited ()
+if a save is already pending → nothing
+if 250 ms have passed since the last save → save on the next tick
+otherwise → save when the 250 ms are up
+a save finds the note clean → nothing to write
+
+#### Write (wait)
+if the note is not `.xml` → `document.Save` (`path`), the whole file
+otherwise
+	if the file's length or write time differs from what was last written → drop `map` and `file`
+	`patch` = `NoteSegments.Prepare` (`document`, `path`, `map`, `file`)
+	`FileWriteQueue.Enqueue` (`journal`, `patch`, `Done`)
+	if `wait` → `FileWriteQueue.Drain`, then `Landed`, rethrowing the first failure
+an autosave (`Flush`) passes `wait` = false and returns at once
+
+#### Done (error)
+this runs on the writer thread
+if there was no error → remember the file's length and write time
+queue the outcome, and post `Landed` to the main thread
+
+#### Landed ()
+if a write failed → drop `map` and `file`, mark the session unsaved, log one warning
+otherwise → forget the warning
+if nothing is in flight → `Settled`
+
+#### Prepare (document, path, map, file) — `NoteSegments`
+if there is no `map` or no `file` → build the whole file
+keep each old segment that is unchanged: the header and layout by their bytes, an entry when none of its nodes is dirty and it is still in order
+every run of segments between two kept ones is a hole, written anew
+	each hole keeps its old room when the text fits and less than `max(256 B, 50%)` is left over
+	otherwise its last segment gets `max(64 B, 25%)` of slack
+holes before the first one that changed size → overwritten in place
+from that one on → the rest of the file rewritten once
+clear the dirty flags
+return a `SegmentPatch` (writes, new length, new `map`, new `file`)
+`NoteSegments.Write` is the synchronous form → `File.ReadAllBytes`, `Prepare`, `FileJournal.Commit`
+	in DEBUG → read the file back, map it again, throw on any mismatch
+
+#### Commit (writes, length) — `FileJournal`
+write the record and `Flush(true)`
+apply the writes to the note, set its length and `Flush(true)`
+zero the record's magic and `Flush(false)`
+
+#### Reload ()
+if the file is the one this last wrote → nothing
+if the note has unsaved edits
+	`NoteSegments.Rebase` maps the outside file, keeping the lead and tail entries the note would write the same
+	save, so the note is written over it
+otherwise
+	if the file is not a note → warn once, drop `map`, leave the note alone
+	match the open nodes against the new ones from the lead and from the tail, widened to whole footnote / float groups
+	`ReplaceNodes` (first, removed, added) with the header, as one undo step
 
 ## Caret movement
 The caret is `(run, cursorPosition)` — the offset lives on the run, and `DocumentControl` remembers which run holds it. Movement splits in two by what the move actually asks:

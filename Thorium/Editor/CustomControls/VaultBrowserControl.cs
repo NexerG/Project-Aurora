@@ -280,7 +280,7 @@ namespace Thorium.Editor.CustomControls
             Engine.primary.ui.uiRoot?.FindByName(browserName) as VaultBrowserControl;
 
         private void NewNote(string folder, string extension = ".md") =>
-            NoteNameWindow.Ask(UIEngine.WindowOf(this), "Untitled", name => CreateNote(folder, name, extension), null, null);
+            NoteNameWindow.Ask(UIEngine.WindowOf(this), "Untitled", name => CreateNote(folder, name, extension), null);
 
         // A note needs a block holding a run before it can be typed into — the editor places its
         // caret on a run and builds neither.
@@ -299,7 +299,7 @@ namespace Thorium.Editor.CustomControls
         }
 
         private void NewSheet(string folder, bool fixedSize) =>
-            NoteNameWindow.Ask(UIEngine.WindowOf(this), "Untitled", name => CreateSheet(folder, name, fixedSize), null, null);
+            NoteNameWindow.Ask(UIEngine.WindowOf(this), "Untitled", name => CreateSheet(folder, name, fixedSize), null);
 
         private void CreateSheet(string folder, string name, bool fixedSize)
         {
@@ -313,7 +313,7 @@ namespace Thorium.Editor.CustomControls
         }
 
         private void NewTex(string folder) =>
-            NoteNameWindow.Ask(UIEngine.WindowOf(this), "Untitled", name => CreateTex(folder, name), null, null);
+            NoteNameWindow.Ask(UIEngine.WindowOf(this), "Untitled", name => CreateTex(folder, name), null);
 
         private void CreateTex(string folder, string name)
         {
@@ -326,7 +326,7 @@ namespace Thorium.Editor.CustomControls
         }
 
         private void NewPlanner(string folder) =>
-            NoteNameWindow.Ask(UIEngine.WindowOf(this), "Untitled", name => CreatePlanner(folder, name), null, null);
+            NoteNameWindow.Ask(UIEngine.WindowOf(this), "Untitled", name => CreatePlanner(folder, name), null);
 
         private void CreatePlanner(string folder, string name)
         {
@@ -393,6 +393,7 @@ namespace Thorium.Editor.CustomControls
             if (string.IsNullOrEmpty(name) || name == BaseName(path)) return;
 
             string target = FreePath(Path.GetDirectoryName(path)!, name, Extension(path));
+            FileWriteQueue.Drain();
             File.Move(path, target);
             WriteName(target, name);
 
@@ -606,7 +607,6 @@ namespace Thorium.Editor.CustomControls
 
             DocumentEditorControl editor = new DocumentEditorControl { contextMenu = "note" };
             editor.LoadPath(notePath);
-            editor.onNamed = name => RenameNote(editor.session.path, name);
 
             TabItemControl tab = new TabItemControl
             {
@@ -652,7 +652,6 @@ namespace Thorium.Editor.CustomControls
         {
             TexEditorControl editor = new TexEditorControl();
             editor.LoadPath(texPath);
-            editor.source.onNamed = name => RenameNote(editor.path, name);
 
             TabItemControl tab = new TabItemControl
             {

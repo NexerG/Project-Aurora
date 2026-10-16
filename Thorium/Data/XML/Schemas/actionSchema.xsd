@@ -31,6 +31,7 @@
           <xs:enumeration value="NoteModel.EditHeadless" />
           <xs:enumeration value="NoteModel.TwoViews" />
           <xs:enumeration value="NoteModel.RestoreTwice" />
+          <xs:enumeration value="NoteModel.SegmentMap" />
           <xs:enumeration value="Palette.SetCrossfades" />
           <xs:enumeration value="Planner.XmlRoundTrip" />
           <xs:enumeration value="Planner.GanttGeometry" />
@@ -263,10 +264,19 @@
           <xs:enumeration value="Math.Tag" />
           <xs:enumeration value="Math.EnvErrors" />
           <xs:enumeration value="Math.AmsCommands" />
+          <xs:enumeration value="Notes.DirtyTracking" />
+          <xs:enumeration value="Notes.PartialWrite" />
+          <xs:enumeration value="Notes.JournalReplay" />
+          <xs:enumeration value="Notes.Autosave" />
+          <xs:enumeration value="Notes.DiskReload" />
+          <xs:enumeration value="Notes.LocalWins" />
+          <xs:enumeration value="Notes.NoNamingPrompt" />
           <xs:enumeration value="Perf.RelayoutLabels" />
           <xs:enumeration value="Perf.TypeLargeNote" />
           <xs:enumeration value="Perf.RewrapLargeNote" />
           <xs:enumeration value="Perf.ResizeLargeNote" />
+          <xs:enumeration value="Perf.SaveLargeNote.InPlace" />
+          <xs:enumeration value="Perf.SaveLargeNote.Shift" />
           <xs:enumeration value="Perf.AnimationBurst" />
           <xs:enumeration value="Perf.AnimationLayoutClip" />
           <xs:enumeration value="Perf.Controls.Panel.Static" />
@@ -594,10 +604,10 @@
       <xs:simpleType>
         <xs:restriction base="xs:string">
           <xs:enumeration value="Background.Remove" />
-          <xs:enumeration value="Notes.SettleUnnamed" />
           <xs:enumeration value="Notes.SaveEdited" />
           <xs:enumeration value="Session.Capture" />
           <xs:enumeration value="Settings.SaveAll" />
+          <xs:enumeration value="Files.Drain" />
           <xs:enumeration value="Logging.Flush" />
           <xs:enumeration value="Profiling.Flush" />
         </xs:restriction>

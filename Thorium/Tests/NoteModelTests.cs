@@ -282,6 +282,74 @@ namespace Thorium.Tests
             t.Show(new StackPanelControl());
         }
 
+        [A_XSDActionDependency("NoteModel.SegmentMap", "Test")]
+        private static IEnumerator<int> SegmentMap(TestContext t)
+        {
+            string path = Path.Combine(Path.GetTempPath(), "aurora-segments.xml");
+            string notes = Path.GetFullPath(Paths.Doc("../../Notes"));
+            List<(string name, RichTextDocument document)> sources = !Directory.Exists(notes) ? new() : Directory
+                .EnumerateFiles(notes, "*.xml", SearchOption.AllDirectories)
+                .Where(file => !SheetDocument.IsSheet(file) && !PlannerDocument.IsPlanner(file))
+                .Select(file => (Path.GetRelativePath(notes, file), DocumentXml.Load(file)))
+                .ToList();
+            sources.Add(("everything.xml", DocumentXml.Parse(Everything)));
+
+            foreach ((string name, RichTextDocument document) in sources)
+            {
+                byte[] built = NoteSegments.Build(document, path, out List<NoteSegment> map);
+                t.Check(XDocument.Load(new MemoryStream(built)).ToString() == DocumentXml.ToFile(document, path).ToString(),
+                    $"{name}: the note's own writer writes what ToFile does");
+                CheckSegments(t, $"{name} as written", built, map, document);
+                t.Check(SameSegments(map, NoteSegments.Map(built, document)), $"{name}: mapping the written file finds the segments it was written with");
+
+                using MemoryStream saved = new MemoryStream();
+                DocumentXml.ToFile(document, path).Save(saved);
+                byte[] file = saved.ToArray();
+                RichTextDocument reread = DocumentXml.Parse(XDocument.Load(new MemoryStream(file)).Root!);
+                CheckSegments(t, $"{name} as XDocument saves it", file, NoteSegments.Map(file, reread), reread);
+            }
+
+            yield break;
+        }
+
+        // Segments tile the file, open on their element, end in whitespace slack and hold the note's nodes in order.
+        private static void CheckSegments(TestContext t, string name, byte[] file, List<NoteSegment>? map, RichTextDocument document)
+        {
+            t.Check(map != null && map.Count >= 2, $"{name}: the file maps");
+            if (map == null) return;
+
+            long at = 0;
+            bool tiled = true, opens = true, slack = true, elements = true;
+            List<NoteNode> nodes = new List<NoteNode>();
+            foreach (NoteSegment segment in map)
+            {
+                tiled &= segment.start == at && segment.length <= segment.capacity;
+                at = segment.start + segment.capacity;
+                for (long b = segment.start + segment.length; b < at; b++)
+                    slack &= file[b] is (byte)' ' or (byte)'\t' or (byte)'\r' or (byte)'\n';
+
+                if (segment.kind == NoteSegmentKind.Header) continue;
+                opens &= file[segment.start] == (byte)'<';
+                if (segment.kind == NoteSegmentKind.Footer) continue;
+
+                string local = XElement.Parse(System.Text.Encoding.UTF8.GetString(file, (int)segment.start, segment.length)).Name.LocalName;
+                elements &= segment.kind == NoteSegmentKind.Layout ? local == "DocumentLayout"
+                    : segment.nodes.Length == 1 && segment.nodes[0].insert == null ? local is "Block" or "Table"
+                    : local is "Footnote" or "Float";
+                nodes.AddRange(segment.nodes);
+            }
+
+            t.Check(tiled && at == file.Length, $"{name}: segments tile the file");
+            t.Check(opens, $"{name}: every segment after the header opens on '<'");
+            t.Check(slack, $"{name}: every segment's slack is whitespace");
+            t.Check(elements, $"{name}: every segment holds one whole element of its kind");
+            t.Check(nodes.SequenceEqual(document.blocks), $"{name}: the segments hold the note's nodes in order");
+        }
+
+        private static bool SameSegments(List<NoteSegment> a, List<NoteSegment>? b) =>
+            b != null && a.Count == b.Count && a.Zip(b).All(p => p.First.kind == p.Second.kind && p.First.start == p.Second.start
+                && p.First.length == p.Second.length && p.First.capacity == p.Second.capacity && p.First.nodes.SequenceEqual(p.Second.nodes));
+
         // A note's text read and written the way RichTextDocument does, without the file's timestamps.
         private static string RoundTrip(string text, string extension, string name)
         {

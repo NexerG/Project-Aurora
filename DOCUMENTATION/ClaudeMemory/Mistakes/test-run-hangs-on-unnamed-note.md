@@ -1,6 +1,7 @@
 # Mistake — a `--test` run hung at exit on a "Name this note" prompt
 
 **Date:** 2026-10-01
+**Superseded 2026-10-15:** the exit-time naming prompt (`Notes.SettleUnnamed`) no longer exists, so this hang cannot happen. The related test rule is now different: a test that edits a note clears the tree before deleting its file, because autosave or exit-time `Notes.SaveEdited` would recreate the deleted temp fixture. See [[note-live-sync]].
 
 ## What happened
 - `TextInput.PictureEditUndo` edited an unnamed note; the next (last) test, `PictureRoundTrip`, called no `t.Show`.

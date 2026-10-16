@@ -383,25 +383,13 @@ namespace ArctisAurora.Core.UI
             base.AddChild(tools);
         }
 
-        // Writes an edited note, then tears the whole subtree down — the strip button with it. An
-        // edited note that has never been named asks for one first, and the teardown waits for the
-        // answer; abandoning the naming abandons the close.
+        // Writes an edited note, then tears the whole subtree down — the strip button with it.
         public void CloseTab(TabItemControl item) => CloseTab(item, null);
 
-        // onClosed runs once the tab is gone. Cancelling the prompt runs nothing, which is what stops
-        // a queue of closes at the tab the user changed their mind about.
+        // onClosed runs once the tab is gone.
         internal void CloseTab(TabItemControl item, Action onClosed)
         {
             if (item == null || !children.Contains(item)) { onClosed?.Invoke(); return; }
-
-            DocumentEditorControl editor = EditorOf(item);
-            if (editor != null && editor.needsNaming && editor.session.views == 1)
-            {
-                editor.SaveNamed(
-                    () => { FinishClose(item); onClosed?.Invoke(); },
-                    () => { FinishClose(item); onClosed?.Invoke(); });
-                return;
-            }
 
             IFileEditor file = FileEditorOf(item);
             if (file != null && file.isDirty) file.Save();

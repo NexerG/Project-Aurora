@@ -2,6 +2,7 @@
 
 **Date:** 2026-08-20
 **Status:** LANDED. Builds clean; every trigger **GUI-verified by screenshot with synthetic input**.
+**Amended 2026-10-15 — close-time naming RETRACTED:** the prompt on tab close, window close and shutdown, and `SaveNamed`, `needsNaming`, `onNamed`, `NoteActions.SettleUnnamed`, `FirstUnnamed`, `discarded`, `ForgetDiscarded` and the "Don't save" button (`onDiscard`) are gone. A note is named only at creation (the vault's F5/New prompt); a note with no Name keeps showing its file name. Decisions 7 and 8 below describe the removed behaviour except where noted. See [[note-live-sync]].
 **Scope:** `ArctisAurora.Core.UISystem` (`NoteNameWindow`, `UICollisionHandling`, `WindowActions`,
 `TabViewControl`, `TextControl`, `TextInputActions`, `TextBoxControl`, `DocumentEditorControl`,
 `DocumentEditSession`, `RichTextDocument`), `ArctisAurora.EngineWork.Rendering` (`RenderWindow`),
@@ -103,7 +104,7 @@ that field, and the one the `Context.Set` unification on the WIP list will have 
 
 The previous active control is restored on close.
 
-### 7. Closing is deferred through a callback, not blocked
+### 7. Closing is deferred through a callback, not blocked — RETRACTED 2026-10-15 (`SaveNamed` removed; close saves without prompting)
 
 `DocumentEditorControl.SaveNamed(onDone, onCancelled)` is the one entry point: it writes immediately
 when the note has a name, and otherwise opens the prompt and writes from the confirm callback.
@@ -117,7 +118,7 @@ when the note has a name, and otherwise opens the prompt and writes from the con
 - `Engine.Stop()` is reached only after the last prompt answers, so shutdown is unchanged — it is
   simply called later.
 
-### 8. A named note is never asked about, and closing the window writes it
+### 8. A named note is never asked about, and closing the window writes it — prompt half RETRACTED 2026-10-15 (no unnamed-note prompt, no "Don't save"); edited notes still save silently on tab and window close
 
 Named notes skip the prompt entirely and are written silently, on tab close and on window close alike
 (user, 2026-08-20). **The window-close half was a hole in decision 7 as first written:** it only

@@ -361,7 +361,7 @@ namespace ArctisAurora.Core.UI
         public static void Cancel() => Box()?.Cancel();
 
         [A_XSDActionDependency("Text.Save", "Input", "Writes the focused note back to the file it was loaded from")]
-        public static void Save() => Editor()?.SaveNamed();
+        public static void Save() => Editor()?.Save();
 
         [A_XSDActionDependency("Tex.ExportPdf", "Input", "Writes the focused LaTeX file's preview as a PDF beside it")]
         public static void ExportPdf()

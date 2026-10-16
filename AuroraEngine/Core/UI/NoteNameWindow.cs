@@ -17,30 +17,22 @@ namespace ArctisAurora.Core.UI
         private static RenderWindow? _source;
         private static Control? _restoreActive;
         private static TextBoxControl _field = null!;
-        private static ButtonControl _discard = null!;
         private static StackPanelControl _column = null!;
 
         private static Action<string>? _onConfirm;
-        private static Action? _onDiscard;
         private static Action? _onCancel;
 
         public static bool isOpen { get; private set; }
 
         // A prompt at a time. A second ask while one is up would strand the first one's callbacks.
-        // Without an onDiscard there is nothing to discard — an explicit save has no such answer —
-        // so the button is left out rather than duplicating Cancel.
-        public static unsafe void Ask(RenderWindow source, string suggestion, Action<string> onConfirm,
-            Action? onDiscard, Action? onCancel)
+        public static unsafe void Ask(RenderWindow source, string suggestion, Action<string> onConfirm, Action? onCancel)
         {
             if (isOpen || source == null) return;
 
             Build();
             _source = source;
             _onConfirm = onConfirm;
-            _onDiscard = onDiscard;
             _onCancel = onCancel;
-
-            if (onDiscard != null) _discard.Show(); else _discard.Hide();
 
             _field.text = suggestion ?? string.Empty;
 
@@ -77,13 +69,6 @@ namespace ArctisAurora.Core.UI
             confirm?.Invoke(name);
         }
 
-        private static void Discard()
-        {
-            Action? discard = _onDiscard;
-            Hide();
-            discard?.Invoke();
-        }
-
         private static void Cancel()
         {
             Action? cancel = _onCancel;
@@ -100,7 +85,6 @@ namespace ArctisAurora.Core.UI
             _window.os.Hide();
             isOpen = false;
             _onConfirm = null;
-            _onDiscard = null;
             _onCancel = null;
 
             UIEngine.SetActiveControl(_restoreActive);
@@ -171,8 +155,6 @@ namespace ArctisAurora.Core.UI
             // The row fills the column, so the buttons are pushed right by a star child rather than
             // by aligning the row itself.
             buttons.AddChild(new PanelControl { widthStar = 1, alpha = 0f });
-            _discard = Button("Don't save", Discard);
-            buttons.AddChild(_discard);
             buttons.AddChild(Button("Cancel", Cancel));
             buttons.AddChild(Button("Save", Confirm));
             _column.AddChild(buttons);

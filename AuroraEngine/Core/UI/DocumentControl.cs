@@ -3205,6 +3205,7 @@ namespace ArctisAurora.Core.UI
             bool touched = change.kind switch
             {
                 NoteChangeKind.Table => true,
+                NoteChangeKind.Nodes => selected >= change.first && selected < change.first + change.count,
                 NoteChangeKind.Text or NoteChangeKind.Spans or NoteChangeKind.Kind or NoteChangeKind.Inserted or NoteChangeKind.Removed =>
                     (selected >= change.first && selected < change.first + change.count)
                     || (change.kind is NoteChangeKind.Inserted or NoteChangeKind.Removed && selected == change.at.block),
@@ -3221,9 +3222,9 @@ namespace ArctisAurora.Core.UI
 
             bool follows = session == null || session.lead == null || session.lead == this;
             DocumentAddress caretTo = default, anchorTo = default, pressTo = default;
-            bool remap = !follows && caretBlock != null && MapAddress(change, out caretTo, out anchorTo, out pressTo);
+            bool remap = (!follows || change.kind == NoteChangeKind.Nodes) && caretBlock != null && MapAddress(change, out caretTo, out anchorTo, out pressTo);
 
-            if (change.kind is NoteChangeKind.Inserted or NoteChangeKind.Removed or NoteChangeKind.Table) caretIndex = -1;
+            if (change.kind is NoteChangeKind.Inserted or NoteChangeKind.Removed or NoteChangeKind.Table or NoteChangeKind.Nodes) caretIndex = -1;
 
             switch (change.kind)
             {
@@ -3272,6 +3273,9 @@ namespace ArctisAurora.Core.UI
                 }
                 case NoteChangeKind.Table:
                     ShowTable(change.first);
+                    break;
+                case NoteChangeKind.Nodes:
+                    ShowNodes();
                     break;
                 case NoteChangeKind.Page:
                     page = document.layout.Page;
@@ -3520,6 +3524,61 @@ namespace ArctisAurora.Core.UI
             InvalidateLayout();
             ListsChanged();
         }
+
+        // Drops the views of entries the note no longer holds and builds the missing ones in note order.
+        private void ShowNodes()
+        {
+            HashSet<NoteNode> live = new HashSet<NoteNode>(document.blocks);
+            for (int i = children.Count - 1; i >= 0; i--)
+                if (NodeOf(children[i]) is NoteNode gone && !live.Contains(gone))
+                    children[i].Destroy();
+
+            Dictionary<NoteNode, Entity> shown = new Dictionary<NoteNode, Entity>();
+            int firstView = -1;
+            for (int i = 0; i < children.Count; i++)
+            {
+                if (NodeOf(children[i]) is not NoteNode node) continue;
+                shown[node] = children[i];
+                if (firstView < 0) firstView = i;
+            }
+
+            Entity? previous = null;
+            foreach (NoteNode node in document.blocks)
+            {
+                if (shown.TryGetValue(node, out Entity? view))
+                {
+                    previous = view;
+                    continue;
+                }
+
+                Entity added;
+                if (node is NoteTable model)
+                {
+                    TableControl table = new TableControl(model);
+                    table.ApplyLayout(document.layout);
+                    added = table.Hosted();
+                }
+                else
+                {
+                    BlockControl block = new BlockControl((NoteBlock)node);
+                    block.StartEffects();
+                    block.ApplyLayout(document.layout);
+                    added = block;
+                }
+
+                int at = previous != null ? children.IndexOf(previous) + 1 : firstView >= 0 ? firstView : children.Count;
+                children.Insert(at, added);
+                added.parent = this;
+                if (previous == null && firstView >= 0) firstView++;
+                previous = added;
+            }
+
+            MarkTreeOrderDirty();
+            InvalidateLayout();
+            ListsChanged();
+        }
+
+        private static NoteNode? NodeOf(Entity child) => child is BlockControl block ? block.note : TableIn(child)?.model;
 
         // A note-level entry as it sits among the children: a block itself, a table its viewport.
         private static Entity Hosting(Control entry) => entry is TableControl table ? table.parent : entry;

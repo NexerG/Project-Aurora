@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<TestSuite xmlns="http://arctisaurora/AuroraTestTypes"
+		  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+		  xsi:schemaLocation="http://arctisaurora/AuroraTestTypes ../../Schemas/TestTypeSchema.xsd" >
+	<Test Action="Notes.DirtyTracking"/>
+	<Test Action="Notes.PartialWrite"/>
+	<Test Action="Notes.JournalReplay"/>
+	<Test Action="Notes.Autosave"/>
+	<Test Action="Notes.DiskReload"/>
+	<Test Action="Notes.LocalWins"/>
+	<Test Action="Notes.NoNamingPrompt"/>
+</TestSuite>

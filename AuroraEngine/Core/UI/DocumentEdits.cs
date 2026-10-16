@@ -308,4 +308,67 @@ namespace ArctisAurora.Core.UI
 
         public void Redo() => document.SetPage(after);
     }
+
+    // A note's own fields beside its entries.
+    public readonly record struct NoteHeader(string? name, string? palette, bool readOnly, string? frontmatter,
+        string? created, string? modified, DocumentLayout layout)
+    {
+        public static NoteHeader Of(RichTextDocument d) => new(d.name, d.palette, d.readOnly, d.frontmatter, d.created, d.modified, d.layout);
+
+        // Sets these fields on the note through its setters, raising only what differs.
+        public void ApplyTo(RichTextDocument d)
+        {
+            d.name = name;
+            d.created = created;
+            d.modified = modified;
+            if (d.palette != palette) d.SetPalette(palette);
+            if (d.readOnly != readOnly) d.SetReadOnly(readOnly);
+            if (d.layout != layout)
+            {
+                d.SetLayout(layout);
+                d.SetPage(layout.page);
+            }
+
+            if (d.frontmatter == frontmatter) return;
+            foreach (string key in Keys(d.frontmatter).Union(Keys(frontmatter), StringComparer.OrdinalIgnoreCase).ToList())
+                if (Frontmatter.Get(d.frontmatter, key) != Frontmatter.Get(frontmatter, key))
+                    d.SetFrontmatterValue(key, Frontmatter.Get(frontmatter, key));
+            d.frontmatter = frontmatter;
+        }
+
+        private static IEnumerable<string> Keys(string? block) => Frontmatter.Entries(block).Where(e => e.editable).Select(e => e.key);
+    }
+
+    // Note-level entries swapped with the header, as a reload from disk does.
+    public sealed class NodesEdit : IEditRecord
+    {
+        private readonly RichTextDocument document;
+        private readonly int first;
+        private readonly NoteNode[] before;
+        private readonly NoteNode[] after;
+        private readonly NoteHeader headerBefore;
+        private readonly NoteHeader headerAfter;
+
+        public NodesEdit(RichTextDocument document, int first, NoteNode[] before, NoteNode[] after, NoteHeader headerBefore, NoteHeader headerAfter)
+        {
+            this.document = document;
+            this.first = first;
+            this.before = before;
+            this.after = after;
+            this.headerBefore = headerBefore;
+            this.headerAfter = headerAfter;
+        }
+
+        public void Undo()
+        {
+            if (before.Length + after.Length > 0) document.ReplaceNodes(first, after.Length, before);
+            headerBefore.ApplyTo(document);
+        }
+
+        public void Redo()
+        {
+            if (before.Length + after.Length > 0) document.ReplaceNodes(first, before.Length, after);
+            headerAfter.ApplyTo(document);
+        }
+    }
 }

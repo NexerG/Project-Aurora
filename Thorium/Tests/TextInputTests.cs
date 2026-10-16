@@ -121,7 +121,7 @@ namespace Thorium.Tests
             List<BlockControl> p = Paragraphs(editor);
             yield return 2;
 
-            string before = DocumentXml.ToXml(editor.session.document).ToString();
+            string before = Unstamped(editor.session.document).ToString();
             t.Check(p[0].StyleAt(2).IsBold, "the fixture's first paragraph is bold");
 
             content.SetCaret(p[0], 0);
@@ -136,11 +136,11 @@ namespace Thorium.Tests
             t.Check(p.Count == 3 && p[1].StyleAt(8).IsBold && !p[1].StyleAt(4).IsBold, "our own copy pastes with its formatting");
             t.Check(content.caretBlock == p[^1] && content.caretOffset == 5, "the caret ends after the pasted text");
 
-            string pasted = DocumentXml.ToXml(editor.session.document).ToString();
+            string pasted = Unstamped(editor.session.document).ToString();
             yield return t.Key(Keys.Z, Keys.LeftControl);
-            t.Check(DocumentXml.ToXml(editor.session.document).ToString() == before, "undo restores the note exactly");
+            t.Check(Unstamped(editor.session.document).ToString() == before, "undo restores the note exactly");
             yield return t.Key(Keys.Y, Keys.LeftControl);
-            t.Check(DocumentXml.ToXml(editor.session.document).ToString() == pasted, "redo pastes it exactly again");
+            t.Check(Unstamped(editor.session.document).ToString() == pasted, "redo pastes it exactly again");
         }
 
         [A_XSDActionDependency("TextInput.PastePlainLines", "Test")]
@@ -1775,6 +1775,15 @@ namespace Thorium.Tests
             editor.FocusCaret();
         }
 
+        // The note's XML without the save stamps, which autosave rewrites.
+        private static XElement Unstamped(RichTextDocument document)
+        {
+            XElement root = DocumentXml.ToXml(document);
+            root.Attribute("Created")?.Remove();
+            root.Attribute("Modified")?.Remove();
+            return root;
+        }
+
         private static RichTextDocument Paragraphs(params string[] texts) =>
             DocumentXml.Parse(new XElement("Document", texts.Select(Block)));
 
@@ -1960,7 +1969,7 @@ namespace Thorium.Tests
         {
             DocumentEditorControl editor = ShowParagraphs(t, "only");
             RichTextDocument document = editor.session.document;
-            XElement original = DocumentXml.ToXml(document);
+            XElement original = Unstamped(document);
             yield return 2;
 
             TextInputActions.InsertTable();
@@ -1975,12 +1984,12 @@ namespace Thorium.Tests
             t.Check(table.RowCount == 3 && table.widths.Length == 3, "the default table is 3x3");
             t.Check(table.widths.All(w => w == MathF.Floor(text / 3f)), "its columns split the text width evenly");
             t.Check(Content(editor).caretBlock == Cell(table, 0), "the caret lands in the first cell");
-            XElement inserted = DocumentXml.ToXml(document);
+            XElement inserted = Unstamped(document);
 
             yield return t.Key(Keys.Z, Keys.LeftControl);
-            t.Check(XNode.DeepEquals(DocumentXml.ToXml(document), original), "one undo takes the table and its paragraph back out");
+            t.Check(XNode.DeepEquals(Unstamped(document), original), "one undo takes the table and its paragraph back out");
             yield return t.Key(Keys.Y, Keys.LeftControl);
-            t.Check(XNode.DeepEquals(DocumentXml.ToXml(document), inserted), "redo puts the same table back");
+            t.Check(XNode.DeepEquals(Unstamped(document), inserted), "redo puts the same table back");
             t.Show(new StackPanelControl());
         }
 
@@ -2021,17 +2030,17 @@ namespace Thorium.Tests
 
             foreach ((string name, Action command, Func<TableControl, bool> shape) in commands)
             {
-                XElement before = DocumentXml.ToXml(document);
+                XElement before = Unstamped(document);
                 command();
                 yield return 2;
                 TableControl changed = (TableControl)Views(content)[1];
                 t.Check(shape(changed), $"{name}: the table has its new shape");
-                XElement after = DocumentXml.ToXml(document);
+                XElement after = Unstamped(document);
 
                 yield return t.Key(Keys.Z, Keys.LeftControl);
-                t.Check(XNode.DeepEquals(DocumentXml.ToXml(document), before), $"{name}: undo restores the table exactly");
+                t.Check(XNode.DeepEquals(Unstamped(document), before), $"{name}: undo restores the table exactly");
                 yield return t.Key(Keys.Y, Keys.LeftControl);
-                t.Check(XNode.DeepEquals(DocumentXml.ToXml(document), after), $"{name}: redo rebuilds the same table");
+                t.Check(XNode.DeepEquals(Unstamped(document), after), $"{name}: redo rebuilds the same table");
                 yield return t.Key(Keys.Z, Keys.LeftControl);
                 content.SetCaret(Cell((TableControl)Views(content)[1], 1), 2);
             }
@@ -2203,24 +2212,24 @@ namespace Thorium.Tests
             {
                 content.SetCaret(Cell((TableControl)Views(content)[1], caret), 0);
                 string at = content.caretBlock!.text;
-                XElement before = DocumentXml.ToXml(document);
+                XElement before = Unstamped(document);
                 command();
                 yield return 2;
                 TableControl changed = (TableControl)Views(content)[1];
                 t.Check(shape(changed), $"{name}: the table has its new shape");
                 if (!name.Contains("delete")) t.Check(content.caretBlock?.text == at, $"{name}: the caret stays in its cell");
                 yield return t.Key(Keys.Z, Keys.LeftControl);
-                t.Check(XNode.DeepEquals(DocumentXml.ToXml(document), before), $"{name}: undo restores the table exactly");
+                t.Check(XNode.DeepEquals(Unstamped(document), before), $"{name}: undo restores the table exactly");
             }
 
             foreach ((string name, int caret, Action command) in new (string, int, Action)[]
                 { ("merge on a row's last cell", 1, TextInputActions.MergeCellRight), ("split on a single cell", 2, TextInputActions.SplitCell) })
             {
                 content.SetCaret(Cell((TableControl)Views(content)[1], caret), 0);
-                XElement before = DocumentXml.ToXml(document);
+                XElement before = Unstamped(document);
                 command();
                 yield return 2;
-                t.Check(XNode.DeepEquals(DocumentXml.ToXml(document), before), $"{name} is refused");
+                t.Check(XNode.DeepEquals(Unstamped(document), before), $"{name} is refused");
             }
             t.Show(new StackPanelControl());
         }
@@ -2293,7 +2302,7 @@ namespace Thorium.Tests
 
             IEnumerable<XElement> Row(int row) => DocumentXml.ToXml(document).Descendants().Where(e => e.Name.LocalName == "Row").ElementAt(row).Elements();
             content.SetCaret(Cell((TableControl)Views(content)[1], 3), 0);
-            XElement before = DocumentXml.ToXml(document);
+            XElement before = Unstamped(document);
             TextInputActions.SplitCell();
             yield return 2;
             List<XElement> split = Row(1).ToList();
@@ -2301,7 +2310,7 @@ namespace Thorium.Tests
                 && (string?)split[0].Attribute("TrimAbove") == "Left" && (string?)split[1].Attribute("TrimAbove") == "Right",
                 "a split copies the rules, the left trim to the first half and the right to the second");
             yield return t.Key(Keys.Z, Keys.LeftControl);
-            t.Check(XNode.DeepEquals(DocumentXml.ToXml(document), before), "undo restores the merged cell's rules");
+            t.Check(XNode.DeepEquals(Unstamped(document), before), "undo restores the merged cell's rules");
 
             content.SetCaret(Cell((TableControl)Views(content)[1], 0), 0);
             TextInputActions.InsertRowBelow();
@@ -2411,7 +2420,7 @@ namespace Thorium.Tests
             yield return t.Type("y");
             t.Check(p.text == "aby" + BlockControl.PictureChar + "x" && PictureCount(p) == 1, "typing before a picture extends the text in front of it");
 
-            string before = DocumentXml.ToXml(editor.session.document).ToString();
+            string before = Unstamped(editor.session.document).ToString();
             content.SetCaret(p, 1);
             content.SetCaret(p, 5, true);
             yield return t.Key(Keys.Delete);
@@ -2420,7 +2429,7 @@ namespace Thorium.Tests
 
             yield return t.Key(Keys.Z, Keys.LeftControl);
             p = Paragraphs(editor)[0];
-            t.Check(DocumentXml.ToXml(editor.session.document).ToString() == before && PictureCount(p) == 1, "undo puts the picture back exactly");
+            t.Check(Unstamped(editor.session.document).ToString() == before && PictureCount(p) == 1, "undo puts the picture back exactly");
 
             if (saved != null) File.Delete(saved);
             if (Directory.Exists(attachments) && !Directory.EnumerateFileSystemEntries(attachments).Any()) Directory.Delete(attachments);

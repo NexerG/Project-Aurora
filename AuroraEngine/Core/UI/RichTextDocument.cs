@@ -1,4 +1,5 @@
 using ArctisAurora.Core.Editing;
+using ArctisAurora.Core.Filing;
 using ArctisAurora.Core.Registry;
 using System.Globalization;
 using System.Numerics;
@@ -48,6 +49,7 @@ namespace ArctisAurora.Core.UI
 
         public static RichTextDocument Load(string path)
         {
+            FileJournal.Replay(path);
             RichTextDocument document = Path.GetExtension(path).ToLowerInvariant() switch
             {
                 ".md" => DocumentXml.Parse(MarkdownPictures(MarkdownFormat.Read(File.ReadAllText(path), Path.GetFileNameWithoutExtension(path)), path)),
@@ -114,8 +116,60 @@ namespace ArctisAurora.Core.UI
         public event Action<NoteChange>? changed;
 
         private void Raise(NoteChangeKind kind, int first, int count = 1, DocumentAddress at = default, int length = 0,
-            DocumentAddress? anchor = null, DocumentAddress? caret = null) =>
+            DocumentAddress? anchor = null, DocumentAddress? caret = null)
+        {
+            MarkDirty(kind, first, count);
             changed?.Invoke(new NoteChange(kind, first, count, at, length, anchor, caret));
+        }
+
+        // Flags the nodes an edit changed in place; a node an edit put in is new and carries no flag.
+        private void MarkDirty(NoteChangeKind kind, int first, int count)
+        {
+            switch (kind)
+            {
+                case NoteChangeKind.Text:
+                case NoteChangeKind.Spans:
+                case NoteChangeKind.Kind:
+                    if (count == 1)
+                    {
+                        if (BlockAt(first) is NoteBlock block) block.dirty = true;
+                        break;
+                    }
+                    List<NoteBlock> flat = Blocks();
+                    for (int b = Math.Max(first, 0); b < first + count && b < flat.Count; b++)
+                        flat[b].dirty = true;
+                    break;
+                case NoteChangeKind.Inserted:
+                    if (TableHolding(first) is NoteTable into) into.dirty = true;
+                    break;
+                case NoteChangeKind.Removed:
+                    if (TableHolding(first - 1) is NoteTable from) from.dirty = true;
+                    break;
+            }
+        }
+
+        // The table whose cells hold the block at a flat index; null for a block of the note itself.
+        private NoteTable? TableHolding(int index)
+        {
+            if (index < 0) return null;
+
+            foreach (NoteNode node in blocks)
+            {
+                if (node is NoteBlock)
+                {
+                    if (index-- == 0) return null;
+                }
+                else if (node is NoteTable table)
+                    foreach (NoteCell[] row in table.rows)
+                        foreach (NoteCell cell in row)
+                        {
+                            if (index < cell.blocks.Length) return table;
+                            index -= cell.blocks.Length;
+                        }
+            }
+
+            return null;
+        }
 
         // Every block in reading order, a table's cells included.
         public List<NoteBlock> Blocks()
@@ -475,6 +529,21 @@ namespace ArctisAurora.Core.UI
             return table;
         }
 
+        // Swaps the note-level entries [first, first + removed) for added; the change counts flat blocks.
+        public void ReplaceNodes(int first, int removed, NoteNode[] added)
+        {
+            int flat = 0;
+            for (int i = 0; i < first; i++) flat += FlatCount(blocks[i]);
+            int gone = 0;
+            for (int i = first; i < first + removed; i++) gone += FlatCount(blocks[i]);
+
+            blocks = [.. blocks.AsSpan(0, first), .. added, .. blocks.AsSpan(first + removed)];
+            Raise(NoteChangeKind.Nodes, flat, gone, length: added.Sum(FlatCount));
+        }
+
+        private static int FlatCount(NoteNode node) =>
+            node is NoteTable table ? table.rows.Sum(row => row.Sum(cell => cell.blocks.Length)) : 1;
+
         public void SetPage(PageLayout? page)
         {
             layout.page = page;
@@ -539,28 +608,39 @@ namespace ArctisAurora.Core.UI
         public int views { get; internal set; }
         internal DocumentControl? lead;
 
+        // autosave, for a session NoteSessions holds
+        internal NoteFileSync? sync;
+
         public DocumentEditSession(RichTextDocument document, string path)
         {
             this.document = document;
             this.path = path;
         }
 
-        public void MarkDirty() => isDirty = true;
+        public void MarkDirty()
+        {
+            isDirty = true;
+            sync?.Edited();
+        }
 
         public void MarkSaved() => isDirty = false;
+
+        internal void MarkUnsaved() => isDirty = true;
 
         // Follows the file after it is renamed on disk, so the next save writes where the note is now.
         public void Repath(string newPath)
         {
             NoteSessions.Rekey(this, newPath);
             path = newPath;
+            sync?.Watch();
         }
 
         public void Save()
         {
             bool stamp = SettingsRegistry.Get<DocumentSettings>().stampModified;
             if (isDirty || !stamp) document.modified = stamp ? RichTextDocument.Stamp(DateTime.Now) : null;
-            document.Save(path);
+            if (sync != null) sync.Write();
+            else document.Save(path);
             if (!stamp) document.modified = RichTextDocument.Stamp(File.GetLastWriteTime(path));
             isDirty = false;
         }
@@ -577,6 +657,7 @@ namespace ArctisAurora.Core.UI
             if (!open.TryGetValue(path, out DocumentEditSession? session))
             {
                 session = new DocumentEditSession(RichTextDocument.Load(path), path);
+                session.sync = new NoteFileSync(session);
                 open[path] = session;
             }
 
@@ -587,6 +668,8 @@ namespace ArctisAurora.Core.UI
         public static void Close(DocumentEditSession session)
         {
             if (--session.views > 0) return;
+            session.sync?.Dispose();
+            session.sync = null;
             if (open.TryGetValue(session.path, out DocumentEditSession? held) && held == session) open.Remove(session.path);
         }
 

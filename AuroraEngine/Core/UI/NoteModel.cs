@@ -12,6 +12,9 @@ namespace ArctisAurora.Core.UI
         // a break before the entry, and the footnote or float it is part of; null in the flow
         public PageBreak pageBreak;
         public PageInsert? insert;
+
+        // edited in place since its segment was last written
+        internal bool dirty;
     }
 
     // One block of a note as data: its string, spans and block properties.
@@ -255,7 +258,8 @@ namespace ArctisAurora.Core.UI
         Layout,
         Properties,
         ReadOnly,
-        Replaced
+        Replaced,
+        Nodes
     }
 
     // One change the model made, raised after it is made.
@@ -305,6 +309,10 @@ namespace ArctisAurora.Core.UI
                     if (a.block == first + count - 1) return new DocumentAddress(at.block, at.offset + Math.Max(0, a.offset - length));
                     if (a.block >= first || (a.block == at.block && a.offset > at.offset)) return at;
                     return a;
+                case NoteChangeKind.Nodes:
+                    if (a.block >= first + count) return new DocumentAddress(a.block - count + length, a.offset);
+                    if (a.block < first) return a;
+                    return length > 0 ? new DocumentAddress(Math.Min(a.block, first + length - 1), a.offset) : new DocumentAddress(first, 0);
                 default:
                     return a;
             }

@@ -490,6 +490,7 @@ namespace ArctisAurora.Core.UI
 
             bool changed = widths[resizeColumn] != resizeWidth;
             resizeColumn = -1;
+            if (changed) model.dirty = true;
             if (changed && parent?.parent is DocumentControl document) document.RecordTableResize(this, resizeBefore!);
             resizeBefore = null;
         }

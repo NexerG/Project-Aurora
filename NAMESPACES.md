@@ -45,8 +45,10 @@ ArctisAurora.Core.Filing -> AuroraEngine/Core/Filing/CffOutlines.cs
 ArctisAurora.Core.Filing -> AuroraEngine/Core/Filing/ClipboardImage.cs
 ArctisAurora.Core.Filing -> AuroraEngine/Core/Filing/ClipboardText.cs
 ArctisAurora.Core.Filing -> AuroraEngine/Core/Filing/FileDialog.cs
+ArctisAurora.Core.Filing -> AuroraEngine/Core/Filing/FileJournal.cs
 ArctisAurora.Core.Filing -> AuroraEngine/Core/Filing/FileObject.cs
 ArctisAurora.Core.Filing -> AuroraEngine/Core/Filing/FilePicker.cs
+ArctisAurora.Core.Filing -> AuroraEngine/Core/Filing/FileWriteQueue.cs
 ArctisAurora.Core.Filing -> AuroraEngine/Core/Filing/FolderPicker.cs
 ArctisAurora.Core.Filing -> AuroraEngine/Core/Filing/Glyph.cs
 ArctisAurora.Core.Filing -> AuroraEngine/Core/Filing/IconSet.cs
@@ -60,6 +62,7 @@ ArctisAurora.Core.Filing.Serialization -> AuroraEngine/Core/Filing/Serialization
 ArctisAurora.Core.Filing.Serialization -> AuroraEngine/Core/Filing/Serialization/SvgPath.cs
 ArctisAurora.Core.Filing.Serialization -> AuroraEngine/Core/Filing/Serialization/VirtualFileSystem.cs
 ArctisAurora.Core.Filing.Serialization -> AuroraEngine/Core/Filing/Serialization/XmlReflection.cs
+ArctisAurora.Core.Filing.Xml -> AuroraEngine/Core/Filing/Xml/XMLWriter.cs
 ArctisAurora.Core.Generators -> AuroraEngine/Core/Generators/MTSDFGen.cs
 ArctisAurora.Core.Pdf -> AuroraEngine/Core/Pdf/PdfDocument.cs
 ArctisAurora.Core.Pdf -> AuroraEngine/Core/Pdf/PdfType3Font.cs
@@ -155,10 +158,12 @@ ArctisAurora.Core.UI -> AuroraEngine/Core/UI/MathSymbols.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/MenuButtonControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/MenuScreen.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/NoteActions.cs
+ArctisAurora.Core.UI -> AuroraEngine/Core/UI/NoteFileSync.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/NoteFormats.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/NoteModel.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/NoteNameWindow.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/NotePropertiesControl.cs
+ArctisAurora.Core.UI -> AuroraEngine/Core/UI/NoteSegments.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/NoteToolsControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/Palettes.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/PanelControl.cs
@@ -284,6 +289,7 @@ ArctisAurora.Tests -> AuroraEngine/Tests/FontTests.cs
 ArctisAurora.Tests -> AuroraEngine/Tests/InputTests.cs
 ArctisAurora.Tests -> AuroraEngine/Tests/LayoutTests.cs
 ArctisAurora.Tests -> AuroraEngine/Tests/MathTests.cs
+ArctisAurora.Tests -> AuroraEngine/Tests/NoteTests.cs
 ArctisAurora.Tests -> AuroraEngine/Tests/PerfTests.cs
 ArctisAurora.Tests -> AuroraEngine/Tests/SvgTests.cs
 ArctisAurora.Tests -> AuroraEngine/Tests/SyntaxTests.cs

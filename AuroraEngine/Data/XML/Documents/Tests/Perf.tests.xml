@@ -25,6 +25,12 @@
 	<Test Action="Perf.ResizeLargeNote">
 		<Budget Zone="Step.Main.Layout" P95="1.5" Max="8" AllocKB="1"/>
 	</Test>
+	<Test Action="Perf.SaveLargeNote.InPlace">
+		<Budget Zone="Note.Save" P95="3" Max="8" AllocKB="672"/>
+	</Test>
+	<Test Action="Perf.SaveLargeNote.Shift">
+		<Budget Zone="Note.Save" P95="3" Max="8" AllocKB="4797"/>
+	</Test>
 	<Test Action="Perf.Controls.Panel.Static">
 		<Budget Zone="Step.Main.Input" P95="0.5" Max="8" AllocKB="1"/>
 		<Budget Zone="Step.Main.Layout" P95="0.5" Max="8" AllocKB="1"/>

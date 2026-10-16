@@ -1,6 +1,5 @@
 using ArctisAurora.Core.Diagnostics;
 using ArctisAurora.Core.Registry;
-using ArctisAurora.Core.UI;
 using System.Diagnostics;
 using System.Reflection;
 using System.Xml.Linq;
@@ -82,7 +81,6 @@ namespace ArctisAurora.EngineWork
         // A fresh attempt, from a user gesture. Anything a previous attempt remembered is dropped.
         public static void Request()
         {
-            NoteActions.ForgetDiscarded();
             Run();
         }
 

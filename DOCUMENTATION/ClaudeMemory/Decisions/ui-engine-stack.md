@@ -394,7 +394,7 @@ than a shared abstraction — both stacks live until 6d, and the two editors sha
 - Word and line selection by double/triple click is still **NOT GUI-verified** — a synthetic click never
   reaches `tapCount` 2, which 6b's own tab-caption rename proves is the driver and not the stack.
 - No naming prompt on the new stack: an unnamed note is written under the file name it already has, because
-  the prompt is a window and windows are 6c2. `NoteActions.SettleUnnamed` still walks old trees only.
+  the prompt is a window and windows are 6c2. `NoteActions.SettleUnnamed` still walks old trees only. (Moot since 2026-10-15: `SettleUnnamed` and the close-time prompt were removed, see [[note-live-sync]].)
 
 ## Why these choices
 

@@ -117,6 +117,18 @@ slice 3: `TestContext` input helpers, `UI.WindowRoot.ToWindowSpace`, `AGlfwWindo
 - Expander, TabView changes: see `Context/ui-orientation.md` entries. TabView's quads rose because a squeezed tab now
   shows its caption start and ✕ (user, 1a) instead of drawing empty.
 
+### Save targets (2026-10-16)
+- `Perf.SaveLargeNote.InPlace` and `Perf.SaveLargeNote.Shift` (`ArctisAurora.Tests.PerfTests.SaveLargeNoteInPlace` / `SaveLargeNoteShift`, data in `Perf.tests.xml`): a note of 1000 blocks × 1000 chars (~1.05 MB file), saved through `NoteFileSync` segments. Helpers `SaveSegments`, `ToggleChars`, `LargeDocument`; constants `saveBlock = 500`, `shiftChars = 2000`, `saveWarmupTicks = 150` (own warm-up, longer than the usual 30, so the JIT's tier-up is done before measuring).
+- The `Note.Save` zone wraps only `NoteSegments.Prepare` plus bookkeeping; the commit runs synchronously outside the zone. It measures the main-thread cost of a save, not the disk write.
+
+| Test | Budget on `Note.Save` | Baseline (Release+PROFILE, back-to-back, main thread) |
+|---|---|---|
+| `Perf.SaveLargeNote.InPlace` | P95 3, Max 8, AllocKB 672 | p50 0.36–0.42 ms, p95 0.79–0.89; worst p95 of 6 runs 1.473, worst frame 336.0 KB |
+| `Perf.SaveLargeNote.Shift` | P95 3, Max 8, AllocKB 4797 | p50 0.70–0.81 ms, p95 1.15–1.47; worst p95 of 6 runs 1.361, worst frame 2398.5 KB |
+
+- Budget rule as above (P95 = 2× worst p95, Max 8, AllocKB = 2× worst frame), per machine. Back-to-back saves overstate file-open cost: see [[benchmark-back-to-back-file-saves]]; a mid-run one-off spike: see [[perf-spike-is-osr]]. Detail in [[note-live-sync]] § Measured.
+- Also failing in the same `--test=Perf` run, pre-existing and not investigated: `Perf.RelayoutLabels` max 9.2 ms, `Perf.TypeLargeNote` max 11.6 ms, `Perf.RewrapLargeNote` max 16.3 ms, `Perf.Controls.Table.Relayout` alloc 176.7 KB > 65.
+
 ### Slice 5 — goldens (2026-09-28)
 - `yield return t.Golden(shot, region = null)` sets `Engine.clockHeld` and `ScreenReadback.Request(Engine.primary)`
   (`readbackEpoch = mainSystem.Epoch + 1`). `Session.Step` holds the test (timeout still counting) until

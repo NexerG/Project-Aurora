@@ -5,13 +5,13 @@
 	<!-- May refuse. Anything that asks the user something belongs here — a step that opens a prompt
 	     returns false and the answer re-enters the sequence. -->
 	<Phase Name="Request">
-		<Step Action="Notes.SettleUnnamed"/>
 	</Phase>
 
 	<!-- Past the point of no return. These run in order against a tree that is still live, before
 	     anything is torn down. -->
 	<Phase Name="Commit">
 		<Step Action="Notes.SaveEdited"/>
+		<Step Action="Files.Drain"/>
 		<Step Action="Session.Capture"/>
 		<Step Action="Settings.SaveAll"/>
 		<Step Action="Profiling.Flush"/>

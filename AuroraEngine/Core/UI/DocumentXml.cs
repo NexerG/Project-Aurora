@@ -1,9 +1,11 @@
 using ArctisAurora.Core.ECS.EngineEntity;
 using ArctisAurora.Core.Filing.Serialization;
+using ArctisAurora.Core.Filing.Xml;
 using ArctisAurora.Core.Registry;
 using System.Globalization;
 using System.Numerics;
 using System.Reflection;
+using System.Xml;
 using System.Xml.Linq;
 
 namespace ArctisAurora.Core.UI
@@ -288,27 +290,32 @@ namespace ArctisAurora.Core.UI
             if (!string.IsNullOrEmpty(dir))
                 Directory.CreateDirectory(dir);
 
-            ToFile(document, path).Save(path);
+            XmlWriterSettings settings = new XmlWriterSettings { Indent = true, IndentChars = XMLWriter.Indent, NewLineChars = XMLWriter.Newline };
+            using XmlWriter writer = XmlWriter.Create(path, settings);
+            ToFile(document, path).Save(writer);
         }
 
         // The note as Save writes it to this path.
         public static XDocument ToFile(RichTextDocument document, string path)
         {
-            XNamespace ns = XSDGenerator.NamespaceFor("UI");
             XElement root = ToXml(document);
             RelativePictures(root, Path.GetDirectoryName(Path.GetFullPath(path))!);
-            string dir = Path.GetDirectoryName(path);
+            BindSchema(root, path);
+            return new XDocument(new XDeclaration("1.0", "utf-8", null), root);
+        }
 
-            // Bind the note to its schema so an editor can validate it on open. Resolved relative to
-            // the note rather than fixed, because a vault sits wherever the user put it.
+        // Bind the note to its schema so an editor can validate it on open. Resolved relative to
+        // the note rather than fixed, because a vault sits wherever the user put it.
+        internal static void BindSchema(XElement root, string path)
+        {
+            XNamespace ns = XSDGenerator.NamespaceFor("UI");
+            string dir = Path.GetDirectoryName(path);
             string schemaFile = Path.Combine(Paths.XMLSCHEMAS, "UITypeSchema.xsd");
             string relative = Path.GetRelativePath(string.IsNullOrEmpty(dir) ? "." : dir, schemaFile).Replace('\\', '/');
 
             XNamespace xsi = "http://www.w3.org/2001/XMLSchema-instance";
             root.SetAttributeValue(XNamespace.Xmlns + "xsi", xsi.NamespaceName);
             root.SetAttributeValue(xsi + "schemaLocation", $"{ns.NamespaceName} {relative}");
-
-            return new XDocument(new XDeclaration("1.0", "utf-8", null), root);
         }
 
         // The note as a <Document> tree, for any file format to write out.
@@ -316,14 +323,23 @@ namespace ArctisAurora.Core.UI
         {
             XNamespace ns = XSDGenerator.NamespaceFor("UI");
             XElement root = WriteScalars(ns + "Document", document);
+            if (WriteLayout(ns, document.layout) is XElement layout) root.Add(layout);
+            foreach ((XElement element, _) in WriteEntries(ns, document))
+                root.Add(element);
 
-            XElement layout = WriteScalars(ns + "DocumentLayout", document.layout);
-            foreach (TextStyle style in document.layout.textStyles)
+            return root;
+        }
+
+        // The note's <DocumentLayout>; null when it holds nothing.
+        internal static XElement? WriteLayout(XNamespace ns, DocumentLayout source)
+        {
+            XElement layout = WriteScalars(ns + "DocumentLayout", source);
+            foreach (TextStyle style in source.textStyles)
                 layout.Add(WriteScalars(ns + "TextStyle", style));
-            if (document.layout.page != null)
+            if (source.page != null)
             {
-                XElement page = WriteScalars(ns + "Page", document.layout.page);
-                foreach (PageStyle style in document.layout.page.styles)
+                XElement page = WriteScalars(ns + "Page", source.page);
+                foreach (PageStyle style in source.page.styles)
                 {
                     XElement named = WriteScalars(ns + "PageStyle", style);
                     named.Add(style.slots.Select(s => WriteScalars(ns + "Slot", s)));
@@ -331,28 +347,44 @@ namespace ArctisAurora.Core.UI
                 }
                 layout.Add(page);
             }
-            foreach (ListLevel level in document.layout.listLevels)
+            foreach (ListLevel level in source.listLevels)
                 layout.Add(WriteScalars(ns + "ListLevel", level));
-            if (layout.HasAttributes || layout.HasElements) root.Add(layout);
-
-            XElement? group = null;
-            PageInsert? grouped = null;
-            foreach (NoteNode entry in document.blocks)
-            {
-                PageInsert? insert = entry.insert;
-                if (insert != grouped)
-                {
-                    grouped = insert;
-                    group = insert == null ? null
-                        : insert.footnote != null ? new XElement(ns + "Footnote", new XAttribute("Id", insert.footnote))
-                        : new XElement(ns + "Float", new XAttribute("Kind", insert.floatKind ?? "figure"), new XAttribute("Placement", insert.placement));
-                    if (group != null) root.Add(group);
-                }
-                (group ?? root).Add(entry is NoteTable table ? WriteTable(ns, table) : WriteBlock(ns, (NoteBlock)entry));
-            }
-
-            return root;
+            return layout.HasAttributes || layout.HasElements ? layout : null;
         }
+
+        // The <Document>'s entries after its layout: a block, a table, or a footnote or float holding its run of nodes.
+        internal static IEnumerable<(XElement element, NoteNode[] nodes)> WriteEntries(XNamespace ns, RichTextDocument document) =>
+            Groups(document).Select(g => (WriteGroup(ns, g.insert, g.nodes), g.nodes));
+
+        // The nodes each entry holds: a lone block or table, or the run of nodes sharing a footnote or float.
+        internal static IEnumerable<(PageInsert? insert, NoteNode[] nodes)> Groups(RichTextDocument document)
+        {
+            NoteNode[] blocks = document.blocks;
+            for (int i = 0; i < blocks.Length;)
+            {
+                PageInsert? insert = blocks[i].insert;
+                int end = i + 1;
+                if (insert != null)
+                    while (end < blocks.Length && blocks[end].insert == insert) end++;
+
+                yield return (insert, blocks[i..end]);
+                i = end;
+            }
+        }
+
+        internal static XElement WriteGroup(XNamespace ns, PageInsert? insert, NoteNode[] nodes)
+        {
+            if (insert == null) return WriteNode(ns, nodes[0]);
+
+            XElement group = insert.footnote != null ? new XElement(ns + "Footnote", new XAttribute("Id", insert.footnote))
+                : new XElement(ns + "Float", new XAttribute("Kind", insert.floatKind ?? "figure"), new XAttribute("Placement", insert.placement));
+            foreach (NoteNode node in nodes)
+                group.Add(WriteNode(ns, node));
+            return group;
+        }
+
+        private static XElement WriteNode(XNamespace ns, NoteNode node) =>
+            node is NoteTable table ? WriteTable(ns, table) : WriteBlock(ns, (NoteBlock)node);
 
         private static XElement WriteBlock(XNamespace ns, NoteBlock block)
         {
@@ -448,7 +480,7 @@ namespace ArctisAurora.Core.UI
         }
 
         // Only what differs from a fresh instance, mirroring the reader: absent attribute -> default.
-        private static XElement WriteScalars(XName name, object node)
+        internal static XElement WriteScalars(XName name, object node)
         {
             XElement element = new XElement(name);
             Dictionary<MemberInfo, object> defaults = XmlReflection.Defaults(node.GetType());

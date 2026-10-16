@@ -1,4 +1,6 @@
 using ArctisAurora.Core.Animation;
+using ArctisAurora.Core.Diagnostics;
+using ArctisAurora.Core.Filing;
 using ArctisAurora.Core.Registry;
 using ArctisAurora.Core.Testing;
 using ArctisAurora.Core.UI;
@@ -22,6 +24,11 @@ namespace ArctisAurora.Tests
         private const float rewrapStep = 8f;
         private const float pageWidthMm = 210f;
         private const float rewrapStepMm = 1f;
+
+        // saved block, the edit that outgrows its slack, and saves before measuring
+        private const int saveBlock = 500;
+        private const int shiftChars = 2000;
+        private const int saveWarmupTicks = 150;
 
         // button grid shape
         private const int buttonCount = 5000;
@@ -132,6 +139,12 @@ namespace ArctisAurora.Tests
             yield return t.EndMeasure();
             t.Show(new StackPanelControl());
         }
+
+        [A_XSDActionDependency("Perf.SaveLargeNote.InPlace", "Test")]
+        private static IEnumerator<int> SaveLargeNoteInPlace(TestContext t) => SaveSegments(t, ToggleChars(1));
+
+        [A_XSDActionDependency("Perf.SaveLargeNote.Shift", "Test")]
+        private static IEnumerator<int> SaveLargeNoteShift(TestContext t) => SaveSegments(t, ToggleChars(shiftChars));
 
         [A_XSDActionDependency("Perf.AnimationBurst", "Test")]
         private static IEnumerator<int> AnimationBurst(TestContext t)
@@ -435,6 +448,55 @@ namespace ArctisAurora.Tests
         {
             InputHandler.charInputReadQueue.Enqueue((char)('a' + i % 26));
             TextInputActions.Write();
+        }
+
+        // Edits and saves the generated note once a tick as an open note's autosave does, the main-thread part in a Note.Save zone.
+        private static IEnumerator<int> SaveSegments(TestContext t, Action<RichTextDocument, int> edit)
+        {
+            string path = Path.Combine(Path.GetTempPath(), $"aurora-save-{Guid.NewGuid():N}.xml");
+            RichTextDocument document = LargeDocument();
+            List<NoteSegment>? map = null;
+            byte[]? file = null;
+            FileJournal journal = FileJournal.Open(path);
+            for (int i = 0; i < saveWarmupTicks + measuredTicks; i++)
+            {
+                if (i == saveWarmupTicks) t.StartMeasure();
+                edit(document, i);
+                Profiling.Zone.Start("Note.Save");
+                SegmentPatch patch = NoteSegments.Prepare(document, path, map, file);
+                map = patch.map;
+                file = patch.file;
+                Profiling.Zone.End("Note.Save");
+                journal.Commit(patch.writes, patch.length);
+                yield return 1;
+            }
+            yield return t.EndMeasure();
+            journal.Dispose();
+            File.Delete(path);
+        }
+
+        // Inserts count chars at the start of the saved block on even ticks and removes them on odd ones.
+        private static Action<RichTextDocument, int> ToggleChars(int count) => (document, i) =>
+        {
+            if (i % 2 == 0) document.InsertText(new DocumentAddress(saveBlock, 0), new string('x', count));
+            else document.RemoveText(new DocumentAddress(saveBlock, 0), count);
+        };
+
+        private static RichTextDocument LargeDocument()
+        {
+            StringBuilder builder = new StringBuilder(blockChars);
+            while (builder.Length < blockChars)
+                builder.Append("The quick brown fox jumps over the lazy dog while every line of the note wraps again. ");
+            string paragraph = builder.ToString(0, blockChars);
+
+            RichTextDocument document = new RichTextDocument { blocks = new NoteNode[blockCount] };
+            for (int i = 0; i < blockCount; i++)
+            {
+                NoteBlock block = new NoteBlock();
+                block.AppendRun(new Run { text = paragraph });
+                document.blocks[i] = block;
+            }
+            return document;
         }
 
         // Shows buttonCount buttons in rows of rowLength.

@@ -10,6 +10,8 @@ Two unrelated "serialization" paths exist in the engine — do not confuse them:
 `Serializer.SerializeAll/SerializeAttributed` write **bytes**, not XML. The note format is engine
 XML, so notes go through `DocumentXml`, never `Serializer`.
 
+**Since 2026-10-15 an open `.xml` note is not saved as a whole document.** `NoteFileSync` autosaves it through `NoteSegments.Write` (partial, in-place writes of the changed top-level segments), elements are written by `XMLWriter`, and `FileJournal` records each batch (checksummed) for crash replay. Since 2026-10-16 the write runs on a background thread (`FileWriteQueue`); only autosave returns without waiting. A file written by `DocumentXml.Save` (an `XDocument`) carries no slack, so the first edit to each block shifts the tail. `.md`/`.txt`/`.tex` still write whole. See [[note-live-sync]].
+
 **Since 2026-09-17 the XML is also an in-memory form.** `.md` and `.txt` notes are read by
 `MarkdownFormat`/`PlainTextFormat` into the same `<Document>` tree and handed to `DocumentXml.Parse`;
 saving runs `DocumentXml.ToXml` and the format writes it back. `RichTextDocument.Load`/`Save` pick the

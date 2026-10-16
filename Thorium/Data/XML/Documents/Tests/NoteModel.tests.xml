@@ -8,4 +8,5 @@
 	<Test Action="NoteModel.EditHeadless"/>
 	<Test Action="NoteModel.TwoViews"/>
 	<Test Action="NoteModel.RestoreTwice"/>
+	<Test Action="NoteModel.SegmentMap"/>
 </TestSuite>
