@@ -99,9 +99,10 @@ Standing constraints (ECS storage, Vulkan internals, physics, XSD-not-JSON) are 
 | Note | Settles | Key symbols |
 |---|---|---|
 | [[engine-side-text-input]] | text input belongs to the engine; keybind timings are global settings | `InputSettings`, `KeyStateTracker`, `TextInputActions` |
-| [[named-input-modifiers]] | a modifier is a named role, so engine code never names the key that fills it; a keybind's `<Modifier>` matches either side (Left/Right Ctrl, Shift, Alt, Super, Win) | `InputModifier`, `NamedModifier`, `GestureMatcher` (`Held`, `SameModifier`, `Twin`) |
+| [[named-input-modifiers]] | a modifier is a named role, so engine code never names the key that fills it; a keybind's `<Modifier>` matches either side (Left/Right Ctrl, Shift, Alt, Super, Win) | `InputModifier`, `NamedModifier`, `GestureMatcher` (`Held`, `SameModifier`, `Twin`, `commandIsControl`); Cmd fills Ctrl on a Mac → [[input-platform-layer]] |
 | [[declared-contexts]] | contexts are declarable in XML and one can derive from another | `Context`, `ContextDefinition`, `UICollisionHandling` |
 | [[scroll-gesture-end]] | a scroll gesture ends on the last finger lift plus momentum fade (Raw Input HID), wheel after 0.15 s quiet; the consumer gets `OnPointerScrollEnd` | `TouchpadInput`, `InputHandler.scrollEnded`, `Control.OnPointerScrollEnd`, `UIEngine.scrollOwner` |
+| [[input-platform-layer]] | every OS input enters through one ordered queue, `InputHandler.Post`, and GLFW is one backend; on a Mac Cmd fills a Ctrl modifier in the matcher, so one keybind serves every platform; the UI reads a pointer table; mobile and touch gestures deferred (F3 open) | `InputHandler` (`Post`, `Drain`, `PointerState`, `primaryPointer`), `GlfwInput`, `RawInputEvent`, `InputEventKind`, `PointerKind`, `GestureMatcher.commandIsControl` |
 
 ## Data, assets and settings
 

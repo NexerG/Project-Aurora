@@ -71,7 +71,7 @@ loop.
 **Rejected: `Context.Set` straight from the callback.** That runs `OnContextAdded`/`OnContextRemoved`
 on controls inside `glfwPollEvents` and before the reap, so a handler destroying a control or window
 would do it during GLFW's own event dispatch. Every other callback here already defers —
-`inputWriteQueue`, `charInputWriteQueue`, `scrollDeltaWrite`, `MouseCrossedBorder`.
+`inputWriteQueue`, `charInputWriteQueue`, `scrollDeltaWrite`, `MouseCrossedBorder`. (Input queues superseded 2026-10-16 by the single `InputHandler.Post` queue drained at the top of `ActivateKeybinds` — [[input-platform-layer]].)
 
 No `IContext` notify pair on the set: `RenderWindow` does not implement `IContext`, so the
 `(x as IContext)?.OnContextAdded` dance the control contexts carry would be dead code. `Context.Set`

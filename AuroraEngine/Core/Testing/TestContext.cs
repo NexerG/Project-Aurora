@@ -4,7 +4,6 @@ using ArctisAurora.EngineWork;
 using ArctisAurora.EngineWork.Rendering;
 using System.Numerics;
 using System.Runtime.CompilerServices;
-using WindowHandle = Silk.NET.GLFW.WindowHandle;
 
 namespace ArctisAurora.Core.Testing
 {
@@ -187,7 +186,7 @@ namespace ArctisAurora.Core.Testing
             _steps.Enqueue(() => Point(control, file, line));
             if (held != null)
                 _steps.Enqueue(() => { foreach (Keys k in held) Raw(k, RawAction.Down); });
-            _steps.Enqueue(() => { if (_window != null) InputHandler.instance.ProcessScrollWheel(_window.os.handle, delta.X, delta.Y); });
+            _steps.Enqueue(() => { if (_window != null) InputHandler.Post(new RawInputEvent { kind = InputEventKind.Scroll, delta = delta, window = _window, timestamp = Engine.totalTime }); });
             if (held != null)
                 _steps.Enqueue(() => { foreach (Keys k in held) Raw(k, RawAction.Up); });
             return Queued();
@@ -214,7 +213,7 @@ namespace ArctisAurora.Core.Testing
                 _steps.Enqueue(() =>
                 {
                     Raw(key, RawAction.Down);
-                    InputHandler.instance.ProcessCharInput(Handle(), c);
+                    InputHandler.Post(new RawInputEvent { kind = InputEventKind.Text, codepoint = c, window = _window ?? Engine.primary, timestamp = Engine.totalTime });
                 });
                 _steps.Enqueue(() => Raw(key, RawAction.Up));
             }
@@ -254,13 +253,17 @@ namespace ArctisAurora.Core.Testing
                 other.isInWindow = ReferenceEquals(other, window);
 
             Vector2 pixels = window.ui.uiRoot.ToWindowSpace(point, window.os.windowSize);
-            InputHandler.instance.ProcessMouseMove(window.os.handle, pixels.X, pixels.Y);
+            InputHandler.Post(new RawInputEvent { kind = InputEventKind.PointerMove, position = pixels, window = window, timestamp = Engine.totalTime });
         }
 
         private static void Raw(Keys key, RawAction action) =>
-            InputHandler.instance.keyTracker.EnqueueEvent(key, action, Engine.totalTime);
-
-        private WindowHandle* Handle() => (_window ?? Engine.primary).os.handle;
+            InputHandler.Post(new RawInputEvent
+            {
+                kind = key >= Keys.MouseLeft && key <= Keys.MouseButton8 ? InputEventKind.Button : InputEventKind.Key,
+                key = key,
+                action = action,
+                timestamp = Engine.totalTime
+            });
 
         private static Keys KeyFor(char c)
         {

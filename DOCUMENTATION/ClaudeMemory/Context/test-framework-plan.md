@@ -45,7 +45,7 @@ Settled. Do not re-litigate without asking.
 - `Click` = move → down → up → settle, and fails if `UIEngine.HitTest` at the point is not the control or inside
   it. `Key` = mods down → key → key up → mods up. `Type` = per char key down + `ProcessCharInput`, then key up.
 - **Keys and mouse buttons go straight to `keyTracker.EnqueueEvent` with engine `Keys`**; move, char and scroll
-  through their handlers. Rejected: a reverse `MapKey` table (~120 entries) to call `ProcessKeyboard`.
+  through their handlers. Rejected: a reverse `MapKey` table (~120 entries) to call `ProcessKeyboard`. (Superseded 2026-10-16: all of it goes through `InputHandler.Post` — [[input-platform-layer]].)
 - `Type` presses the real key for letters, digits and space, **`Keys.AnySymbol` itself** for anything else.
 - New `WindowRoot.ToWindowSpace` (inverse of `ToDesignSpace`); `SeedIsInWindow` sets `false` under `--test`.
 - `Type` test lives in Thorium — `AnySymbol → Text.Write` is bound only in Thorium's `InputMap`.
@@ -62,7 +62,7 @@ Settled. Do not re-litigate without asking.
 - Swapchain images are created `ColorAttachment | TransferDst` in two places (`Swapchain`, `Renderer`); the live one
   is `Renderer.CreateSwapchain` — `Swapchain` serves only the legacy `RendererTypes`.
 - `Engine.WireInput` binds six callbacks — `ProcessMouseMove`, `ProcessMouseClick`, `ProcessKeyboard`,
-  `ProcessCharInput`, `RenderWindow.MouseCrossedBorder`, `ProcessScrollWheel` — slice 3's injection points.
+  `ProcessCharInput`, `RenderWindow.MouseCrossedBorder`, `ProcessScrollWheel` — slice 3's injection points. (Superseded 2026-10-16: `GlfwInput.Wire` sets the callbacks and the `Process*` methods are gone — [[input-platform-layer]].)
   `AGlfwWindow.SeedIsInWindow` reads OS hover at window creation, outside them.
 - UI effects animate off `engine.totalTime`, which the render thread reads when it draws, so a golden needs the test
   clock held until its readback lands, and the readback pinned to the published draw list.

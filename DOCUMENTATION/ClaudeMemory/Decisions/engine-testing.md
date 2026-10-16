@@ -45,6 +45,7 @@ slice 3: `TestContext` input helpers, `UI.WindowRoot.ToWindowSpace`, `AGlfwWindo
 - `Point(control)`: centre of `arrangedRect`; records a failure (caller's file:line) when `UIEngine.HitTest` there is
   not the control or a descendant; sets `isInWindow` on that window only; `ProcessMouseMove(handle, ToWindowSpace(p))`.
 - Keys and buttons: `keyTracker.EnqueueEvent(key, RawAction, Engine.totalTime)`. Chars: `ProcessCharInput`.
+- Superseded 2026-10-16: `ProcessMouseMove`, `ProcessCharInput` and `EnqueueEvent` are gone; every `TestContext` input calls `InputHandler.Post`. See [[input-platform-layer]].
 - `Type` key per char: `A`–`Z` (either case), `Num0`–`Num9`, `Space`, else `AnySymbol` itself.
 - `SeedIsInWindow` sets `false` under `TestRunner.active`.
 - `Click(control, point, button)` (2026-10-05): clicks a design-space point with any mouse button; records a failure when the point does not hit `control` or a descendant (same check as the point `Drag` overload). Added for `Sheet.GrowPopup`, because the sheet's grow strips are not hit-testable controls.
@@ -250,7 +251,7 @@ Bootstrap logs and skips; here a typo in a suite would read as a pass.
 been handled. Steps run in `Main.Logic`, so each lands in the next tick's `Main.Input`, where an OS callback would
 have. Press and release in one tick would set `justPressed` and `justReleased` in the same `Update`.
 
-**Keys enter at the tracker, not `ProcessKeyboard` (user, 2026-09-27).**
+**Keys enter at the tracker, not `ProcessKeyboard` (user, 2026-09-27).** *Superseded 2026-10-16: `MapKey` moved to `GlfwInput` and tests post engine `Keys` through `InputHandler.Post` — [[input-platform-layer]].*
 The handler is `MapKey` + `EnqueueEvent`; calling it would need a reverse `MapKey` (~120 entries) so tests could
 speak GLFW keys. Move, char and scroll still go through their handlers, which carry real logic (window lookup).
 

@@ -16,6 +16,7 @@
 	<Test Action="TextInput.DropOntoRule"/>
 	<Test Action="TextInput.DragBetweenNotes"/>
 	<Test Action="TextInput.WheelZoom"/>
+	<Test Action="TextInput.CommandIsControl"/>
 	<Test Action="TextInput.RightModifiers"/>
 	<Test Action="TextInput.StyleSurvivesEnterAndBackspace"/>
 	<Test Action="TextInput.UnderlineToggles"/>

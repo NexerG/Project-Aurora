@@ -427,6 +427,29 @@ namespace Thorium.Tests
             SettingsRegistry.Apply();
         }
 
+        [A_XSDActionDependency("TextInput.CommandIsControl", "Test")]
+        private static IEnumerator<int> CommandIsControl(TestContext t)
+        {
+            DocumentEditorControl editor = ShowParagraphs(t, "item");
+            DocumentControl content = Content(editor);
+            BlockControl p = Paragraphs(editor)[0];
+            bool was = GestureMatcher.commandIsControl;
+            yield return 2;
+
+            content.SetCaret(p, 0);
+            content.SetCaret(p, 4, true);
+            GestureMatcher.commandIsControl = false;
+            ClipboardText.Set("");
+            yield return t.Key(Keys.C, Keys.LeftSuper);
+            t.Check(ClipboardText.Get() == "", "off a Mac, Super+C does not fill a Ctrl bind");
+
+            GestureMatcher.commandIsControl = true;
+            yield return t.Key(Keys.C, Keys.RightSuper);
+            t.Check(ClipboardText.Get() == "item", "on a Mac, Cmd+C fills the Ctrl+C bind");
+
+            GestureMatcher.commandIsControl = was;
+        }
+
         [A_XSDActionDependency("TextInput.RightModifiers", "Test")]
         private static IEnumerator<int> RightModifiers(TestContext t)
         {

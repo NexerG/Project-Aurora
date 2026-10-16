@@ -135,7 +135,7 @@ Driving synthetic input therefore has to cross into the *other* window first.
 
 - `Engine.WindowFor(WindowHandle*)` — linear scan of `Engine.windows` by `os.handle`.
 - `InputHandler.mousePos` / `scrollDelta` / `scrollDeltaWrite` statics **deleted**, now on
-  `RenderWindow`. `ProcessMouseMove` and `ProcessScrollWheel` write into `WindowFor(window)`;
+  `RenderWindow`. (Superseded 2026-10-16: the `Process*` handlers are gone; `RawInputEvent.window` carries the window, see [[input-platform-layer]].) `ProcessMouseMove` and `ProcessScrollWheel` write into `WindowFor(window)`;
   `ActivateKeybinds` loops the windows swapping each scroll pair.
 - **Only the two positional callbacks route per window**, not all five as this plan first said.
   `ProcessKeyboard` / `ProcessMouseClick` / `ProcessCharInput` feed `keyTracker` and the char queue,

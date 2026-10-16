@@ -342,13 +342,15 @@ ECS design is still being settled — avoid refactoring the entity/component mod
   via reflection and bound as `Action` delegates
 - **Keybind groups** — XML files map to named groups (`keybindGroups`); swap active group
   with `SetActiveKeybindGroup(string)` e.g. per game mode or editor context
-- **Double-buffered input queues** — GLFW callbacks write to `inputWriteQueue` /
-  `keysDownWrite`; each tick `ActivateKeybinds()` swaps read/write queues under a lock,
-  then drains the read queue. Same pattern for `charInputWriteQueue` / `charInputReadQueue`
-- **Three input streams handled separately:**
-  - Keyboard → `ProcessKeyboard()` → `inputWriteQueue`
-  - Mouse buttons → `ProcessMouseClick()` → `inputWriteQueue` (mouse buttons are `Keys` too)
-  - Character input → `ProcessCharInput()` → `charInputWriteQueue` (raw Unicode codepoints)
+- **One ingress for every OS** — a platform backend posts `RawInputEvent`s (Key, Button,
+  PointerMove, Scroll, ScrollContact, Text) to `InputHandler.Post`; `Drain()` runs first in
+  `ActivateKeybinds()` and applies them in arrival order. `GlfwInput.Wire` is the desktop backend;
+  `TouchpadInput` (Win32 HID) posts `ScrollContact`. No GLFW types inside `InputHandler`
+- **The UI follows `InputHandler.primaryPointer`** (`PointerState`: id, kind, button masks, taps);
+  mouse buttons also still reach the key tracker as `Keys`
+- **One keybind for every platform** — maps never name a platform. On a Mac
+  (`GestureMatcher.commandIsControl`) Cmd fills any Ctrl modifier or role, and rebind capture records
+  Cmd as Ctrl. See `ClaudeMemory/Decisions/input-platform-layer.md`
 - **`Keys.AnySymbol`** — special wildcard key; any character key press also fires keybinds
   registered to `AnySymbol`, used for text input listeners
 - **`ICharacterInput`** interface — implement for widgets/controls that need raw char input

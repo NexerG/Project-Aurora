@@ -167,7 +167,7 @@ same reason: nothing of ours gets between GLFW's proc and the loop.
 
 - **The button-up is eaten** by the loop that it ends, so GLFW never reports it and `keyTracker`
   would hold `MouseLeft` down forever. `ResolveOnClick` synthesises the release through
-  `InputHandler.ProcessMouseClick(..., InputAction.Release, 0)` — the same path the real callback
+  `InputHandler.Post` (was `ProcessMouseClick(..., InputAction.Release, 0)`, replaced 2026-10-16) — the same path the real callback
   takes.
 - **`deltaTime` would be the drag's length.** `MainSystem` measures tick to tick and the parked tick
   is one tick, so the next one would be handed multiple seconds — key repeat, the tap window and the

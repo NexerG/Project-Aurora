@@ -129,6 +129,7 @@
           <xs:enumeration value="TextInput.DropOntoRule" />
           <xs:enumeration value="TextInput.DragBetweenNotes" />
           <xs:enumeration value="TextInput.WheelZoom" />
+          <xs:enumeration value="TextInput.CommandIsControl" />
           <xs:enumeration value="TextInput.RightModifiers" />
           <xs:enumeration value="TextInput.StyleSurvivesEnterAndBackspace" />
           <xs:enumeration value="TextInput.UnderlineToggles" />

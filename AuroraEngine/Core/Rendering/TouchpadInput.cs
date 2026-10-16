@@ -24,9 +24,8 @@ namespace ArctisAurora.EngineWork.Rendering
         private static int expected;
         private static int touching;
 
-        // fingers on the pad, and how many times the last one has lifted
-        public static bool down { get; private set; }
-        public static int lifts { get; private set; }
+        // fingers on the pad
+        private static bool down;
 
         // Asks for touchpad reports, following keyboard focus.
         public static void Register()
@@ -80,7 +79,8 @@ namespace ArctisAurora.EngineWork.Rendering
 
                 bool was = down;
                 down = touching > 0;
-                if (was && !down) lifts++;
+                if (was != down)
+                    InputHandler.Post(new RawInputEvent { kind = InputEventKind.ScrollContact, action = down ? RawAction.Down : RawAction.Up, timestamp = Engine.totalTime });
             }
         }
 

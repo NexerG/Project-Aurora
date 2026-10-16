@@ -1,7 +1,6 @@
 using ArctisAurora.Core.Registry;
 using ArctisAurora.EngineWork;
 using ArctisAurora.EngineWork.Rendering;
-using Silk.NET.GLFW;
 
 namespace ArctisAurora.Core.UI
 {
@@ -33,7 +32,7 @@ namespace ArctisAurora.Core.UI
 
             // The OS loop consumes the button-up that ends it, so GLFW never reports one and the
             // key tracker would hold the button down forever.
-            InputHandler.instance.ProcessMouseClick(window.os.handle, MouseButton.Left, InputAction.Release, 0);
+            InputHandler.Post(new RawInputEvent { kind = InputEventKind.Button, key = EngineWork.Keys.MouseLeft, action = RawAction.Up, window = window, timestamp = Engine.totalTime });
 
             // The tick this ran on lasted as long as the drag did, and key repeat, the tap window
             // and the caret blink all count seconds off the tick that follows it.

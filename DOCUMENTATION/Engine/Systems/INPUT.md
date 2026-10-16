@@ -29,35 +29,41 @@ The general hierarchy is:
 			`Conditions`
 
 ### Input Handler
-The `InputHandler` is the top-level singleton that owns the entire input pipeline. It holds the `KeyStateTracker`, the `GestureMatcher`, character input queues, mouse position, and scroll delta. GLFW window callbacks are wired directly into methods on this class — it is the only place raw OS input enters the engine.
+The `InputHandler` is the top-level singleton that owns the entire input pipeline. It holds the `KeyStateTracker`, the `GestureMatcher`, the character input queue, the pointer table and the scroll state. Every OS input reaches it through one ordered queue, `InputHandler.Post(in RawInputEvent)`, which any platform backend calls — it is the only place raw input enters the engine. GLFW is one such backend, `GlfwInput`; there is no backend interface, because a backend is just code that calls `Post`.
 
-The `InputHandler` exposes three separate input streams, each handled by its own path:
-- **Keyboard** → `ProcessKeyboard()` → maps `Silk.NET.GLFW.Keys` to Aurora's `Keys` enum → enqueues a `RawInputEvent` into the `KeyStateTracker`
-- **Mouse buttons** → `ProcessMouseClick()` → maps `MouseButton` to `Keys` (mouse buttons live in the same enum as keyboard keys) → same enqueue path
-- **Character input** → `ProcessCharInput()` → raw Unicode codepoints pushed into `charInputWriteQueue` — this is a separate stream from keyboard events because character input is layout-aware (gives you `ä` instead of just `A`), used by text editing controls
+Events are applied in the order they were posted, so the order between kinds is kept. A `RawInputEvent`'s `kind` (`InputEventKind`) says which of the other fields it uses:
+- **Key** and **Button** → `key` (Aurora's `Keys`; mouse buttons live in the same enum as keyboard keys), `action` (`RawAction`), `timestamp` (`Engine.totalTime`) and the `window`. The `KeyStateTracker` reads only these two kinds
+- **PointerMove** → `pointerId`, `pointerKind` (`PointerKind`: Mouse, Touch, Pen) and `position` in window pixels
+- **Scroll** → `delta`. **ScrollContact** → `action` Down or Up, a finger touching or leaving the touchpad
+- **Text** → `codepoint`, a raw Unicode codepoint — a separate kind from Key because character input is layout-aware (gives you `ä` instead of just `A`), used by text editing controls
 
-Mouse position and scroll are handled separately. `ProcessMouseMove()` writes directly to a static `mousePos` field. `ProcessScrollWheel()` accumulates into `scrollDeltaWrite` which gets swapped into `scrollDelta` once per tick.
+`GlfwInput.Wire(RenderWindow)` sets the GLFW cursor-position, mouse-button, key, character, cursor-enter and scroll callbacks, and `Engine.WireInput` calls it for each window. The mapping from `Silk.NET.GLFW.Keys` and `MouseButton` to Aurora's `Keys` (`MapKey` and `MouseKey`) lives there, private, so nothing GLFW-typed reaches `InputHandler`. GLFW's Super keys map to `Keys.LeftSuper` and `RightSuper`, which the tracker counts as modifiers.
 
 Bootstrap happens via `[A_XSDActionDependency("InputHandler.LoadInputs", "Bootstrap")]`. This calls `ParseXML` which loads all `*.inputs.xml` files from the inputs directory, constructs keybind definitions, and hands them to the `GestureMatcher`. After parsing, the default keybind group is activated.
 
 #### Per-Tick Flow
 Every engine tick, `ActivateKeybinds()` runs on the main thread. The sequence is:
-1. Double-buffer swap the character input queues (under lock)
-2. Copy scroll delta from write buffer, zero the write buffer
-3. `keyTracker.Update()` — swap raw event queues, process events into key states, update hold durations
-4. `gestureMatcher.Update()` — evaluate all active keybind definitions against current key states
-5. If a modified keybind fired this frame, suppress the character input queue (prevents `Ctrl+S` from also producing an `s` character)
+1. `Drain()` — swap the posted queue under lock and apply the events in order
+2. `SettleScroll()` — see Scroll gestures below
+3. Swap the character queues, and copy each window's summed `scrollDeltaWrite` into `scrollDelta`
+4. `keyTracker.Update()` — process the drained Key and Button events into key states, update hold durations; the drained list is then cleared
+5. A pending rebind capture takes the first pressed key and ends the tick here
+6. `gestureMatcher.Update()` — evaluate all active keybind definitions against current key states
+7. If a modified keybind fired this frame, suppress the character input queue (prevents `Ctrl+S` from also producing an `s` character)
 
 #### Double Buffering
-Both the raw key event queue and the character input queue are double-buffered. GLFW callbacks run on the OS callback thread and write to the write queue. Once per tick on the main thread, write and read queues are swapped under a lock, then the read queue is drained. This means input is never lost between frames and the callback thread never blocks on the main thread for longer than a pointer swap.
+The posted queue is double-buffered. A backend calls `Post` and the event lands in the write buffer under a lock. Once per tick on the main thread, `Drain` swaps the write and drain buffers under that lock, then applies the drain buffer. This means input is never lost between frames and the backend never blocks on the main thread for longer than a pointer swap. GLFW callbacks run inside `PollEvents` right before `ActivateKeybinds`, so draining first matches the old callbacks-then-settle order.
 
-The scroll wheel uses a simpler pattern — accumulate into `scrollDeltaWrite`, copy to `scrollDelta` at tick start, zero the write buffer. No lock needed because the write is a float accumulation and the read only happens after the swap.
+A Scroll event is applied by `ApplyScroll(RenderWindow, dx, dy)`, which holds what the wheel handler used to do.
+
+#### Pointers
+Pointer state lives in `InputHandler.PointerState`, one per pointer id: `id`, `kind`, `window`, `position`, the bit masks `down`, `pressed` and `released` indexed like `PointerEvent.leftButton` (0) and `rightButton` (1), the tap counts `taps` and `lastTapAt`, and `JustPressed(int)` and `JustReleased(int)`. `primaryPointer` is the first pointer seen and is null until the first pointer event. `UIEngine.Poll` drives the UI from it and skips buttons until it exists. A move on the primary pointer still writes `RenderWindow.mousePos`, so its readers are unchanged. Mouse buttons still also go to the key tracker, so `IsKeyDown(Keys.MouseLeft)`, a `Trigger="MouseLeft"` keybind and the title bar's tap count still work. `PointerEvent` carries `pointerId` and `kind`. Touch is not built: the agreed rule for later is that the primary touch contact drives the same press, release, tap and move, a long press arrives as a secondary-button press and release, and a one-finger pan over a scroller becomes a scroll with an end. See ClaudeMemory note input-platform-layer.
 
 #### Wheel zoom
-Holding the `Zoom` role (Control) turns the wheel into zoom and the scroll is not delivered. Control plus the `AppZoom` role (Shift) zooms the whole UI. Control alone zooms the content of whichever editor is under the pointer, a note, a sheet or the planner (Board, Gantt and Calendar), through the one shared document zoom setting; over a Tex preview that has its own zoom picked it steps that preview zoom instead. Off any editor, Control alone does nothing. A touchpad pinch arrives as Control plus wheel, so it zooms the same way.
+Holding the `Zoom` role (Control, Cmd on a Mac) turns the wheel into zoom and the scroll is not delivered. Control plus the `AppZoom` role (Shift) zooms the whole UI. Control alone zooms the content of whichever editor is under the pointer, a note, a sheet or the planner (Board, Gantt and Calendar), through the one shared document zoom setting; over a Tex preview that has its own zoom picked it steps that preview zoom instead. Off any editor, Control alone does nothing. A touchpad pinch arrives as Control plus wheel, so it zooms the same way.
 
 #### Scroll gestures
-GLFW reports scroll deltas but not where a gesture starts or ends, so `InputHandler` tracks the gesture itself. A mouse wheel gesture ends after 0.15 seconds without a delta. On a precision touchpad on Windows, `TouchpadInput` registers for Raw Input from the HID touchpad device and reads the tip switch of each finger from `WM_INPUT`, which the window procedure hands over before forwarding it to GLFW. A gesture with a finger down is marked touched. After the last finger lifts, Windows keeps sending momentum deltas that fade out. The gesture ends when a delta falls below a small floor or 50 milliseconds pass with none, and the rest of the momentum tail is swallowed. Touching the pad again stops the momentum, and the next lift ends the gesture.
+GLFW reports scroll deltas but not where a gesture starts or ends, so `InputHandler` tracks the gesture itself. A mouse wheel gesture ends after 0.15 seconds without a delta. On a precision touchpad on Windows, `TouchpadInput` registers for Raw Input from the HID touchpad device and reads the tip switch of each finger from `WM_INPUT`, which the window procedure hands over before forwarding it to GLFW. `TouchpadInput` posts a `ScrollContact` event (Down or Up) whenever the contact changes, and `InputHandler` takes the contact state from those events when it drains them instead of reading statics from the Win32 source. A gesture with a finger down is marked touched. After the last finger lifts, Windows keeps sending momentum deltas that fade out. The gesture ends when a delta falls below a small floor or 50 milliseconds pass with none, and the rest of the momentum tail is swallowed. Touching the pad again stops the momentum, and the next lift ends the gesture.
 
 `SettleScroll()` runs first in `ActivateKeybinds` and sets `scrollEnded` for the one tick in which a gesture finished. `UIEngine` remembers the control that consumed the scroll and calls its `OnPointerScrollEnd()` once then. The planner calendar uses it to settle onto a whole day or week. Other platforms and non-precision touchpads fall back to the wheel's quiet period. See ClaudeMemory note scroll-gesture-end for the measurements and rejected alternatives.
 
@@ -80,13 +86,13 @@ The `KeyStateTracker` maintains per-key state for every key the engine has seen.
 The tracker is purely a state machine. It doesn't know about keybinds. It converts raw `Down`/`Up` events into rich per-key state that conditions and matchers can query.
 
 #### Update Sequence
-`Update(currentTime, deltaTime)`:
-1. Swap write/read queues under lock
+`Update(events, currentTime, deltaTime)`, where `events` is the list `InputHandler.Drain` produced:
+1. Take the event list (the tracker has no queue or lock of its own)
 2. Reset per-frame flags (`justPressed`, `justReleased`, `consumed`) on all existing entries
 3. Process each `RawInputEvent` in order:
    - **Down**: if not already down → set `justPressed`, `isDown`, record `downTimestamp`, update tap count (increment if within `tapWindow`, otherwise reset to 1)
    - **Up**: if currently down → set `justReleased`, clear `isDown`, record `upTimestamp`
-4. Clear the read queue
+4. Move on once every event is processed
 5. Update hold durations for all keys that are currently down
 6. Decay tap counts — if a key is up and `tapWindow` has elapsed since last tap, reset `tapCount` to 0
 
@@ -99,9 +105,9 @@ A `KeybindDefinition` represents a single input binding. It has:
 
 Mouse and keyboard share the `Keys` enum. Mouse buttons are `MouseLeft`, `MouseRight`, `MouseMiddle`, `MouseButton4`–`MouseButton8`. This means keybinds can freely mix mouse and keyboard — a `Trigger="MouseLeft"` with `Modifier Key="LeftShift"` works exactly like any keyboard combo.
 
-Mouse *gestures* against controls are a separate path and do not go through keybinds at all: `Engine.HandleUI` reads the button states straight off the tracker each tick and hands them to `UICollisionHandling`, which resolves hover, press, release, drag and scroll against the control tree. A control claims the held-button drag by calling `StartDrag()` from its click handler, and `ResolveDrag` then reaches it every tick until the button comes up. It is opt-in from a click rather than automatic on press because the control the mouse actually hits is the deepest one — a glyph, inside a document — and what wants the drag is whatever above it knows what dragging means.
+Mouse *gestures* against controls are a separate path and do not go through keybinds at all: `UIEngine.Poll` reads the primary pointer's press, release and tap counts each tick instead of the tracker's mouse-button states, and hands them on to `UICollisionHandling`, which resolves hover, press, release, drag and scroll against the control tree. A control claims the held-button drag by calling `StartDrag()` from its click handler, and `ResolveDrag` then reaches it every tick until the button comes up. It is opt-in from a click rather than automatic on press because the control the mouse actually hits is the deepest one — a glyph, inside a document — and what wants the drag is whatever above it knows what dragging means.
 
-`KeybindDefinition` also contains the GLFW-to-Aurora key mapping via two static methods: `MapKey()` for keyboard and `MouseKey()` for mouse buttons. These are exhaustive switch expressions that translate from `Silk.NET.GLFW.Keys` / `Silk.NET.GLFW.MouseButton` to the engine's `Keys` enum. Unknown keys map to `Keys.unknown`.
+The GLFW-to-Aurora key mapping is not part of `KeybindDefinition` any more: `MapKey()` for keyboard and `MouseKey()` for mouse buttons are private to `GlfwInput`. They are exhaustive switch expressions that translate from `Silk.NET.GLFW.Keys` / `Silk.NET.GLFW.MouseButton` to the engine's `Keys` enum. Unknown keys map to `Keys.unknown`.
 
 ### Conditions
 Conditions are the composable building blocks that define gesture behavior. They are `InputCondition` subclasses, each with an `Evaluate()` method that returns one of four states:
@@ -197,9 +203,16 @@ A `NamedModifier` binds a key to a role in the `InputModifier` enum, and engine 
 
 `InputHandler.IsModifierDown(InputModifier.Extend)` is true while any key declared for the role is down, which is why left and right shift are two declarations rather than a special case — a `Keybind`'s own modifier list is AND-ed and could not express the OR. The role is an enum and not a free string so the query is typed end to end and the schema enumerates what is legal, the same reasoning the [[Settings Registry]] rework used.
 
-Three roles exist: `Extend` (a caret move or click extends the selection), `Word` (arrows, Home/End, Backspace and Delete work a word or the whole note at a time — see [[Rich Text Document#Word by word]]) and `Copy` (a text drop copies rather than moves — see [[Rich Text Document#Dragging text]]). Thorium binds the last two to both Ctrl keys; they share keys but are separate roles, so an application can move either without the other.
+Three roles exist: `Extend` (a caret move or click extends the selection), `Word` (arrows, Home/End, Backspace and Delete work a word or the whole note at a time — see [[Rich Text Document#Word by word]]) and `Copy` (a text drop copies rather than moves — see [[Rich Text Document#Dragging text]]). Thorium binds `Word` and `Copy` to both Ctrl keys; they share keys but are separate roles, so an application can move either without the other.
 
 Roles are grouped exactly as binds are, one group per file, and `SetActiveGroup` swaps both — a keybind group is a mode, so switching to a game group rebinds `Extend` along with everything else instead of leaving an editor binding live. A role no file declares simply reads as never down: there is no engine-side fallback to shift, because a fallback is the hardcoding this exists to remove.
+
+#### Command as Control on a Mac
+One keybind serves every platform, so the maps never name one: `<Modifier Key="LeftControl"/>` is the only form. On a Mac the matcher lets Cmd stand in for Ctrl. `GestureMatcher.commandIsControl` is a public static flag that defaults to `OperatingSystem.IsMacOS()` and that tests flip. While it is set, `Held(Keys)` accepts LeftSuper for LeftControl and RightSuper for RightControl, through the private `Down(Keys)` and `internal static Command(Keys)`. `IsDown(InputModifier)` checks through `Held` too, so Cmd also fills `Word`, `Copy` and `Zoom`. The shadowing check counts the Ctrl and Cmd pair as one modifier.
+
+It is on for Mac only because on Windows Super is the Win key, and Win+V or Win+Z would open the OS feature and fire paste or undo as well. Mapping Cmd to Control in the backend was rejected: holding Ctrl and Cmd and releasing one would make the tracker think Ctrl was released while the other is held. The cost is that on a Mac word motion is Cmd+Arrow rather than Option+Arrow, and Ctrl+key also fires Ctrl binds there.
+
+Rebind capture (`KeyStateTracker.HeldModifiers`) records Super as Control while the flag is set and drops duplicates, so a rebind saved on a Mac works on Windows. Key labels show the Control name on a Mac, not Cmd. See ClaudeMemory note input-platform-layer for the rejected alternatives.
 
 ### XML Format
 Keybinds are defined in `*.inputs.xml` files placed in the inputs directory (`Paths.XMLDOCUMENTS_INPUTS`). Each file is one group. The root element is a `KeybindMap` containing `Keybind` elements.

@@ -4,16 +4,16 @@
 **Scope:** `ArctisAurora.EngineWork.Rendering` — `TouchpadInput`, `AGlfwWindow` (`FrameProc`, `CreateWindow`); `ArctisAurora.EngineWork` — `InputHandler` (region "scroll gestures"); `ArctisAurora.Core.UI` — `Control.OnPointerScrollEnd`, `UIEngine` (`scrollOwner`, `Poll`, `Forget`), `CalendarControl`; `ArctisAurora.Core.Testing.TestContext.Scroll`; `Thorium/Tests` — `Planner.CalendarSnap`
 
 ## What changed
-- NEW `TouchpadInput` (internal static): `Register()` (RegisterRawInputDevices, HID digitizer page 0x0D / touchpad usage 0x05, hwndTarget null so it follows keyboard focus; called once from `AGlfwWindow.CreateWindow()`), `Handle(IntPtr rawInput)` (one WM_INPUT), `down` (fingers on pad), `lifts` (count of last-finger lifts).
+- NEW `TouchpadInput` (internal static): `Register()` (RegisterRawInputDevices, HID digitizer page 0x0D / touchpad usage 0x05, hwndTarget null so it follows keyboard focus; called once from `AGlfwWindow.CreateWindow()`), `Handle(IntPtr rawInput)` (one WM_INPUT), a private `down` (fingers on pad); a contact change posts `InputEventKind.ScrollContact` with `RawAction.Down/Up`. Updated 2026-10-16: the public `down`/`lifts` statics were removed, `InputHandler` keeps private `contactDown`/`contactLifts` set in `Drain` — see [[input-platform-layer]].
 - Parsing via hid.dll: `HidP_GetCaps`, `HidP_GetValueCaps` (finger link collections = those holding Contact ID 0x51; Contact Count 0x54), `HidP_GetUsageValue` (contact count), `HidP_GetUsages` (tip switch 0x42 per finger collection). A report with contact count > 0 opens a frame; finger slots are consumed until the count is met (hybrid-mode reporting); frame complete sets `down` = any tip.
 - `AGlfwWindow.FrameProc` passes `WM_INPUT` (0x00FF, const `rawInput`) to `TouchpadInput.Handle` and still forwards it to GLFW's proc.
 - `InputHandler` region "scroll gestures": consts `wheelQuiet` 0.15 s, `momentumGap` 0.05 s, `momentumFloor` 0.15 (GLFW scroll units); public `scrollEnded` (true for the tick a gesture finished); private `SettleScroll()` called first in `ActivateKeybinds`.
-- `ProcessScrollWheel` opens/tracks the gesture, marks it touched when a delta arrives with a finger down, ends it when a post-lift delta falls below `momentumFloor`, and swallows the rest of the momentum tail (deltas while no finger is down, arriving within 50 ms of each other) after an end.
+- `ApplyScroll` (was `ProcessScrollWheel`, now reached through `InputHandler.Post`) opens/tracks the gesture, marks it touched when a delta arrives with a finger down, ends it when a post-lift delta falls below `momentumFloor`, and swallows the rest of the momentum tail (deltas while no finger is down, arriving within 50 ms of each other) after an end.
 - Gesture end: wheel = 0.15 s since the last delta; touchpad = lifted and 50 ms with no delta (or a below-floor delta). Touching the pad again un-lifts the gesture (momentum stops; the next lift ends it). Uses `FrameScheduler.RequestFrameAt` so idle frames wake for the end. Clock is Stopwatch seconds.
 - `Control.OnPointerScrollEnd()` — new virtual, default no-op.
 - `UIEngine`: private `scrollOwner` (the control whose `OnPointerScroll` returned true; `SolveScroll` now walks up itself instead of `Dispatch` capturing the consumer). `Poll` calls `scrollOwner.OnPointerScrollEnd()` once when `InputHandler.instance.scrollEnded`; `Forget` clears it.
 - `CalendarControl`: removed `lastScroll`, `snapDelay`, `snapSeconds` and the `RequestFrameAt` in `OnPointerScroll`. Added `snapDuration` (0.15 s) and fields `forward`, `settling`, `settleFrom`, `settleTo`, `settleStart`. The `OnPointerScrollEnd` override starts the settle (`settleTo` = 1 if the last delta moved forward, else 0). `OnTick` eases by elapsed time since `settleStart` (cubic ease-out, fixed duration) and steps a day/week on reaching 1. A new scroll or a snapped step (Step/ShowSpan/GoToday set `unsnapped` false) cancels it.
-- NEW `TestContext.Scroll(Control, Vector2 delta)` — moves the pointer to the control's centre and feeds `InputHandler.ProcessScrollWheel` (the real wheel path).
+- NEW `TestContext.Scroll(Control, Vector2 delta)` — moves the pointer to the control's centre and posts a Scroll event through `InputHandler.Post` (the real wheel path; was `ProcessScrollWheel`).
 - Supersedes the 2026-10-09 calendar snap (0.15 s of quiet, per-frame exponential ease) described in [[planner]].
 
 ## Why these choices
@@ -51,7 +51,7 @@ After an idle wait the first frame's deltaTime was ~0.15 s, which moved ~92% (1 
 
 ## Known gaps
 - The all-day-lane easing is exponential on `Engine.deltaTime`; the first frame after an idle wait carries the whole idle gap as dt, so a lane opening right after idle can still take most of its step at once (AnimationSystem uses dt = 0 on a `Resumed` frame; the calendar does not). The settle is unaffected (fixed duration from `settleStart`).
-- Raw input follows keyboard focus: scrolling over an unfocused Thorium window gets no touchpad lift. The gesture is marked touched only if `TouchpadInput.down` was true, so such scrolls are treated as wheel scrolls (0.15 s quiet), the old timer behaviour.
+- Raw input follows keyboard focus: scrolling over an unfocused Thorium window gets no touchpad lift. The gesture is marked touched only if a finger contact was down (`contactDown`), so such scrolls are treated as wheel scrolls (0.15 s quiet), the old timer behaviour.
 - `momentumFloor` 0.15 and `momentumGap` 50 ms are tuned from one device's log.
 - Direction-of-travel snap: even a tiny forward nudge settles a whole day/week forward.
 - Vertical scrollers (`ScrollableControl`) receive `OnPointerScrollEnd` but ignore it.
@@ -60,4 +60,4 @@ After an idle wait the first frame's deltaTime was ~0.15 s, which moved ~92% (1 
 - **Verified:** test-verified. `_Build/test.sh` full run 306 passed, 1 failed (Boot, the baseline default-sampler error), 1 skipped; no `[Vulkan]` lines. `Planner.CalendarSnap`: a slide holds for 1 s without a gesture end; one frame after `OnPointerScrollEnd` it has moved partially (eases, no jump); within 0.3 s forward settles on the next day, column-aligned; backward settles on the day before; a wheel scroll through `TestContext.Scroll` (real `ProcessScrollWheel` -> `SettleScroll` -> `UIEngine` -> calendar) ends on its own and settles; Month 0.6-week forward settles on the next week. The HID parsing was checked live against the user's touchpad with probe logs (5 finger slots, contact count present, clean lifts, no false lifts mid-swipe) before the momentum logic existed.
 - **NOT GUI-verified:** the finished touchpad path (lift + momentum + swallow) in a running app; non-precision touchpads; multiple monitors/windows with keyboard focus on a different window than the one under the cursor.
 
-Related: [[planner]], [[ui-engine-stack]], [[date-time-settings]]
+Related: [[input-platform-layer]], [[planner]], [[ui-engine-stack]], [[date-time-settings]]

@@ -211,20 +211,13 @@ namespace ArctisAurora.Core.UI
 
             if (ownsDrag && dragging.parent is not WindowFrameControl) SolveDragWindow(window);
 
-            KeyStateEntry lmb = InputHandler.instance.keyTracker.GetState(Keys.MouseLeft);
-            KeyStateEntry rmb = InputHandler.instance.keyTracker.GetState(Keys.MouseRight);
-
-            if (lmb != null)
-            {
-                if (lmb.justPressed) SolvePress(point, delta, PointerEvent.leftButton);
-                if (lmb.justReleased) SolveRelease(point, delta, PointerEvent.leftButton, lmb.tapCount);
-            }
-
-            if (rmb != null)
-            {
-                if (rmb.justPressed) SolvePress(point, delta, PointerEvent.rightButton);
-                if (rmb.justReleased) SolveRelease(point, delta, PointerEvent.rightButton, rmb.tapCount);
-            }
+            InputHandler.PointerState pointer = InputHandler.instance.primaryPointer;
+            if (pointer != null)
+                for (int button = PointerEvent.leftButton; button <= PointerEvent.rightButton; button++)
+                {
+                    if (pointer.JustPressed(button)) SolvePress(point, delta, button);
+                    if (pointer.JustReleased(button)) SolveRelease(point, delta, button, pointer.taps[button]);
+                }
 
             // Claimant before target, so a lost release is caught before anything is offered a drop.
             if (ownsDrag)
@@ -619,7 +612,9 @@ namespace ArctisAurora.Core.UI
                 point = point,
                 delta = delta,
                 button = button,
-                tapCount = tapCount
+                tapCount = tapCount,
+                pointerId = InputHandler.instance.primaryPointer?.id ?? 0,
+                kind = InputHandler.instance.primaryPointer?.kind ?? PointerKind.Mouse
             };
 
         private static Control RootOf(Control control)

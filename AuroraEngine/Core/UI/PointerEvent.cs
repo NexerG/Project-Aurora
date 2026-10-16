@@ -1,3 +1,4 @@
+using ArctisAurora.EngineWork;
 using System.Numerics;
 
 namespace ArctisAurora.Core.UI
@@ -27,5 +28,7 @@ namespace ArctisAurora.Core.UI
         public Vector2 delta;
         public int button;
         public int tapCount;
+        public int pointerId;
+        public PointerKind kind;
     }
 }

@@ -92,6 +92,10 @@ still shadows a looser `LeftControl` one.
 - Test `TextInput.RightModifiers` fails if `IsShadowed` reads raw keys (checked by breaking it). It cannot see
   `SameModifier`: every shipped bind names the left keys, so the superset test matches on equal keys
 
+### 7. On a Mac, Cmd fills a Ctrl modifier (2026-10-16)
+
+One keybind serves every platform and the maps never name one. `GestureMatcher.commandIsControl` (default `OperatingSystem.IsMacOS()`) lets `Held(Keys)` accept LeftSuper for LeftControl and RightSuper for RightControl, `IsDown(InputModifier)` checks through `Held` so Cmd also fills `Word`, `Copy` and `Zoom`, and `SameModifier` counts the pair as one for shadowing. Rebind capture records Super as Control while the flag is set. Rejected alternatives (a `Primary` role with a `Platform` attribute, equivalence on every platform, a backend remap) and the cost are in [[input-platform-layer]].
+
 ## Verified
 
 - Builds clean.
@@ -110,4 +114,4 @@ still shadows a looser `LeftControl` one.
 - **The rest of the engine still reads raw keys.** This closes the two text-editing sites only;
   anything else calling `IsKeyDown` with a literal has the same problem.
 
-Related: [[document-selection]], [[engine-side-text-input]], [[document-structural-editing]]
+Related: [[input-platform-layer]], [[document-selection]], [[engine-side-text-input]], [[document-structural-editing]]

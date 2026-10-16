@@ -258,6 +258,7 @@ ArctisAurora.EngineWork.Rendering -> AuroraEngine/Core/Rendering/AuroraCamera.cs
 ArctisAurora.EngineWork.Rendering -> AuroraEngine/Core/Rendering/AVulkanMesh.cs
 ArctisAurora.EngineWork.Rendering -> AuroraEngine/Core/Rendering/Background.cs
 ArctisAurora.EngineWork.Rendering -> AuroraEngine/Core/Rendering/DisplayNames.cs
+ArctisAurora.EngineWork.Rendering -> AuroraEngine/Core/Rendering/GlfwInput.cs
 ArctisAurora.EngineWork.Rendering -> AuroraEngine/Core/Rendering/GraphicsPipeline.cs
 ArctisAurora.EngineWork.Rendering -> AuroraEngine/Core/Rendering/GraphicsSettings.cs
 ArctisAurora.EngineWork.Rendering -> AuroraEngine/Core/Rendering/Renderer.cs

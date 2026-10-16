@@ -252,12 +252,7 @@ namespace ArctisAurora.EngineWork
         {
             if (TestRunner.active) return;
 
-            window.os.SetCursorPosCallback(inputHandler.ProcessMouseMove);
-            window.os.SetMouseButtonCallback(inputHandler.ProcessMouseClick);
-            window.os.SetKeyCallback(inputHandler.ProcessKeyboard);
-            window.os.SetCharCallback(inputHandler.ProcessCharInput);
-            window.os.SetMouseOnWindowCallback(window.MouseCrossedBorder);
-            window.os.SetScrollCallback(inputHandler.ProcessScrollWheel);
+            GlfwInput.Wire(window);
         }
 
         [A_XSDActionDependency("Renderer.InitRenderer", "Bootstrap")]

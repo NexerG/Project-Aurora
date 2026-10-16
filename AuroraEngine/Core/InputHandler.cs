@@ -2,7 +2,6 @@
 using ArctisAurora.Core.Filing.Serialization;
 using ArctisAurora.Core.Threading;
 using ArctisAurora.EngineWork.Rendering;
-using Silk.NET.GLFW;
 using System.Numerics;
 using Silk.NET.Vulkan;
 using System.Reflection;
@@ -17,18 +16,40 @@ namespace ArctisAurora.EngineWork
         Up
     }
 
+    public enum InputEventKind
+    {
+        Key,
+        Button,
+        PointerMove,
+        Scroll,
+        ScrollContact,
+        Text
+    }
+
+    public enum PointerKind
+    {
+        Mouse,
+        Touch,
+        Pen
+    }
+
+    // One OS input, as a platform backend posts it to InputHandler.Post.
     public struct RawInputEvent
     {
+        public InputEventKind kind;
         public Keys key;
         public RawAction action;
         public double timestamp;
+        public RenderWindow window;
 
-        public RawInputEvent(Keys key, RawAction action, double timestamp)
-        {
-            this.key = key;
-            this.action = action;
-            this.timestamp = timestamp;
-        }
+        // pointer identity, and its position in window pixels
+        public int pointerId;
+        public PointerKind pointerKind;
+        public Vector2 position;
+
+        // scroll offset, and a character's codepoint
+        public Vector2 delta;
+        public uint codepoint;
     }
 
     public class KeyStateEntry
@@ -57,9 +78,6 @@ namespace ArctisAurora.EngineWork
     public class KeyStateTracker
     {
         private Dictionary<Keys, KeyStateEntry> _states = new Dictionary<Keys, KeyStateEntry>();
-        private List<RawInputEvent> _writeQueue = new List<RawInputEvent>();
-        private List<RawInputEvent> _readQueue = new List<RawInputEvent>();
-        private readonly object _lock = new object();
 
         // Global keybind timings, from the Input settings category. A keybind cannot override them.
         private static double tapWindow => SettingsRegistry.Get<InputSettings>().doubleClick.timeout;
@@ -95,29 +113,16 @@ namespace ArctisAurora.EngineWork
             return 0;
         }
 
-        // Called from GLFW callback thread
-        public void EnqueueEvent(Keys key, RawAction action, double timestamp)
+        // Called once per tick on main thread, with the tick's drained events.
+        public void Update(List<RawInputEvent> events, double currentTime, double deltaTime)
         {
-            lock (_lock)
-            {
-                _writeQueue.Add(new RawInputEvent(key, action, timestamp));
-            }
-        }
-
-        // Called once per tick on main thread
-        public void Update(double currentTime, double deltaTime)
-        {
-            lock (_lock)
-            {
-                (_writeQueue, _readQueue) = (_readQueue, _writeQueue);
-            }
-
             foreach (KeyStateEntry entry in _states.Values)
                 entry.ResetFrame();
 
-            for (int i = 0; i < _readQueue.Count; i++)
+            for (int i = 0; i < events.Count; i++)
             {
-                RawInputEvent evt = _readQueue[i];
+                RawInputEvent evt = events[i];
+                if (evt.kind != InputEventKind.Key && evt.kind != InputEventKind.Button) continue;
                 KeyStateEntry entry = GetOrCreate(evt.key);
 
                 if (evt.action == RawAction.Down)
@@ -155,7 +160,6 @@ namespace ArctisAurora.EngineWork
                     }
                 }
             }
-            _readQueue.Clear();
 
             foreach (KeyStateEntry entry in _states.Values)
             {
@@ -180,8 +184,12 @@ namespace ArctisAurora.EngineWork
         {
             List<Keys> held = new List<Keys>();
             foreach (KeyStateEntry entry in _states.Values)
-                if (entry.isDown && IsModifier(entry.key))
-                    held.Add(entry.key);
+            {
+                if (!entry.isDown || !IsModifier(entry.key)) continue;
+                Keys key = GestureMatcher.commandIsControl && entry.key is Keys.LeftSuper or Keys.RightSuper
+                    ? GestureMatcher.Command(entry.key).Value : entry.key;
+                if (!held.Contains(key)) held.Add(key);
+            }
             return held;
         }
 
@@ -626,161 +634,6 @@ namespace ArctisAurora.EngineWork
 
         // If no conditions specified, default to Press
         public bool hasConditions => conditions.Count > 0;
-
-        public static Keys MapKey(Silk.NET.GLFW.Keys glfwkey) => glfwkey switch
-        {
-            // letters
-            Silk.NET.GLFW.Keys.A => Keys.A,
-            Silk.NET.GLFW.Keys.B => Keys.B,
-            Silk.NET.GLFW.Keys.C => Keys.C,
-            Silk.NET.GLFW.Keys.D => Keys.D,
-            Silk.NET.GLFW.Keys.E => Keys.E,
-            Silk.NET.GLFW.Keys.F => Keys.F,
-            Silk.NET.GLFW.Keys.G => Keys.G,
-            Silk.NET.GLFW.Keys.H => Keys.H,
-            Silk.NET.GLFW.Keys.I => Keys.I,
-            Silk.NET.GLFW.Keys.J => Keys.J,
-            Silk.NET.GLFW.Keys.K => Keys.K,
-            Silk.NET.GLFW.Keys.L => Keys.L,
-            Silk.NET.GLFW.Keys.M => Keys.M,
-            Silk.NET.GLFW.Keys.N => Keys.N,
-            Silk.NET.GLFW.Keys.O => Keys.O,
-            Silk.NET.GLFW.Keys.P => Keys.P,
-            Silk.NET.GLFW.Keys.Q => Keys.Q,
-            Silk.NET.GLFW.Keys.R => Keys.R,
-            Silk.NET.GLFW.Keys.S => Keys.S,
-            Silk.NET.GLFW.Keys.T => Keys.T,
-            Silk.NET.GLFW.Keys.U => Keys.U,
-            Silk.NET.GLFW.Keys.V => Keys.V,
-            Silk.NET.GLFW.Keys.W => Keys.W,
-            Silk.NET.GLFW.Keys.X => Keys.X,
-            Silk.NET.GLFW.Keys.Y => Keys.Y,
-            Silk.NET.GLFW.Keys.Z => Keys.Z,
-
-            // lowercase
-            //silk.net.glfw.keys.
-
-            //numbers
-            Silk.NET.GLFW.Keys.Number0 => Keys.Num0,
-            Silk.NET.GLFW.Keys.Number1 => Keys.Num1,
-            Silk.NET.GLFW.Keys.Number2 => Keys.Num2,
-            Silk.NET.GLFW.Keys.Number3 => Keys.Num3,
-            Silk.NET.GLFW.Keys.Number4 => Keys.Num4,
-            Silk.NET.GLFW.Keys.Number5 => Keys.Num5,
-            Silk.NET.GLFW.Keys.Number6 => Keys.Num6,
-            Silk.NET.GLFW.Keys.Number7 => Keys.Num7,
-            Silk.NET.GLFW.Keys.Number8 => Keys.Num8,
-            Silk.NET.GLFW.Keys.Number9 => Keys.Num9,
-
-            // function keys
-            Silk.NET.GLFW.Keys.F1 => Keys.F1,
-            Silk.NET.GLFW.Keys.F2 => Keys.F2,
-            Silk.NET.GLFW.Keys.F3 => Keys.F3,
-            Silk.NET.GLFW.Keys.F4 => Keys.F4,
-            Silk.NET.GLFW.Keys.F5 => Keys.F5,
-            Silk.NET.GLFW.Keys.F6 => Keys.F6,
-            Silk.NET.GLFW.Keys.F7 => Keys.F7,
-            Silk.NET.GLFW.Keys.F8 => Keys.F8,
-            Silk.NET.GLFW.Keys.F9 => Keys.F9,
-            Silk.NET.GLFW.Keys.F10 => Keys.F10,
-            Silk.NET.GLFW.Keys.F11 => Keys.F11,
-            Silk.NET.GLFW.Keys.F12 => Keys.F12,
-            Silk.NET.GLFW.Keys.F13 => Keys.F13,
-            Silk.NET.GLFW.Keys.F14 => Keys.F14,
-            Silk.NET.GLFW.Keys.F15 => Keys.F15,
-            Silk.NET.GLFW.Keys.F16 => Keys.F16,
-            Silk.NET.GLFW.Keys.F17 => Keys.F17,
-            Silk.NET.GLFW.Keys.F18 => Keys.F18,
-            Silk.NET.GLFW.Keys.F19 => Keys.F19,
-            Silk.NET.GLFW.Keys.F20 => Keys.F20,
-            Silk.NET.GLFW.Keys.F21 => Keys.F21,
-            Silk.NET.GLFW.Keys.F22 => Keys.F22,
-            Silk.NET.GLFW.Keys.F23 => Keys.F23,
-            Silk.NET.GLFW.Keys.F24 => Keys.F24,
-            Silk.NET.GLFW.Keys.F25 => Keys.F25,
-
-            // navigation
-            Silk.NET.GLFW.Keys.Up => Keys.Up,
-            Silk.NET.GLFW.Keys.Down => Keys.Down,
-            Silk.NET.GLFW.Keys.Left => Keys.Left,
-            Silk.NET.GLFW.Keys.Right => Keys.Right,
-            Silk.NET.GLFW.Keys.Home => Keys.Home,
-            Silk.NET.GLFW.Keys.End => Keys.End,
-            Silk.NET.GLFW.Keys.PageUp => Keys.PageUp,
-            Silk.NET.GLFW.Keys.PageDown => Keys.PageDown,
-            Silk.NET.GLFW.Keys.Insert => Keys.Insert,
-            Silk.NET.GLFW.Keys.Delete => Keys.Delete,
-
-            // modifiers
-            Silk.NET.GLFW.Keys.ShiftLeft => Keys.LeftShift,
-            Silk.NET.GLFW.Keys.ShiftRight => Keys.RightShift,
-            Silk.NET.GLFW.Keys.ControlLeft => Keys.LeftControl,
-            Silk.NET.GLFW.Keys.ControlRight => Keys.RightControl,
-            Silk.NET.GLFW.Keys.AltLeft => Keys.LeftAlt,
-            Silk.NET.GLFW.Keys.AltRight => Keys.RightAlt,
-            Silk.NET.GLFW.Keys.SuperLeft => Keys.LeftWin,
-            Silk.NET.GLFW.Keys.SuperRight => Keys.RightWin,
-
-            // special
-            Silk.NET.GLFW.Keys.Space => Keys.Space,
-            Silk.NET.GLFW.Keys.Enter => Keys.Enter,
-            Silk.NET.GLFW.Keys.Escape => Keys.Escape,
-            Silk.NET.GLFW.Keys.Tab => Keys.Tab,
-            Silk.NET.GLFW.Keys.Backspace => Keys.Backspace,
-            Silk.NET.GLFW.Keys.CapsLock => Keys.CapsLock,
-            Silk.NET.GLFW.Keys.ScrollLock => Keys.ScrollLock,
-            Silk.NET.GLFW.Keys.NumLock => Keys.NumLock,
-            Silk.NET.GLFW.Keys.PrintScreen => Keys.PrintScreen,
-            Silk.NET.GLFW.Keys.Pause => Keys.Pause,
-            Silk.NET.GLFW.Keys.Menu => Keys.Menu,
-
-            // symbols
-            Silk.NET.GLFW.Keys.Apostrophe => Keys.Apostrophe,
-            Silk.NET.GLFW.Keys.Comma => Keys.Comma,
-            Silk.NET.GLFW.Keys.Minus => Keys.Minus,
-            Silk.NET.GLFW.Keys.Period => Keys.Period,
-            Silk.NET.GLFW.Keys.Slash => Keys.Slash,
-            Silk.NET.GLFW.Keys.Semicolon => Keys.Semicolon,
-            Silk.NET.GLFW.Keys.Equal => Keys.Equal,
-            Silk.NET.GLFW.Keys.LeftBracket => Keys.LeftBracket,
-            Silk.NET.GLFW.Keys.BackSlash => Keys.Backslash,
-            Silk.NET.GLFW.Keys.RightBracket => Keys.RightBracket,
-            Silk.NET.GLFW.Keys.GraveAccent => Keys.GraveAccent,
-
-            // keypad
-            Silk.NET.GLFW.Keys.Keypad0 => Keys.Numpad0,
-            Silk.NET.GLFW.Keys.Keypad1 => Keys.Numpad1,
-            Silk.NET.GLFW.Keys.Keypad2 => Keys.Numpad2,
-            Silk.NET.GLFW.Keys.Keypad3 => Keys.Numpad3,
-            Silk.NET.GLFW.Keys.Keypad4 => Keys.Numpad4,
-            Silk.NET.GLFW.Keys.Keypad5 => Keys.Numpad5,
-            Silk.NET.GLFW.Keys.Keypad6 => Keys.Numpad6,
-            Silk.NET.GLFW.Keys.Keypad7 => Keys.Numpad7,
-            Silk.NET.GLFW.Keys.Keypad8 => Keys.Numpad8,
-            Silk.NET.GLFW.Keys.Keypad9 => Keys.Numpad9,
-            Silk.NET.GLFW.Keys.KeypadDecimal => Keys.NumpadDecimal,
-            Silk.NET.GLFW.Keys.KeypadDivide => Keys.NumpadDivide,
-            Silk.NET.GLFW.Keys.KeypadMultiply => Keys.NumpadMultiply,
-            Silk.NET.GLFW.Keys.KeypadSubtract => Keys.NumpadSubtract,
-            Silk.NET.GLFW.Keys.KeypadAdd => Keys.NumpadAdd,
-            Silk.NET.GLFW.Keys.KeypadEnter => Keys.NumpadEnter,
-            Silk.NET.GLFW.Keys.KeypadEqual => Keys.NumpadEqual,
-
-            _ => Keys.unknown
-        };
-
-        public static Keys MouseKey(MouseButton button) => button switch
-        {
-            Silk.NET.GLFW.MouseButton.Left => Keys.MouseLeft,
-            Silk.NET.GLFW.MouseButton.Right => Keys.MouseRight,
-            Silk.NET.GLFW.MouseButton.Middle => Keys.MouseMiddle,
-            Silk.NET.GLFW.MouseButton.Button4 => Keys.MouseButton4,
-            Silk.NET.GLFW.MouseButton.Button5 => Keys.MouseButton5,
-            Silk.NET.GLFW.MouseButton.Button6 => Keys.MouseButton6,
-            Silk.NET.GLFW.MouseButton.Button7 => Keys.MouseButton7,
-            Silk.NET.GLFW.MouseButton.Button8 => Keys.MouseButton8,
-            _ => Keys.unknown
-        };
     }
 
     public class GestureMatcher
@@ -877,7 +730,7 @@ namespace ArctisAurora.EngineWork
         public bool IsDown(InputModifier modifier)
         {
             for (int i = 0; i < _activeModifiers.Count; i++)
-                if (_activeModifiers[i].modifier == modifier && _tracker.IsDown(_activeModifiers[i].key))
+                if (_activeModifiers[i].modifier == modifier && Held(_activeModifiers[i].key))
                     return true;
 
             return false;
@@ -1047,10 +900,26 @@ namespace ArctisAurora.EngineWork
             return false;
         }
 
-        // A keybind modifier is held when either side of it is.
-        private bool Held(Keys key) => _tracker.IsDown(key) || (Twin(key) is Keys twin && _tracker.IsDown(twin));
+        // Set on a Mac, where Cmd fills a Ctrl modifier.
+        public static bool commandIsControl = OperatingSystem.IsMacOS();
 
-        private static bool SameModifier(Keys a, Keys b) => a == b || Twin(a) == b;
+        // A keybind modifier is held when either side of it is, or on a Mac its Cmd counterpart.
+        private bool Held(Keys key) => Down(key) || (commandIsControl && Command(key) is Keys cmd && Down(cmd));
+
+        private bool Down(Keys key) => _tracker.IsDown(key) || (Twin(key) is Keys twin && _tracker.IsDown(twin));
+
+        private static bool SameModifier(Keys a, Keys b) =>
+            a == b || Twin(a) == b || (commandIsControl && Command(a) is Keys cmd && (cmd == b || Twin(cmd) == b));
+
+        // The Cmd key for a Ctrl key, and the reverse.
+        internal static Keys? Command(Keys key) => key switch
+        {
+            Keys.LeftControl => Keys.LeftSuper,
+            Keys.RightControl => Keys.RightSuper,
+            Keys.LeftSuper => Keys.LeftControl,
+            Keys.RightSuper => Keys.RightControl,
+            _ => null
+        };
 
         private static Keys? Twin(Keys key) => key switch
         {
@@ -1148,54 +1017,137 @@ namespace ArctisAurora.EngineWork
             gestureMatcher = new GestureMatcher(keyTracker);
         }
 
-        #region ---- Input callbacks ----
-        internal void ProcessCharInput(WindowHandle* window, uint codepoint)
+        #region ---- event ingress ----
+        private static List<RawInputEvent> _posted = new List<RawInputEvent>();
+        private static List<RawInputEvent> _draining = new List<RawInputEvent>();
+        private static readonly object _postLock = new object();
+
+        // The one entry for OS input; any platform backend posts here, from any thread.
+        public static void Post(in RawInputEvent evt)
         {
-            char c = (char)codepoint;
-            if (c != '\0')
+            lock (_postLock)
+                _posted.Add(evt);
+        }
+
+        // Applies the tick's posted events in the order they arrived.
+        private void Drain()
+        {
+            lock (_postLock)
+                (_posted, _draining) = (_draining, _posted);
+
+            foreach (PointerState pointer in _pointers.Values)
+                pointer.pressed = pointer.released = 0;
+
+            for (int i = 0; i < _draining.Count; i++)
             {
-                charInputWriteQueue.Enqueue(c);
-                lastCharInput = c;
+                RawInputEvent evt = _draining[i];
+                switch (evt.kind)
+                {
+                    case InputEventKind.PointerMove:
+                        MovePointer(evt);
+                        break;
+                    case InputEventKind.Button:
+                        PressPointer(evt);
+                        break;
+                    case InputEventKind.Scroll:
+                        if (evt.window != null) ApplyScroll(evt.window, evt.delta.X, evt.delta.Y);
+                        break;
+                    case InputEventKind.ScrollContact:
+                        contactDown = evt.action == RawAction.Down;
+                        if (!contactDown) contactLifts++;
+                        break;
+                    case InputEventKind.Text:
+                        char c = (char)evt.codepoint;
+                        if (c != '\0')
+                        {
+                            charInputWriteQueue.Enqueue(c);
+                            lastCharInput = c;
+                        }
+                        break;
+                }
             }
         }
 
-        internal void ProcessMouseMove(WindowHandle* window, double xPos, double yPos)
-        {
-            RenderWindow target = Engine.WindowFor(window);
-            if (target == null) return;
+        #endregion
 
-            target.mousePos.X = (float)xPos;
-            target.mousePos.Y = (float)yPos;
+        #region ---- pointers ----
+        // One pointer — the mouse, a touch contact or a pen — with its buttons as bit masks by PointerEvent button.
+        public class PointerState
+        {
+            public int id;
+            public PointerKind kind;
+            public RenderWindow window;
+            public Vector2 position;
+            public int down;
+            public int pressed;
+            public int released;
+
+            // per-button tap counting
+            public int[] taps = new int[buttonCount];
+            public double[] lastTapAt = new double[buttonCount];
+
+            public bool JustPressed(int button) => (pressed & (1 << button)) != 0;
+
+            public bool JustReleased(int button) => (released & (1 << button)) != 0;
         }
 
-        internal void ProcessMouseClick(WindowHandle* window, MouseButton button, InputAction action, KeyModifiers mods)
-        {
-            Keys key = KeybindDefinition.MouseKey(button);
+        private const int buttonCount = Keys.MouseButton8 - Keys.MouseLeft + 1;
 
-            if (action == InputAction.Press)
-                keyTracker.EnqueueEvent(key, RawAction.Down, Engine.totalTime);
-            else if (action == InputAction.Release)
-                keyTracker.EnqueueEvent(key, RawAction.Up, Engine.totalTime);
+        private Dictionary<int, PointerState> _pointers = new Dictionary<int, PointerState>();
+
+        // The pointer the UI follows: the first one seen.
+        public PointerState primaryPointer { get; private set; }
+
+        private PointerState PointerFor(in RawInputEvent evt)
+        {
+            if (!_pointers.TryGetValue(evt.pointerId, out PointerState pointer))
+            {
+                pointer = new PointerState { id = evt.pointerId, kind = evt.pointerKind };
+                _pointers.Add(evt.pointerId, pointer);
+                primaryPointer ??= pointer;
+            }
+            if (evt.window != null) pointer.window = evt.window;
+            return pointer;
         }
 
-        internal void ProcessKeyboard(WindowHandle* window, Silk.NET.GLFW.Keys key, int _scanCode, InputAction action, KeyModifiers mods)
+        private void MovePointer(in RawInputEvent evt)
         {
-            Keys mapped = KeybindDefinition.MapKey(key);
-            if (action == InputAction.Press)
-                keyTracker.EnqueueEvent(mapped, RawAction.Down, Engine.totalTime);
-            else if (action == InputAction.Release)
-                keyTracker.EnqueueEvent(mapped, RawAction.Up, Engine.totalTime);
+            PointerState pointer = PointerFor(evt);
+            pointer.position = evt.position;
+            if (ReferenceEquals(pointer, primaryPointer) && evt.window != null) evt.window.mousePos = evt.position;
         }
 
-        internal void ProcessScrollWheel(WindowHandle* window, double offsetX, double offsetY)
+        private void PressPointer(in RawInputEvent evt)
         {
-            RenderWindow target = Engine.WindowFor(window);
-            if (target == null) return;
+            int button = evt.key - Keys.MouseLeft;
+            if (button < 0 || button >= buttonCount) return;
 
+            PointerState pointer = PointerFor(evt);
+            int bit = 1 << button;
+            if (evt.action == RawAction.Down)
+            {
+                if ((pointer.down & bit) != 0) return;
+                pointer.down |= bit;
+                pointer.pressed |= bit;
+                double tapWindow = SettingsRegistry.Get<InputSettings>().doubleClick.timeout;
+                pointer.taps[button] = evt.timestamp - pointer.lastTapAt[button] < tapWindow ? pointer.taps[button] + 1 : 1;
+                pointer.lastTapAt[button] = evt.timestamp;
+            }
+            else if ((pointer.down & bit) != 0)
+            {
+                pointer.down &= ~bit;
+                pointer.released |= bit;
+            }
+        }
+        #endregion
+
+        #region ---- scroll input ----
+        private void ApplyScroll(RenderWindow target, double offsetX, double offsetY)
+        {
             double now = ScrollClock;
             if (swallowMomentum)
             {
-                if (!TouchpadInput.down && now - lastScrollAt < momentumGap)
+                if (!contactDown && now - lastScrollAt < momentumGap)
                 {
                     lastScrollAt = now;
                     return;
@@ -1218,7 +1170,7 @@ namespace ArctisAurora.EngineWork
                 scrollTouched = false;
                 scrollLifted = false;
             }
-            if (TouchpadInput.down) scrollTouched = true;
+            if (contactDown) scrollTouched = true;
             lastScrollAt = now;
         }
         #endregion
@@ -1235,6 +1187,10 @@ namespace ArctisAurora.EngineWork
         private bool scrollEndWrite;
         private bool swallowMomentum;
         private int seenLifts;
+
+        // fingers on a scroll surface, and how many times the last one has lifted
+        private bool contactDown;
+        private int contactLifts;
         private double lastScrollAt;
         private double liftAt;
 
@@ -1248,16 +1204,16 @@ namespace ArctisAurora.EngineWork
         {
             scrollEnded = false;
             double now = ScrollClock;
-            if (TouchpadInput.lifts != seenLifts)
+            if (contactLifts != seenLifts)
             {
-                seenLifts = TouchpadInput.lifts;
+                seenLifts = contactLifts;
                 if (scrollOpen && scrollTouched)
                 {
                     scrollLifted = true;
                     liftAt = now;
                 }
             }
-            if (scrollLifted && TouchpadInput.down) scrollLifted = false;
+            if (scrollLifted && contactDown) scrollLifted = false;
             if (!scrollOpen) return;
 
             double quiet = scrollTouched ? momentumGap : wheelQuiet;
@@ -1265,7 +1221,7 @@ namespace ArctisAurora.EngineWork
             if (scrollEndWrite || (!scrollTouched || scrollLifted) && since >= quiet)
             {
                 scrollEnded = true;
-                swallowMomentum |= scrollTouched && !TouchpadInput.down;
+                swallowMomentum |= scrollTouched && !contactDown;
                 scrollOpen = scrollTouched = scrollLifted = scrollEndWrite = false;
             }
             else if (!scrollTouched || scrollLifted)
@@ -1275,6 +1231,7 @@ namespace ArctisAurora.EngineWork
 
         public void ActivateKeybinds()
         {
+            Drain();
             SettleScroll();
             lock (charInputWriteQueue)
             {
@@ -1286,8 +1243,8 @@ namespace ArctisAurora.EngineWork
                 window.scrollDeltaWrite = new Vector2(0, 0);
             }
 
-            // Update key states from raw GLFW events
-            keyTracker.Update(Engine.totalTime, Engine.deltaTime.TotalSeconds);
+            keyTracker.Update(_draining, Engine.totalTime, Engine.deltaTime.TotalSeconds);
+            _draining.Clear();
 
             // A pending capture eats the tick, so the key being bound never fires what it is bound to.
             if (_capture != null)
