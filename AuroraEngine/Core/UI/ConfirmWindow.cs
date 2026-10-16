@@ -28,7 +28,7 @@ namespace ArctisAurora.Core.UI
 
         // A prompt at a time, as with the name prompt — a second ask would strand the first one's
         // callbacks. Each answer is handed the check line's state.
-        public static unsafe void Ask(RenderWindow source, string message, string? check, params (string caption, Action<bool> answer)[] answers)
+        public static unsafe void Ask(RenderWindow source, string message, string? check, params (string caption, Action<bool>? answer)[] answers)
         {
             if (isOpen || source == null) return;
 
@@ -108,7 +108,7 @@ namespace ArctisAurora.Core.UI
         }
 
         // Rebuilds the message, check line and answers for one ask.
-        private static void Fill(string message, string? check, (string caption, Action<bool> answer)[] answers)
+        private static void Fill(string message, string? check, (string caption, Action<bool>? answer)[] answers)
         {
             foreach (Entity child in _column.children.ToArray())
                 child.Destroy();
@@ -148,8 +148,12 @@ namespace ArctisAurora.Core.UI
             // The row fills the column, so the buttons are pushed right by a star child rather than
             // by aligning the row itself.
             buttons.AddChild(new PanelControl { widthStar = 1, alpha = 0f });
-            foreach ((string caption, Action<bool> answer) in answers)
-                buttons.AddChild(Button(caption, () => Answer(answer)));
+            foreach ((string caption, Action<bool>? answer) in answers)
+            {
+                ButtonControl button = Button(caption, () => Answer(answer!));
+                button.enabled = answer != null;
+                buttons.AddChild(button);
+            }
             _column.AddChild(buttons);
 
             _column.InvalidateLayout();

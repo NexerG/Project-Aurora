@@ -14,7 +14,15 @@ mkdir -p "$out"
 log="$out/run.txt"
 base="$root/_Build/test-baseline.txt"
 
-build=$(dotnet build "$root/AuroraEngine/ArctisAurora.sln" -v q -nologo 2>&1)
+linux=0
+[ "$(uname -s)" = "Linux" ] && linux=1
+bin="$root/Thorium/bin/Debug/net10.0-windows10.0.22621.0"
+
+if [ $linux -eq 1 ]; then
+	build=$(dotnet build "$root/Thorium/Thorium.csproj" -v q -nologo -p:EnableWindowsTargeting=true 2>&1)
+else
+	build=$(dotnet build "$root/AuroraEngine/ArctisAurora.sln" -v q -nologo 2>&1)
+fi
 if [ $? -ne 0 ]; then
 	echo "$build" | grep -E ' error ' | sort -u | head -20
 	echo "BUILD FAILED"
@@ -23,12 +31,16 @@ fi
 
 arg="--test"
 [ -n "$suite" ] && arg="--test=$suite"
-"$root/Thorium/bin/Debug/net10.0-windows10.0.22621.0/Thorium.exe" "$arg" > "$log" 2>&1
+if [ $linux -eq 1 ]; then
+	VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/lvp_icd.json xvfb-run -a -s "-screen 0 1920x1080x24" "$bin/Thorium" "$arg" > "$log" 2>&1
+else
+	"$bin/Thorium.exe" "$arg" > "$log" 2>&1
+fi
 code=$?
 
 grep -aE '\[Test\] (FAIL|NEW|APPROVED) ' "$log" | sed -E 's/^.*\[Test\] //; s/  @[^ ]+$//' | cut -c1-250
 
-kinds=$(grep -aE ' (ERROR|FATAL) ' "$log" | sed -E 's/^[0-9:.]+ +(ERROR|FATAL) +[^ ]+ /\1 /' | sort -u)
+kinds=$(grep -aE ' (ERROR|FATAL) ' "$log" | tr -d '\r' | sed -E 's/^[0-9:.]+ +(ERROR|FATAL) +[^ ]+ /\1 /' | sort -u)
 if [ $baseline -eq 1 ]; then
 	printf '%s\n' "$kinds" > "$base"
 	echo "baseline written: $(grep -c . "$base") error kind(s)"

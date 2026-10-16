@@ -216,6 +216,7 @@ namespace ArctisAurora.EngineWork.Rendering
         // way a decorated one does and the swapchain is untouched.
         internal void RoundCorners()
         {
+            if (!OperatingSystem.IsWindows()) return;
             int preference = Core.UI.Palettes.Default.windowCorners switch
             {
                 Core.UI.WindowCorners.Square => squareCorners,
@@ -240,6 +241,7 @@ namespace ArctisAurora.EngineWork.Rendering
         // geometry in WM_NCCALCSIZE, rather than by declaring the window frameless.
         private void AllowSnapping()
         {
+            if (!OperatingSystem.IsWindows()) return;
             IntPtr window = Hwnd;
             SetWindowLongPtr(window, windowStyle, (GetWindowLongPtr(window, windowStyle) & ~popup) | snappableFrame);
 
@@ -306,6 +308,7 @@ namespace ArctisAurora.EngineWork.Rendering
         // Raises without activating.
         internal void Raise()
         {
+            if (!OperatingSystem.IsWindows()) return;
             IntPtr window = new GlfwNativeWindow(_glfw, handle).Win32!.Value.Hwnd;
             SetWindowPos(window, hwndTop, 0, 0, 0, 0, raiseFlags);
         }
@@ -317,6 +320,12 @@ namespace ArctisAurora.EngineWork.Rendering
         // Moves and sizes in one call.
         internal void SetBounds(int x, int y, int width, int height)
         {
+            if (!OperatingSystem.IsWindows())
+            {
+                _glfw.SetWindowPos(handle, x, y);
+                _glfw.SetWindowSize(handle, width, height);
+                return;
+            }
             SetWindowPos(Hwnd, IntPtr.Zero, x, y, width, height, boundsFlags);
         }
 
@@ -409,11 +418,12 @@ namespace ArctisAurora.EngineWork.Rendering
         // reports the maximized rect while maximized, so the rect worth saving comes from the OS.
         internal (int x, int y, int width, int height, bool maximized) GetPlacement()
         {
-            if (!_glfw.GetWindowAttrib(handle, WindowAttributeGetter.Maximized))
+            bool isMaximized = _glfw.GetWindowAttrib(handle, WindowAttributeGetter.Maximized);
+            if (!isMaximized || !OperatingSystem.IsWindows())
             {
                 _glfw.GetWindowPos(handle, out int px, out int py);
                 _glfw.GetWindowSize(handle, out int pw, out int ph);
-                return (px, py, pw, ph, false);
+                return (px, py, pw, ph, isMaximized);
             }
 
             WindowPlacement placement = new WindowPlacement();
@@ -515,6 +525,7 @@ namespace ArctisAurora.EngineWork.Rendering
         // pump messages of its own — a nested PeekMessage would steal the moves the OS loop tracks.
         internal void DragByCaption(Action pump)
         {
+            if (!OperatingSystem.IsWindows()) return;
             _pump = pump;
             IntPtr window = Hwnd;
             ReleaseCapture();

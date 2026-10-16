@@ -30,7 +30,7 @@ namespace ArctisAurora.EngineWork.Rendering
         // Asks for touchpad reports, following keyboard focus.
         public static void Register()
         {
-            if (registered) return;
+            if (registered || !OperatingSystem.IsWindows()) return;
             registered = true;
             RawInputDevice device = new RawInputDevice { usagePage = digitizerPage, usage = touchpadUsage };
             if (!RegisterRawInputDevices(&device, 1, (uint)sizeof(RawInputDevice)))

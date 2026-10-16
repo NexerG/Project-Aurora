@@ -53,7 +53,7 @@ namespace ArctisAurora.Core.Registry.Assets
             atlasMetaData = new AtlasMetaData();
             atlasMetaData.Deserialize(name);
 
-            string imagePath = Paths.FONTS + "\\" + name + "\\" + name + "_atlas.png";
+            string imagePath = Paths.FONTS + "/" + name + "/" + name + "_atlas.png";
             if (System.IO.File.Exists(imagePath))
             {
                 image = Image.Load<Rgba32>(imagePath);
@@ -71,7 +71,7 @@ namespace ArctisAurora.Core.Registry.Assets
             fontAsset.atlasMetaData = new AtlasMetaData();
             fontAsset.atlasMetaData.Deserialize("arial");
 
-            string imagePath = Paths.FONTS + "\\arial\\" + "arial_atlas.png";
+            string imagePath = Paths.FONTS + "/arial/" + "arial_atlas.png";
             fontAsset.image = Image.Load<Rgba32>(imagePath);
 
             return fontAsset;

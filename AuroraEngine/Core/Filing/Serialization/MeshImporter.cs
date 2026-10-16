@@ -1,4 +1,5 @@
 ﻿using Assimp;
+using System.Runtime.InteropServices;
 
 namespace ArctisAurora.Core.Filing.Serialization
 {
@@ -8,7 +9,15 @@ namespace ArctisAurora.Core.Filing.Serialization
 
         public static MeshImporter Instance = null!;
 
-        public MeshImporter() 
+        // Points AssimpNet's unversioned libdl at glibc's libdl.so.2.
+        static MeshImporter()
+        {
+            if (!OperatingSystem.IsWindows())
+                NativeLibrary.SetDllImportResolver(typeof(AssimpContext).Assembly,
+                    (name, assembly, path) => name == "libdl.so" ? NativeLibrary.Load("libdl.so.2") : IntPtr.Zero);
+        }
+
+        public MeshImporter()
         {
             Instance = this;
         }

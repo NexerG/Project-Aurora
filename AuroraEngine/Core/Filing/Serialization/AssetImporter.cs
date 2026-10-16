@@ -219,7 +219,7 @@ namespace ArctisAurora.Core.Filing.Serialization
             {
                 byte[] name = System.Text.Encoding.UTF8.GetBytes(Path.GetFileName(file));
                 digest.Write(name, 0, name.Length);
-                digest.Write(SHA256.HashData(File.ReadAllBytes(file)));
+                digest.Write(SHA256.HashData(Array.FindAll(File.ReadAllBytes(file), b => b != (byte)'\r')));
             }
             return Convert.ToHexString(SHA256.HashData(digest.ToArray()));
         }

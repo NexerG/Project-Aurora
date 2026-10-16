@@ -70,6 +70,23 @@ namespace ArctisAurora.Tests
             ButtonControl? minimize = ConfirmButton("Minimize");
             t.Check(minimize != null && ConfirmButton("Cancel") != null && ConfirmButton("Close") != null,
                 "the prompt offers Cancel, Minimize and Close");
+
+            if (!Background.canTray)
+            {
+                t.Check(minimize != null && !minimize.enabled, "without a tray, Minimize is greyed out");
+                if (minimize != null) yield return t.Click(minimize);
+                yield return 4;
+                t.Check(ConfirmWindow.isOpen && !Engine.primary.hidden && Visible(Engine.primary), "a greyed Minimize ignores the click");
+
+                ButtonControl? cancel = ConfirmButton("Cancel");
+                if (cancel != null) yield return t.Click(cancel);
+                yield return 4;
+                t.Check(!ConfirmWindow.isOpen, "Cancel closes the prompt");
+
+                setting.onClose = was;
+                yield break;
+            }
+
             if (minimize != null) yield return t.Click(minimize);
             yield return 10;
 
