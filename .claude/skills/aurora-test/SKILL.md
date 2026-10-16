@@ -32,7 +32,9 @@ apt-get install -y dotnet-sdk-10.0 mesa-vulkan-drivers libvulkan1 libglfw3 xvfb 
 ```
 
 - The log is `/tmp/aurora-test/run.txt`.
-- Goldens fail on lavapipe (51 today) — they were approved on a Windows GPU. Read only non-golden `FAIL` lines.
+- Goldens fail on lavapipe (51 today, anti-aliased edges only) — they were approved on a Windows GPU. Read only
+  non-golden `FAIL` lines. A golden that is lighter all over is a colour-space bug, not lavapipe — check the
+  swapchain format.
 - Linux runs are test-verified for Linux only; Windows stays builds-clean until run there.
 
 ## Everything else

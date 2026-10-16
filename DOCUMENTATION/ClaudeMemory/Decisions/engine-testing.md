@@ -326,7 +326,7 @@ because `Session.Capture` and `Settings.SaveAll` write into it at shutdown and t
 - A test that hangs inside one tick hangs the process — the timeout counts ticks.
 - Fixtures are built in code; loading a `*.ui.xml` by name goes through the asset registry.
 - AuroraEditor has not run `--test`.
-- On Linux the goldens approved on a Windows GPU fail against lavapipe (51 of them); no Linux goldens or tolerance. [[linux-test-port]].
+- On Linux the goldens approved on a Windows GPU fail against lavapipe (51 of them) on anti-aliased edges only, once the swapchain is UNORM; no Linux goldens or edge tolerance. [[linux-test-port]].
 - No scroll helper; double-click is two `Click`s inside the 250 ms tap window, and so is any two clicks on one
   control in back-to-back tests.
 - Pointer position, `isInWindow` and a half-played gesture carry into the next test — nothing resets them.

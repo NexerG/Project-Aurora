@@ -37,7 +37,7 @@ Run it from the host's own `bin` folder, like any launch. `--test` runs every su
 
 The first entry is always **Boot**: the host's own UI runs for 60 ticks, and Boot fails if anything logged an error since launch.
 
-The suite also runs on Linux. `bash _Build/test.sh` there builds Thorium alone and runs it, without the `.exe`, under a virtual X display with Mesa's lavapipe software driver as the Vulkan device. A software rasterizer does not draw pixel-for-pixel what the Windows GPU did, so the golden images approved on Windows mostly fail on Linux (51 of them in the first run); every other test passes except the pre-existing Boot sampler error.
+The suite also runs on Linux. `bash _Build/test.sh` there builds Thorium alone and runs it, without the `.exe`, under a virtual X display with Mesa's lavapipe software driver as the Vulkan device. Lavapipe offers no `R8G8B8A8_UNORM` swapchain, so the renderer falls back to `B8G8R8A8_UNORM`; before that fallback existed it landed on an SRGB swapchain, which encoded every colour twice and turned every golden lighter. Colours now match, but a software rasterizer does not anti-alias edges pixel-for-pixel the way the Windows GPU did, so the golden images approved on Windows still fail on Linux (51 of them), along their edges only; every other test passes except the pre-existing Boot sampler error.
 
 ## Writing a test
 

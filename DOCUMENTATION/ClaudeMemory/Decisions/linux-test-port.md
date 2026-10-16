@@ -1,7 +1,7 @@
 # Decision — the in-engine test suite runs on Linux through per-site Win32 guards, not a platform layer
 
 **Date:** 2026-10-16
-**Scope:** `ArctisAurora.EngineWork.Rendering` — `AGlfwWindow`, `TouchpadInput`, `DisplayNames`; `ArctisAurora.EngineWork` — `Engine`; `ArctisAurora.Core.Filing` — `ClipboardImage`, `FileDialog`; `ArctisAurora.Core.Filing.Serialization` — `Paths`, `MeshImporter`; `Registry.Assets.FontAsset`; `ArctisAurora.Tests.BackgroundTests`; `_Build/test.sh`
+**Scope:** `ArctisAurora.EngineWork.Rendering` — `AGlfwWindow`, `TouchpadInput`, `DisplayNames`; `ArctisAurora.EngineWork` — `Engine`; `ArctisAurora.Core.Filing` — `ClipboardImage`, `FileDialog`; `ArctisAurora.Core.Filing.Serialization` — `Paths`, `MeshImporter`; `Registry.Assets.FontAsset`; `Rendering.Helpers.AVulkanHelper.GetSwapchainSurfaceFormat`; `ArctisAurora.Tests.BackgroundTests`; `_Build/test.sh`
 
 ## What changed
 - Thorium's `--test` suite builds and runs on Linux (Ubuntu 24.04, cloud container). Every Win32 P/Invoke the boot and test paths reach is behind `if (!OperatingSystem.IsWindows()) return …`.
@@ -12,6 +12,7 @@
 - `MeshImporter`: new static constructor; off Windows it calls `NativeLibrary.SetDllImportResolver(typeof(AssimpContext).Assembly, …)` mapping `"libdl.so"` to `NativeLibrary.Load("libdl.so.2")`.
 - `_Build/test.sh`, `uname -s` = Linux: builds `Thorium/Thorium.csproj` alone with `-p:EnableWindowsTargeting=true`, runs `Thorium` (no .exe) under `xvfb-run -a -s "-screen 0 1920x1080x24"` with `VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/lvp_icd.json`. On both platforms the run's ERROR/FATAL lines go through `tr -d '\r'` before the baseline compare (the log writes CRLF; only the baseline side was stripped before, so every baseline error read as new on Linux).
 - `AssetImporter.HashFiles` drops `\r` bytes from each source before hashing, so an icon or font stamp is the same on a CRLF (Windows) and an LF (Linux) checkout.
+- `AVulkanHelper.GetSwapchainSurfaceFormat` takes `R8G8B8A8Unorm`, else `B8G8R8A8Unorm` (both sRGB-nonlinear), before falling back to `formats[0]`.
 - Minimize-to-tray gating, found on the way: [[tray-availability-gate]].
 
 ## Why these choices
@@ -28,6 +29,9 @@ Rejected: upgrading to AssimpNet 5.0.0-beta1 — its package was inspected and i
 **Import stamps hash with `\r` stripped, for every source (icons and fonts).**
 `* text=auto` checks SVGs out LF on Linux and CRLF on Windows, and a raw-bytes hash made each platform rewrite the other's stamp. Rejected: `*.svg text eol=crlf` in `.gitattributes` — existing Linux clones would need a re-checkout. Rejected: stripping for icons only — the user chose one rule for all of `HashFiles`. Cost: every existing font and icon stamp changes once, so the next Windows run re-bakes every font atlas once (the committed atlas PNGs may change then).
 
+**The swapchain falls back to `B8G8R8A8Unorm` in a second pass, not by accepting either UNORM in one.**
+The UI shaders write sRGB-encoded colour, so they need a UNORM swapchain. Lavapipe on X11 offers only `B8G8R8A8_SRGB` (first) and `B8G8R8A8_UNORM`; the old helper accepted only `R8G8B8A8Unorm` and fell to `formats[0]`, an SRGB format, whose store encoded every pixel a second time (golden `(46,92,138)` read back `(118,162,194)` — exactly one more sRGB encode). Two passes keep Windows on the format it picks today whatever order its driver lists; one pass could move an NVIDIA driver (which tends to list `B8G8R8A8_UNORM` first) onto BGRA. `ScreenReadback.TryTake` already reads both. Rejected: re-approving the goldens on Linux (would bake the double encode in); a pixel tolerance (would hide a real colour bug).
+
 **Container provisioning is environment, not repo.**
 `apt install dotnet-sdk-10.0 mesa-vulkan-drivers libvulkan1 vulkan-tools libglfw3 xvfb vulkan-validationlayers libminizip1t64`.
 - builds.dotnet.microsoft.com is blocked by the cloud proxy; Ubuntu's archive carries dotnet-sdk-10.0 (10.0.112).
@@ -36,12 +40,12 @@ Rejected: upgrading to AssimpNet 5.0.0-beta1 — its package was inspected and i
 - Lavapipe (Mesa 25.2.8, Vulkan 1.4) meets the renderer's 1.3 floor ([[renderer-minimum-requirements]]).
 
 ## Verification
-Test-verified on Linux: `bash _Build/test.sh` gave 275 passed, 52 failed, 1 skipped, 0 new; no `[Vulkan]` lines; no new error kinds. The 52 failures are `Boot` (the pre-existing baseline sampler error `failed to load the default sampler asset`, same as Windows) plus 51 golden-image mismatches (lavapipe rasterization vs goldens approved on a Windows GPU). `Background.HideShow`, `MenuClamp` and `ClosePrompt` pass. The final run, after the `HashFiles` change, gave 274 passed, 53 failed — the extra one `Notes.LocalWins` (see Known gaps). Windows: NOT run — builds clean on Linux only; Windows behaviour rests on every Windows branch being unchanged.
+Test-verified on Linux: `bash _Build/test.sh` gave 275 passed, 52 failed, 1 skipped, 0 new; no `[Vulkan]` lines; no new error kinds. The 52 failures are `Boot` (the pre-existing baseline sampler error `failed to load the default sampler asset`, same as Windows) plus 51 golden-image mismatches — at first not rasterization but the SRGB swapchain's second encode (every pixel lighter; e.g. `Visual.PanelAndLabel` 15928 px, max delta 92). After the swapchain format fix the same 51 still fail but only on anti-aliased edges, mostly glyph outlines (`Visual.PanelAndLabel` 246 px, max delta 19; `Visual.Expander` 19 px, max delta 6; flat fills match exactly) — that remainder is lavapipe rasterization vs goldens approved on a Windows GPU. `Background.HideShow`, `MenuClamp` and `ClosePrompt` pass. Runs after the `HashFiles` change gave 274 passed, 53 failed — the extra one `Notes.LocalWins` (see Known gaps). Windows: NOT run — builds clean on Linux only; Windows behaviour rests on every Windows branch being unchanged.
 
 ## Known gaps
-- 51 goldens fail on lavapipe; there are no Linux goldens or tolerance.
+- 51 goldens fail on lavapipe on anti-aliased edges only (after the swapchain format fix); there are no Linux goldens or edge tolerance.
 - On Linux: the title bar does not drag the window (`DragByCaption` no-op; `TitleBarControl` still posts its synthetic button-up, so GLFW's real release arrives as a second up — believed harmless, unverified); Raise-without-focus is a no-op; maximized placement saves the maximized rect, not the restore rect; image paste and file/folder pickers do nothing; no tray, no single-instance claim; console output is uncoloured (`ConsoleSink`'s try/catch fallback).
-- `Notes.LocalWins` failed once in a full Linux run (`XmlException`, a torn note file) and passed 3/3 alone. Suspected: the test's outside write races the session's save, and Linux file locks are advisory where Windows `FileShare` blocks a mid-write read. Unconfirmed.
+- `Notes.LocalWins` failed in 2 of 4 full Linux runs (`XmlException`, a torn note file) and passed 3/3 alone. Suspected: the test's outside write races the session's save, and Linux file locks are advisory where Windows `FileShare` blocks a mid-write read. Unconfirmed.
 - The full solution build fails on Linux: `_Build.csproj` post-build runs `GenerateNamespaces.cmd`; `test.sh` sidesteps it by building Thorium only.
 - Carbon and AuroraEditor have not run on Linux. There is no SessionStart hook to provision the container.
 
