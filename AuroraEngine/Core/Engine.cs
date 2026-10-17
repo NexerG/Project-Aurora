@@ -87,7 +87,7 @@ namespace ArctisAurora.EngineWork
             if (send != null) Environment.Exit(CommandPipe.Send(send));
 
             engineInstance = this;
-            Log.Info($"starting main thread at OS id {GetCurrentThreadId()}");
+            Log.Info($"starting main thread at OS id {(OperatingSystem.IsWindows() ? GetCurrentThreadId() : Environment.ProcessId)}");
         }
 
         public void Init(bool startImmediately)

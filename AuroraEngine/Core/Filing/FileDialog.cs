@@ -16,7 +16,7 @@ namespace ArctisAurora.Core.Filing
         // One dialog at a time — a second ask would strand the first one's callback.
         public static void Pick(RenderWindow owner, string startFolder, bool folders, (string name, string spec)[]? filters, Action<string> onPicked)
         {
-            if (isOpen || onPicked == null) return;
+            if (isOpen || onPicked == null || !OperatingSystem.IsWindows()) return;
             isOpen = true;
 
             IntPtr hwnd = owner != null ? owner.os.Hwnd : IntPtr.Zero;

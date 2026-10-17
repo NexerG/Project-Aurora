@@ -153,7 +153,7 @@ into `os.windowSize`, which is the only writer.
 
 ### Consequences to hold on to (§7–§8)
 - **A surface's formats could change under a cached list** — moving to an HDR display is the plausible case.
-  The format chosen is `R8G8B8A8Unorm` / sRGB-nonlinear, which stays available; untested.
+  The format chosen is `R8G8B8A8Unorm`, else `B8G8R8A8Unorm`, both sRGB-nonlinear ([[linux-test-port]]), which stays available; untested.
 - ~~**Most RTX resize steps rebuild twice**~~ — confirmed and fixed 2026-09-17, see §9.
 
 ### 9. A resize the swapchain already matches does not rebuild it (user, 2026-09-17)

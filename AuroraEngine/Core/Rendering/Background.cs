@@ -37,11 +37,14 @@ namespace ArctisAurora.EngineWork.Rendering
 
         public static bool active => _window != IntPtr.Zero;
 
+        // Tray is enabled and the OS has one.
+        public static bool canTray => OperatingSystem.IsWindows() && Tray();
+
         // When Tray is enabled: a tray icon; unless OnClose is Quit, one running copy per host. A second copy shows the first and exits.
         [A_XSDActionDependency("Background.Init", "Bootstrap", "When Tray is enabled, adds the tray icon and, unless OnClose is Quit, claims the single running copy")]
         public static bool Init()
         {
-            if (!Tray() || TestRunner.active) return true;
+            if (!canTray || TestRunner.active) return true;
 
             string name = HostName();
             if (Settings().onClose != WindowSetting.CloseAction.Quit && !Claim(name))
@@ -163,7 +166,7 @@ namespace ArctisAurora.EngineWork.Rendering
 
             switch (Settings().onClose)
             {
-                case WindowSetting.CloseAction.Tray: Hide(); break;
+                case WindowSetting.CloseAction.Tray: if (canTray) Hide(); else Ask(); break;
                 case WindowSetting.CloseAction.Quit: Shutdown.Request(); break;
                 default: Ask(); break;
             }
@@ -172,7 +175,7 @@ namespace ArctisAurora.EngineWork.Rendering
         private static void Ask() =>
             ConfirmWindow.Ask(Engine.primary, $"Close {HostName()} or minimize it to the tray?", "Don't ask again",
                 ("Cancel", _ => { }),
-                ("Minimize", remember => Answer(WindowSetting.CloseAction.Tray, remember)),
+                ("Minimize", canTray ? remember => Answer(WindowSetting.CloseAction.Tray, remember) : null),
                 ("Close", remember => Answer(WindowSetting.CloseAction.Quit, remember)));
 
         private static void Answer(WindowSetting.CloseAction action, bool remember)

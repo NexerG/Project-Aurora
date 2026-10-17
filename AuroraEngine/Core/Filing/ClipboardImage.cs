@@ -27,6 +27,7 @@ namespace ArctisAurora.Core.Filing
         public static bool TryGet([NotNullWhen(true)] out Image<Rgba32>? image)
         {
             image = null;
+            if (!OperatingSystem.IsWindows()) return false;
             if (!OpenClipboard(IntPtr.Zero))
             {
                 Log.Warn($"the clipboard is held by another application.");

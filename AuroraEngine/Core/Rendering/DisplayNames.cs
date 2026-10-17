@@ -66,6 +66,7 @@ namespace ArctisAurora.EngineWork.Rendering
         // The panel name Windows shows for the display whose top-left corner is at (x, y), or null.
         public static string At(int x, int y)
         {
+            if (!OperatingSystem.IsWindows()) return null;
             DisplayDevice adapter = new DisplayDevice { cb = (uint)Marshal.SizeOf<DisplayDevice>() };
 
             for (uint i = 0; EnumDisplayDevicesW(null, i, ref adapter, 0); i++)

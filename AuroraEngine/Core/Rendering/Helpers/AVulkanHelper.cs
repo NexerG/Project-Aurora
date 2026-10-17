@@ -166,6 +166,13 @@ namespace ArctisAurora.EngineWork.Rendering.Helpers
                     return _availableFormat;
                 }
             }
+            foreach (var _availableFormat in _formats)
+            {
+                if (_availableFormat.Format == Format.B8G8R8A8Unorm && _availableFormat.ColorSpace == ColorSpaceKHR.SpaceSrgbNonlinearKhr)
+                {
+                    return _availableFormat;
+                }
+            }
             return _formats[0];
         }
 

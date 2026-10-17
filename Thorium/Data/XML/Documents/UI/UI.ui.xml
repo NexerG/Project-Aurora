@@ -26,7 +26,7 @@
 				<Label Text="+" FontSize="14" HorizontalPos="0.5" VerticalPos="0.5" Role="MutedInk"/>
 			</MenuButton>
 			<Panel WidthStar="1" Height="26"/>
-			<Button Width="40" Height="26" onRelease="Window.MinimizeToTray">
+			<Button Name="TrayButton" Width="40" Height="26" onRelease="Window.MinimizeToTray">
 				<Icon Set="default" Icon="tray" Width="14" Height="14" HorizontalPos="0.5" VerticalPos="0.5"/>
 			</Button>
 			<Button Width="40" Height="26" onRelease="Window.Minimize">

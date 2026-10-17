@@ -2,6 +2,7 @@
 using ArctisAurora.Core.Security;
 using ArctisAurora.Core.UI;
 using ArctisAurora.EngineWork;
+using ArctisAurora.EngineWork.Rendering;
 using Thorium.Editor.CustomControls;
 
 namespace Thorium
@@ -44,6 +45,7 @@ namespace Thorium
 
             Engine.primary.uiDocument = "main";
             Engine.primary.ui.uiRoot = (WindowRoot)Control.ParseXML("main");
+            if (!Background.canTray && Engine.primary.ui.uiRoot.FindByName("TrayButton") is ButtonControl tray) tray.enabled = false;
             if (VaultLock.HasLock(SessionLayout.scope))
             {
                 SessionLayout.paused = true;

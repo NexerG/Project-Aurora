@@ -199,6 +199,7 @@ Baseline before the row-index fix below:
   `--test[=<Suite>]` into `%TEMP%\aurora-test\run.txt`; prints `FAIL`/`NEW`/`APPROVED` lines, the summary line, and
   `new error:` for each `ERROR`/`FATAL` kind (timestamp and lane stripped) absent from `_Build/test-baseline.txt`.
   Exit = Thorium's (failed count). `--baseline` rewrites the baseline from this run's kinds (whole run, not Boot only).
+- Linux (2026-10-16): `uname -s` = Linux builds Thorium alone and runs it under `xvfb-run` with Mesa lavapipe as the Vulkan driver; ERROR/FATAL lines are `tr -d '\r'`-stripped before the baseline compare on both platforms. First run: 275 passed, 52 failed (Boot baseline + 51 goldens), 0 new. See [[linux-test-port]].
 - The `aurora-test` skill is now the runner only; writing tests, goldens, screenshots and `--send` moved verbatim to
   the skill's `writing.md`.
 - **Why:** session cost is the main-session turn count times its context (~300k), not the run. Build, run and the
@@ -325,6 +326,7 @@ because `Session.Capture` and `Settings.SaveAll` write into it at shutdown and t
 - A test that hangs inside one tick hangs the process — the timeout counts ticks.
 - Fixtures are built in code; loading a `*.ui.xml` by name goes through the asset registry.
 - AuroraEditor has not run `--test`.
+- On Linux the goldens approved on a Windows GPU fail against lavapipe (51 of them) once the swapchain is UNORM: edges, invisible 1–3 level flat deltas, and dots at TeX inter-word spaces; no Linux goldens or tolerance. [[linux-test-port]].
 - No scroll helper; double-click is two `Click`s inside the 250 ms tap window, and so is any two clicks on one
   control in back-to-back tests.
 - Pointer position, `isInWindow` and a half-played gesture carry into the next test — nothing resets them.
@@ -341,4 +343,4 @@ because `Session.Capture` and `Settings.SaveAll` write into it at shutdown and t
 - Only the primary window is read back.
 - A normal launch keeps the old swapchain flags by code (`TestRunner.active` false) — not checked in a run.
 
-Related: [[engine-profiling]], [[frame-scheduler]], [[engine-logging]], [[shutdown-sequence]], [[carbon-frame-viewer]]
+Related: [[engine-profiling]], [[frame-scheduler]], [[engine-logging]], [[shutdown-sequence]], [[carbon-frame-viewer]], [[linux-test-port]]
