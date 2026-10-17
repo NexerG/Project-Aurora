@@ -1,9 +1,12 @@
 using System.Text;
+#if WINDOWS
 using Windows.Security.Credentials;
 using Windows.Security.Cryptography;
+#endif
 
 namespace ArctisAurora.Core.Security
 {
+#if WINDOWS
     // Windows Hello as a key source: a TPM-held credential signs a fixed per-vault challenge, and the same signature comes back every time.
     public static class WindowsHello
     {
@@ -46,4 +49,14 @@ namespace ArctisAurora.Core.Security
             }
         }
     }
+#else
+    public static class WindowsHello
+    {
+        public static Task<bool> IsAvailable() => Task.FromResult(false);
+
+        public static Task<byte[]?> Sign(string credential, string vaultId, bool create) => Task.FromResult<byte[]?>(null);
+
+        public static Task Delete(string credential) => Task.CompletedTask;
+    }
+#endif
 }

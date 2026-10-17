@@ -272,6 +272,7 @@
     <xs:restriction base="xs:string">
       <xs:enumeration value="BuildSource" />
       <xs:enumeration value="BuildPattern" />
+      <xs:enumeration value="BuildTarget" />
       <xs:enumeration value="Build" />
     </xs:restriction>
   </xs:simpleType>

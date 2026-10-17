@@ -13,7 +13,7 @@
     <ProjectReference Include="..\Thorium\Thorium.csproj" />
   </ItemGroup>
 
-  <Target Name="PostBuild" AfterTargets="PostBuildEvent">
+  <Target Name="PostBuild" AfterTargets="PostBuildEvent" Condition="'$(OS)' == 'Windows_NT'">
     <Exec Command="&quot;$(ProjectDir)GenerateNamespaces.cmd&quot; &quot;$(SolutionDir)..\&quot;" />
   </Target>
 

@@ -1,5 +1,7 @@
 using System.Runtime.InteropServices;
+#if WINDOWS
 using Windows.Devices.Display;
+#endif
 
 namespace ArctisAurora.EngineWork.Rendering
 {
@@ -89,6 +91,7 @@ namespace ArctisAurora.EngineWork.Rendering
             DisplayDevice monitor = new DisplayDevice { cb = (uint)Marshal.SizeOf<DisplayDevice>() };
             if (!EnumDisplayDevicesW(adapterName, 0, ref monitor, EDD_GET_DEVICE_INTERFACE_NAME)) return null;
 
+#if WINDOWS
             try
             {
                 DisplayMonitor panel = DisplayMonitor.FromInterfaceIdAsync(monitor.deviceId).AsTask().GetAwaiter().GetResult();
@@ -98,6 +101,7 @@ namespace ArctisAurora.EngineWork.Rendering
             {
                 Log.Warn($"could not read the panel name for {adapterName} — {e.Message}");
             }
+#endif
 
             string[] parts = monitor.deviceId.Split('#');
             return parts.Length > 1 ? parts[1] : null;

@@ -1,7 +1,7 @@
 # Decision — the in-engine test suite runs on Linux through per-site Win32 guards, not a platform layer
 
 **Date:** 2026-10-16
-**Scope:** `ArctisAurora.EngineWork.Rendering` — `AGlfwWindow`, `TouchpadInput`, `DisplayNames`; `ArctisAurora.EngineWork` — `Engine`; `ArctisAurora.Core.Filing` — `ClipboardImage`, `FileDialog`; `ArctisAurora.Core.Filing.Serialization` — `Paths`, `MeshImporter`; `Registry.Assets.FontAsset`; `Rendering.Helpers.AVulkanHelper.GetSwapchainSurfaceFormat`; `ArctisAurora.Tests.BackgroundTests`; `_Build/test.sh`
+**Scope:** `ArctisAurora.EngineWork.Rendering` — `AGlfwWindow`, `TouchpadInput`, `DisplayNames`; `ArctisAurora.EngineWork` — `Engine`; `ArctisAurora.Core.Filing` — `ClipboardImage`, `FileDialog`; `ArctisAurora.Core.Filing.Serialization` — `Paths`, `MeshImporter`; `Registry.Assets.FontAsset`; `Rendering.Helpers.AVulkanHelper.GetSwapchainSurfaceFormat`; `ArctisAurora.Core.Security` — `WindowsHello`; `ArctisAurora.Tests.BackgroundTests`; `_Build/test.sh`
 
 ## What changed
 - Thorium's `--test` suite builds and runs on Linux (Ubuntu 24.04, cloud container). Every Win32 P/Invoke the boot and test paths reach is behind `if (!OperatingSystem.IsWindows()) return …`.
@@ -10,10 +10,11 @@
 - `Engine()` logs `Environment.ProcessId` instead of kernel32 `GetCurrentThreadId` off Windows (Linux main-thread tid == pid).
 - `Paths`: the `Data\\…` constants now use `/` (`GetPath("Data/XML")` etc.); `FontAsset` atlas paths join with `/`.
 - `MeshImporter`: new static constructor; off Windows it calls `NativeLibrary.SetDllImportResolver(typeof(AssimpContext).Assembly, …)` mapping `"libdl.so"` to `NativeLibrary.Load("libdl.so.2")`.
-- `_Build/test.sh`, `uname -s` = Linux: builds `Thorium/Thorium.csproj` alone with `-p:EnableWindowsTargeting=true`, runs `Thorium` (no .exe) under `xvfb-run -a -s "-screen 0 1920x1080x24"` with `VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/lvp_icd.json`. On both platforms the run's ERROR/FATAL lines go through `tr -d '\r'` before the baseline compare (the log writes CRLF; only the baseline side was stripped before, so every baseline error read as new on Linux).
+- `_Build/test.sh`, `uname -s` = Linux: builds `Thorium/Thorium.csproj -f net10.0` alone with `-p:EnableWindowsTargeting=true` (still needed: restore sees the engine's Windows target), runs `Thorium` (no .exe) from `Thorium/bin/Debug/net10.0` under `xvfb-run -a -s "-screen 0 1920x1080x24"` with `VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/lvp_icd.json`. On both platforms the run's ERROR/FATAL lines go through `tr -d '\r'` before the baseline compare (the log writes CRLF; only the baseline side was stripped before, so every baseline error read as new on Linux).
 - `AssetImporter.HashFiles` drops `\r` bytes from each source before hashing, so an icon or font stamp is the same on a CRLF (Windows) and an LF (Linux) checkout.
 - `AVulkanHelper.GetSwapchainSurfaceFormat` takes `R8G8B8A8Unorm`, else `B8G8R8A8Unorm` (both sRGB-nonlinear), before falling back to `formats[0]`.
 - Minimize-to-tray gating, found on the way: [[tray-availability-gate]].
+- Multi-target (2026-10-17): `AuroraEngine.csproj` and `Thorium.csproj` build `net10.0-windows10.0.22621.0;net10.0`, so a Linux build carries no WinRT assemblies. `ArctisAurora.Core.Security.WindowsHello` is wholly under `#if WINDOWS` with a `#else` stub (`IsAvailable()` false, `Sign(...)` null, `Delete(...)` completed task). `DisplayNames` keeps `using Windows.Devices.Display` and the `DisplayMonitor` lookup in `PanelName` under `#if WINDOWS` (off Windows it falls back to the device-id split). `AVulkanHelper`'s unused `using Windows.Foundation.Metadata` is gone. `_Build.csproj`'s `PostBuild` (`GenerateNamespaces.cmd`) is conditioned on `$(OS) == 'Windows_NT'`. Reasoning and measurements: [[arx-archives]].
 
 ## Why these choices
 
@@ -46,7 +47,8 @@ Test-verified on Linux: `bash _Build/test.sh` gave 275 passed, 52 failed, 1 skip
 - 51 goldens fail on lavapipe (after the swapchain format fix): 42 shots edges only, 13 with 1–3 level flat-area deltas, 6 TeX shots with baseline dots at inter-word spaces; there are no Linux goldens or tolerance. A tolerant compare (delta ≤ 3 anywhere, or any delta where the golden's 3×3 luminance range ≥ 8) was measured to pass 55 of 61 shots and fail only the 6 TeX shots on the dots; not built.
 - On Linux: the title bar does not drag the window (`DragByCaption` no-op; `TitleBarControl` still posts its synthetic button-up, so GLFW's real release arrives as a second up — believed harmless, unverified); Raise-without-focus is a no-op; maximized placement saves the maximized rect, not the restore rect; image paste and file/folder pickers do nothing; no tray, no single-instance claim; console output is uncoloured (`ConsoleSink`'s try/catch fallback).
 - `Notes.LocalWins` failed in 2 of 4 full Linux runs (`XmlException`, a torn note file) and passed 3/3 alone. Suspected: the test's outside write races the session's save, and Linux file locks are advisory where Windows `FileShare` blocks a mid-write read. Unconfirmed.
-- The full solution build fails on Linux: `_Build.csproj` post-build runs `GenerateNamespaces.cmd`; `test.sh` sidesteps it by building Thorium only.
+- `_Build` itself builds on Linux since 2026-10-17 (its `PostBuild` is Windows-only); `test.sh` still builds Thorium only, and a full-solution Linux build was not checked (Carbon and AuroraEditor are Windows-TFM only).
+- Pending, not done: `test.sh` on the new `net10.0` path on Linux (cloud-container check). The 2026-10-17 Windows runs are in [[arx-archives]].
 - Carbon and AuroraEditor have not run on Linux. There is no SessionStart hook to provision the container.
 
-Related: [[tray-availability-gate]], [[engine-testing]], [[renderer-minimum-requirements]], [[desktop-stickies]]
+Related: [[arx-archives]], [[tray-availability-gate]], [[engine-testing]], [[renderer-minimum-requirements]], [[desktop-stickies]]

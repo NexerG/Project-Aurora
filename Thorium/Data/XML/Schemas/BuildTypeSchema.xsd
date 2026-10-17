@@ -18,6 +18,15 @@
     <xs:sequence />
     <xs:attributeGroup ref="types:BuildPattern.Attributes" />
   </xs:complexType>
+  <xs:attributeGroup name="BuildTarget.Attributes">
+    <xs:attribute name="Rid" type="xs:string" />
+    <xs:attribute name="Framework" type="xs:string" />
+  </xs:attributeGroup>
+  <xs:element name="BuildTarget" type="types:BuildTarget" />
+  <xs:complexType name="BuildTarget">
+    <xs:sequence />
+    <xs:attributeGroup ref="types:BuildTarget.Attributes" />
+  </xs:complexType>
   <xs:attributeGroup name="Build.Attributes">
     <xs:attribute name="App" type="xs:string" />
     <xs:attribute name="Project" type="xs:string" />
@@ -26,6 +35,11 @@
   <xs:element name="Build" type="types:Build" />
   <xs:complexType name="Build">
     <xs:sequence>
+      <xs:element minOccurs="0" maxOccurs="unbounded" name="Target" type="types:BuildTarget">
+        <xs:annotation>
+          <xs:documentation></xs:documentation>
+        </xs:annotation>
+      </xs:element>
       <xs:element minOccurs="0" maxOccurs="unbounded" name="Data" type="types:BuildSource">
         <xs:annotation>
           <xs:documentation></xs:documentation>

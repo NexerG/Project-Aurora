@@ -12,9 +12,9 @@ namespace _Build
     {
         static int Main(string[] args)
         {
-            if (args.Length == 2 && args[0] == "arx")
+            if ((args.Length == 2 || args.Length == 3) && args[0] == "arx")
             {
-                bool built = AppBuilder.Run(args[1]);
+                bool built = AppBuilder.Run(args[1], args.Length == 3 ? args[2] : null);
                 LogSpool.Flush();
                 return built ? 0 : 1;
             }

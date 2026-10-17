@@ -3,7 +3,6 @@ using ArctisAurora.Core.Registry;
 using ArctisAurora.EngineWork.Rendering.RendererTypes;
 using Silk.NET.Vulkan;
 using Silk.NET.Vulkan.Extensions.KHR;
-using Windows.Foundation.Metadata;
 using Buffer = Silk.NET.Vulkan.Buffer;
 
 namespace ArctisAurora.EngineWork.Rendering.Helpers

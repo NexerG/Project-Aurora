@@ -19,7 +19,8 @@ linux=0
 bin="$root/Thorium/bin/Debug/net10.0-windows10.0.22621.0"
 
 if [ $linux -eq 1 ]; then
-	build=$(dotnet build "$root/Thorium/Thorium.csproj" -v q -nologo -p:EnableWindowsTargeting=true 2>&1)
+	bin="$root/Thorium/bin/Debug/net10.0"
+	build=$(dotnet build "$root/Thorium/Thorium.csproj" -f net10.0 -v q -nologo -p:EnableWindowsTargeting=true 2>&1)
 else
 	build=$(dotnet build "$root/AuroraEngine/ArctisAurora.sln" -v q -nologo 2>&1)
 fi

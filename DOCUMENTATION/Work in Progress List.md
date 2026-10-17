@@ -33,7 +33,7 @@ This file holds **open work**. A landed entry moves to [[Changelog]]; one that s
 - [ ] **`TextInputControl.ResolveOnClick` swallows every click** — it calls `BeginEdit()` and returns without calling base, so `bubbleClick` is dead on it whatever the XML says. Any control nested inside a `TextInput` cannot receive a click. Worked around by adding `LabelControl` for non-editable text rather than changing the override; the swallow is still there
 - [ ] **`StackPanelControl.Measure` pollutes `maxCross` from star children** — pass 1 measures a star child with `0` on the main axis, so a text child wraps to one character per line and reports a huge cross size; pass 2 only ever `Max`es `maxCross` and never re-bases it against the real star width. An 8-character label made a 32px title bar 168px tall. Dodge is an explicit size on every child
 - [ ] **keybinds bind to a declared intent, not straight to an action** (user, 2026-08-31) — one `<AbstractKeybind>` names the intent and N `<Keybind Trigger= Bind=>` point at it; today numpad Enter duplicates `Action="Text.NewBlock"` and `Rebind` makes it fire twice. See `ClaudeMemory/Context/keybind-intent-plan.md`
-- [ ] **mobile input — touch gestures, mobile backend, soft keyboard/IME (deferred 2026-10-16)** — a touch source posts through `InputHandler.Post`; fork F3 open (`<Gesture>` element vs new `Keys` members) → input-platform-layer
+- [ ] **mobile input — touch gestures, mobile backend, soft keyboard/IME (deferred 2026-10-16)** — a touch source posts through `InputHandler.Post`; fork F3 open (`<Gesture>` element vs new `Keys` members) → input-platform-layer; the arx builder cannot target mobile until the engine has a mobile backend
 - [ ] text editor
 	- [ ] add the rest of the alphabet (eu languages)
 		- [ ] create language packs?
@@ -192,6 +192,8 @@ This file holds **open work**. A landed entry moves to [[Changelog]]; one that s
 - [ ] **arx: compression (2026-10-16)** — the `Compressed` flag bit is reserved and never set; must run before encryption → arx-archives
 - [ ] **arx: source generation from XML in the builder (2026-10-16)** — turn UI documents, bootstrap, palettes into C# so a shipped app builds trees without parsing; binary XML entries are the step before, no code stub → arx-archives
 - [ ] **arx: packed-path writes, default vault and unrun checks (2026-10-16)** — writes into a packed path (`--test-approve`) cannot work; shipped default vault path unlooked at; committed `Thorium.build.xml`, PDF export, meshes, pathtracer/RC2D shaders, editor-control open from a packed path unchecked → arx-archives
+- [ ] **arx: macOS port (2026-10-17)** — Thorium's osx-arm64 publish builds but cannot run: no Vulkan loader/MoltenVK (and no `VK_KHR_portability_enumeration` at instance creation), no arm64 `libassimp`, `MeshImporter` maps `libdl.so` → `libdl.so.2` (absent on macOS), launcher needs `codesign` on a Mac, no `.app` bundle; then one `<Target>` line → arx-archives
+- [ ] **arx: shipped linux-x64 build not yet run from its .arx (2026-10-17)** — checked as build output on Windows only; boot-from-archive, its tests and `test.sh` on the `net10.0` path wait on a cloud-container check → arx-archives
 
 ---
 # PHASE B — ECS rework + renderer/settings foundation (~Jul–Sep 2026)
