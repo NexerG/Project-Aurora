@@ -10,4 +10,5 @@
 	<Test Action="Workspace.MoveAcross"/>
 	<Test Action="Workspace.TearOff"/>
 	<Test Action="Workspace.Reset"/>
+	<Test Action="Workspace.StandaloneFile"/>
 </TestSuite>

@@ -12,6 +12,23 @@ namespace ArctisAurora.Tests
 {
     internal static class NoteTests
     {
+        [A_XSDActionDependency("Notes.FileKinds", "Test")]
+        private static IEnumerator<int> FileKinds(TestContext t)
+        {
+            t.Check(FileTypes.KindOf("a/Budget.sheet.axml") == FileKind.Sheet, "a .sheet.axml is a sheet, not a note");
+            t.Check(FileTypes.KindOf("a/Week.PLANNER.AXML") == FileKind.Planner, "suffixes match without case");
+            t.Check(FileTypes.KindOf("a/note.axml") == FileKind.Note, "a .axml is a note");
+            t.Check(FileTypes.KindOf("a/data.xml") == FileKind.Xml, "a .xml is plain XML");
+            t.Check(FileTypes.KindOf("a/picture.png") == null, "an unknown suffix has no kind");
+
+            string path = Path.Combine(Path.GetTempPath(), $"aurora-kind-{Guid.NewGuid():N}.xml");
+            File.WriteAllText(path, "<Document><Block><Run Text=\"raw\"/></Block></Document>\n");
+            RichTextDocument document = RichTextDocument.Load(path);
+            File.Delete(path);
+            t.Check(document.sourceLanguage == "xml", "a .xml opens as XML source, even with a Document root");
+            yield break;
+        }
+
         [A_XSDActionDependency("Notes.DirtyTracking", "Test")]
         private static IEnumerator<int> DirtyTracking(TestContext t)
         {
@@ -44,7 +61,7 @@ namespace ArctisAurora.Tests
             d.PutTable(1, true, DocumentXml.WriteTable((NoteTable)d.blocks[1]));
             t.Check(Marked(d) == "", $"a table put back whole is new and unmarked: {Marked(d)}");
 
-            string path = Path.Combine(Path.GetTempPath(), $"aurora-dirty-{Guid.NewGuid():N}.xml");
+            string path = Path.Combine(Path.GetTempPath(), $"aurora-dirty-{Guid.NewGuid():N}.axml");
             DocumentXml.Save(DocumentXml.Parse(Fixture), path);
             DocumentEditorControl editor = new DocumentEditorControl
             {
@@ -71,7 +88,7 @@ namespace ArctisAurora.Tests
         [A_XSDActionDependency("Notes.PartialWrite", "Test")]
         private static IEnumerator<int> PartialWrite(TestContext t)
         {
-            string path = Path.Combine(Path.GetTempPath(), $"aurora-partial-{Guid.NewGuid():N}.xml");
+            string path = Path.Combine(Path.GetTempPath(), $"aurora-partial-{Guid.NewGuid():N}.axml");
             RichTextDocument d = DocumentXml.Parse(Fixture);
             List<NoteSegment> map = NoteSegments.Write(d, path, null);
             t.Check(ReadsBack(d, path), "a whole write reads back as the note");
@@ -161,7 +178,7 @@ namespace ArctisAurora.Tests
         [A_XSDActionDependency("Notes.Autosave", "Test")]
         private static IEnumerator<int> Autosave(TestContext t)
         {
-            string path = Path.Combine(Path.GetTempPath(), $"aurora-autosave-{Guid.NewGuid():N}.xml");
+            string path = Path.Combine(Path.GetTempPath(), $"aurora-autosave-{Guid.NewGuid():N}.axml");
             DocumentXml.Save(DocumentXml.Parse(Fixture), path);
             DocumentEditSession session = NoteSessions.Open(path);
 
@@ -196,7 +213,7 @@ namespace ArctisAurora.Tests
         [A_XSDActionDependency("Notes.DiskReload", "Test")]
         private static IEnumerator<int> DiskReload(TestContext t)
         {
-            string path = Path.Combine(Path.GetTempPath(), $"aurora-reload-{Guid.NewGuid():N}.xml");
+            string path = Path.Combine(Path.GetTempPath(), $"aurora-reload-{Guid.NewGuid():N}.axml");
             DocumentXml.Save(DocumentXml.Parse(Fixture), path);
             DocumentEditorControl editor = new DocumentEditorControl
             {
@@ -244,7 +261,7 @@ namespace ArctisAurora.Tests
         [A_XSDActionDependency("Notes.LocalWins", "Test")]
         private static IEnumerator<int> LocalWins(TestContext t)
         {
-            string path = Path.Combine(Path.GetTempPath(), $"aurora-wins-{Guid.NewGuid():N}.xml");
+            string path = Path.Combine(Path.GetTempPath(), $"aurora-wins-{Guid.NewGuid():N}.axml");
             DocumentXml.Save(DocumentXml.Parse(Fixture), path);
             DocumentEditSession session = NoteSessions.Open(path);
             RichTextDocument d = session.document;
@@ -270,7 +287,7 @@ namespace ArctisAurora.Tests
         [A_XSDActionDependency("Notes.NoNamingPrompt", "Test")]
         private static IEnumerator<int> NoNamingPrompt(TestContext t)
         {
-            string path = Path.Combine(Path.GetTempPath(), $"aurora-unnamed-{Guid.NewGuid():N}.xml");
+            string path = Path.Combine(Path.GetTempPath(), $"aurora-unnamed-{Guid.NewGuid():N}.axml");
             DocumentXml.Save(DocumentXml.Parse(Fixture), path);
             DocumentEditorControl editor = new DocumentEditorControl
             {

@@ -121,7 +121,7 @@ The verification word is the brief's, exactly. Never upgrade it.
 
 ## Planner mirrors
 
-`D:\Repositories\ThoriumNotes\WIP.planner.xml` and `Changelog.planner.xml` mirror the two files above. Every
+`D:\Repositories\ThoriumNotes\WIP.planner.axml` and `Changelog.planner.axml` mirror the two files above. Every
 entry added, moved or removed there gets the same change here, by `Edit`.
 
 - One `<Ticket>` per `- [ ]`/`- [x]` line. `Name` = the bold headline (else the text before ` — `), backticks

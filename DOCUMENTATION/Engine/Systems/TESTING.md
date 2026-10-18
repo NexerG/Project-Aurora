@@ -33,7 +33,7 @@ Thorium.exe --test
 Thorium.exe --test=Layout
 ```
 
-Run it from the host's own `bin` folder, like any launch. `--test` runs every suite and `--test=<Suite>` runs one. Each test prints a `PASS` or `FAIL` line, and the run ends with a summary line and the path of its results file, `%APPDATA%\Arktis\<Host>\Tests\<yyyyMMdd-HHmmss>\results.xml`.
+Run it from the host's own `bin` folder, like any launch. `--test` runs every suite and `--test=<Suite>` runs one. Each test prints a `PASS` or `FAIL` line, and the run ends with a summary line and the path of its results file, `%APPDATA%\Arktis\<Host>\Tests\<yyyyMMdd-HHmmss>\results.axml`.
 
 The first entry is always **Boot**: the host's own UI runs for 60 ticks, and Boot fails if anything logged an error since launch.
 
@@ -60,7 +60,7 @@ private static IEnumerator<int> StarChildCrossSize(TestContext t)
 A suite lists its tests in order, one file per suite, and the file's name is the suite's name.
 
 ```xml
-<!-- Data/XML/Documents/Tests/Layout.tests.xml -->
+<!-- Data/XML/Documents/Tests/Layout.tests.axml -->
 <TestSuite xmlns="http://arctisaurora/AuroraTestTypes">
 	<Test Action="Layout.StackPanelArranges"/>
 	<Test Action="Layout.StarChildCrossSize" Timeout="5000"/>
@@ -128,7 +128,7 @@ Arm()
 	fix the clock at 1/60 s
 	empty TestSettings and make it the settings folder
 	collect every method tagged as a Test action
-	for each <Suite>.tests.xml across the data folders
+	for each <Suite>.tests.axml across the data folders
 		skip it unless it is the suite asked for
 		queue each <Test> with its Timeout
 	if a suite was asked for and none matched
@@ -140,7 +140,7 @@ Session tick
 		count the tick
 		on tick 60 record Boot from the errors logged since launch
 	else if no test is running and the queue is empty
-		write results.xml
+		write results.axml
 		set the exit code to the number of failures
 		request shutdown
 	else
@@ -252,11 +252,11 @@ Carbon's left column opens with a `Captures | Tests` switch. `Tests` swaps the c
 ```
 Enumerate(root)
 	for each folder under root
-		Load(folder) — skipped when it has no readable results.xml
+		Load(folder) — skipped when it has no readable results.axml
 	sort newest first
 
 Load(folder)
-	read results.xml
+	read results.axml
 	for each <Test>
 		collect its <Failure> children
 		count it as passed, skipped or failed by Result

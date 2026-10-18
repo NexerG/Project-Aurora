@@ -6,7 +6,7 @@ using ArctisAurora.Core.Registry;
 namespace ArctisAurora.Core.Threading
 {
 
-    // One engine system. Its tagged methods run as Steps of Frame.frame.xml's graph or, listed as
+    // One engine system. Its tagged methods run as Steps of Frame.frame.axml's graph or, listed as
     // Dedicated, its Tick runs on a thread of its own.
     public abstract class ThreadedSystem
     {
@@ -21,7 +21,7 @@ namespace ArctisAurora.Core.Threading
 
         public static IReadOnlyList<ThreadedSystem> All => _all;
 
-        // Join key for Frame.frame.xml — a Dedicated's System attribute names one of these.
+        // Join key for Frame.frame.axml — a Dedicated's System attribute names one of these.
         public static ThreadedSystem? Find(string name)
         {
             for (int i = 0; i < _all.Count; i++)
@@ -62,11 +62,11 @@ namespace ArctisAurora.Core.Threading
 
         internal double Period => TargetPeriodMs;
 
-        // The name comes off the subclass's own [A_XSDType], which is also what Frame.frame.xml's System
+        // The name comes off the subclass's own [A_XSDType], which is also what Frame.frame.axml's System
         // attribute refers to — so a system's name is written once, in one place.
         protected ThreadedSystem()
         {
-            A_XSDTypeAttribute attr = GetType().GetCustomAttribute<A_XSDTypeAttribute>() ?? throw new Exception($"[ThreadedSystem] {GetType().Name} needs an [A_XSDType] naming it, so Frame.frame.xml can name it.");
+            A_XSDTypeAttribute attr = GetType().GetCustomAttribute<A_XSDTypeAttribute>() ?? throw new Exception($"[ThreadedSystem] {GetType().Name} needs an [A_XSDType] naming it, so Frame.frame.axml can name it.");
 
             Name = attr.Name;
             SystemId = (byte)(_all.Count + 1);

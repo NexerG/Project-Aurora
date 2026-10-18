@@ -17,7 +17,7 @@ Each phase lands and is verified before the next starts; each one re-runs CLAUDE
 | F1 | math font | Cambria Math, face 1 of the OS `cambria.ttc` — TrueType `glyf` + `MATH`; Windows-only like Arial | bundling STIX Two Math (TTF build unverified; ships a font) |
 | F2 | italic variables | `cambriai.ttf` as the import's Italic face | SMP math-italic (U+1D434…) — `char` → `int` across the atlas |
 | F3 | stretchy glyphs | Unicode pieces (⎛⎜⎝ ⌠⎮⌡ ⎷) + uniform scaling | atlas cells keyed by glyph id from MATH variants |
-| F4 | MATH constants storage | `{name}.math.xml` beside the `.agd`, written at import | fields on `AtlasMetaData` (bumps `importerVersion`, re-bakes every font) |
+| F4 | MATH constants storage | `{name}.math.axml` beside the `.agd`, written at import | fields on `AtlasMetaData` (bumps `importerVersion`, re-bakes every font) |
 | F5 | display centring | measurer gives the display formula its own line, centred via `TextLine.left` | general paragraph alignment |
 | F6 | editing | atomic formula + popup source editor, one undo record per commit | Obsidian-style source reveal when the caret enters |
 
@@ -49,12 +49,12 @@ Forks taken at M3: **F5′** display = full-column advance, drawn centred, block
 - Needs a `FontAsset` manifest entry for `Fonts/cambria` (not added in M1).
 - Needs a float glyph size on the draw path — `WriteGlyph` takes `int size`, scripts are 73% / 60% of the run's size.
 - First visual check of M2's layout: scaled `√`, `⎷` + stem join, overlapping paren pieces, accents.
-- Verify: `.xml`/`.md` round-trip, a golden of inline + display math, existing goldens unchanged.
+- Verify: `.axml`/`.md` round-trip, a golden of inline + display math, existing goldens unchanged.
 
 ### M4 — editing — DONE 2026-10-02
-Forks taken at M4: **F12** Ctrl+M inline / Ctrl+Shift+M display (rejected: Alt+=, Ctrl+Shift+E); **F13** live preview in the note itself (rejected: preview inside the popup); **F14** a click selects a formula like a picture, double-click / Enter opens (rejected: single click opens); **F15** three `Note.menu.xml` rows (rejected: toolbar button, keys only). Tests: `TextInput.MathInsertCommit`, `MathInsertCancel`, `MathEditUndo`, `MathLivePreview`, `MathEscReverts`, `MathClickSelects`, `MathDoubleClickOpens`. Details in the decision note; the list below is the original plan.
+Forks taken at M4: **F12** Ctrl+M inline / Ctrl+Shift+M display (rejected: Alt+=, Ctrl+Shift+E); **F13** live preview in the note itself (rejected: preview inside the popup); **F14** a click selects a formula like a picture, double-click / Enter opens (rejected: single click opens); **F15** three `Note.menu.axml` rows (rejected: toolbar button, keys only). Tests: `TextInput.MathInsertCommit`, `MathInsertCancel`, `MathEditUndo`, `MathLivePreview`, `MathEscReverts`, `MathClickSelects`, `MathDoubleClickOpens`. Details in the decision note; the list below is the original plan.
 
-- Insert keybinds (checked against `InputMap.inputs.xml`); double-click / Enter on a selected formula opens a popup source editor (TextBox in a context-menu popup, as `ColorPickerControl` is hosted); live preview; Enter/click-away commits, Esc reverts; `MathEdit : IEditRecord`.
+- Insert keybinds (checked against `InputMap.inputs.axml`); double-click / Enter on a selected formula opens a popup source editor (TextBox in a context-menu popup, as `ColorPickerControl` is hosted); live preview; Enter/click-away commits, Esc reverts; `MathEdit : IEditRecord`.
 - Verify: console-driven input test — insert, type, commit, undo, redo.
 
 ### M5 — amsmath environments — DONE 2026-10-06 (landed as LaTeX L6)

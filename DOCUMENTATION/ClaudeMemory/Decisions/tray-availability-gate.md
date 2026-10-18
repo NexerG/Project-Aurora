@@ -1,14 +1,14 @@
 # Decision — minimize-to-tray is gated on whether a tray can exist, and the options grey out when it cannot
 
 **Date:** 2026-10-16
-**Scope:** `ArctisAurora.EngineWork.Rendering` — `Background` (`canTray`, `Init`, `Close`, `Ask`); `ArctisAurora.Core.UI` — `ConfirmWindow` (`Ask`, `Fill`), `WindowActions` (`MinimizeToTray`), `ButtonControl.enabled`; `Thorium.Thorium` — `Main`; `Thorium/Data/XML/Documents/UI/UI.ui.xml` (`TrayButton`); `ArctisAurora.Tests.BackgroundTests` — `ClosePrompt`
+**Scope:** `ArctisAurora.EngineWork.Rendering` — `Background` (`canTray`, `Init`, `Close`, `Ask`); `ArctisAurora.Core.UI` — `ConfirmWindow` (`Ask`, `Fill`), `WindowActions` (`MinimizeToTray`), `ButtonControl.enabled`; `Thorium.Thorium` — `Main`; `Thorium/Data/XML/Documents/UI/UI.ui.axml` (`TrayButton`); `ArctisAurora.Tests.BackgroundTests` — `ClosePrompt`
 
 ## What changed
 - `Background.canTray` (new, `public static bool`): `OperatingSystem.IsWindows() && <Tray Enabled>`.
 - `Background.Init` returns early on `!canTray` (was `!Tray()`). `Background.Close` keeps its `!Tray()` early quit; `CloseAction.Tray` now does `if (canTray) Hide(); else Ask();`. `Background.Ask` passes a null Minimize answer when `!canTray`.
 - `ConfirmWindow.Ask(source, message, check, params (string caption, Action<bool>? answer)[])` — the answer is nullable; a null answer builds that button with `ButtonControl.enabled = false` (the existing dim-to-0.4-alpha, swallowed hover and press). `ConfirmWindow.Fill` takes the same tuple type. Existing callers unchanged.
 - `WindowActions.MinimizeToTray` (action `Window.MinimizeToTray`) is a no-op unless `Background.canTray`.
-- `Thorium.Thorium.Main`, after `Control.ParseXML("main")`, disables the button named `TrayButton` when `!Background.canTray`. In `UI.ui.xml` the title-bar tray button is now `Name="TrayButton"`.
+- `Thorium.Thorium.Main`, after `Control.ParseXML("main")`, disables the button named `TrayButton` when `!Background.canTray`. In `UI.ui.axml` the title-bar tray button is now `Name="TrayButton"`.
 - `BackgroundTests.ClosePrompt`, when `!Background.canTray`: checks Minimize is present and not `enabled`, clicks it and checks the prompt stays open and the window stays visible, then Cancel closes the prompt. The Windows path is unchanged.
 
 ## Why these choices

@@ -58,7 +58,7 @@ interactive and physical motion.
   "a parameter from day one").
 - **GPU-evaluated tweens** (start, duration, ease on the row, evaluated against `GpuEngineStats.totalTime`) for
   per-glyph effects — a slice inside this pass (F4). Fire-and-forget: not interruptible, no impulses.
-- Authoring: `*.anim.xml` + generated XSD for clips, tracks, state bindings. Transient UI animations are built
+- Authoring: `*.anim.axml` + generated XSD for clips, tracks, state bindings. Transient UI animations are built
   in code on the same runtime.
 
 ## C — threading and data ownership (F5)
@@ -114,7 +114,7 @@ directly by a Main step — [frame-scheduler-plan.md](frame-scheduler-plan.md).
 - [x] 5. Continuous state float (in `visual`, driven by posted springs); `ButtonControl` on signals; named `Signals` pool; spring feel on the palette (2026-09-19) — GUI-verified, [[ui-palettes]] § Continuous state, [[animation-core]]
 - [x] 6. Theme crossfade (paint slots animated); `Paints` owned by Animation; `ThemeFade` on the palette (2026-09-19) — GUI-verified, [[ui-palettes]] § Theme crossfade
 - [x] 7. GPU-evaluated tweens for per-glyph effects (2026-09-19) — GUI-verified, [[ui-effects]]
-- [x] 8. XML clips / XSD — `*.anim.xml` clips (keyframe tracks) and state bindings; `Clip`/`HoverClip`/`PressClip`/`StateBinding` on `Control`; hover and press clips reverse (2026-09-19) — GUI-verified, [[animation-core]]
+- [x] 8. XML clips / XSD — `*.anim.axml` clips (keyframe tracks) and state bindings; `Clip`/`HoverClip`/`PressClip`/`StateBinding` on `Control`; hover and press clips reverse (2026-09-19) — GUI-verified, [[animation-core]]
 - [ ] 9. Simulation domain, authority modes, IK, the physics impulse lane — blocked on physics existing
 
 Related: [[ui-palettes]], [[ui-gradients]], [[ui-palette-shape]], [[ui-quads-pool]], [[ecs-rework-data-pools]],

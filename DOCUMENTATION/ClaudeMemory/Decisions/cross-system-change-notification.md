@@ -58,12 +58,12 @@ subscribers, or something else.
   provisions its own descriptors and advances independently.
 
 ## Rejected / deferred alternatives
-- **XML-declared read/write dependency graph** (readers declared next to `System=` in `Pools.xml`,
+- **XML-declared read/write dependency graph** (readers declared next to `System=` in `Pools.axml`,
   column-level). Genuinely valuable — derives the subscriber list instead of maintaining it, makes
   ownership assertable, makes the frame edge schedulable/topological, and makes ordering a property
   of the XML. **Deferred: not worth it at 3 systems / 2 pools.** Trigger to revisit: a 4th system,
   or the first cross-system race that takes >10 min to explain. See "steal this early" below.
-  **LANDED 2026-09-23** as `Frame.frame.xml` — per-step, per-column reads and writes — [[frame-scheduler]].
+  **LANDED 2026-09-23** as `Frame.frame.axml` — per-step, per-column reads and writes — [[frame-scheduler]].
 - **Double-buffered pools** (front/back, swap at frame edge) for MAIN-thread writes — **REJECTED by
   user 2026-07-27, do not re-propose.** It was the textbook fix for the main-writes/render-reads
   transform race, but the race has never manifested in practice (project is run after every
@@ -97,7 +97,7 @@ a Main-owned pool at all. C# cannot hand out a read-only `T[]`, so read-only sta
 **Latent problem this surfaced:** `FrameEdge` is guarded because compaction moves memory, but
 `DataManager.FrameEdge()` is a flat loop over EVERY pool called from `MainTick`. The day a pool is
 owned by Physics, that throws. The loop needs to become per-system first. Cannot fire today —
-`Pools.xml` has both pools on `System="Main"`.
+`Pools.axml` has both pools on `System="Main"`.
 **RESOLVED 2026-09-23** — `DataManager.FrameEdge()` is deleted; each pool's edge is its own graph step
 (`<Step Edge="Pool"/>`), ordered by the columns it writes — [[frame-scheduler]] § Step 2.
 

@@ -64,7 +64,7 @@ summation order, so breaks could differ at the boundary. It is the next step if 
 
 ## Known gaps
 - `RewrapLargeNote` p95 now passes 8 ms in 5 of 6 runs; `max` still fails (8.2–13.5 ms), and the p95/AllocKB budgets
-  in `Perf.tests.xml` were not re-derived.
+  in `Perf.tests.axml` were not re-derived.
 - Memory: ~5 B per character per block, kept for the block's life (~5 MB at 1M chars, up to 2× with growth).
 - The open (first) measure is unchanged in kind — it still flattens everything, on tier-0 code.
 - `Align` still re-walks `MeasureAdvance` per character on centred/right lines.

@@ -37,11 +37,11 @@ namespace ArctisAurora.Core.UI
         public static bool Load()
         {
             all.Clear();
-            if (VirtualFileSystem.TryResolveFile("XML/Documents/Engine.attachments.xml", out string engine))
+            if (VirtualFileSystem.TryResolveFile("XML/Documents/Engine.attachments.axml", out string engine))
                 LoadFile(engine);
-            if (VirtualFileSystem.TryResolveFile("XML/Documents/Attachments.attachments.xml", out string path))
+            if (VirtualFileSystem.TryResolveFile("XML/Documents/Attachments.attachments.axml", out string path))
                 LoadFile(path);
-            else Log.Debug($"no Attachments.attachments.xml found — only the engine's attachment kinds loaded.");
+            else Log.Debug($"no Attachments.attachments.axml found — only the engine's attachment kinds loaded.");
             return true;
         }
 

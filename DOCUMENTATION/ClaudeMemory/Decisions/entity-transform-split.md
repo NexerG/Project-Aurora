@@ -32,7 +32,7 @@ asking" constraint.
 
 **`transform` was never a field, so the saving is in the pool, not the object.**
 It is a ref-returning property over a pool column — zero bytes per object. The 36 B of `TransformData` lives in
-the column, and which columns a pool has is already declared per-pool in `Pools.pools.xml`. `Entity` hardcoded
+the column, and which columns a pool has is already declared per-pool in `Pools.pools.axml`. `Entity` hardcoded
 only the *assumption* that the column was present, in the constructor seed and the accessors. Removing both is
 what makes an entity on a transform-less pool cost nothing for one.
 

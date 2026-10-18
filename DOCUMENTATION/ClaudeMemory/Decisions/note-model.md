@@ -27,7 +27,7 @@
 - `DocumentControl` (as built in N1; N2 made `InsertBlockAfter`/`RemoveBlock` view-only and `PutTable` became `ShowTable`): `InsertBlockAfter`/`RemoveBlock` also update the model (`document.blocks`, or the cell's `NoteCell.blocks` through `TableControl.CellOf`) via private static `Inserted<T>`/`Removed<T>`; new `internal Control ViewOf(NoteNode)`; `PutTable` builds `new TableControl(DocumentXml.ReadTable(xml))` and places it via `ViewOf`; `InsertTable`, `DeleteTable`, `RecordTableResize`, `ChangeTable` use `Array.IndexOf(document.blocks, …model)` and `WriteTable(table.model)`
 - `DocumentEditorControl.LoadDocument` builds a view per model entry; `SetLayout` walks the view's children; `PageAt` goes through `ViewOf`. `PdfExport` builds its views from the model; `TexEditorControl` click-to-source uses `Array.IndexOf(blocks, CaretBlock.note)`
 - `ProfileScenario`, `PerfTests` build model objects; `VaultBrowserControl.CreateNote` writes a one-`NoteBlock` document
-- Tests: `TexTests`, `TextInputTests`, `LatinModernTests`, `SheetTests` read the model for headless checks and the editor's views for layout checks (helpers `Content(editor)`, `View(editor, i)`, `Views(...)`); every "destroy the parsed blocks" loop removed. NEW suite `NoteModel.tests.xml` / `NoteModelTests.cs`: `NoteModel.SaveIsStable` (every vault sample note plus an all-features fixture, a `.txt` and a `.tex`: `Save(Load(x)) == Save(Load(Save(Load(x))))`) and `NoteModel.LoadHeadless` (the `UIElements` pool count is unchanged across `DocumentXml.Parse` of the fixture)
+- Tests: `TexTests`, `TextInputTests`, `LatinModernTests`, `SheetTests` read the model for headless checks and the editor's views for layout checks (helpers `Content(editor)`, `View(editor, i)`, `Views(...)`); every "destroy the parsed blocks" loop removed. NEW suite `NoteModel.tests.axml` / `NoteModelTests.cs`: `NoteModel.SaveIsStable` (every vault sample note plus an all-features fixture, a `.txt` and a `.tex`: `Save(Load(x)) == Save(Load(Save(Load(x))))`) and `NoteModel.LoadHeadless` (the `UIElements` pool count is unchanged across `DocumentXml.Parse` of the fixture)
 - No behaviour change; in N1 edits still ran through the controls (N2 moved them)
 
 ## What changed (N2)
@@ -43,7 +43,7 @@ All in `ArctisAurora.Core.UI`.
 - `DocumentEdits.cs`: all 9 records (`TextEdit`, `SplitEdit`, `StyleRangeEdit`, `DeleteRangeEdit`, `InsertRangeEdit`, `PictureEdit`, `MathEdit`, `BlockStateEdit`, `TableEdit`) hold `RichTextDocument` instead of `DocumentControl`; `PageEdit` holds `RichTextDocument` instead of `DocumentEditorControl`. `DeleteRangeEdit.Undo` passes its anchor/caret into `InsertFragment`/`RestoreKind` instead of calling `DocumentControl.Select`
 - `FormulaPopup` calls `document.document.SetMath` (the model)
 - REMOVED as orphans: `BlockControl.AppendBlock`, `SliceSnapshot`, `InsertSlice`, `AppendSlice`, `TakeKind`, `From`, `StyleRange`, `AppendSpans`, `SetMath`, `SplitSpanAt`, `MergeSpans`; `TableControl.CellOf(StackPanelControl)`. Kept on `BlockControl` (tests use them): `InsertText`, `RemoveText`, `SplitAt`, `Restore`, `Snapshot`, `SetPicture`, `StyleAt`, `AllSpans`
-- Tests: NEW `NoteModel.Changes` and `NoteModel.EditHeadless` in `Thorium.Tests.NoteModelTests`, listed in `NoteModel.tests.xml`
+- Tests: NEW `NoteModel.Changes` and `NoteModel.EditHeadless` in `Thorium.Tests.NoteModelTests`, listed in `NoteModel.tests.axml`
 
 ## What changed (N3)
 One note can be open in several views at once; every view of a path shares one `DocumentEditSession` (one model, one undo stack, one dirty flag, one save). All in `ArctisAurora.Core.UI`.
@@ -66,8 +66,8 @@ One note can be open in several views at once; every view of a path shares one `
 - `TabViewControl.CloseTab`: the naming prompt only when `session.views == 1`
 - `NoteActions.discarded` is `HashSet<DocumentEditSession>` (was editors), so an unnamed note open twice asks once at shutdown
 - `SheetLinks.RewriteNotes` renames links through the first open tab of a note only (`FindOpenDocument`), not every tab — a shared document would otherwise get a row/column `Shift` applied twice
-- Tests: NEW `NoteModel.TwoViews`, `NoteModel.RestoreTwice` in `Thorium.Tests.NoteModelTests`, listed in `NoteModel.tests.xml`
-- `ContextMenus.menus.xml` unchanged: `EnabledWhen` is not implemented on the new menu format, so nothing gates the entries
+- Tests: NEW `NoteModel.TwoViews`, `NoteModel.RestoreTwice` in `Thorium.Tests.NoteModelTests`, listed in `NoteModel.tests.axml`
+- `ContextMenus.menus.axml` unchanged: `EnabledWhen` is not implemented on the new menu format, so nothing gates the entries
 
 ## Why these choices
 

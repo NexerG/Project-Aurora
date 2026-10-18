@@ -10,7 +10,7 @@ using Thorium.Editor.CustomControls;
 
 namespace Thorium.Editor
 {
-    // Every vault that has been opened, as one screen. The shell is Vaults.ui.xml; only the rows are
+    // Every vault that has been opened, as one screen. The shell is Vaults.ui.axml; only the rows are
     // built here, because the list is data. Built per open and closed by its own title bar, the same
     // as the settings screen.
     public static class VaultsWindow
@@ -20,7 +20,7 @@ namespace Thorium.Editor
         private const uint windowWidth = 520;
         private const uint windowHeight = 400;
 
-        // control name in UI.ui.xml
+        // control name in UI.ui.axml
         private const string browserName = "Browser";
 
         // layout

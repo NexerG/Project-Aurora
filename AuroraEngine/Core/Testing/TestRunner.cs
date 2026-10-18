@@ -52,7 +52,7 @@ namespace ArctisAurora.Core.Testing
         public float allocKB { get; set; } = -1f;
     }
 
-    // --test runs every Data/XML/Documents/Tests/<Suite>.tests.xml, --test=<Suite> the one named, and exits
+    // --test runs every Data/XML/Documents/Tests/<Suite>.tests.axml, --test=<Suite> the one named, and exits
     // with the failure count.
     [A_XSDType("TestSuite", "Test")]
     internal static class TestRunner
@@ -140,7 +140,7 @@ namespace ArctisAurora.Core.Testing
         private static void Load(string? filter)
         {
             bool found = false;
-            foreach (string path in VirtualFileSystem.EnumerateAll("XML/Documents/Tests", "*.tests.xml"))
+            foreach (string path in VirtualFileSystem.EnumerateAll("XML/Documents/Tests", "*.tests.axml"))
             {
                 string suite = Paths.DocName(path);
                 if (filter != null && !string.Equals(suite, filter, StringComparison.OrdinalIgnoreCase)) continue;

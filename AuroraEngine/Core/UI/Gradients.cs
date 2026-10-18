@@ -86,7 +86,7 @@ namespace ArctisAurora.Core.UI
         public GradientStops stops;
     }
 
-    // Named gradients authored in Gradients.gradients.xml, uploaded once as a table the fragment shader
+    // Named gradients authored in Gradients.gradients.axml, uploaded once as a table the fragment shader
     // indexes. A control names one and stores the index, so a definition is shared rather than
     // copied into every row that uses it.
     public static class Gradients
@@ -105,7 +105,7 @@ namespace ArctisAurora.Core.UI
         {
             if (string.IsNullOrEmpty(name)) return 0;
             if (indices.TryGetValue(name, out uint index)) return index;
-            throw new Exception($"Gradient '{name}' is not defined in Gradients.gradients.xml.");
+            throw new Exception($"Gradient '{name}' is not defined in Gradients.gradients.axml.");
         }
 
         // The paint word a row carries: gradientBit, the palette's first slot, then the gradient id.
@@ -121,12 +121,12 @@ namespace ArctisAurora.Core.UI
             indices.Clear();
 
             // the engine's own controls' gradients, then the host's; hosts with none ship no file
-            if (VirtualFileSystem.TryResolveFile("XML/Documents/Engine.gradients.xml", out string engine))
+            if (VirtualFileSystem.TryResolveFile("XML/Documents/Engine.gradients.axml", out string engine))
                 LoadFile(engine);
 
-            if (!VirtualFileSystem.TryResolveFile("XML/Documents/Gradients.gradients.xml", out string path))
+            if (!VirtualFileSystem.TryResolveFile("XML/Documents/Gradients.gradients.axml", out string path))
             {
-                Log.Debug($"no Gradients.gradients.xml found — only the engine's gradients loaded.");
+                Log.Debug($"no Gradients.gradients.axml found — only the engine's gradients loaded.");
                 return true;
             }
 

@@ -13,7 +13,7 @@
 - `Renderer` gained a **global descriptor set**: `globalSetLayout`, `globalSets[]`, one
   `engineStatsBuffers[i]` per swapchain image, host-visible and **mapped once** for the life of the
   process. Built in the existing `Renderer.PrepareDescriptors` bootstrap step — no new
-  `Bootstrap.xml` step.
+  `Bootstrap.axml` step.
 - `Renderer.UpdateGlobalBuffers(window, imageIndex)` runs inside `Draw`, after the timeline wait and
   `AcquireNextImage`, before any module work.
 - `RenderingModule.UpdateFrameData(int imageIndex)` — new virtual, empty default. `Draw` no longer

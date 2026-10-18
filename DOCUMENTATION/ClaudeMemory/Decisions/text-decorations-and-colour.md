@@ -8,7 +8,7 @@ picker inside a menu have not been clicked in a running app.
 **Scope:** `ArctisAurora.Core.UI` — `StyleSpan`, `Run`, `StyleDelta` (`Of`), `CaretStyle`, `TextRunControl`
 (`WriteHighlight`, `WriteRect`, `selectedFrom/To`, `kind`), `DocumentControl` (`KeepDeletedStyle`, `DisarmStyle`,
 `ArrangeSelection`), `BlockControl.SplitAt`, `ColorPickerControl`, `ContextMenuContent`, `DocumentToolbarControl`,
-`Gradients.LoadGradients`, `MarkdownFormat`; `AuroraEngine/Data/XML/Documents/Engine.gradients.xml`
+`Gradients.LoadGradients`, `MarkdownFormat`; `AuroraEngine/Data/XML/Documents/Engine.gradients.axml`
 
 ## What changed
 - `StyleSpan` gains `underline` and `highlightHex`; `strikethrough` is now drawn. `Run` writes `Underline` and
@@ -23,7 +23,7 @@ picker inside a menu have not been clicked in a running app.
 - `ColorPickerControl` (`<ColorPicker>`): an S/V field (hue quad + `picker-white` + `picker-black` washes), a
   `picker-hue` strip, filled handles, a swatch and a hex `TextBoxControl`. `onPicked` fires on drag release and on a
   committed hex. `ContextMenuContent` hosts it in a menu; a press inside a menu never closes it
-- `Gradients.LoadGradients` loads `Engine.gradients.xml` first, then the host's `Gradients.gradients.xml`
+- `Gradients.LoadGradients` loads `Engine.gradients.axml` first, then the host's `Gradients.gradients.axml`
 - **A chosen style survives Enter and Backspace:** `SplitAt` gives an emptied head or tail the style at the split
   (was the block default). `DeleteSelection` arms the first deleted character's style when it differs from the
   caret's (`KeepDeletedStyle`; an explicit arm wins). The arm is dropped by navigation — `TextInputActions.Move`,
@@ -50,7 +50,7 @@ hue, so nothing texture-based is rebuilt while dragging. A texture regenerated p
 table texture slots (`note-images`).
 
 **Engine gradients in their own file.** Document lookup is app first, engine fallback — one file per name — so an
-engine `Gradients.gradients.xml` would be shadowed by any host that ships one.
+engine `Gradients.gradients.axml` would be shadowed by any host that ships one.
 
 **Handles are filled, not rings.** `PanelControl` defaults to the `Clear` role, and `PaintRow` zeroes a Clear
 quad's alpha, edge included — a transparent-centre ring is not expressible without a new paint rule.

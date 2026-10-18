@@ -60,7 +60,7 @@ namespace ArctisAurora.EngineWork
         // quick access
         internal static List<Entity> entitiesOnDestroy = null!;
 
-        // systems — stepped by FrameScheduler from Frame.frame.xml, or Dedicated on a thread of their own
+        // systems — stepped by FrameScheduler from Frame.frame.axml, or Dedicated on a thread of their own
         internal static MainSystem mainSystem = null!;
         internal static PhysicsSystem physicsSystem = null!;
         internal static RenderSystem renderSystem = null!;

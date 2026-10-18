@@ -28,7 +28,7 @@ VerifiedAgainst: 2026-08-31
 
 The system that remembers what was on screen when the application last closed, and puts it back: which windows were open, where each one sat and how large, whether it was maximized, how its panes were split, and which notes were in each pane with one of them on top.
 
-It is a settings group and nothing more exotic. `SessionLayout` implements `ISettingsGroup`, so [[SETTINGS]] discovers it by type scan, fills it from `UserSettings.settings.xml` and writes it back, and the session needs no file, no parser and no writer of its own. What makes it work is that the record is one recursive type rather than a class hierarchy — a pane that holds panes is a split, a pane that holds tabs is a leaf — and the settings reader dispatches on element name, so the whole tree persists through machinery that already existed.
+It is a settings group and nothing more exotic. `SessionLayout` implements `ISettingsGroup`, so [[SETTINGS]] discovers it by type scan, fills it from `UserSettings.settings.axml` and writes it back, and the session needs no file, no parser and no writer of its own. What makes it work is that the record is one recursive type rather than a class hierarchy — a pane that holds panes is a split, a pane that holds tabs is a leaf — and the settings reader dispatches on element name, so the whole tree persists through machinery that already existed.
 
 The record is partitioned by an opaque *scope* key the host sets. The engine groups by it and never asks what it means; [[Thorium]] sets it to the vault path, so a layout belongs to the vault it was arranged in, and a host that wants one session for the whole application leaves it empty.
 
@@ -38,7 +38,7 @@ Nothing searches the control tree for somewhere to put the panes. A window that 
 
 That second document exists because a pane carries authored chrome — tab metrics, three colours, `TearOffDocument`, a context menu — and a hand-built one would carry none of it. `SplitViewControl` already copies all of that from the pane it splits, so one parsed pane is enough to seed any arrangement however deeply nested.
 
-The consequence worth knowing: the panes and tabs an application authors are its *first-run* arrangement, and once a session exists they are not built. In [[Thorium]] they live in `Workspace.ui.xml` rather than in `UI.ui.xml`, which is what makes that visible on sight rather than surprising.
+The consequence worth knowing: the panes and tabs an application authors are its *first-run* arrangement, and once a session exists they are not built. In [[Thorium]] they live in `Workspace.ui.axml` rather than in `UI.ui.axml`, which is what makes that visible on sight rather than surprising.
 
 ## The record
 

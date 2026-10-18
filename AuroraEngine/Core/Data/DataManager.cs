@@ -8,7 +8,7 @@ namespace ArctisAurora.Core.Data
 {
     public readonly record struct DataHandle(ushort PoolId, int StableId, int Version);
 
-    // Static owner of all data pools. Pools are declared in Pools.pools.xml and composed from
+    // Static owner of all data pools. Pools are declared in Pools.pools.axml and composed from
     // C#-defined component structs at bootstrap. Lookup by name or by id.
     public static class DataManager
     {
@@ -26,7 +26,7 @@ namespace ArctisAurora.Core.Data
         [A_XSDActionDependency("DataManager.ParseXML", "Bootstrap")]
         public static bool ParseXML()
         {
-            LoadManifest("Pools.pools.xml");
+            LoadManifest("Pools.pools.axml");
             return true;
         }
 
@@ -70,7 +70,7 @@ namespace ArctisAurora.Core.Data
             _byName[pool.Name] = pool;
         }
 
-        // A component type as Pools.pools.xml and Frame.frame.xml name it.
+        // A component type as Pools.pools.axml and Frame.frame.axml name it.
         internal static Type? ResolveComponent(string typeName)
             => AnyXMLType.typeMap.TryGetValue(typeName, out Type? mapped) ? mapped : AnyXMLType.FindType(typeName);
 

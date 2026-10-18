@@ -1279,7 +1279,7 @@ namespace ArctisAurora.EngineWork
                 .Where(x => x.attr != null)
                 .ToArray();
 
-            foreach (string path in VirtualFileSystem.EnumerateAll("XML/Documents/Inputs", "*.inputs.xml"))
+            foreach (string path in VirtualFileSystem.EnumerateAll("XML/Documents/Inputs", "*.inputs.axml"))
             {
                 XElement root = DataFiles.LoadXml(path);
                 XNamespace ns = root.GetDefaultNamespace();
@@ -1434,7 +1434,7 @@ namespace ArctisAurora.EngineWork
         [A_XSDActionDependency("InputHandler.LoadInputs", "Bootstrap")]
         public static bool LoadInputs()
         {
-            instance = ParseXML("InputMap.inputs.xml");
+            instance = ParseXML("InputMap.inputs.axml");
             Engine.inputHandler = instance;
 
             foreach (KeybindOverride bind in SettingsRegistry.Get<InputBindings>().binds)

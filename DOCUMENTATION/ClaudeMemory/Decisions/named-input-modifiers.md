@@ -5,7 +5,7 @@
 (temporary probe in `AddModifier`, removed).
 **Scope:** `ArctisAurora.EngineWork` (`InputModifier`, `NamedModifier`, `IKeybindMapChild`,
 `InputHandler`, `GestureMatcher`), `...Controls.Text` (`TextInputActions`),
-`...Controls.Text.Document` (`DocumentEditorControl`), `Thorium/…/Inputs/InputMap.xml`.
+`...Controls.Text.Document` (`DocumentEditorControl`), `Thorium/…/Inputs/InputMap.axml`.
 
 ## Context
 

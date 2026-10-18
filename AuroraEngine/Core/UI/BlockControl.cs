@@ -216,7 +216,7 @@ namespace ArctisAurora.Core.UI
         // a code block's fence language; null when none was named
         public string? language { get => note.language; set => note.language = value; }
 
-        // a code block that wraps its lines; .xml only, so Markdown code never wraps
+        // a code block that wraps its lines; .axml only, so Markdown code never wraps
         public bool codeWrap { get => note.codeWrap; set => note.codeWrap = value; }
 
         // list item state

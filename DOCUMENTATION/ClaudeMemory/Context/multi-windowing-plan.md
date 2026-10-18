@@ -28,7 +28,7 @@ These are settled. Do not re-litigate them without asking.
 | The **UI module** owns the UI root, its design-space projection and its instance range (user, 2026-08-19) | A window is a surface with modules; the tree belongs to the module that draws it. `RenderWindow.ui` is a typed handle to the `UIModule` it builds, so callers say `window.ui.uiRoot` |
 | Modules are **per-window instances** | Every size-dependent field on `RenderingModule` was already an instance field, so the diff is small. Costs one pipeline compile per window opened |
 | A window **builds its own modules in its constructor** | No factory pattern in this codebase. Per-object work goes in the constructor; work that is identical every time may be cached for mass-produced items (user, 2026-08-19) |
-| `Renderer.PreInitialize` keeps its name and `Bootstrap.xml` slot | It predates this work. It now collects the device feature set from the windows' modules — the prerequisite step it is named for |
+| `Renderer.PreInitialize` keeps its name and `Bootstrap.axml` slot | It predates this work. It now collects the device feature set from the windows' modules — the prerequisite step it is named for |
 | `hovering` / `dragging` / `activeControl` stay **global statics** | There is one mouse. Per-window copies would be wrong, not merely wasteful. Per window are the hit-test root, `isInWindow`, and — since slice 3 — `mousePos` and `scrollDelta`, because those are *reported* per window and a drag that leaves a window keeps reporting to the window that owns it |
 | `EntityRegistry.uiTree` **deleted**, not aliased | An alias would leave a second window's tree unreachable through the property everything reads |
 | Swapchain image count is **read from the driver**, never assumed | `swapchainImageCount = 3` is gone; every per-image array sizes off `RenderWindow.imageCount` |
@@ -48,7 +48,7 @@ These are settled. Do not re-litigate them without asking.
   step ahead of `Renderer.Initialize`). **Nothing indexed by swapchain image may be sized in a module
   constructor** — that is what `RenderingModule.BindWindow` / `RebindImageCount` are for, and why
   `UIModule`'s constructor is empty.
-- **The primary window's GPU setup is interleaved with asset loading** across five `Bootstrap.xml`
+- **The primary window's GPU setup is interleaved with asset loading** across five `Bootstrap.axml`
   steps, so it cannot collapse into one call. A *secondary* window has no such problem — everything it
   needs already exists — which is what `RenderWindow.CreateGpuResources()` does, landed in slice 2.
 - **GLFW window queries are main-thread only.** Slice 0 removed the render-thread
@@ -163,7 +163,7 @@ Driving synthetic input therefore has to cross into the *other* window first.
   needs the render-thread teardown after `DeviceWaitIdle` that slice 4 builds; doing it here would be
   slice 4 arriving early under another name.
 
-**Verified** with `UI.xml` parsed into *both* windows so B has real chrome: a click straight into A
+**Verified** with `UI.axml` parsed into *both* windows so B has real chrome: a click straight into A
 from outside now works with no crossing trick (the slice-2 regression, closed). B's title-bar drag
 moved B `1320,120 → 1420,220` with A untouched at `0,0 1280x720`; B's left-edge drag took it
 `1420,220 600x400 → 1520,220 500x400`, far edge held; B's maximize took B alone to 1920x1080 and

@@ -249,7 +249,7 @@ Abstract names below map to real top-level folders. Source of truth for code loc
 | `Engine` | `AuroraEngine` | `ArctisAurora.*` (`Core`, `EngineWork`) | Core game engine — lives in `AuroraEngine/` under `Core/`; no separate Engine project. Folder renamed from `ParticleSimulator` (2026-07); assembly/root namespace still `ArctisAurora`. | Active |
 | `Editor` | `AuroraEditor` | `AuroraEditor.*` | Visual editor; consumer of the Engine | Early stage |
 | `TextEditor` | `Thorium` | `Thorium`, `Thorium.Editor.*` | Obsidian/Notion-style note app; host that boots the Engine. Folder/namespaces renamed from `Periodic` (2026-08) | Active |
-| `Viewer` | `Carbon` | `Carbon`, `Carbon.Editor.*` | Profiler frame-capture viewer; host that boots the Engine. Reads `*.frames.xml` written by `FrameSpool` | Active |
+| `Viewer` | `Carbon` | `Carbon`, `Carbon.Editor.*` | Profiler frame-capture viewer; host that boots the Engine. Reads `*.frames.axml` written by `FrameSpool` | Active |
 | — | `_Build` | `_Build` | Tooling; `GenerateNamespaces.cmd` regenerates `NAMESPACES.md` | — |
 
 ## Memory
@@ -312,7 +312,7 @@ ECS design is still being settled — avoid refactoring the entity/component mod
 | Threading | 🔧 In progress | Basic threading, design not finalised |
 
 #### Engine Loop & Threading — Key Facts
-- **Systems are steps of one frame graph** (`Threading.FrameScheduler`, data in `Frame.frame.xml`). A step
+- **Systems are steps of one frame graph** (`Threading.FrameScheduler`, data in `Frame.frame.axml`). A step
   names an action (`[A_XSDActionDependency(name, "Frame")]`) and the pool columns it reads and writes; stages
   are computed from those lists, and unpinned steps run on worker threads. `Render` is the one `<Dedicated>`
   thread. Frame rate is uncapped unless `<FrameCap MaxFps>` sets one — see `ClaudeMemory/Decisions/frame-scheduler.md`
@@ -337,7 +337,7 @@ ECS design is still being settled — avoid refactoring the entity/component mod
 - `InputHandler` is a singleton (`InputHandler.instance`) set up by the pre-renderer bootstrap
   step `InputHandler.LoadInputs` — this is also where `Engine.inputHandler` is assigned,
   so it is never null by the time `Init()` runs
-- **Keybinds are XML-driven** — loaded from all `*.xml` files in `Paths.XMLDOCUMENTS_INPUTS`;
+- **Keybinds are XML-driven** — loaded from all `*.axml` files in `Paths.XMLDOCUMENTS_INPUTS`;
   actions are resolved by scanning `[A_XSDActionDependency]` methods across all assemblies
   via reflection and bound as `Action` delegates
 - **Keybind groups** — XML files map to named groups (`keybindGroups`); swap active group
@@ -361,18 +361,18 @@ ECS design is still being settled — avoid refactoring the entity/component mod
 
 #### Bootstrapper — Key Facts
 The XML rework has **landed**. There is no `BootstrapStage` enum and no `[A_BootstrapStage]`
-attribute any more; both were replaced by declared phases in `Bootstrap.xml`.
+attribute any more; both were replaced by declared phases in `Bootstrap.axml`.
 - `Bootstrapper.Load(Paths.BOOTSTRAP)` reflects over all loaded assemblies once, collecting every
   static method tagged `[A_XSDActionDependency(name, "Bootstrap")]` into a name → method map
-- `Bootstrap.xml` declares `<Phase Name="…">` elements holding ordered `<Step Action="…"/>`
+- `Bootstrap.axml` declares `<Phase Name="…">` elements holding ordered `<Step Action="…"/>`
   entries; the action string is the attribute's name, and `Bootstrapper.RunPhase(name)` invokes
   them **in the order the XML lists them**
 - **Execution order is data, not reflection order** — to change what runs when, edit
-  `Bootstrap.xml`; there is exactly one phase today, `"Bootstrap"`
+  `Bootstrap.axml`; there is exactly one phase today, `"Bootstrap"`
 - A step whose action name resolves to nothing is logged and skipped, not fatal
 - Every bootstrap step returns `bool`. **A step returning `false` halts its phase** — nothing after
   it runs and `RunPhase` returns false. Steps that cannot meaningfully fail return `true`
-- Comments in `Bootstrap.xml` mark the pre-renderer / post-renderer boundaries, which is what the
+- Comments in `Bootstrap.axml` mark the pre-renderer / post-renderer boundaries, which is what the
   old `PreGPUAPI` / `PostGPUAPI` stages encoded
 
 #### Logging — Key Facts
@@ -395,8 +395,8 @@ attribute any more; both were replaced by declared phases in `Bootstrap.xml`.
 - **The drain is a plain background thread, not a `ThreadedSystem`** — it owns no pools. Do not
   convert it
 - **Self-starting**, because `XSDGenerator` logs before `Engine.Init`. `Logging.Configure` is step 2
-  of `Bootstrap.xml` and replays what boot logged before it; `Logging.Flush` is the last `Commit`
-  step of `Shutdown.xml`
+  of `Bootstrap.axml` and replays what boot logged before it; `Logging.Flush` is the last `Commit`
+  step of `Shutdown.axml`
 - **File spills on watermark, `FlushMs`, or any `Error`**, and rotates at `MaxFileMB`. Config is
   `LoggingSettings` (`<Logging>`), so it cascades and can be overridden per user
 - The channel floor is the **minimum across all sinks**, not the console's — the flight recorder
@@ -405,7 +405,7 @@ attribute any more; both were replaced by declared phases in `Bootstrap.xml`.
 
 #### Shutdown — Key Facts
 The bootstrap sequence run backwards, and deliberately the same shape — `Shutdown.cs`,
-`Shutdown.xml`, `[A_XSDActionDependency(name, "Shutdown")]`, `Shutdown.RunPhase(name)`, `bool`
+`Shutdown.axml`, `[A_XSDActionDependency(name, "Shutdown")]`, `Shutdown.RunPhase(name)`, `bool`
 returns that halt a phase.
 - **Two phases, and the difference matters.** `Request` may refuse: it is where anything that asks
   the user something lives. `Commit` is past the point of no return and runs against a tree that is
@@ -458,7 +458,7 @@ The full Vulkan pipeline is working and rendering UI:
   is a `Dictionary<TKey, TValue>` stored in two parallel lookups:
   - `library`: keyed by **value Type** (e.g. `typeof(AVulkanMesh)`)
   - `libraryByName`: keyed by **string name** (e.g. `"Meshes"`)
-- Registry definitions are **XML-driven** — `Registry.xml` declares each dictionary's
+- Registry definitions are **XML-driven** — `Registry.axml` declares each dictionary's
   name, key type, and value type; parsed at bootstrap via `ParseXML()`
 - Type resolution uses `AnyXMLType.typeMap` with fallback to `AnyXMLType.FindType()`
   for engine-specific types
@@ -495,7 +495,7 @@ The full Vulkan pipeline is working and rendering UI:
   - `AnyXMLType.typeMap` — inverse map used at XML parse time to resolve strings → `Type`
 - **`AnyXMLType.FindType(string)`** resolves an XSD type name string back to a C# `Type`
   by scanning `[A_XSDType]` attributes across all assemblies — used by `AssetRegistries`
-  during `Registry.xml` parsing
+  during `Registry.axml` parsing
 - **Do not** hand-edit generated `.xsd` files — they are overwritten on each run
 - **Do not** add new primitive mappings to `MemberMap`/`AnyXMLType.typeMap` separately —
   they must be kept in sync manually (both maps exist, one for each direction)

@@ -3,8 +3,8 @@
 **Date:** 2026-08-30
 **Status:** LANDED. Builds clean; boots all 24 steps; probed at runtime (list, prune, rows, persistence).
 **NOT GUI-verified** — nothing was clicked. No row click, no picker, no vault switch end to end.
-**Scope:** `Thorium` (`ThoriumSettings`, `VaultsWindow`, `Vaults.ui.xml`, `UI.ui.xml`,
-`ContextMenus.menus.xml`, `ThoriumAssets.assets.xml`, `Thorium.Main`), `ArctisAurora.Core`
+**Scope:** `Thorium` (`ThoriumSettings`, `VaultsWindow`, `Vaults.ui.axml`, `UI.ui.axml`,
+`ContextMenus.menus.axml`, `ThoriumAssets.assets.axml`, `Thorium.Main`), `ArctisAurora.Core`
 (`Engine.Post`, `MenuScreen`, `FolderPicker`, `AGlfwWindow.Hwnd`).
 
 Extends [[vault-browser-and-shell]], which made *one* vault a setting. This makes the set of them data.
@@ -17,7 +17,7 @@ Extends [[vault-browser-and-shell]], which made *one* vault a setting. This make
 `InputBindings` shape, and it is forced: a `SettingCategory`'s children are one `Setting` each and
 `SettingsRegistry.WriteDiff` walks them as *attributes*. A category structurally cannot hold a list.
 The non-category path already walks `ChildListFields`, so the list persists to
-`%APPDATA%\Arktis\Thorium\Settings\UserSettings.settings.xml` for free and stays out of the settings
+`%APPDATA%\Arktis\Thorium\Settings\UserSettings.settings.axml` for free and stays out of the settings
 screen's category list — `SettingsWindow.Categories()` yields only `SettingCategory`.
 
 The entry type is `KnownVault`, not `Vault`, because `AnyXMLType.FindType` resolves the *type's*
@@ -41,7 +41,7 @@ Distinguishing "gone" from "offline" needs a reachability notion the app does no
 ### 3. Switching writes the setting; everything downstream re-reads it
 
 `Switch` sets `vault.path`, `Commit()`s, closes every tab, `Rebuild()`s the browser and calls
-`OpenFirstNote()` — which had been dead code since `UI.ui.xml` started seeding both panes and is now
+`OpenFirstNote()` — which had been dead code since `UI.ui.axml` started seeding both panes and is now
 wired back up. Nothing caches the vault, so the setting *is* the switch; `VaultBrowserControl.RootPath`
 reads it live and moved onto the shared `KnownVaults.Resolve` in the same pass.
 
@@ -117,7 +117,7 @@ collapsing it onto `MenuScreen` is a separate change.
 - Builds clean, no new warnings beyond the nullable noise the file set already carries.
 - Boots: 24/24 bootstrap steps, phase clean, no stderr. `ContextMenus.LoadMenus` passing *is* proof
   both action names resolve — `FindAction` throws on a miss.
-- `Vaults.ui.xml`, `UI.ui.xml` and `ContextMenus.menus.xml` validate against the regenerated
+- `Vaults.ui.axml`, `UI.ui.axml` and `ContextMenus.menus.axml` validate against the regenerated
   `UITypeSchema.xsd` with zero issues, which is what confirms `HorizontalAlignment`, `Padding` and
   `HorizontalPos` are real attributes on the controls they were authored onto.
 - Temporary probe (removed): the boot vault is remembered and resolved absolute; `VaultsWindow.Open`

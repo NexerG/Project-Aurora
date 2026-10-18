@@ -2,7 +2,7 @@
 
 **Date:** 2026-08-18
 **Status:** LANDED. Verified 12/12 on a probe against the real `TypeDescriptor` path; Thorium boots
-with `Padding="8"` authored in `UI.xml`.
+with `Padding="8"` authored in `UI.axml`.
 **Scope:** `ArctisAurora.Core.UISystem.Controls` (`VulkanControl.Thickness`,
 `VulkanControl.ThicknessConverter`), `Thorium.Editor.CustomControls` (`VaultBrowserControl`).
 

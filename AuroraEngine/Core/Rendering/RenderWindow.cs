@@ -106,7 +106,7 @@ namespace ArctisAurora.EngineWork.Rendering
         }
 
         // Everything this window needs from the device, in one call. The primary window cannot use it
-        // — its GPU setup is interleaved with asset loading across five Bootstrap.bootstrap.xml steps — but a
+        // — its GPU setup is interleaved with asset loading across five Bootstrap.bootstrap.axml steps — but a
         // secondary window is created after all of that already exists.
         internal void CreateGpuResources()
         {

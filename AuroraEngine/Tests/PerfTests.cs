@@ -453,7 +453,7 @@ namespace ArctisAurora.Tests
         // Edits and saves the generated note once a tick as an open note's autosave does, the main-thread part in a Note.Save zone.
         private static IEnumerator<int> SaveSegments(TestContext t, Action<RichTextDocument, int> edit)
         {
-            string path = Path.Combine(Path.GetTempPath(), $"aurora-save-{Guid.NewGuid():N}.xml");
+            string path = Path.Combine(Path.GetTempPath(), $"aurora-save-{Guid.NewGuid():N}.axml");
             RichTextDocument document = LargeDocument();
             List<NoteSegment>? map = null;
             byte[]? file = null;

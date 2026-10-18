@@ -5,7 +5,7 @@
 **Scope:** `ArctisAurora.Core.Data` — `DataPool.Rewind`, `DataPool.Append`; `ArctisAurora.Core.UI` — `UIEngine.Quads`,
 `UIEngine.BuildDrawLists`, `UIEngine.Collect`, `Control.Emit`, `Control.WriteArranged`, `TextRunControl.Emit`/`WriteGlyph`;
 `ArctisAurora.EngineWork.Rendering.Modules` — `UIEngineModule.PublishQuadRange`, `MirrorDrawList`;
-`AuroraEngine/Data/XML/Documents/Pools.pools.xml`
+`AuroraEngine/Data/XML/Documents/Pools.pools.axml`
 
 **Reverses in part:** [ui-draw-list](ui-draw-list.md) — "not stored in a pool" and "two plain fields on `Control`". The
 walk, the cull and painter order are unchanged. **Replaces** the `DrawList` mechanics of
@@ -52,7 +52,7 @@ Rebuilding it at emit re-runs `HexToRGB` twice — four string allocations each 
 `TextRunControl.BuildRuns`); nothing looks a gradient up by name per frame.
 
 **Large per-frame arrays live in a manifest-declared pool** (user).
-Growth follows `Pools.pools.xml`, writes are owner-asserted, the render thread reads through `Backing<T>()` — the
+Growth follows `Pools.pools.axml`, writes are owner-asserted, the render thread reads through `Backing<T>()` — the
 sanctioned cross-thread read — and `DataManager.FrameEdge` reports count, capacity and bytes to the profiler with no
 extra code.
 

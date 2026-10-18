@@ -6,7 +6,7 @@ Decision record: [sheets](../Decisions/sheets.md). Part of the Thorium productiv
 notes, sheets and a todo board under Blender-style workspace tabs, plus a simplified mode with familiar layouts.
 
 ## Settled by the user (2026-10-02)
-- A sheet is its own file, `*.sheet.xml`, opened in a tab like a note.
+- A sheet is its own file, `*.sheet.axml`, opened in a tab like a note.
 - "Layers" means both: pages (bottom tabs, one file = a workbook) and layers stacked over one page's grid.
 - Tabs talk to editors through `IFileEditor`.
 - Order after S1: formulas first.
@@ -18,9 +18,9 @@ notes, sheets and a todo board under Blender-style workspace tabs, plus a simpli
 - Excel precedence (`-2^2` = 4).
 - Sliced S2a (one file) then S2b (the rest).
 - S2b answers: notes match the sheet's keys (Ctrl+V plain, Ctrl+Shift+V live); `.md` writes
-  `![[Budget.sheet.xml#Expenses!B3]]`; a rename inside Thorium rewrites references, a delete or outside rename is
+  `![[Budget.sheet.axml#Expenses!B3]]`; a rename inside Thorium rewrites references, a delete or outside rename is
   `#REF!`; freshness is Thorium's own saves (no watcher, no mtime checks).
-- S2b forks: a range in a note is one read-only live grid block (implemented in S2b3 as a display object span, not a block kind), same in `.xml` and `.md` (replaces "a note table of
+- S2b forks: a range in a note is one read-only live grid block (implemented in S2b3 as a display object span, not a block kind), same in `.axml` and `.md` (replaces "a note table of
   live values" above); S2b split into S2b1/S2b2/S2b3; `[file]Page!` syntax, page required; undo on the document.
 
 ## Settled by the user (2026-10-04)
@@ -54,7 +54,7 @@ notes, sheets and a todo board under Blender-style workspace tabs, plus a simpli
 ## Slices
 | # | Slice | State |
 |---|---|---|
-| S1 | grid, selection, in-cell editing, undo, TSV clipboard, `.sheet.xml`, any-editor tabs | landed |
+| S1 | grid, selection, in-cell editing, undo, TSV clipboard, `.sheet.axml`, any-editor tabs | landed |
 | S2a | formulas in one file — arithmetic, `SUM`, cell/range/page references, Kahn recalc, errors as values | landed |
 | S2b1 | vault-wide graph (`SheetBook`), `[Budget]Expenses!B3` (unopened files loaded from disk), rename rewrites | landed |
 | S2b2 | Paste link in sheets (Ctrl+Shift+V) | landed |
@@ -72,7 +72,7 @@ notes, sheets and a todo board under Blender-style workspace tabs, plus a simpli
 ## Owed for S2b3 — resolved 2026-10-04
 - Done: Ctrl+Shift+V stays on `Sheet.PasteLink`, which falls back to `Text.PasteLink` outside a sheet — `Text.PasteLink`
   took over that fallback.
-- Rewriting `.md`/`.xml` notes on a sheet rename: re-saving a note does not reproduce its bytes, so this needs a
+- Rewriting `.md`/`.axml` notes on a sheet rename: re-saving a note does not reproduce its bytes, so this needs a
   token-level rewrite — done (`SheetLinks.Renamed`).
 
 ## Carried gaps from S1

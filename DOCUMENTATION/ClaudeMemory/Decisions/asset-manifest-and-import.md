@@ -32,8 +32,8 @@ This is [[asset-pipeline-bake]]'s layer 1→2 split arriving early, for fonts ra
 | Piece | Where | State |
 |-------|-------|-------|
 | Mount/priority resolution | `VirtualFileSystem`, `DirectoryMount`, `ArxMount` | works; the pak drop-in landed 2026-10-16 as `ArxMount` ([[arx-archives]]) |
-| Typed registries | `AssetRegistries` + `Registry.xml` | works |
-| Declarative boot order | `Bootstrap.xml` | works; `PrepareDefaultAssets`/`PrepareAllAssets` are steps |
+| Typed registries | `AssetRegistries` + `Registry.axml` | works |
+| Declarative boot order | `Bootstrap.axml` | works; `PrepareDefaultAssets`/`PrepareAllAssets` are steps |
 | Reflection XML→object | `DocumentXml.ApplyAttributes` | works, but `private` and document-scoped |
 | **Font importer** | `AssetImporter.ImportFont` + `AuroraFont.GenerateGlyphAtlas` | **complete**: system `.ttf` → `.afm` + `.agd` + `_atlas.png` |
 | **Mesh importer** | `MeshImporter.ImportFBX` | returns an Assimp `Scene`; **no cooked output** |
@@ -46,10 +46,10 @@ output convention. The design below names it rather than inventing it.
 ### 1. The manifest is the missing layer — **LANDED**
 
 A directory of manifest files, `Data/XML/Assets/`, **all unioned**. Not one file: `EnumerateAll`
-dedupes by *filename*, so a single `Assets.xml` in an app would silently replace the engine's whole
+dedupes by *filename*, so a single `Assets.axml` in an app would silently replace the engine's whole
 set instead of adding to it. Free filenames + entry-level union means an app adds assets by dropping
 a file, and *overrides* one by declaring the same `(Type, Name)` pair — **first mount wins per
-entry**, matching the `DocumentStyles.xml` cascade at finer granularity.
+entry**, matching the `DocumentStyles.axml` cascade at finer granularity.
 
 ```xml
 <AssetManifest>
@@ -59,13 +59,13 @@ entry**, matching the `DocumentStyles.xml` cascade at finer granularity.
 </AssetManifest>
 ```
 
-`Type` resolves via `AnyXMLType.FindType`, same as `Registry.xml`. Entries are keyed on
+`Type` resolves via `AnyXMLType.FindType`, same as `Registry.axml`. Entries are keyed on
 `(Type, Name)` and deduped in mount order, so an app overriding one engine asset does not replace
-the set. Landed as `Data/XML/Assets/EngineAssets.xml`.
+the set. Landed as `Data/XML/Assets/EngineAssets.axml`.
 
 **Not built: inline per-type config.** An entry carries `Type`/`Name`/`Source` only. The design's
 reflection-applied extra attributes exist to let `SamplerAsset` move into the manifest, and samplers
-were left on `XML/Documents/Samplers/*.xml` — so the feature had no consumer. `SamplerAsset.Load`
+were left on `XML/Documents/Samplers/*.axml` — so the feature had no consumer. `SamplerAsset.Load`
 throws `NotImplementedException` and `LoadAll` stays a plain method; its duplicated attribute chain
 survives, minus the dead `LoadAsset` copy.
 
@@ -127,7 +127,7 @@ Note this is the *same branch* as decision 3's scaffold, which is why the scaffo
 ### 5. Import is declared, not called — **LANDED**
 
 The charset and glyph size were import parameters hardcoded at a commented-out call site. They are
-now XML, in `Data/XML/Imports/*.xml`, unioned across mounts (charsets first, so any set can
+now XML, in `Data/XML/Imports/*.axml`, unioned across mounts (charsets first, so any set can
 reference a charset another file declared):
 
 ```xml
@@ -149,7 +149,7 @@ Shape deltas from the original sketch, all deliberate:
 `Charset` as a named reference is the roadmap's "language packs" item falling out for free.
 
 **Trigger: boot-time, gated on `Engine.isDebug`** (user, 2026-08-07), as a `<Step>` in
-`Bootstrap.xml` ahead of `Renderer.InitRenderer`. Release builds never import. The stall was the
+`Bootstrap.axml` ahead of `Renderer.InitRenderer`. Release builds never import. The stall was the
 argument against it and it turned out small — **113 glyphs at 64px is ~13 s per face**, both
 faces ~27 s, once ever.
 
@@ -188,7 +188,7 @@ identical to the engine's), along with their now-dangling `<Content Include>` en
 were already debug-only — neither copies its own `Data/XML` to output — so nothing regressed.
 
 **Known consequence, accepted for now (user, 2026-08-07):** an ImportSet declared in the *engine's*
-Data still bakes into whichever app is running, so `EngineFonts.xml` recreates a per-app copy of
+Data still bakes into whichever app is running, so `EngineFonts.axml` recreates a per-app copy of
 every font it declares. The alternative — outputs landing in the Data root of the ImportSet that
 declared them — was considered and **deferred**; it is the fix when the duplication starts to hurt.
 
@@ -196,7 +196,7 @@ declared them — was considered and **deferred**; it is the fix when the duplic
 
 "Output missing" was the original trigger rule; it is not enough, because the charset and glyph size
 change far more often than the `.ttf` does (adding EU languages is on the roadmap). Each cooked font
-carries `Data/Fonts/<name>/<name>.import.xml`:
+carries `Data/Fonts/<name>/<name>.import.axml`:
 
 | Field | Why it invalidates |
 |-------|--------------------|
@@ -272,7 +272,7 @@ scoped to fonts.
 
 ## Rejected
 
-- **One `Assets.xml` per mount.** `EnumerateAll` dedupes by filename, so an app's copy replaces
+- **One `Assets.axml` per mount.** `EnumerateAll` dedupes by filename, so an app's copy replaces
   rather than extends. Entry-level union instead.
 - **Manifest entry pointing at a separate per-asset config file.** Samplers would gain an
   indirection they do not need; reflection-applied inline attributes cover both shapes with one

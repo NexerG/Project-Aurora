@@ -5,7 +5,7 @@
 **Scope:** `ArctisAurora.Core.ECS.EngineEntity` — `Entity` (`SetTicking`, `tickSlot`, `HooksOf`, `AfterStart`,
 `ApplyEnableChange`, `CreateComponent`); `ArctisAurora.Core.Registry` — `EntityRegistry` (`SetTicking`,
 `ProcessTicks`, `ProcessDestroys`); `ArctisAurora.EngineWork` — `Engine.Interpolate`, `Engine.SetupSystems`;
-`CaretControl`, `DocumentToolbarControl`, `ProfileScenario`; `EntityRegistry.entities.xml`
+`CaretControl`, `DocumentToolbarControl`, `ProfileScenario`; `EntityRegistry.entities.axml`
 
 ## What changed
 - `Engine.Interpolate` no longer walks every entity. `EntityRegistry.ProcessTicks()` runs `OnTick` over a packed

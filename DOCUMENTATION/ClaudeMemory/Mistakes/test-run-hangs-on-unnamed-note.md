@@ -11,7 +11,7 @@
 
 ## Rule
 - The **last** test of a suite must leave no dirty session: end it with a `Show` of something clean, or order a
-  non-editing test last (what `TextInput.tests.xml` does now).
+  non-editing test last (what `TextInput.tests.axml` does now).
 - Always launch `--test` under `timeout 120 …` so a hang reports instead of stalling.
 - Seeing `[Shutdown] step 'Notes.SettleUnnamed' reported failure` after the summary line = this.
 

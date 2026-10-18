@@ -2,7 +2,7 @@
 
 **Date:** 2026-09-27
 **Scope:** `ArctisAurora.Core.Commands` — `CommandConsole`, `CommandPipe`; `ArctisAurora.Core.UI` — `ConsoleControl`;
-`Engine` (constructor, `Init`); `ArctisAurora.Tests` — `CommandTests`, `ConsoleTests`; each host's `InputMap.inputs.xml`
+`Engine` (constructor, `Init`); `ArctisAurora.Tests` — `CommandTests`, `ConsoleTests`; each host's `InputMap.inputs.axml`
 
 ## What changed
 - **Commands are actions.** `CommandConsole.Build` collects every parameterless `static void` `[A_XSDActionDependency]`
@@ -68,7 +68,7 @@ arranges every child over its full box, and the last one paints over the tree an
 |---|---|
 | `--test` | `Commands` (4) and `Console` (1) suites pass beside `Layout`; the same 7 pass in Carbon |
 | `--send "Help"` to a running Thorium | the command list, exit 0 |
-| `--send "UI.DumpTree"` | `ok`, `uitree.xml` rewritten |
+| `--send "UI.DumpTree"` | `ok`, `uitree.axml` rewritten |
 | `--send "Nope; Help"` | `error: no command named Nope` then the list, exit 1 |
 | `--send "Quit"` | `ok`; both shutdown phases ran; the process exited 0 |
 | `--send` with nothing running | `no running Aurora.Thorium to send to`, exit 2 |

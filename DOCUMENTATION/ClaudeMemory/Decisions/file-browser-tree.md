@@ -20,7 +20,7 @@ caller can iterate any node without asking what it is first.
 the whole root away instead — but it is the hook a filesystem watcher would use.
 
 Also new: `name` (`Path.GetFileName`, extension intact) and `parent`. The extension stays on because
-**the model does not decide how anything is displayed** — `VaultBrowserControl` strips `.xml` in its
+**the model does not decide how anything is displayed** — `VaultBrowserControl` strips `.axml` in its
 `DisplayName` override. `parent` has no consumer in this slice; it is what the editor's
 folder-descending view will walk to go up, and it costs one assignment in `Load()`.
 
@@ -34,7 +34,7 @@ is the browser's, not the filesystem's.
   fills in: `RootPath`, `PopulateRows`, `Activate`, and optionally `Accepts`/`DisplayName`.
 - `FileTreeControl` (abstract) — the openable tree: an `expanded` set of full paths, recursion only
   into open folders, and the `>`/`v` toggle.
-- `VaultBrowserControl` (Thorium, concrete) — vault root off `ThoriumSettings`, `.xml` filter,
+- `VaultBrowserControl` (Thorium, concrete) — vault root off `ThoriumSettings`, `.axml` filter,
   extension-stripped names, and the existing tab-opening `Open`.
 
 **This reverses the boundary held since P5** ("`VaultBrowserControl` is Thorium's; the engine gained
@@ -85,7 +85,7 @@ Ten `[A_XSDElementProperty]` fields — row height, indent, spacing, inset, gutt
 and the five colours — following `TabViewControl`'s `TabColorHex`/`ActiveTabColorHex`. They cannot
 stay `const` in the browser: `#171717` is Thorium's sidebar ground, and this is engine code now.
 
-Defaults are exactly the constants they replaced, so `UI.xml` needed no edit and the look the user
+Defaults are exactly the constants they replaced, so `UI.axml` needed no edit and the look the user
 signed off on is unchanged.
 
 **Known limit:** rows are built in `VaultBrowserControl`'s constructor and `ResolveAttributes` runs
@@ -118,8 +118,8 @@ either way — and press/release still match, since both resolve to the same pan
 - `dotnet build AuroraEngine/ArctisAurora.sln` — 0 errors.
 - **Model**, probed from a throwaway console host referencing the built `ArctisAurora.dll`: root
   reports `not listed` until `Children` is touched; the two root entries come back
-  `Directory:Reference | File:SampleNote.xml`; `Reference`'s subtree stays unlisted until it is
-  opened, then reports `Keybinds.xml`; `Refresh()` puts it back to unlisted; `parent` resolves.
+  `Directory:Reference | File:SampleNote.axml`; `Reference`'s subtree stays unlisted until it is
+  opened, then reports `Keybinds.axml`; `Refresh()` puts it back to unlisted; `parent` resolves.
 - **GUI, by screenshot with synthetic clicks** (window held `HWND_TOPMOST` for the whole run — the
   first attempt released it between shots and every click landed in the terminal instead):
   `> Reference` and `SampleNote` with names aligned in one column → click → `v Reference` with

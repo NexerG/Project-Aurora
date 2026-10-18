@@ -22,7 +22,7 @@ Settled. Do not re-litigate without asking.
 |---|---|
 | **Tests run in the existing hosts** — `Thorium.exe --test`; engine tests in any host, a host's tests only in it (user, 2026-09-25) | the host's own data is what is under test; no fifth app, `Data` or shader copy |
 | **No unit-test framework** — coroutines over real frames (user, 2026-09-25) | how engines test logic; see [[engine-testing]] |
-| **Suites are XML**, one `<Suite>.tests.xml` per suite (user, 2026-09-25) | order, grouping and budgets as data |
+| **Suites are XML**, one `<Suite>.tests.axml` per suite (user, 2026-09-25) | order, grouping and budgets as data |
 | **`Timeout` is milliseconds** of test-clock time (user, 2026-09-27) | — |
 | **Carbon only shows results; it never launches a run** (user, 2026-09-27) | runs are started by hand; Carbon reads them when Carbon itself is opened |
 | **Swapchain images get `TransferSrc` only while `--test` runs** (user, 2026-09-25) | goldens need readback; a normal run keeps today's usage flags |
@@ -32,7 +32,7 @@ Settled. Do not re-litigate without asking.
 
 | # | Slice | Status |
 |---|---|---|
-| 1 | Runner, XML suites, `Check`, fixed clock, OS input unwired, Boot, `results.xml`, exit code | **landed 2026-09-27** |
+| 1 | Runner, XML suites, `Check`, fixed clock, OS input unwired, Boot, `results.axml`, exit code | **landed 2026-09-27** |
 | 2 | Carbon Tests view — lists runs from a host's `Tests` folder; per-test pass/fail, failure text and source line; the results reader sits beside the writer (the `FrameCaptureReader` precedent). No run button | **landed 2026-09-27** — [[carbon-frame-viewer]] §17 |
 | 3 | Input helpers — `MoveTo`, `Click(control)`, `Drag`, `Key(key, mods)`, `Type(text)` through the `InputHandler` handlers `WireInput` would have bound; the runner owns `isInWindow` | **landed 2026-09-27** — [[engine-testing]] § Slice 3 |
 | 4 | Perf — `Measure(warmup, frames)` under `Profiling.CaptureUntilFlush`; p50/p95/max/alloc per zone via `FrameCaptureReader`; budgets in the suite XML and/or an approved baseline XML; a Debug build reports `Skipped — unoptimized JIT`; Carbon opens a failure against its baseline; decide whether `--profile-scenario` becomes `--test=Perf.*` | **landed 2026-09-27** as `StartMeasure`/`EndMeasure`, suite-XML budgets only — [[engine-testing]] § Slice 4 |

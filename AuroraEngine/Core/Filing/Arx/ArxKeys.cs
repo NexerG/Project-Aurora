@@ -16,7 +16,7 @@ namespace ArctisAurora.Core.Filing.Arx
         public byte[] publicKey = Array.Empty<byte>();
 
         public static string PathFor(string app) =>
-            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Arktis", "BuildKeys", app + ".keys.xml");
+            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Arktis", "BuildKeys", app + ".keys.axml");
 
         // Loads an app's build keys, creating them on first use.
         public static ArxKeys LoadOrCreate(string app)

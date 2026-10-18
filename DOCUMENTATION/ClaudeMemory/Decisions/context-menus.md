@@ -13,9 +13,9 @@ Designed fresh from the user's spec (2026-09-11) — the old stack's `ContextMen
 ported. It stays for the old stack until 6d deletes it.
 
 ## What changed
-- **A menu is its own document** — `*.menu.xml`, root `<ContextMenu>`, children `<ContextButton Text Action>`,
+- **A menu is its own document** — `*.menu.axml`, root `<ContextMenu>`, children `<ContextButton Text Action>`,
   `<ContextLine/>`, `<ContextSubmenu Text>` (nesting entries). Registered as `ContextMenuAsset` in a new
-  `contextMenus` registry dictionary (`Registry.registry.xml`), listed in a host's `*.assets.xml`.
+  `contextMenus` registry dictionary (`Registry.registry.axml`), listed in a host's `*.assets.axml`.
 - **A control names one menu** — `ContextMenu="name"` (string) and `StopsContextMenu="true"` on `Control`.
 - **Code builds a `ContextMenu` and `ContextMenus.Register(name, menu)`s it**; `Get(name)` checks registered
   menus first, then parses the document on first use and caches it. An unknown name logs a `Warn` and offers nothing.
@@ -35,7 +35,7 @@ ported. It stays for the old stack until 6d deletes it.
   when no application window has focus (not under `--test`).
 - `ContextMenus.target` is the control the menu was opened on, set before an action runs and cleared on close.
   `WindowActions.Acting` reads it first.
-- Thorium's `TitleBar` names `title-bar` (`Menus/TitleBar.menu.xml`: Minimize, Maximize, line, Close) and stops.
+- Thorium's `TitleBar` names `title-bar` (`Menus/TitleBar.menu.axml`: Minimize, Maximize, line, Close) and stops.
 - **Found and fixed on the way (user, 2026-09-11):** `DataPool.Allocate` now clears the new row (see
   [[ecs-rework-data-pools]]); `ButtonControl` runs `onRelease` for the left button only, so a right-click on a
   button opens its menu instead of firing it — a menu `Row` still fires on either button through its own override;
@@ -44,7 +44,7 @@ ported. It stays for the old stack until 6d deletes it.
 ## Why these choices
 
 **Menus are separate documents, not child elements of the control (user, 2026-09-11).**
-"UI builds the UI" — a `*.ui.xml` describes the tree, and a menu written inside a control's element mixes a second
+"UI builds the UI" — a `*.ui.axml` describes the tree, and a menu written inside a control's element mixes a second
 concern into it. Rejected: entries authored inline, which the parser could already route into a `List<>` field on
 the control. The cost of the choice is one indirection (a name) and one registry dictionary.
 
@@ -90,8 +90,8 @@ the menu's own window when the menu is windowed.
 
 - `MenuButtonControl` `<MenuButton>`: a left press opens only the menu it names (`Get(contextMenu)` →
   `Open`) at its bottom-left edge; `takesActiveControl => false`. Its caption is an authored `<Label>` child.
-- Thorium's `thorium` / `file` / `edit` and the engine's `view` / `tab` are `*.menu.xml`. The engine's are registered
-  in `EngineAssets.assets.xml`, which every host's file system mounts below its own.
+- Thorium's `thorium` / `file` / `edit` and the engine's `view` / `tab` are `*.menu.axml`. The engine's are registered
+  in `EngineAssets.assets.axml`, which every host's file system mounts below its own.
 - `TabViewControl.tabContextMenu` (`TabContextMenu`, default `tab`) names each strip button's menu, and every
   strip button sets `stopsContextMenu`. `SplitViewControl.NewPane` carries `tabContextMenu` and `contextMenu`
   onto a split-off pane.

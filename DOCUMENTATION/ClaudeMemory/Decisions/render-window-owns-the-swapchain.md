@@ -40,7 +40,7 @@ there is more than one window.
 **A window builds its own modules in its constructor.** No factory: per-object work belongs in the
 constructor (user, 2026-08-19), so `RenderWindow`'s ctor news its `RenderingModule[]` and
 `new RenderWindow(w, h)` is complete on its own — which is what slice 4 wants anyway.
-`Renderer.PreInitialize` **keeps** its name and its `Bootstrap.xml` slot; it now does the prerequisite
+`Renderer.PreInitialize` **keeps** its name and its `Bootstrap.axml` slot; it now does the prerequisite
 work that step is named for, collecting the device feature set from the windows' modules, which
 `CreateLogicalDevice` then just uses. A first pass deleted the step outright and was rejected — it
 predates this work and was not mine to remove.
@@ -241,12 +241,12 @@ into `os.windowSize`, which is the only writer.
   carrying it. No shader change is needed — `gl_InstanceIndex` includes `firstInstance`.
 - **`RenderWindow.CreateGpuResources()` and a parameterised `CreateWindow`.** Both were named in the
   agreed plan and both were deferred: the primary window's GPU setup is *interleaved with asset
-  loading* across five `Bootstrap.xml` steps (`Renderer.Initialize` → `AssetRegistries.*` →
+  loading* across five `Bootstrap.axml` steps (`Renderer.Initialize` → `AssetRegistries.*` →
   `SetupObjects` → `PrepareDescriptors` → `SetupPipelines` → `CreateSyncObjects`), so it cannot be one
   call, and a secondary window had no second caller yet. Slice 2 turned out to be that caller and
   landed `CreateGpuResources()` there; slice 4 added the parameterised `CreateWindow(title, x, y)`
   and moved `CreateGpuResources()` onto the render thread. The staged steps now operate on
-  `Engine.primary` and `Bootstrap.xml` is unchanged.
+  `Engine.primary` and `Bootstrap.axml` is unchanged.
 - **Chrome resolving its own window.** `WindowActions`, `TitleBarControl`, `WindowFrameControl`,
   `SplitterControl` and `ResizeableControl` point at `Engine.primary` rather than the static handle.
   Slice 3 swapped that for `RenderWindow.Of(control)`, except `WindowActions`, whose zero-argument

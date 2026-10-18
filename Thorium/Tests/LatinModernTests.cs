@@ -48,7 +48,7 @@ namespace Thorium.Tests
             t.Check(Of(mono, 'i').advanceWidth == Of(mono, 'm').advanceWidth, "the mono face is monospaced");
 
             AtlasMetaData math = Load("latinmodern-math");
-            MathConstants constants = MathConstants.Load(Paths.Font("latinmodern-math", "latinmodern-math.math.xml"));
+            MathConstants constants = MathConstants.Load(Paths.Font("latinmodern-math", "latinmodern-math.math.axml"));
             t.Check(constants.axisHeight > 0f && constants.fractionRuleThickness > 0f, "LM Math constants are read");
 
             // A character the font lacks bakes .notdef, so several share one box.
@@ -111,7 +111,7 @@ namespace Thorium.Tests
             XElement document = TexLowering.Compile(source, out List<TexError> errors);
             t.Check(errors.Count == 0, $"the sample compiles clean: {string.Join("; ", errors.Select(e => $"{e.line}: {e.message}"))}");
 
-            string path = Path.Combine(Path.GetTempPath(), $"aurora-tex-{Guid.NewGuid():N}.xml");
+            string path = Path.Combine(Path.GetTempPath(), $"aurora-tex-{Guid.NewGuid():N}.axml");
             document.Save(path);
             DocumentEditorControl editor = new DocumentEditorControl
             {
@@ -177,7 +177,7 @@ namespace Thorium.Tests
             XElement document = TexLowering.Compile(source, out List<TexError> errors, null, folder);
             t.Check(errors.Count == 0, $"the sample compiles clean: {string.Join("; ", errors.Select(e => $"{e.line}: {e.message}"))}");
 
-            string path = Path.Combine(folder, "floats.xml");
+            string path = Path.Combine(folder, "floats.axml");
             document.Save(path);
             DocumentEditorControl editor = new DocumentEditorControl
             {
@@ -233,7 +233,7 @@ namespace Thorium.Tests
             XElement document = TexLowering.Compile(source, out List<TexError> errors);
             t.Check(errors.Count == 0, $"the sample compiles clean: {string.Join("; ", errors.Select(e => $"{e.line}: {e.message}"))}");
 
-            string path = Path.Combine(Path.GetTempPath(), $"aurora-booktabs-{Guid.NewGuid():N}.xml");
+            string path = Path.Combine(Path.GetTempPath(), $"aurora-booktabs-{Guid.NewGuid():N}.axml");
             document.Save(path);
             DocumentEditorControl editor = new DocumentEditorControl
             {
@@ -279,7 +279,7 @@ namespace Thorium.Tests
             XElement document = TexLowering.Compile(source, out List<TexError> errors);
             t.Check(errors.Count == 0, $"the sample compiles clean: {string.Join("; ", errors.Select(e => $"{e.line}: {e.message}"))}");
 
-            string path = Path.Combine(Path.GetTempPath(), $"aurora-tex-{Guid.NewGuid():N}.xml");
+            string path = Path.Combine(Path.GetTempPath(), $"aurora-tex-{Guid.NewGuid():N}.axml");
             document.Save(path);
             DocumentEditorControl editor = new DocumentEditorControl
             {
@@ -309,7 +309,7 @@ namespace Thorium.Tests
             XElement document = TexLowering.Compile(source, out List<TexError> errors);
             t.Check(errors.Count == 0, $"the sample compiles clean: {string.Join("; ", errors.Select(e => $"{e.line}: {e.message}"))}");
 
-            string path = Path.Combine(Path.GetTempPath(), $"aurora-tex-{Guid.NewGuid():N}.xml");
+            string path = Path.Combine(Path.GetTempPath(), $"aurora-tex-{Guid.NewGuid():N}.axml");
             document.Save(path);
             DocumentEditorControl editor = new DocumentEditorControl
             {
@@ -493,7 +493,7 @@ namespace Thorium.Tests
             XElement document = TexLowering.Compile(source, out List<TexError> errors, null, folder);
             t.Check(errors.Count == 0, $"the sample compiles clean: {string.Join("; ", errors.Select(e => $"{e.line}: {e.message}"))}");
 
-            string path = Path.Combine(folder, "floatpage.xml");
+            string path = Path.Combine(folder, "floatpage.axml");
             document.Save(path);
             DocumentEditorControl editor = new DocumentEditorControl
             {

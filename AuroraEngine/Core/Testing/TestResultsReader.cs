@@ -50,10 +50,10 @@ namespace ArctisAurora.Core.Testing
         public readonly List<TestResult> tests = new List<TestResult>();
     }
 
-    // The reader for the results.xml TestRunner writes.
+    // The reader for the results.axml TestRunner writes.
     public static class TestResultsReader
     {
-        public const string fileName = "results.xml";
+        public const string fileName = "results.axml";
 
         // Run folders under a Tests root, newest first.
         public static List<TestRunInfo> Enumerate(string root)
@@ -71,7 +71,7 @@ namespace ArctisAurora.Core.Testing
             return runs;
         }
 
-        // One run folder; null when it holds no readable results.xml.
+        // One run folder; null when it holds no readable results.axml.
         public static TestRun? Load(string directory)
         {
             string path = Path.Combine(directory, fileName);

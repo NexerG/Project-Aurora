@@ -1,4 +1,4 @@
-# Decision — a data XML file names its kind: `[name].[type].xml`
+# Decision — a data XML file names its kind: `[name].[type].axml`
 
 **Date:** 2026-08-28
 **Status:** LANDED. Builds clean, Thorium boots all 24 steps, every loader verified to have found
@@ -21,13 +21,13 @@ element. Concretely, that cost:
 | `Documents/` root holds six unrelated kinds, and nothing there is self-describing | `Bootstrap`, `Shutdown`, `Pools`, `Registry`, `EntityRegistry`, `ContextMenus`, `Gradients` |
 | A file in the wrong folder is handed to the wrong parser and dies | `<BootstrapSequence>` into `AnyXMLType.FindType` |
 
-The convention already existed in one place — `arial.import.xml` — and was never generalised.
+The convention already existed in one place — `arial.import.axml` — and was never generalised.
 
 ## The rule
 
-`[name].[type].xml`. The **name** half is the identity a loader keys on and **may not contain a
+`[name].[type].axml`. The **name** half is the identity a loader keys on and **may not contain a
 dot**. The **type** half names the loader that owns the file. Enumerating loaders match
-`*.[type].xml`, so a mis-typed file is inert rather than mis-parsed.
+`*.[type].axml`, so a mis-typed file is inert rather than mis-parsed.
 
 | Type | Files | Loader |
 |---|---|---|
@@ -50,7 +50,7 @@ dot**. The **type** half names the loader that owns the file. Enumerating loader
 
 ### 1. The suffix does not replace the kind folders
 
-`ui-document-registry.md` had recorded the opposite — that `[name].[type].xml` would be "what
+`ui-document-registry.md` had recorded the opposite — that `[name].[type].axml` would be "what
 replaces the folder as the way a file declares its kind". Rejected on building it. The four kind
 folders (`UI/`, `Contexts/`, `Inputs/`, `Samplers/`) also carry each kind's **VFS composition
 policy**, which is not uniform: `EnumerateAll` for contexts, UI documents and samplers,
@@ -61,10 +61,10 @@ real payoff is `Documents/` root, which is mixed-kind and now self-describes.
 ### 2. A UI document is asked for by its name half
 
 `UIDocuments.Instantiate("UI")`, `TearOffDocument="TabWindow"`, `SettingsWindow.document =
-"Settings"`. The registry only ever holds `.ui.xml`, so restating the type at every call site is
+"Settings"`. The registry only ever holds `.ui.axml`, so restating the type at every call site is
 noise. Same shape as `InputHandler`, which has always keyed keybind groups by the file's base name.
 
-**Rejected: `Instantiate("UI.ui.xml")`.** Fewer moving parts, but every call site then repeats what
+**Rejected: `Instantiate("UI.ui.axml")`.** Fewer moving parts, but every call site then repeats what
 the registry already guarantees.
 
 **Superseded 2026-08-30 by [[ui-document-registry]].** A UI document is asked for by the name its
@@ -74,9 +74,9 @@ reasoning above survives only for `InputHandler`, which is `DocName`'s one remai
 
 ### 3. Name halves were not renamed, stutters and all
 
-`Bootstrap.bootstrap.xml`, `Pools.pools.xml`, `Gradients.gradients.xml`, `UI.ui.xml` read badly —
+`Bootstrap.bootstrap.axml`, `Pools.pools.axml`, `Gradients.gradients.axml`, `UI.ui.axml` read badly —
 for a singleton document the name *is* the type. The fix is renaming the name half to whoever ships
-it (`Engine.bootstrap.xml`, `Thorium.gradients.xml`), which would also compose across mounts. Left
+it (`Engine.bootstrap.axml`, `Thorium.gradients.axml`), which would also compose across mounts. Left
 for later deliberately: a convention change plus a rename pass makes every diff two changes and a
 typo indistinguishable from a bug.
 
@@ -87,7 +87,7 @@ typo indistinguishable from a bug.
   `SetActiveKeybindGroup("InputMap")`. New `Paths.DocName(path)` cuts at the **first** dot — which
   is what makes "a name half may not contain a dot" a rule rather than a style note.
 - **`Paths.Doc` stays single-argument.** A two-arg `Doc(name, type)` was considered and dropped:
-  `DocumentEditorControl` passes a relative *path* (`../../Notes/SampleNote.xml`) through it, not a
+  `DocumentEditorControl` passes a relative *path* (`../../Notes/SampleNote.axml`) through it, not a
   document name.
 - **No csproj change was needed.** `AuroraEngine.csproj` globs `Data\**\*.*`; the apps' `Data/XML`
   is not `Content` and is read from source in Debug.
@@ -103,25 +103,25 @@ pattern miss actually found their files:
 
 | Probe | Result | Proves |
 |---|---|---|
-| keybind groups | `[InputMap:19]` | `*.inputs.xml` matched **and** `DocName` strips both extensions |
-| menus | `view=True thorium=True` | `*.menus.xml` on both mounts |
-| contexts | `7`, `ActiveTabViewer=True` | `*.contexts.xml` |
-| vsync scope | `App` | `*.settings.xml` — only `Graphics.settings.xml` sets it |
+| keybind groups | `[InputMap:19]` | `*.inputs.axml` matched **and** `DocName` strips both extensions |
+| menus | `view=True thorium=True` | `*.menus.axml` on both mounts |
+| contexts | `7`, `ActiveTabViewer=True` | `*.contexts.axml` |
+| vsync scope | `App` | `*.settings.axml` — only `Graphics.settings.axml` sets it |
 
 The rest are proven by the boot itself: `Gradient="titlebar"` resolves and `Gradients.IndexOf`
 throws on an unknown name; `UIModule` indexes `["ControlSampler"]` raw; `AssetImporter` warned about
-`Electrolize-Regular.ttf`, which it can only have read from `EngineFonts.imports.xml`;
+`Electrolize-Regular.ttf`, which it can only have read from `EngineFonts.imports.axml`;
 `ParseXML("main")` logged no registry miss and returned a tree; the `Doc()`-resolved singletons would
 have thrown `FileNotFoundException` out of `XElement.Load`.
 
 ## Open
 
-- **`Data/Notes/*.xml` was left alone.** Thorium's vault is user data, not `Data/XML/**`. A
-  `.note.xml` vault would touch `VaultBrowserControl`'s filter, create, rename and duplicate paths
+- **`Data/Notes/*.axml` was left alone.** Thorium's vault is user data, not `Data/XML/**`. A
+  `.note.axml` vault would touch `VaultBrowserControl`'s filter, create, rename and duplicate paths
   plus every `Source=` attribute. Its own call, and arguably right — it is what Obsidian's `.md` is.
-- **`Schemas/SchemaManifest.xml` was left alone.** `.xsd` already carries its type and
-  `SchemaManifest.manifest.xml` is worse than what is there.
-- **An existing `%AppData%\Thorium\Settings\UserSettings.xml`** would now be ignored, silently
+- **`Schemas/SchemaManifest.axml` was left alone.** `.xsd` already carries its type and
+  `SchemaManifest.manifest.axml` is worse than what is there.
+- **An existing `%AppData%\Thorium\Settings\UserSettings.axml`** would now be ignored, silently
   reverting saved settings. No such file exists on the dev machine — the write root has never been
   created — so nothing was migrated.
 - **Stale file names in prose were swept** — 21 code comments across 12 files, every current-state

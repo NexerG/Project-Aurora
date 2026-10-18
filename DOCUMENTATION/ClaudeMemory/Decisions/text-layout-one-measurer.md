@@ -111,7 +111,7 @@ centres a single child by `horizontalPosition`/`verticalPosition`.
 `TextControl.Arrange` now measures the slack between the inner rect and the `BlockLayout` and offsets
 the pen and the baseline by it, weighted by those same two fields. No new property: `HorizontalPos`
 and `VerticalPos` are declared on `VulkanControl`, default to `0.5`, and already mean "where in the
-slot", so the title centres with no change to `UI.xml` or `TabWindow.xml`.
+slot", so the title centres with no change to `UI.axml` or `TabWindow.axml`.
 
 - **Gated on `preferredWidth`/`preferredHeight`, not on the arranged rect.** Every caret-bearing text
   control is content-sized and gets handed a *wider* rect by its owner — `TextBoxControl` arranges

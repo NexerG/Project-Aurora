@@ -3,7 +3,7 @@
 **Date:** 2026-08-18
 **Status:** LANDED. **GUI-verified** — every edge, a corner, the clamp and the maximized no-op.
 **Scope:** `ArctisAurora.Core.UISystem.Controls` (`WindowFrameControl`),
-`Thorium/Data/XML/Documents/UI.xml`.
+`Thorium/Data/XML/Documents/UI.axml`.
 
 ## Decisions
 

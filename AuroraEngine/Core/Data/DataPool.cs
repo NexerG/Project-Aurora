@@ -168,7 +168,7 @@ namespace ArctisAurora.Core.Data
 
             _publishedSlotVersion = new int[handleCapacity];
 
-            // Column ids come from Pools.pools.xml declaration order, like pool ids from parse order.
+            // Column ids come from Pools.pools.axml declaration order, like pool ids from parse order.
             // Nothing in C# declares the mapping — reorder the <Component> elements and every
             // in-flight command's ColumnId means something else.
             List<IPoolColumn> columnOrder = new();
@@ -197,7 +197,7 @@ namespace ArctisAurora.Core.Data
             }
         }
 
-        // DEBUG only: a step touching columns it did not declare in Frame.frame.xml throws. need is the
+        // DEBUG only: a step touching columns it did not declare in Frame.frame.axml throws. need is the
         // column bits the call touches, 0 for any column. Outside a step nothing is checked, except
         // that a dedicated thread never writes.
         [Conditional("DEBUG")]
@@ -215,7 +215,7 @@ namespace ArctisAurora.Core.Data
             ulong have = write ? step.writes[Id] : step.reads[Id] | step.writes[Id];
             if (need == 0 ? have != 0 : (have & need) == need) return;
 
-            throw new Exception($"[DataPool] {op} on '{Name}' from step '{step.Name}', which does not list it in Frame.frame.xml {(write ? "Writes" : "Reads")}.");
+            throw new Exception($"[DataPool] {op} on '{Name}' from step '{step.Name}', which does not list it in Frame.frame.axml {(write ? "Writes" : "Reads")}.");
         }
 
         // DEBUG only: a structural write, checked as a write of every column and refused inside a Jobs.For chunk.

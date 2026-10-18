@@ -7,8 +7,8 @@ compaction and resequence now actually run).
 
 ## Implemented so far (2026-07-21)
 - **Folder rename** `ParticleSimulator` → `AuroraEngine` (assembly/root namespace pinned to `ArctisAurora` via csproj). See [[project-map]].
-- **Core pool** in `AuroraEngine/Core/Data/`: `DataHandle` (poolId, stableId, version), `IPoolColumn`/`PoolColumn<T>` (type-erased column over `T[]`), `DataPool` (slots/backMap/versions indirection, ordered compaction + unordered swap-remove, growth, resequence, `FrameEdge`, content/structural dirty flags), `DataManager` (static, `Pools.xml` parse at bootstrap step `DataManager.ParseXML`), `TransformData` struct, `PoolDefinition`/`PoolManifest` XSD carriers.
-- **Pools.xml**: `UIControls` pool = TransformData + ControlData, Capacity 1024, Ordered, SortAction `UI.DFSOrder`, Growth Multiplicative x2.
+- **Core pool** in `AuroraEngine/Core/Data/`: `DataHandle` (poolId, stableId, version), `IPoolColumn`/`PoolColumn<T>` (type-erased column over `T[]`), `DataPool` (slots/backMap/versions indirection, ordered compaction + unordered swap-remove, growth, resequence, `FrameEdge`, content/structural dirty flags), `DataManager` (static, `Pools.axml` parse at bootstrap step `DataManager.ParseXML`), `TransformData` struct, `PoolDefinition`/`PoolManifest` XSD carriers.
+- **Pools.axml**: `UIControls` pool = TransformData + ControlData, Capacity 1024, Ordered, SortAction `UI.DFSOrder`, Growth Multiplicative x2.
 - **Control transform cutover (DONE, "rewrite call sites directly"):** every `VulkanControl` allocates a pool handle in ctor (`ControlPool.Allocate(this)`); all Arrange overrides write via shared `WriteArrangedTransform(finalRect)` helper; reads (UICollisionHandling hit-test `TransformToWorld(TransformData)`, ResizeableControl drag/resize/cursor, ShortTextControl glyph pos, UILayout root rect, ParseXML window seed) go through `VulkanControl.PoolTransform` (ref into pool). Renderer `MCUI` (3 matrix-build sites) reads `controls[i].PoolTransform`, preserving Controls-group order (no DFS yet). NO automated tests (user tests manually — see auto-memory).
 
 ## Implemented so far (2026-07-21, second slice — pooled UI GPU mirror)
@@ -48,7 +48,7 @@ compaction and resequence now actually run).
 ## Implemented so far (2026-07-22, third slice — GpuTransform column + frame-edge lifecycle)
 - **Baked matrix moved into a pool column (DONE).** New `GpuTransform` struct (blittable
   `Matrix4X4<float>` wrapper, `[A_XSDType("GpuTransform","DataPools")]`) is now a third column on
-  the `UIControls` pool (`Pools.xml`). `MCUI.BakeMatrices` writes translate*scale into
+  the `UIControls` pool (`Pools.axml`). `MCUI.BakeMatrices` writes translate*scale into
   `pool.GetSpan<GpuTransform>()`; `MakeInstanced` mirrors `pool.Backing<GpuTransform>()` (new
   `DataPool.Backing<T>()` = full capacity-length column array) to the persistent SSBO — recreate
   on capacity change, `UpdateBufferRange` on the live range otherwise. Killed the hand-managed
@@ -69,7 +69,7 @@ compaction and resequence now actually run).
   structural-rebuild guard. `Destroy()` is idempotent (`_destroyed` flag) and `Pool.Free` is too.
 - **`UI.DFSOrder` sort provider registered (DONE, dormant).** `UILayout.DFSOrder(DataPool)`
   (`[A_XSDActionDependency("UI.DFSOrder","PoolSort")]`) = DFS pre-order of the control tree,
-  returning live stableIds. Resolves the previously-dangling `Pools.xml SortAction` (was logging
+  returning live stableIds. Resolves the previously-dangling `Pools.axml SortAction` (was logging
   "not found" at bootstrap). Roots = live controls whose parent is not a VulkanControl, DFS'd in
   dense-scan order. **Consumed only when something marks the pool `orderDirty` — nothing does yet.**
 
@@ -87,7 +87,7 @@ Design rationale lives in [[cross-system-change-notification]]; this is the code
   → `Created` / `Destroyed` stableId lists by diffing `_provisioned` against the published slot
   versions. `Reset()` forces a full rebuild (swapchain recreation / device loss).
 - **Column ids (DONE).** `DataPool` now keeps `_columnsByIndex` + `_columnIds` assigned from
-  `Pools.xml` `<Component>` declaration order, exposed via `ColumnId<T>()` / `ColumnId(Type)` /
+  `Pools.axml` `<Component>` declaration order, exposed via `ColumnId<T>()` / `ColumnId(Type)` /
   `ColumnAt(ushort)` — this is what resolves `SystemCommand.ColumnId`. **Reordering `<Component>`
   elements silently reinterprets every in-flight command.** Also added `DenseOf(handle)` (-1 when
   stale) and `IPoolColumn.ElementSize` / `WriteBytes` / `FillBytes` / `CopyWithin` for type-erased
@@ -128,7 +128,7 @@ Design rationale lives in [[cross-system-change-notification]]; this is the code
 - **Why:** the bake was a pure per-row function with no parent chain, but ran on the RENDER thread
   over the WHOLE live range every dirty pass — move one window, re-derive all 1024 rows. Moving it
   to the writer costs one matrix per actual change, and removes the render thread's write to (and
-  read of) a pool `Pools.xml` says `System="Main"` owns. `GpuTransform` is now read-only to render.
+  read of) a pool `Pools.axml` says `System="Main"` owns. `GpuTransform` is now read-only to render.
 - **Call sites (3, not 9 — `WriteArrangedTransform` is shared by every `Arrange` override):**
   `VulkanControl.WriteArrangedTransform`, `VulkanControl.ParseXML` window seed,
   `ResizeableControl` drag/resize. All three previously called `MarkContentDirty` directly.
@@ -264,7 +264,7 @@ rebuild — landed in slice 6 as `PoolCursor.OrderChanged`.
 The last per-control GPU resource is gone; both UI columns are now whole-pool mirrors.
 - **`VulkanControl.controlData` is a `ref` into the pool's ControlData column**, not a field —
   `public ref ControlData controlData => ref Pool.GetRef<ControlData>(dataHandle)`. The column was
-  declared in `Pools.xml` from the first slice and had sat unused since.
+  declared in `Pools.axml` from the first slice and had sat unused since.
 - **`controlDataBuffer` / `controlDataBufferMemory` DELETED**, and with them
   `UIModule.RetireControlBuffer`, `_retiredControlBuffers` and `VulkanControl.OnDestroy` — the
   seventh slice's retire path existed only to defer-delete these buffers. `UpdateControlData()`

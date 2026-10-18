@@ -23,7 +23,7 @@
 - **Forbid allocation during layout.** The Gantt's viewport-only virtualization depends on it.
 
 ## Guard
-- `Planner.GanttScrollGrow` (`Thorium/Tests/PlannerTests.cs`, listed in `Planner.tests.xml`): 60 tickets in one category plus 60 empty categories, fills `UIEngine.Elements` to `Capacity` with free-standing `PanelControl`s, scrolls `editor.scroller` 90 rows down, checks capacity grew and "Empty 40" has a name label. The harness fails it on the logged layout errors.
+- `Planner.GanttScrollGrow` (`Thorium/Tests/PlannerTests.cs`, listed in `Planner.tests.axml`): 60 tickets in one category plus 60 empty categories, fills `UIEngine.Elements` to `Capacity` with free-standing `PanelControl`s, scrolls `editor.scroller` 90 rows down, checks capacity grew and "Empty 40" has a name label. The harness fails it on the logged layout errors.
 - Failed before the fix with exactly the four `subtreeBounds stale` errors plus `subtreeBounds != recomputed`; passes after.
 
 ## Known gaps

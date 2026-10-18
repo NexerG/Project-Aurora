@@ -39,7 +39,7 @@ Events are applied in the order they were posted, so the order between kinds is 
 
 `GlfwInput.Wire(RenderWindow)` sets the GLFW cursor-position, mouse-button, key, character, cursor-enter and scroll callbacks, and `Engine.WireInput` calls it for each window. The mapping from `Silk.NET.GLFW.Keys` and `MouseButton` to Aurora's `Keys` (`MapKey` and `MouseKey`) lives there, private, so nothing GLFW-typed reaches `InputHandler`. GLFW's Super keys map to `Keys.LeftSuper` and `RightSuper`, which the tracker counts as modifiers.
 
-Bootstrap happens via `[A_XSDActionDependency("InputHandler.LoadInputs", "Bootstrap")]`. This calls `ParseXML` which loads all `*.inputs.xml` files from the inputs directory, constructs keybind definitions, and hands them to the `GestureMatcher`. After parsing, the default keybind group is activated.
+Bootstrap happens via `[A_XSDActionDependency("InputHandler.LoadInputs", "Bootstrap")]`. This calls `ParseXML` which loads all `*.inputs.axml` files from the inputs directory, constructs keybind definitions, and hands them to the `GestureMatcher`. After parsing, the default keybind group is activated.
 
 #### Per-Tick Flow
 Every engine tick, `ActivateKeybinds()` runs on the main thread. The sequence is:
@@ -149,7 +149,7 @@ They are read where they are used rather than copied into the tracker and the co
 The `GestureMatcher` owns the evaluation loop. It holds all keybind definitions organized by named groups and references the `KeyStateTracker` for key state queries.
 
 #### Groups
-Keybind definitions are organized into groups. Each XML file in the inputs directory becomes a group named after the file's name half (e.g. `default.inputs.xml` → group `"default"`), read through `Paths.DocName` — see [[Paths]] on why that is not `Path.GetFileNameWithoutExtension`. Only one group is active at a time. Swap with `SetActiveGroup(string)` — this is how you switch keybind contexts for different game modes or editor states. When a group is set, the matcher's `_activeBinds` list is pointed at that group's keybind list directly.
+Keybind definitions are organized into groups. Each XML file in the inputs directory becomes a group named after the file's name half (e.g. `default.inputs.axml` → group `"default"`), read through `Paths.DocName` — see [[Paths]] on why that is not `Path.GetFileNameWithoutExtension`. Only one group is active at a time. Swap with `SetActiveGroup(string)` — this is how you switch keybind contexts for different game modes or editor states. When a group is set, the matcher's `_activeBinds` list is pointed at that group's keybind list directly.
 
 #### Evaluation Loop
 `Update(deltaTime)` runs once per tick after `KeyStateTracker.Update()`:
@@ -215,7 +215,7 @@ It is on for Mac only because on Windows Super is the Win key, and Win+V or Win+
 Rebind capture (`KeyStateTracker.HeldModifiers`) records Super as Control while the flag is set and drops duplicates, so a rebind saved on a Mac works on Windows. Key labels show the Control name on a Mac, not Cmd. See ClaudeMemory note input-platform-layer for the rejected alternatives.
 
 ### XML Format
-Keybinds are defined in `*.inputs.xml` files placed in the inputs directory (`Paths.XMLDOCUMENTS_INPUTS`). Each file is one group. The root element is a `KeybindMap` containing `Keybind` elements.
+Keybinds are defined in `*.inputs.axml` files placed in the inputs directory (`Paths.XMLDOCUMENTS_INPUTS`). Each file is one group. The root element is a `KeybindMap` containing `Keybind` elements.
 
 Structure:
 ```xml

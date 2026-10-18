@@ -27,7 +27,7 @@
   is one read-only entry.
 - **Dates:** ISO 8601 with offset (`RichTextDocument.Stamp`), `xs:string`. `Load` fills a missing `created` from
   `File.GetCreationTime`; `DocumentEditSession.Save` stamps `modified` only when `isDirty`. Every saved `.md` note
-  therefore gains a block (user, fork B). `.xml` notes carry them as `<Document>` attributes.
+  therefore gains a block (user, fork B). `.axml` notes carry them as `<Document>` attributes.
 - **Per-note palette:** `RichTextDocument.palette`. `DocumentEditorControl.ApplyPalette` sets `paletteName`, role
   `Ground`, alpha 1 when the name is in `Palettes.Names`; otherwise transparent on the app palette and a `Warn`
   (`Palettes.Get` throws on an unknown name, so the check comes first).
@@ -35,7 +35,7 @@
   `tolerant: true`, so a bad attribute logs and keeps the default instead of failing the load.
 - **Header:** `DocumentControl.header` — measured at the text width, arranged at the top margin of page 1; `Paginate`
   starts at `top + headerHeight`. `DocumentEditorControl.LoadDocument` builds `ExpanderControl` →
-  `NotePropertiesControl` for `.md` and `.xml` sessions, none for `.txt` or a session-less load.
+  `NotePropertiesControl` for `.md` and `.axml` sessions, none for `.txt` or a session-less load.
 - **`ExpanderControl`** `<Expander Expanded>`: two 1px `Line` rules and a 24px round grip split into halves. Closed, the
   halves meet on the rule (↑ over ↓); `Toggle` tweens `reveal` 0↔1 (0.2 s, CubicOut) and the lower rule and half slide
   down with the content between them, arrows crossfading to point inward. The first authored child is the content.
@@ -70,7 +70,7 @@
     written bare. Panel row "List markers" (comma-separated `ListMarker` names, an unknown name is refused).
 - **Demoted:**
   - `PageGap` is no longer owned; the page gap is app-only (`DocumentControl.PageGap` reads
-    `DocumentLayout.Defaults`), so an `.xml` note's `<Page Gap>` is ignored too;
+    `DocumentLayout.Defaults`), so an `.axml` note's `<Page Gap>` is ignored too;
   - `PageWidth`/`PageHeight` are written only when `PageSize` is `Custom`.
 - **`DocumentSettings.stampModified`** (`StampModified`, default true): off, a save writes no `Modified`
   (removing the key) and the panel shows the file's last-write time.
@@ -79,14 +79,14 @@
 ## Why these choices
 
 **Parsed, not opaque (user, fork F1).** The keys drive the note — palette, layout, page — so `.md` gets the per-note
-settings only `.xml` had. The raw block is still kept (user, "keep frontmatter") so tags, aliases and comments round-trip
+settings only `.axml` had. The raw block is still kept (user, "keep frontmatter") so tags, aliases and comments round-trip
 byte-identical; only owned keys whose value changed are rewritten.
 
 **Custom subset parser, not YamlDotNet/Tomlyn.** No new NuGet dependency, and neither library writes back a block with
 comments and key order untouched. Anything outside the subset degrades to read-only, never to an error.
 
 **Owned keys reuse the tree.** Frontmatter values become attributes on the same `<Document>`/`<DocumentLayout>`/`<Page>`
-elements an `.xml` note has, so `DocumentXml.Parse` is still the only code building a note, and `WriteScalars`'
+elements an `.axml` note has, so `DocumentXml.Parse` is still the only code building a note, and `WriteScalars`'
 skip-defaults decides what the block keeps.
 
 **Dates as strings.** No DateTime entry in `XSDGenerator.MemberMap` / `AnyXMLType.typeMap`; adding one means keeping
@@ -107,7 +107,7 @@ text rather than sitting outside the paper.
   (`[[a]], [[b]]`) shows no Open button.
 - GUI-verified 2026-09-27 in Thorium: frontmatter hidden from the body, rows listed (block list read-only), unknown
   palette warns and falls back, palette pick repaints only that note and survives a restart, Ctrl+S rewrites only the
-  palette line and adds `Created`/`Modified`, `.xml` note gets the three attributes, grip is a circle that splits into
+  palette line and adds `Created`/`Modified`, `.axml` note gets the three attributes, grip is a circle that splits into
   semicircles with flipped arrows. **The animation itself was not captured mid-motion** — only end states.
 - Palette, layout, read-only and frontmatter edits are not undoable.
 - A duplicated note keeps the source's `Created`; a copied file gets a new one from disk.

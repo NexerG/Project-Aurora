@@ -475,7 +475,7 @@ namespace ArctisAurora.Core.Diagnostics
 
             string directory = SessionDirectory();
             Writer writer = new Writer();
-            writer.stream = new FileStream(Path.Combine(directory, thread + ".frames.xml"),
+            writer.stream = new FileStream(Path.Combine(directory, thread + ".frames.axml"),
                 FileMode.Create, FileAccess.Write, FileShare.Read);
             writer.xml = XmlWriter.Create(writer.stream, xmlSettings);
 

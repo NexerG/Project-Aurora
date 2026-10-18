@@ -23,7 +23,7 @@ namespace ArctisAurora.Tests
             Glyph x = atlas.GetGlyphAndIndex('x').Item1;
             t.Check(atlas.hasItalic && !Same(x.regular, x.italic), "x has its own italic face");
 
-            MathConstants math = MathConstants.Load(Paths.Font("cambria", "cambria.math.xml"));
+            MathConstants math = MathConstants.Load(Paths.Font("cambria", "cambria.math.axml"));
             t.Check(math.axisHeight > 0f && math.fractionRuleThickness > 0f && math.fractionNumeratorGapMin > 0f
                 && math.scriptPercentScaleDown > 0f, "MATH constants are read and non-zero");
             yield break;

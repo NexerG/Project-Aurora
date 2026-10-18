@@ -2,7 +2,7 @@
 
 **Date:** 2026-10-15
 **Status:** LANDED (both phases in one go). Test-verified; **NOT GUI-verified**; not perf-measured.
-**Scope:** `ArctisAurora.Core.UI` — `XmlEditorControl`, `XmlReplaceEdit`, `RichTextDocument`, `DocumentEditSession`, `DocumentEditorControl`, `DocumentControl`, `NoteChangeKind`, `TexSourceFormat`, `DocumentXml`, `SheetDocument`, `PlannerDocument`, `WorkspaceKind`, `WorkspaceActions`, `SessionTab`, `SessionLayout`, `TabActions`; `Thorium.Editor.CustomControls.VaultBrowserControl`; `VaultNoteXml.menu.xml`, `VaultAsNote.menu.xml`, `VaultAsSheet.menu.xml`, `VaultAsPlanner.menu.xml`, `WorkspaceAdd.menu.xml`, `ThoriumAssets.assets.xml`
+**Scope:** `ArctisAurora.Core.UI` — `XmlEditorControl`, `XmlReplaceEdit`, `RichTextDocument`, `DocumentEditSession`, `DocumentEditorControl`, `DocumentControl`, `NoteChangeKind`, `TexSourceFormat`, `DocumentXml`, `SheetDocument`, `PlannerDocument`, `WorkspaceKind`, `WorkspaceActions`, `SessionTab`, `SessionLayout`, `TabActions`; `Thorium.Editor.CustomControls.VaultBrowserControl`; `VaultNoteXml.menu.axml`, `VaultAsNote.menu.axml`, `VaultAsSheet.menu.axml`, `VaultAsPlanner.menu.axml`, `WorkspaceAdd.menu.axml`, `ThoriumAssets.assets.axml`
 
 ## What changed
 - New `XmlEditorControl` (`IFileEditor`, `StackPanelControl`): `source` (a `DocumentEditorControl` with its own unregistered `DocumentEditSession`), `status` label (Danger role, "Line N: message" when invalid), `valid`, `LoadPath`, `Save`, `Repath`, `ViewState` (sets `asXml`), `RestoreView`.
@@ -16,11 +16,11 @@
 - `TexSourceFormat.Read(text, name, language = "latex")`.
 - `DocumentXml.ToFile(document, path)` → `XDocument`, split out of `DocumentXml.Save`.
 - `SheetDocument.ReplaceAll(from)` (raises `SheetBook.Restructured`), `PlannerDocument.ReplaceAll(from)` (raises `Changed`).
-- `WorkspaceKind.Xml`; `WorkspaceActions.NewXml` (action `Workspace.NewXml`). The XML workspace lists only `.xml` files and always opens them as XML.
+- `WorkspaceKind.Xml`; `WorkspaceActions.NewXml` (action `Workspace.NewXml`). The XML workspace lists only `.axml` files and always opens them as XML.
 - `SessionTab.asXml` (`AsXml` XSD attribute, Settings). **Signature change:** `SessionLayout.tabFactory` is now `Func<string, bool, TabItemControl>` (path, asXml); `TabActions.CopyOf` passes `editor is XmlEditorControl`.
-- Thorium `VaultBrowserControl`: `IsXml`; `Shows`/`FilterName` handle `Xml` ("XML"); `RowContextMenu` picks `vault-note-xml` / `vault-as-note` / `vault-as-sheet` / `vault-as-planner`; actions `Notes.OpenAsXml`, `Notes.OpenNormally`; `Open(path)` → `Open(path, asXml)` (asXml = XML workspace shown and file is `.xml`; only reuses a tab of the same kind); `BuildTab(path, asXml)` + `BuildXmlTab` (header = file name with extension); `RenameNote` retitles XML tabs with the file name; `NewNote(folder, extension = ".md")` / `CreateNote(folder, name, extension)` — the + in an XML workspace makes a `.xml` note and opens it as XML.
-- Menus: right-click on an `.xml` file offers "Open as XML"; inside the XML workspace it offers "Open as note" / "Open as sheet" / "Open as planner". `WorkspaceAdd.menu.xml` gains "New XML workspace".
-- Tests: `Syntax.XmlSourceRoundTrip` (`SyntaxTests.cs`, `Syntax.tests.xml`); `Thorium/Tests/XmlTests.cs` + `Xml.tests.xml`: `Xml.NoteSync`, `Xml.Invalid`, `Xml.SheetSync`, `Xml.PlannerSync`, `Xml.Restore`.
+- Thorium `VaultBrowserControl`: `IsXml`; `Shows`/`FilterName` handle `Xml` ("XML"); `RowContextMenu` picks `vault-note-xml` / `vault-as-note` / `vault-as-sheet` / `vault-as-planner`; actions `Notes.OpenAsXml`, `Notes.OpenNormally`; `Open(path)` → `Open(path, asXml)` (asXml = XML workspace shown and file is `.axml`; only reuses a tab of the same kind); `BuildTab(path, asXml)` + `BuildXmlTab` (header = file name with extension); `RenameNote` retitles XML tabs with the file name; `NewNote(folder, extension = ".md")` / `CreateNote(folder, name, extension)` — the + in an XML workspace makes a `.axml` note and opens it as XML.
+- Menus: right-click on an `.axml` file offers "Open as XML"; inside the XML workspace it offers "Open as note" / "Open as sheet" / "Open as planner". `WorkspaceAdd.menu.axml` gains "New XML workspace".
+- Tests: `Syntax.XmlSourceRoundTrip` (`SyntaxTests.cs`, `Syntax.tests.axml`); `Thorium/Tests/XmlTests.cs` + `Xml.tests.axml`: `Xml.NoteSync`, `Xml.Invalid`, `Xml.SheetSync`, `Xml.PlannerSync`, `Xml.Restore`.
 
 ## Why these choices
 
@@ -49,7 +49,7 @@ Cost: one frame of old text. Rejected: regenerating while hidden (a serialise pe
 
 **Smaller settled points.**
 - The sheet view after an applied XML edit rebuilds its grid through the existing `BookChanged` path, so the selection goes back to A1 on the same page (accepted).
-- `[name].[type].xml` data files still open as a note outside the XML workspace (user: "for now"); a suffix-based default-to-XML rule was considered and dropped.
+- `[name].[type].axml` data files still open as a note outside the XML workspace (user: "for now"); a suffix-based default-to-XML rule was considered and dropped.
 - The workspace tab title reads "Xml" (from `kind.ToString()`), accepted.
 
 ## Known gaps

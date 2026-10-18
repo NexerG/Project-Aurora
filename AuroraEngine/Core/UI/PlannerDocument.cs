@@ -8,7 +8,7 @@ namespace ArctisAurora.Core.UI
     // A planner file: categories and the tickets filed under them, shown as a Gantt chart or a board.
     public class PlannerDocument
     {
-        public const string extension = ".planner.xml";
+        public const string extension = ".planner.axml";
         public const string defaultColor = "#4C8BF5";
 
         public const float defaultNameWidth = 200f;

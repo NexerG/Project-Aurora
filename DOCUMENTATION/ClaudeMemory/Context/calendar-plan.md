@@ -7,7 +7,7 @@ any code. Part of the Thorium productivity suite (WIP list, Phase A). No decisio
 - Own visual design, not a copy of Google or Apple.
 - "Dependencies" means both: attachments on one event (travel before/after, prep, user-defined kinds) and links
   between events (B follows A; moving A moves B). Since 2026-10-07 these live on planner tickets (planner C2).
-- ~~Local calendars are vault files, `*.calendar.xml`, opened in a tab like sheets.~~ **Superseded 2026-10-07:** a calendar event is a planner ticket in `*.planner.xml`; the calendar is a planner view ([planner-plan](planner-plan.md)).
+- ~~Local calendars are vault files, `*.calendar.axml`, opened in a tab like sheets.~~ **Superseded 2026-10-07:** a calendar event is a planner ticket in `*.planner.axml`; the calendar is a planner view ([planner-plan](planner-plan.md)).
 - One CalDAV client for Google and iCloud (not Google's REST API).
 - Sync is read-only first; two-way is its own later phase.
 - Secrets go to WinRT `Windows.Security.Credentials.PasswordVault` (TFM is `net10.0-windows10.0.22621.0`).
@@ -74,14 +74,14 @@ any code. Part of the Thorium productivity suite (WIP list, Phase A). No decisio
   `HKCU\Software\Classes\AppUserModelId\<id>` (written by the app). Toast payload is XML. No Windows App SDK or
   Community Toolkit package.
 - Reminder sources: event reminders (VALARM) and attachments — "leave now" when a travel block starts.
-- ~~Close to tray fits `Shutdown.xml`: a `Request` step hides the window and returns false; tray Quit skips it.~~ **Superseded 2026-10-08:** `WindowActions.Close` branches on `Background.active`; a refusing step would flip `Shutdown.isClosing` — see [[desktop-stickies]].
+- ~~Close to tray fits `Shutdown.axml`: a `Request` step hides the window and returns false; tray Quit skips it.~~ **Superseded 2026-10-08:** `WindowActions.Close` branches on `Background.active`; a refusing step would flip `Shutdown.isClosing` — see [[desktop-stickies]].
 - Tray icon is `Shell_NotifyIcon` via `DllImport` (GLFW has no tray). Landed 2026-10-08 (`Background`).
 - Single instance: named mutex; a second launch forwards "show" to the running one and exits. Landed 2026-10-08 (`Background`).
 
 ## Phases
 | # | Scope | Verify |
 |---|---|---|
-| C1 (superseded 2026-10-07 by planner P1/P2/PC) | model, `*.calendar.xml`, Day/Week/Month, now line, create/move/resize with undo, "New calendar" menu | `Calendar` suite (overlap packing, XML round-trip, undo); screenshot of the running app |
+| C1 (superseded 2026-10-07 by planner P1/P2/PC) | model, `*.calendar.axml`, Day/Week/Month, now line, create/move/resize with undo, "New calendar" menu | `Calendar` suite (overlap packing, XML round-trip, undo); screenshot of the running app |
 | C2 (landed 2026-10-07 as the planner's C2) | attachments (kinds in XML, travel/prep, custom) and event links (B follows A) | tests: attachments and linked events follow a move/resize; screenshot |
 | C3 | iCalendar read/write, recurrence, time zones | tests on fixture `.ics`, including a DST switch |
 | C4 (tray, close-to-tray and single instance landed 2026-10-08 via `Background`) | start at login, toasts, reminders incl. "leave now" | manual: login start, toast fires and opens the event |

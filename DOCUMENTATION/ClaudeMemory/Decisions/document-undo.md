@@ -9,7 +9,7 @@ been pressed.
 **Scope:** new `ArctisAurora.Core.Editing`, new
 `ArctisAurora.Core.UISystem.Controls.Text.Document.Edits`, plus `DocumentControl`,
 `DocumentEditorControl`, `DocumentEditSession`, `TextInputActions`, and
-`Thorium/Data/XML/Documents/Inputs/InputMap.xml`.
+`Thorium/Data/XML/Documents/Inputs/InputMap.axml`.
 
 ## What was there before
 
@@ -118,7 +118,7 @@ other editing path — see [[document-caret-scrolling]].
 
 `Ctrl+Shift+Z` must be declared **before** `Ctrl+Z` in the XML: `InputHandler.Update` processes both in
 pass 0 in list order, and `IsShadowed` only skips the *later*, less specific bind. Declared the other
-way round both fire and undo is immediately redone. `InputMap.inputs.xml` puts each editor's
+way round both fire and undo is immediately redone. `InputMap.inputs.axml` puts each editor's
 (`Text`, `Sheet`, `Planner`) `Ctrl+Shift+Z` bind directly above its `Ctrl+Z` bind.
 
 `<Repeat/>` fires at `KeyRepeat.Rate`, 0.03s, so holding Ctrl+Z would burn some thirty granular steps

@@ -6,7 +6,7 @@ plain `ISettingsGroup`.
 **Scope:** `ArctisAurora.Core.Registry` (`Setting`, `SettingScope`, `SettingCategory`,
 `UserSettingsFile`, `SettingsRegistry.Apply/SaveAll/ApplyCategory/CarryCategoryUnknowns`),
 `ArctisAurora.EngineWork.Rendering` (`GraphicsSettings` + its four setting types),
-`Thorium/Data/XML/Settings/Graphics.xml`, `AuroraEngine/Data/XML/Settings/DocumentSettings.xml`.
+`Thorium/Data/XML/Settings/Graphics.axml`, `AuroraEngine/Data/XML/Settings/DocumentSettings.axml`.
 
 ## The ask (2026-08-17)
 
@@ -77,7 +77,7 @@ list, which four other readers use unchanged. `WriteDiff` skips any scalar whose
 **Rejected: scope declared on the setting type** (`public override SettingScope scope => App`). It is
 static and therefore generator-visible, which is the only thing that could support decision 4's
 rejected option — but it kills Thorium's per-host retune, which is in active use
-(`<VSync Scope="App"/>` in `Graphics.xml`), and would make `VSync` App-scoped for every host or none.
+(`<VSync Scope="App"/>` in `Graphics.axml`), and would make `VSync` App-scoped for every host or none.
 
 ### 4. "The user must not meddle" is enforced at load, not by the schema (user, 2026-08-17)
 
@@ -99,14 +99,14 @@ whether *any* value member moved. `Setting.ValueMembers` is `ScalarMembers` minu
 moved fires its action. `LoadAll` ends by calling `MarkApplied` on everything, so loading is still not
 a change and the first `Apply()` still fires nothing.
 
-### 6. One `UserSettings.xml`, and no `Save<T>` (user, 2026-08-17)
+### 6. One `UserSettings.axml`, and no `Save<T>` (user, 2026-08-17)
 
 `SaveAll` writes every group into one document in the write root, matching the sketch. A group with
 no diff and nothing stored is left out rather than written empty.
 
 `Save<T>` and `Save(Type)` are **deleted** — rewriting one group means rewriting the document holding
 the others, so a per-group save is a lie. It had no callers. Reading is unchanged: the write root is
-still every `*.xml` in it, so a file from the old one-per-group layout is still applied rather than
+still every `*.axml` in it, so a file from the old one-per-group layout is still applied rather than
 orphaned. Nothing prunes it (pre-existing).
 
 ### 7. `Commit()` is the screen's one call (user, 2026-08-17)
@@ -171,11 +171,11 @@ Concrete categories still re-declare `AllowedChildren = typeof(Setting)` themsel
   children added later. **Rejected: dimming only the settings label** — the button still animated on
   hover.
 - Closing with the title-bar X still discards nothing (decision 7), so reopening after an X shows
-  Apply lit, and `Settings.SaveAll` in `Shutdown.xml` persists the edits at exit anyway.
+  Apply lit, and `Settings.SaveAll` in `Shutdown.axml` persists the edits at exit anyway.
 
 ## Verified
 
-Running `Thorium` (engine manifest + Thorium's `Graphics.xml` + a seeded write root), harness in
+Running `Thorium` (engine manifest + Thorium's `Graphics.axml` + a seeded write root), harness in
 `Thorium.Main`, since removed:
 
 - Regenerated `SettingsTypeSchema.xsd`: `Graphics` offers `Device`/`Monitor`/`Window`/`VSync`;
@@ -189,7 +189,7 @@ Running `Thorium` (engine manifest + Thorium's `Graphics.xml` + a seeded write r
 - `Bloom="true"` (undeclared attribute on a declared `Device`) survives the save.
 - `Apply()` with no change prints nothing; after `vsync.on = false` and `window.width = 1440` it
   prints `Running: Renderer.RequestSwapchainRebuild` **once**; a third `Apply()` prints nothing.
-- `SaveAll` wrote one `UserSettings.xml`: `Device` and `Window` present, `Mode` omitted (equals the
+- `SaveAll` wrote one `UserSettings.axml`: `Device` and `Window` present, `Mode` omitted (equals the
   tier value), **`VSync` absent** (App-scoped), `DocumentSettings` absent (no diff).
 - `Commit()` after two edits fires `Renderer.RequestSwapchainRebuild` **once** and writes the file in
   the same call; a second `Commit()` fires nothing and rewrites the file identically. The edit to

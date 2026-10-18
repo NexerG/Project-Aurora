@@ -16,7 +16,7 @@ Implementors:
   - "[[THREADING]]"
   - "[[ANIMATION]]"
 Namespace: ArctisAurora.Core.Threading
-SourceFiles: AuroraEngine/Core/Threading/*.cs, AuroraEngine/Data/XML/Documents/Frame.frame.xml
+SourceFiles: AuroraEngine/Core/Threading/*.cs, AuroraEngine/Data/XML/Documents/Frame.frame.axml
 VerifiedAgainst: 2026-09-23
 ---
 ## Overview
@@ -31,7 +31,7 @@ Pools have no owner. Each step says which columns it reads and which it writes, 
 
 ```mermaid
 graph TD
-  XML[Frame.frame.xml] --> Load[FrameScheduler.Load: resolve columns, wire waits, place stages]
+  XML[Frame.frame.axml] --> Load[FrameScheduler.Load: resolve columns, wire waits, place stages]
   Load --> Run[FrameScheduler.Run on the main thread]
   Run --> Stage[stage: hand out unpinned steps]
   Stage --> Main[main thread: pinned steps, then helps]
@@ -44,7 +44,7 @@ graph TD
 
 ## The frame graph
 
-`Frame.frame.xml` lists the dedicated systems and the steps. A step is either an action or a pool's frame edge, says whether it must run on the main thread, and lists the columns it touches. A column is written `Pool` for every column of a pool, or `Pool.Component` for one column, with the component type spelled the way `Pools.pools.xml` spells it.
+`Frame.frame.axml` lists the dedicated systems and the steps. A step is either an action or a pool's frame edge, says whether it must run on the main thread, and lists the columns it touches. A column is written `Pool` for every column of a pool, or `Pool.Component` for one column, with the component type spelled the way `Pools.pools.axml` spells it.
 
 An action is a method of a system tagged `[A_XSDActionDependency("Main.Input", "Frame")]` — the same mechanism the bootstrap and shutdown sequences use, in a category of its own. The method belongs to the system that declares it, so one system can be several steps. An edge, `Edge="Pool"`, runs that pool's frame edge — freeing, compacting, re-sequencing and publishing what changed — and counts as writing every column of the pool.
 

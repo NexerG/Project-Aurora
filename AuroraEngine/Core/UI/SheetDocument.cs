@@ -10,7 +10,7 @@ namespace ArctisAurora.Core.UI
     // A sheet file: pages of a grid, each page a stack of layers over the same cells.
     public class SheetDocument
     {
-        public const string extension = ".sheet.xml";
+        public const string extension = ".sheet.axml";
 
         public string? name;
         public readonly List<SheetPage> pages = new List<SheetPage>();

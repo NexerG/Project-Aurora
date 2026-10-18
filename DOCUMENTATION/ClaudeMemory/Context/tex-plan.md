@@ -20,7 +20,7 @@ Each phase lands and is verified before the next starts; each one re-runs CLAUDE
 | L-F6 | footnotes | endnotes in v1, real footnotes in L7 (landed as L7e, 2026-10-06; the endnote section is gone) | — |
 | L1 | source editor | `.tex` reuses `DocumentEditorControl`, one Code block per line | a new editor control |
 | L2-A | where the `.otf` sources live | gitignored `_Build/FontSources/`, probed after the system font folders | copying into the per-user Windows font folder; an absolute path in the import XML; committing the `.otf` files (SUPERSEDED by L8-F2: the LM `.otf` files are now committed beside their atlases) |
-| L2-B | which hosts import Latin Modern | Thorium only (`ThoriumFonts.imports.xml`) | engine imports — would bake and commit three copies (Thorium, Carbon, AuroraEditor) |
+| L2-B | which hosts import Latin Modern | Thorium only (`ThoriumFonts.imports.axml`) | engine imports — would bake and commit three copies (Thorium, Carbon, AuroraEditor) |
 | L2-C | charset | `Latex`, 348 chars incl. ligatures, accents, quotes, dashes | the existing `Latin` charset |
 | L2-D | faces | Roman 10 ×4, Mono 10, LM Math with Roman italic/bold | optical sizes 5–17 and Sans left out |
 | L2-E | ink box | exact cubic extrema | control-point hull (looser) |
@@ -81,7 +81,7 @@ Cost accepted with the native route: support is bounded by what is reimplemented
 ## Phases
 
 ### L1 — file, source editor, expander — DONE 2026-10-05
-- `TexSourceFormat`, `.tex` in `RichTextDocument.extensions`, byte-identical save (`sourceNewline`, `sourceBom`), pageless, `Mode.Latex` colouring
+- `TexSourceFormat`, `.tex` as `FileKind.Tex` in `FileTypes`, byte-identical save (`sourceNewline`, `sourceBom`), pageless, `Mode.Latex` colouring
 - `ArctisAurora.Core.Tex`: `TexExpander`, `TexReader`, `TexToken`, `TexCatcode`, `TexError` — expansion only, nothing in the UI calls it
 - Test- and golden-verified; **NOT GUI-verified**
 
@@ -119,7 +119,7 @@ Cost accepted with the native route: support is bounded by what is reimplemented
 
 ### L7 — Aurora layout adaptations — sliced L7a–L7g (user-approved 2026-10-06)
 - **L7a — DONE 2026-10-06:** Knuth-Plass line breaking (`TextMeasurer.BreakOptimal`, `DocumentLayout.optimalBreaks`), justify shrink, the line before a display formula no longer stretched (L3-B); forks L7a-F1 to L7a-F4 above. Test- and golden-verified (`--test=Tex` 34/34, `--test=Math` 17/17, goldens `Tex.Preview` and `Tex.Amsmath` re-approved); **NOT GUI-verified**. Before L7b most paragraphs failed tolerance 200 and stayed greedy
-- **L7b — DONE 2026-10-06:** Aurora's U+00AD soft hyphen (break opportunity, "-" at line end via `TextLine.hyphen`, dropped on copy); `TexLowering.Hyphenate` inserts them from `TexHyphenator` (Liang patterns from `en-us.hyphenation.xml`), plus `\-` and `\hyphenation`; forks L7b-F1, L7b-F2 above. Test- and golden-verified (`--test=Tex` 37/37, new golden `Tex.Hyphenation`); **NOT GUI-verified**
+- **L7b — DONE 2026-10-06:** Aurora's U+00AD soft hyphen (break opportunity, "-" at line end via `TextLine.hyphen`, dropped on copy); `TexLowering.Hyphenate` inserts them from `TexHyphenator` (Liang patterns from `en-us.hyphenation.axml`), plus `\-` and `\hyphenation`; forks L7b-F1, L7b-F2 above. Test- and golden-verified (`--test=Tex` 37/37, new golden `Tex.Hyphenation`); **NOT GUI-verified**
 - **L7c — DONE 2026-10-06:** per-block first-line indent and space above in Aurora notes (`<Block Indent SpaceBefore>`, `<Table SpaceBefore>`, spacer run `<Run Space>`); the typesetter emits TeX's vertical glue and `\parindent`, lowering sums it into `SpaceBefore`, splits paragraphs at display math, sets `BlockSpacing` 0 and writes exact spacer runs; forks L7c-F1 to L7c-F3b above. Test- and golden-verified (`--test=Tex` 39/39, five goldens re-approved); **NOT GUI-verified**, not perf-measured; dead `TexLowering.Spaces` left in place
 - **L7d — DONE 2026-10-06:** real page breaks (`\newpage`, `\clearpage`, `\cleardoublepage`, `\pagebreak`), running heads and feet from page styles (`\pagestyle`, `\thispagestyle`, empty/plain/headings/myheadings, fancyhdr), marks (`\markboth`, `\markright`, heading marks) and `\pageref` resolved from the laid-out preview; all note-model features (`<Block PageBreak PageStyle MarkLeft MarkRight>`, `<Table PageBreak>`, `<Page Style>` with `<PageStyle>`/`<Slot>` children); forks L7-F1 to L7-F4 above. Test-verified (`--test=Tex` 44, 5 new for L7d+L7e; `--test=TextInput` 90) and golden-verified (`Tex.Pages.Break`); **NOT GUI-verified**; NOT perf-measured
 - **L7e — DONE 2026-10-06:** real footnotes: a `<Footnote Id>` group of blocks whose anchor is a run with `Note="id"`; `Paginate` reserves room at the foot of the page the anchor's line lands on and stacks the footnotes there under a short rule; LaTeX's endnote "Notes" section is gone; forks L7-F1, L7-F4, L7-F5 above. Test-verified (as L7d) and golden-verified (`Tex.FootnotePage.Foot`; `Tex.Preview` re-approved); **NOT GUI-verified**; NOT perf-measured

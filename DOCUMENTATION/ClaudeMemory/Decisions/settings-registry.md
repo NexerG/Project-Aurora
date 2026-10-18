@@ -1,8 +1,8 @@
 # Decision — settings are reflected groups, cascaded per attribute, saved as a diff
 
 **Date:** 2026-08-09
-**Status:** LANDED (2026-08-09). `SettingsRegistry` loads as the first `Bootstrap.xml` step;
-`DocumentLayout.Defaults` is its first consumer; `DocumentStyles.xml` is gone.
+**Status:** LANDED (2026-08-09). `SettingsRegistry` loads as the first `Bootstrap.axml` step;
+`DocumentLayout.Defaults` is its first consumer; `DocumentStyles.axml` is gone.
 **Scope:** `ArctisAurora.Core.Registry` (`SettingsRegistry`, `ISettingsGroup`, `UserSettingsFile`);
 `ArctisAurora.Core.UISystem.Controls.Text.Document` (`DocumentSettings`, `DocumentLayout.Defaults`,
 `DocumentXml.LoadLayout` deleted); `AuroraEngine/Data/XML/Settings/`; `Thorium.Main`.
@@ -15,7 +15,7 @@ Thorium's styling was the whole "settings system" and it registered nowhere:
 |-------|-------|-------|
 | Declaration | `[A_XSDType]` + `[A_XSDElementProperty]` on `TextStyle`/`DocumentLayout` | generic, worked |
 | Schema | `XSDGenerator` → `UITypeSchema.xsd` | generic, worked |
-| File | `Data/XML/Documents/DocumentStyles.xml` via `Paths.Doc` | one file, first mount wins |
+| File | `Data/XML/Documents/DocumentStyles.axml` via `Paths.Doc` | one file, first mount wins |
 | Instance | `DocumentLayout.Defaults`, a `??=` static with the filename inlined | **the gap** |
 | Use | `FontSizeFor` → `ContentBlock.ApplyLayout` → `TextRun.fontSize` | worked |
 
@@ -58,7 +58,7 @@ settings UI could not list a group until someone had already overridden it.
 
 ### 3. A directory of manifests, unioned bottom-up — not `EnumerateAll`
 
-Files live in `Data/XML/Settings/*.xml`, every file in every mount, applied **lowest priority
+Files live in `Data/XML/Settings/*.axml`, every file in every mount, applied **lowest priority
 first**. (Root renamed `SettingsManifest` → `UserSettings` on 2026-08-17; example updated, the
 decision is unchanged.)
 
@@ -108,7 +108,7 @@ The write root is **not** a VFS mount. Mounting it would let a stray file there 
 
 ### 6. Save writes the diff against the merged mounts
 
-(2026-08-17: still true, but the destination is one `UserSettings.xml` holding every group rather than
+(2026-08-17: still true, but the destination is one `UserSettings.axml` holding every group rather than
 one file per group, and `Save<T>` is gone. See [[settings-categories]] decision 6.)
 
 `LoadAll` snapshots every group right after the mounts are applied and before the write root is
@@ -258,7 +258,7 @@ used to be `Mode` + `WindowWidth` + `WindowHeight`. Call sites read `.window.wid
 `.device.name`, `.monitor.name`. See [[settings-categories]].
 
 - **The ordering worry in the Phase B roadmap item was already solved.** `Settings.LoadAll` is step 1
-  of `Bootstrap.xml`; `Engine.InitWindowing` is step 6 and `Renderer.Initialize` step 12, and the
+  of `Bootstrap.axml`; `Engine.InitWindowing` is step 6 and `Renderer.Initialize` step 12, and the
   `ThreadedSystem`s are constructed after `RunPhase` returns. No sequencing work was needed.
 - **Device identity is a name substring** (user, 2026-08-15), matched `OrdinalIgnoreCase` against
   `VkPhysicalDeviceProperties.deviceName`. Rejected: `vendorID:deviceID`, exact and rename-proof but
@@ -341,7 +341,7 @@ used to be `Mode` + `WindowWidth` + `WindowHeight`. Call sites read `.window.wid
 - **Settings in `AssetRegistries`.** `library` is keyed by value `Type`, `AddLibraryEntry` returns
   early on a duplicate, and `Object` is already taken by `ActiveContexts` — a second `Object`-valued
   dictionary would silently not register. Settings are not assets; a dedicated static is smaller.
-- **One `Settings.xml` per mount.** Same filename-dedupe trap as decision 3.
+- **One `Settings.axml` per mount.** Same filename-dedupe trap as decision 3.
 - **Per-attribute list merge**, **hot reload**, **an `isSet` flag per member.** The last one is
   ruled out standing by [[xml-save-skips-defaults]].
 

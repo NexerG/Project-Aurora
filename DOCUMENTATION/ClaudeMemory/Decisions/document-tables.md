@@ -1,7 +1,7 @@
 # Decision — a note table is a grid of block stacks, addressed through the flat block list
 
 **Date:** 2026-09-29
-**Scope:** `ArctisAurora.Core.UI` — `TableControl`, `GridListControl`, `DocumentControl`, `DocumentEditorControl`, `DocumentXml`, `RichTextDocument`, `ScrollableControl`, `TableEdit`, `TextInputActions`, `BlockControl`; `Thorium/Data/XML/Documents/Menus/Note.menu.xml`
+**Scope:** `ArctisAurora.Core.UI` — `TableControl`, `GridListControl`, `DocumentControl`, `DocumentEditorControl`, `DocumentXml`, `RichTextDocument`, `ScrollableControl`, `TableEdit`, `TextInputActions`, `BlockControl`; `Thorium/Data/XML/Documents/Menus/Note.menu.axml`
 
 ## What changed
 - `TableControl : GridListControl` — Fixed columns (`widths`, design px × zoom), Auto rows. A cell is a vertical
@@ -59,7 +59,7 @@ logged `desired stale` otherwise), and the base had to stop stretching a cell in
 - Insert: `DocumentEditorControl.InsertTable` — 3×3, columns `floor(text width / 3)` design px; refused with a log
   line on `.md`/`.txt` and inside a cell. Goes after the caret's block; when that block is the note's last entry it
   is split at its end first (`SplitEdit` in the same step), so a paragraph always follows a table.
-- Menus: `Note.menu.xml` "Insert table" and a static "Table" submenu → `Table.*` actions →
+- Menus: `Note.menu.axml` "Insert table" and a static "Table" submenu → `Table.*` actions →
   `DocumentEditorControl.ChangeTable(label, change)`; outside a table they do nothing.
 - Column resize: `TableControl.ColumnGrip`, a transparent hit-testable `PanelControl` centred on each column's right
   edge, full table height. Press → `BeginResize` (XML snapshot), drag → `widths`/`columnDefinitions` live, release →
@@ -81,7 +81,7 @@ logged `desired stale` otherwise), and the base had to stop stretching a cell in
 - `GridListControl`: internal `ColumnSpan(Control)`, `SetColumnSpan(Control, int)`. `TableControl`: public `showBorders` (default true); `AddRow(cells, List<int>? spans = null)` (since [[note-model]] N1 a private `AddRow(NoteCell[])`); `CellBlocks(row, column)` finds the cell covering that grid position; borders honour spans and `showBorders`.
 - No placeholder cells behind a spanning cell; cells are found by grid position. `ReadTable`'s padding still fills a row whose spans sum to fewer than the columns.
 - `DocumentControl`: `InsertTableColumn`/`DeleteTableColumn` are span-aware; new `MergeTableCellRight()`, `SplitTableCell()`; private helpers `Covering`, `Span`, `SetSpan`, `EmptyCell`.
-- `TextInputActions`: `Table.MergeRight` (`MergeCellRight`), `Table.Split` (`SplitCell`). `Note.menu.xml` Table submenu: "Merge cell right", "Split cell".
+- `TextInputActions`: `Table.MergeRight` (`MergeCellRight`), `Table.Split` (`SplitCell`). `Note.menu.axml` Table submenu: "Merge cell right", "Split cell".
 - Why it exists: LaTeX `\multicolumn` ([[latex-editor]], L5-F4) needs a cell wider than one column.
 - Tests: `TextInput.TableColumnSpan` (XML round-trip with ColumnSpan/Borders, merged cell width = sum of its columns, insert column inside/left of a span, delete inside a span, merge right, split, each undo restores exactly, merge on the last cell and split on a single cell refused).
 

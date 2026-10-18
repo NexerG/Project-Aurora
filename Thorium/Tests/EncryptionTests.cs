@@ -14,7 +14,7 @@ namespace Thorium.Tests
         [A_XSDActionDependency("Encryption.LockedTab", "Test")]
         private static IEnumerator<int> LockedTab(TestContext t)
         {
-            string path = Path.GetFullPath(Path.Combine(Path.GetTempPath(), $"aurora-locked-{Guid.NewGuid():N}.xml"));
+            string path = Path.GetFullPath(Path.Combine(Path.GetTempPath(), $"aurora-locked-{Guid.NewGuid():N}.axml"));
             using (PasswordKey key = PasswordKey.Derive("pw", 1024, 1, 1, new byte[16]))
             {
                 RichTextDocument document = DocumentXml.Parse(XElement.Parse("<Document><Block><Run Text=\"locked text\"/></Block></Document>"));
@@ -145,7 +145,7 @@ namespace Thorium.Tests
         [A_XSDActionDependency("Encryption.SealedView", "Test")]
         private static IEnumerator<int> SealedView(TestContext t)
         {
-            string path = Path.GetFullPath(Path.Combine(Path.GetTempPath(), $"aurora-sealed-view-{Guid.NewGuid():N}.xml"));
+            string path = Path.GetFullPath(Path.Combine(Path.GetTempPath(), $"aurora-sealed-view-{Guid.NewGuid():N}.axml"));
             RichTextDocument made = DocumentXml.Parse(XElement.Parse(
                 "<Document><Block><Run Text=\"above\"/></Block><Block><Run Text=\"hidden\"/></Block><Block><Run Text=\"below\"/></Block></Document>"));
             made.SetSeals(1, [new NoteSeal(PasswordKey.Derive("pw", 1024, 1, 1, new byte[16]))]);

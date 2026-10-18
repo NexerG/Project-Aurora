@@ -28,14 +28,14 @@ namespace ArctisAurora.Core.Filing.Serialization
         // Engine-owned config (Bootstrap, registries, default samplers) can live in the engine
         // project's Data folder rather than the running app's, so resolve it through the VFS
         // instead of assuming it sits next to the app's own files.
-        public static readonly string BOOTSTRAP = Doc("Bootstrap.bootstrap.xml");
-        public static readonly string SHUTDOWN = Doc("Shutdown.shutdown.xml");
-        public static readonly string FRAME = Doc("Frame.frame.xml");
+        public static readonly string BOOTSTRAP = Doc("Bootstrap.bootstrap.axml");
+        public static readonly string SHUTDOWN = Doc("Shutdown.shutdown.axml");
+        public static readonly string FRAME = Doc("Frame.frame.axml");
 
         // Resolve a document under Data/XML/Documents across all mounts (app first, engine fallback).
         public static string Doc(string name) => VirtualFileSystem.ResolveFile("XML/Documents/" + name);
 
-        // The name half of a [name].[type].xml data file. A name half may not contain a dot.
+        // The name half of a [name].[type].axml data file. A name half may not contain a dot.
         public static string DocName(string path)
         {
             string file = Path.GetFileName(path);

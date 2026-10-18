@@ -10,7 +10,7 @@ Two unrelated "serialization" paths exist in the engine — do not confuse them:
 `Serializer.SerializeAll/SerializeAttributed` write **bytes**, not XML. The note format is engine
 XML, so notes go through `DocumentXml`, never `Serializer`.
 
-**Since 2026-10-15 an open `.xml` note is not saved as a whole document.** `NoteFileSync` autosaves it through `NoteSegments.Write` (partial, in-place writes of the changed top-level segments), elements are written by `XMLWriter`, and `FileJournal` records each batch (checksummed) for crash replay. Since 2026-10-16 the write runs on a background thread (`FileWriteQueue`); only autosave returns without waiting. A file written by `DocumentXml.Save` (an `XDocument`) carries no slack, so the first edit to each block shifts the tail. `.md`/`.txt`/`.tex` still write whole. See [[note-live-sync]].
+**Since 2026-10-15 an open `.axml` note is not saved as a whole document.** `NoteFileSync` autosaves it through `NoteSegments.Write` (partial, in-place writes of the changed top-level segments), elements are written by `XMLWriter`, and `FileJournal` records each batch (checksummed) for crash replay. Since 2026-10-16 the write runs on a background thread (`FileWriteQueue`); only autosave returns without waiting. A file written by `DocumentXml.Save` (an `XDocument`) carries no slack, so the first edit to each block shifts the tail. `.md`/`.txt`/`.tex` still write whole. See [[note-live-sync]].
 
 **Since 2026-09-17 the XML is also an in-memory form.** `.md` and `.txt` notes are read by
 `MarkdownFormat`/`PlainTextFormat` into the same `<Document>` tree and handed to `DocumentXml.Parse`;
@@ -72,7 +72,7 @@ that omitted `FontSize` is not "16px forever", it is "however big body text is n
 <Run Text="hello" />       <!-- no size of its own -->
 ```
 
-Change the body size in `XML/Settings/DocumentSettings.settings.xml` and that run restyles, in every note that never
+Change the body size in `XML/Settings/DocumentSettings.settings.axml` and that run restyles, in every note that never
 overrode it. **This is the point, not a hazard** (user, 2026-08-08) — it is how an editor-wide
 restyle is supposed to work, and it is why styling defaults belong in the styles file rather than in
 C# field initializers. A C# initializer is the fallback when no style file speaks; the style file is

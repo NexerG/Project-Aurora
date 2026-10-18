@@ -1,7 +1,7 @@
 # Decision — the UI scales by display scale × zoom; documents zoom separately by re-layout
 
 **Date:** 2026-09-27 (wheel zoom and sheet/planner zoom 2026-10-11)
-**Scope:** `ArctisAurora.Core.UI` — `WindowRoot.scale`, `UIScaling`, `ZoomSetting`, `DocumentZoomSetting`, `DocumentControl.zoom`, `BlockControl.SetZoom`, `TextRunControl.textZoom`, `DocumentEditorControl.Rezoom`, `UIEngine.ZoomContent`, `SheetControl.SetZoom`, `PlannerEditorControl.SetContentZoom`, `GanttChartControl`/`CalendarControl`/`PlannerBoardControl.Rezoom`; `ArctisAurora.EngineWork.Rendering.AGlfwWindow` (`InitGlfw`, `contentScale`, `PrimaryContentScale`, `OnContentScale`); `ArctisAurora.EngineWork.Engine.InitWindowing`; `AuroraEngine/Data/XML/Documents/Bootstrap.bootstrap.xml`; `*/Data/XML/Documents/Inputs/InputMap.inputs.xml`
+**Scope:** `ArctisAurora.Core.UI` — `WindowRoot.scale`, `UIScaling`, `ZoomSetting`, `DocumentZoomSetting`, `DocumentControl.zoom`, `BlockControl.SetZoom`, `TextRunControl.textZoom`, `DocumentEditorControl.Rezoom`, `UIEngine.ZoomContent`, `SheetControl.SetZoom`, `PlannerEditorControl.SetContentZoom`, `GanttChartControl`/`CalendarControl`/`PlannerBoardControl.Rezoom`; `ArctisAurora.EngineWork.Rendering.AGlfwWindow` (`InitGlfw`, `contentScale`, `PrimaryContentScale`, `OnContentScale`); `ArctisAurora.EngineWork.Engine.InitWindowing`; `AuroraEngine/Data/XML/Documents/Bootstrap.bootstrap.axml`; `*/Data/XML/Documents/Inputs/InputMap.inputs.axml`
 
 ## What changed
 - **UI scale** = `AGlfwWindow.contentScale` (GLFW window content scale = the OS display scale of that monitor) × `<UI><Zoom Percent>` / 100 (float, clamped 50–300). `UIScaling.For(window)`.

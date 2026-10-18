@@ -45,7 +45,7 @@ This **reverses** [[ecs-rework-data-pools]]'s locked 2026-07-18 decision, which 
 (parent/children) **stays in class graph** (OO tree) — measured as negligible at UI scale. But
 ControlData/settings move to arrays."* Parentage moves into the pool alongside the other columns.
 
-The pool is already the right shape for it: `Pools.xml` declares `UIControls` **Ordered**, canonical
+The pool is already the right shape for it: `Pools.axml` declares `UIControls` **Ordered**, canonical
 order is DFS pre-order of the tree, `UI.DFSOrder` + `Resequence` already run on a tree mutation, and
 `CompactOrdered` already preserves relative order on a destroy. What is missing is that the links
 themselves still live in `Entity.children`, so the pool knows the *order* of the tree without
@@ -73,7 +73,7 @@ decision that a glyph keeps its own transform and tint.
 
 ### 3. The data rides the existing pools
 
-More columns on `UIControls` in `Pools.xml`, not a second store. Ordered compaction, DFS resequence,
+More columns on `UIControls` in `Pools.axml`, not a second store. Ordered compaction, DFS resequence,
 `PoolCursor` and the two persistent SSBO mirrors were all built for this pool specifically and
 already work; reusing them makes the split "columns plus a flat loop" rather than new
 infrastructure with its own lifetime and ordering rules.

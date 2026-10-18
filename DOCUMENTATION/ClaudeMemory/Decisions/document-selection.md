@@ -190,7 +190,7 @@ highlight geometry in decision 4 carry over untouched.
 
 `TextInputActions.SelectAll` has the editor-then-box shape every other text action has.
 `TextBoxControl.SelectAll()` already existed — `Focus()` calls it when a field opens — so the field half
-is one call. Bound `Ctrl+A` in Thorium's `InputMap.xml`.
+is one call. Bound `Ctrl+A` in Thorium's `InputMap.axml`.
 
 **No scroll-to-caret.** `MoveCaret` requests one and `SelectWord` does not; select-all belongs with the
 second group, since jumping the view to the document end is not what selecting everything should do.

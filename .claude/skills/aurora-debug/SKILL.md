@@ -58,7 +58,7 @@ redirect file next to the crash. Everything else keeps the logging rules (`LogCh
   `grep -anE 'DEBUG|\[Crash\]|\[Test\]' run.txt`.
 - **Intermittent:** loop runs to the first crash and record the rate (`k of n`). Compare with the same loop on the
   commit before the change (`git stash -u`, build, run, restore) before blaming the change. Test runs rewrite
-  `Thorium/Data/Icons/default/default.import.xml`; `git checkout` it before `git stash pop` or the pop aborts.
+  `Thorium/Data/Icons/default/default.import.axml`; `git checkout` it before `git stash pop` or the pop aborts.
 - Cap the loop (about 10). No crash in the cap → report that, not a guess. The instrumented lines still show the
   path a clean run takes; read them before removing them.
 - **Crashes only when you were in another app** (Claude or a browser on top while `--test` ran) point at OS focus:

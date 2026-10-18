@@ -61,7 +61,7 @@ destroy. One probe per distinct type per process, cached.
   derived class shadows a member with `new`, and names would collide.
 - Removing `IsControlChrome` also un-filters the **read** path, since `ScalarMembers` is shared. A
   hand-authored note may now set `Width`/`Margin` on a run and have it applied. No note on disk does;
-  `SampleNote.xml` is hand-written and carries content attributes only.
+  `SampleNote.axml` is hand-written and carries content attributes only.
 - Inert for `AssetRegistries`/`AssetImporter`: their types do not derive from `VulkanControl`, so the
   filter never matched their members. Removing it changes nothing there.
 
@@ -81,7 +81,7 @@ bootstrap, GLFW window, Vulkan device, renderer, both worker threads) with cwd s
 output so the VFS resolves Thorium's `Data`. Nothing calls `RichTextDocument.Save` in the app yet —
 Ctrl+S is the unchecked P3 item — so the harness is the only save trigger that exists.
 
-- `SampleNote.xml` -> save -> reload: block count, run count, run text, `Bold` and heading levels all
+- `SampleNote.axml` -> save -> reload: block count, run count, run text, `Bold` and heading levels all
   survive. Saved file is within an attribute of the hand-authored original.
 - Omitted as defaults: `Margin`, `Padding`, `DockMode`, `Bold="False"`, `ColorHex="#FFFFFF"`,
   `FontName="default"`, `Level="1"`. Kept because non-default: `Bold="True"`, `Level="2"`,

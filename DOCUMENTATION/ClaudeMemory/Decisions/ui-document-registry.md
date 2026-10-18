@@ -5,15 +5,15 @@
 `ArctisAurora.Core.UISystem.Controls` (`VulkanControl.ParseXML`),
 `ArctisAurora.EngineWork.Rendering.Modules` (`UIModule`),
 `ArctisAurora.Core.UISystem` (`SettingsWindow`), `Thorium.Thorium`, `AuroraEditor.Editor`,
-`Registry.xml`, new `Thorium/Data/XML/Assets/ThoriumAssets.xml` and
-`AuroraEditor/Data/XML/Assets/EditorAssets.xml`
+`Registry.axml`, new `Thorium/Data/XML/Assets/ThoriumAssets.axml` and
+`AuroraEditor/Data/XML/Assets/EditorAssets.axml`
 
 ## What changed
 
 - New `UIDocumentAsset : AbstractAsset`, `[A_XSDType("UIDocumentAsset", "AssetRegistry")]`. `Load` resolves
   the manifest's `Source` through the VFS and stores the path. It **does not parse** — one document builds a
   tree per window, so parsing stays at the use site.
-- `Registry.xml` declares `<Dictionary Name="uiDocuments" KeyType="xs:string" ValueType="UIDocumentAsset"/>`.
+- `Registry.axml` declares `<Dictionary Name="uiDocuments" KeyType="xs:string" ValueType="UIDocumentAsset"/>`.
 - Documents are declared in the ordinary asset manifest, so they load in `AssetRegistries.PreloadAssets`
   alongside fonts and textures. Thorium declares `main`, `tab-window`, `settings`; the editor declares `main`.
 - `VulkanControl.ParseXML(document)` takes a **registry name**, not a filename — `GetAsset<UIDocumentAsset>`
@@ -23,17 +23,17 @@
 - `UIModule.uiRoot`'s setter calls `_uiRoot?.Destroy()` before assigning, and `UIModule.SetUI(document)` is
   the swap verb.
 - Call sites carry names now: `Thorium`/`Editor` → `"main"`, `SettingsWindow.document` → `"settings"`,
-  and `TearOffDocument` in `UI.xml` (×2) and `TabWindow.xml` → `"tab-window"`.
+  and `TearOffDocument` in `UI.axml` (×2) and `TabWindow.axml` → `"tab-window"`.
 
 ## Why these choices
 
 **A document is an asset, so it goes in the asset manifest rather than in a registry of its own.**
 The manifest already unions across VFS mounts app-first, so an application overrides an engine document by
-declaring the same name — the same override story fonts and textures already have. A bespoke `UITrees.xml`
+declaring the same name — the same override story fonts and textures already have. A bespoke `UITrees.axml`
 would have duplicated `PreloadAssets` and got its own override rules wrong.
 
 **The engine names a role; the application binds it to a file.**
-`SettingsWindow` is engine code that hardcoded `"Settings.xml"`, and `Settings.xml` exists only in Thorium —
+`SettingsWindow` is engine code that hardcoded `"Settings.axml"`, and `Settings.axml` exists only in Thorium —
 so the editor's settings screen threw `FileNotFoundException` from a path that was never there. Naming
 `"settings"` makes that a registry miss the app is responsible for declaring. (Still broken in the editor —
 see gaps.)
@@ -64,20 +64,20 @@ remembering as the shape of every "swap from off-thread" bug.
 
 **Scope, added:** `ArctisAurora.Core.UISystem.Actions` (`UIActions.Invoking`),
 `ArctisAurora.Core.UISystem` (`SettingsWindow.Open()`), `AuroraEditor.EditorProgram.UIFunctions.Decorations`,
-`Thorium.Editor.Decorations`, `EngineAssets.xml`, new `AuroraEngine/Data/XML/Documents/Settings.xml`,
-new `AuroraEditor/Data/XML/Documents/Alt.xml`
+`Thorium.Editor.Decorations`, `EngineAssets.axml`, new `AuroraEngine/Data/XML/Documents/Settings.axml`,
+new `AuroraEditor/Data/XML/Documents/Alt.axml`
 
 ### What changed
 
-- The engine declares `<Asset Type="UIDocumentAsset" Name="settings" .../>` in `EngineAssets.xml` against its
-  own `Settings.xml`, a copy of the shell Thorium already had. The app-first union means Thorium's identical
+- The engine declares `<Asset Type="UIDocumentAsset" Name="settings" .../>` in `EngineAssets.axml` against its
+  own `Settings.axml`, a copy of the shell Thorium already had. The app-first union means Thorium's identical
   declaration still wins; the editor, which declares none, now gets the engine's.
 - `SettingsWindow` gained a zero-argument `Open()` tagged `Settings.Open`, resolving its source window through
   the new helper. `Thorium.Editor.Decorations.OpenSettings`, which hardcoded `Engine.primary`, is deleted.
 - New `UIActions.Invoking()` → `ContextMenus.invoker ?? UICollisionHandling.activeControl ??
   UICollisionHandling.hovering`, through `RenderWindow.Of`, falling back to `Engine.primary`.
 - The editor's `Decorations` gained `UI.ShowAlt` and `UI.ShowMain`, each one line of
-  `UIActions.Invoking().ui.SetUI(name)`, plus an `Alt.xml` and its `alt` manifest entry to swap between.
+  `UIActions.Invoking().ui.SetUI(name)`, plus an `Alt.axml` and its `alt` manifest entry to swap between.
 
 ### Why these choices
 
@@ -96,18 +96,18 @@ straight back. Same walk `ViewActions.Acting` already does, stopped at the windo
 
 **The engine ships the settings shell as a default asset, rather than each host copying it.**
 `SettingsWindow` requires two named panels, `Categories` and `Rows`, so the shell is really the engine's
-contract and the file carried nothing Thorium-specific. Declaring it in `EngineAssets.xml` is the same thing
+contract and the file carried nothing Thorium-specific. Declaring it in `EngineAssets.axml` is the same thing
 the engine already does for `default`, `invisible` and the fonts, and the manifest's app-first union keeps the
 override free.
 
 ## Amendment 2026-08-30 — a folder-scan design was built in parallel and dropped, and the root element names its own type
 
 The same feature was built twice, on two machines, and only found out on the merge. The other build —
-`UIDocuments`, a static `XElement` cache preloaded at bootstrap from `Data/XML/Documents/UI/*.ui.xml` — is
+`UIDocuments`, a static `XElement` cache preloaded at bootstrap from `Data/XML/Documents/UI/*.ui.axml` — is
 dropped. This registry design is kept, and one piece of the other was ported onto it.
 
 **Scope, added:** `ArctisAurora.Core.UISystem.Controls` (`VulkanControl.Parse`), deleted
-`ArctisAurora.Core.UISystem.UIDocuments`, `Bootstrap.bootstrap.xml`
+`ArctisAurora.Core.UISystem.UIDocuments`, `Bootstrap.bootstrap.axml`
 
 ### What changed
 
@@ -117,14 +117,14 @@ dropped. This registry design is kept, and one piece of the other was ported ont
   (`arrangedRect` seeding, the centred transform, `RegisterDirtyRoot`) sits behind an `is WindowControl` check.
   A document rooted at anything else parses to a plain control that can only be grafted into a live tree.
 - `UIDocuments`, its `UIDocuments.LoadDocuments` bootstrap step and its vault page are deleted.
-- The documents themselves keep the other build's file naming — `Documents/UI/[name].ui.xml` per
+- The documents themselves keep the other build's file naming — `Documents/UI/[name].ui.axml` per
   [[xml-type-suffix]] — and the manifests' `Source=` point at them. The registry `Name=` is still what call
   sites ask for, so `"main"`, `"settings"` and `"tab-window"` are unchanged.
 
 ### Why these choices
 
 **The registry design was kept because three commits already sit on it** — `UIModule.SetUI`,
-`UIActions.Invoking`, the engine's default settings shell and the editor's `Alt.xml` swap. The folder-scan
+`UIActions.Invoking`, the engine's default settings shell and the editor's `Alt.axml` swap. The folder-scan
 build also still had the editor's `Settings.Open` throwing, which the 2026-08-29 amendment above had already
 fixed here.
 
@@ -153,7 +153,7 @@ follow-on rather than folded into a merge (user, 2026-08-30).
   keep. No call site does it and `SetUI` structurally cannot, so no guard was added — but the setter is public.
 - **A swap target cannot be authored in XML** — it is a compiled action per document. Fine at one or two per
   host; the inline-argument form above is what to build if a host ever wants swaps authored per button.
-- **Thorium's `Settings.xml` is now a byte-identical duplicate** of the engine's, kept rather than deleted. It
+- **Thorium's `Settings.axml` is now a byte-identical duplicate** of the engine's, kept rather than deleted. It
   shadows the engine copy, so Thorium never exercises the fallback.
 - **`GetAsset<T>`'s miss path warns "falling back to default" and then throws**, because `uiDocuments` has no
   `"default"` entry. Pre-existing behaviour of the shared accessor; the warning names the missing document, so

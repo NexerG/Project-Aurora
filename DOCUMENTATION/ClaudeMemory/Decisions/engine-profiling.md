@@ -5,8 +5,8 @@
 scratch console harness against the real types (below). **NOT verified inside a running Thorium** — no
 boot, no GUI.
 **Scope:** `ArctisAurora.Core.Diagnostics.Profiling`, `FrameSpool`, `ProfilingSettings`;
-`ThreadedSystem.Loop`; `Engine.MainTick`; `RenderSystem.Tick`; `Bootstrap.bootstrap.xml`;
-`Shutdown.shutdown.xml`.
+`ThreadedSystem.Loop`; `Engine.MainTick`; `RenderSystem.Tick`; `Bootstrap.bootstrap.axml`;
+`Shutdown.shutdown.axml`.
 
 ## What was there before
 
@@ -165,7 +165,7 @@ and ~~a partial batch held by a thread at shutdown is lost (up to `FramesPerBatc
 one timeline. No correlation id, no shared frame counter, and the per-thread invariant survives.
 `<F I>` is `ThreadedSystem.Epoch`, which is the frame number the rest of the engine already uses.
 
-A session is a folder of `<thread>.frames.xml`, named for the moment it started (`-2`, `-3` … if two
+A session is a folder of `<thread>.frames.axml`, named for the moment it started (`-2`, `-3` … if two
 captures land in the same second). Continuous mode past `MaxFileMB` **ends the session and starts a
 new folder** rather than renaming files, so every folder is a self-contained capture; `Keep` prunes
 the oldest. `Batch Seq` is assigned by the writer, so it is dense from zero **per file**, not
@@ -261,7 +261,7 @@ Two ways to ask for one, because they cover different windows and only one can c
 `ProfilingCapture.Mode` begins at the *next* frame — and the bootstrap phase is over before the first
 frame exists. `CaptureMode.Boot` therefore buys what `Continuous` buys minus the never-ending part:
 the first `BurstFrames` frames of every thread, from launch, persisted so a repeat run needs no
-argument. Measured: three files, 60 frames each, and no `Bootstrap.frames.xml` in the folder.
+argument. Measured: three files, 60 frames each, and no `Bootstrap.frames.axml` in the folder.
 
 `--profile` / `--profile=N` is read straight off `Environment.GetCommandLineArgs()` by
 `Profiling.ArmBoot`, called from `Engine.Init` **before** `Bootstrapper.RunPhase` — the only point
@@ -285,13 +285,13 @@ it throws away the only thing the frame view adds — every step on one timeline
 
 The boot frame runs on the main thread before the frame loop starts, so `ThreadedSystem.Current` is
 null and `Frame.Begin` took its `t{managedThreadId}` fallback. `Tables.lane` is built once and cached,
-so **the main thread's real frames would then have landed in `t1.frames.xml`** and no `Main.frames.xml`
+so **the main thread's real frames would then have landed in `t1.frames.axml`** and no `Main.frames.axml`
 would have existed at all. `Frame.Begin` now compares the lane's name against the owner every frame
 and, when they differ, hands the batch off as `last` and drops the lane. That is what closes the boot
 frame's own file, and the check is general rather than a boot special case.
 
 `Begin` grew `string? owner = null` for it — `ThreadedSystem.Loop` passes nothing, `RunPhase` passes
-the phase name, which is what names `Bootstrap.frames.xml`. The `$"t{…}"` interpolation stays behind
+the phase name, which is what names `Bootstrap.frames.axml`. The `$"t{…}"` interpolation stays behind
 two `??`, so an engine thread never allocates for it.
 
 ### Consequences to hold on to
@@ -317,9 +317,9 @@ ending rather than by the process dying:
 |---|---|
 | header | `Thread="Bootstrap"`, `Mode="Boot"`, `Requested="120"` |
 | the phase | one `<F I="1" D="7884058" A="255416888">` — 788.4ms, 243.6MB |
-| steps | 25 `<Z>`, one per `Bootstrap.bootstrap.xml` step, in XML order |
+| steps | 25 `<Z>`, one per `Bootstrap.bootstrap.axml` step, in XML order |
 | against the log | `phase 'Bootstrap' — 790ms, 25 steps`, the phase timer being the wider bracket |
-| the lane split | `Bootstrap.frames.xml` 1 frame, `Main.frames.xml` 119, both closed |
+| the lane split | `Bootstrap.frames.axml` 1 frame, `Main.frames.axml` 119, both closed |
 | slowest step | `Renderer.Initialize` 253.6ms; `AssetRegistries.PreloadAssets` 154.9ms |
 | largest allocator | `Context.LoadContexts` 91.5MB; `InputHandler.LoadInputs` 63.2MB |
 | the setting alone | `Mode="Boot" BurstFrames="60"`, no flag → 3 files × 60 frames, no `Bootstrap` |
@@ -379,7 +379,7 @@ the boot frame has no pools.
 a full write at every batch and session edge. Three pools cost ~120 bytes of XML a frame.
 
 ### Consequences to hold on to
-- **Every pool is Main's today, so pools only ever appear in `Main.frames.xml`.** A pool owned by another system
+- **Every pool is Main's today, so pools only ever appear in `Main.frames.axml`.** A pool owned by another system
   would be sampled on Main — but `DataManager.FrameEdge`'s flat loop already asserts on that (see `DataPool.FrameEdge`).
 - **Measured slot sizes:** `UIControls` 260 B, `UIElements` 164 B, `Entities` 60 B, each carrying 24 B of
   bookkeeping.
@@ -491,7 +491,7 @@ Three runs of the first shape (swap on tick 1, write root in `%TEMP%`), `Thorium
 | exit | by itself, exit 0, both shutdown phases ran |
 | document | `1000000 chars in 1000 blocks` → `1000120 chars` |
 | window | 1280x720 at start and at end |
-| capture | `Main.frames.xml` 240 frames: `I` 30–149 carry `Scenario.Type`, 150–269 `Scenario.Resize` |
+| capture | `Main.frames.axml` 240 frames: `I` 30–149 carry `Scenario.Type`, 150–269 `Scenario.Resize` |
 | the remeasure | `ResolveLayout` avg 2.4 / 4.0 / 3.5 ms in typing frames against 86.5 / 89.0 / 85.9 ms in resize frames, max 121–152 ms |
 | user settings | `%APPDATA%\Thorium\Settings` hash unchanged |
 
@@ -553,7 +553,7 @@ their tail at every exit.
 
 **The wait is a batch count, not a join.** Every thread keeps ticking through the `Commit` phase, so each
 hands its batch at its next frame edge — within one tick. Joining the systems would have meant moving
-`Profiling.Flush` out of `Shutdown.shutdown.xml` to after `Engine.Stop`, and after `Logging.Flush`. The
+`Profiling.Flush` out of `Shutdown.shutdown.axml` to after `Engine.Stop`, and after `Logging.Flush`. The
 counter is the first shared state on the recording path (§5), but it moves once per batch, not per zone.
 **Superseded 2026-09-28:** since the frame scheduler, parked workers and render's frame wait do *not* keep
 ticking through `Commit`. `Flush` now wakes them until every batch is handed — [[frame-scheduler]] § Step 5.
@@ -611,12 +611,12 @@ Third pass — the query split, then each change of [[render-window-owns-the-swa
 ## 17. The animation system gets a stress mode on the same scenario (user, 2026-09-19)
 
 **Date:** 2026-09-19
-**Scope:** `ProfileScenario` (`Arm`, `RunAnimation`, `BuildGrid`, `Ramp`, `StopHandles`, `Hold`); zones in `AnimationSystem.Tick`/`OnPost`, `MainSystem.OnPost`, `Animations.OnValue`/`Send`; engine `Animations/UI.anim.xml`.
+**Scope:** `ProfileScenario` (`Arm`, `RunAnimation`, `BuildGrid`, `Ramp`, `StopHandles`, `Hold`); zones in `AnimationSystem.Tick`/`OnPost`, `MainSystem.OnPost`, `Animations.OnValue`/`Send`; engine `Animations/UI.anim.axml`.
 
 ### What changed
 - `--profile-scenario=animation` — a mode on `ProfileScenario`, not a second class (user). Plain `--profile-scenario` is unchanged. `Arm` passes the mode to a private ctor; the mode runs as an `IEnumerator<int>` advanced once per `OnTick`.
 - Zones: `Anim.Step` (track loop), `Anim.Fades` (`StepFades`) on Animation; `Anim.OnValue` around each applied value on Main. Counters: `Anim.Request` (each track write, signal set and fade on Main — `Animations.Row`, `Signals.Set`, `FadeSlots`), `Anim.Stepped`, `Anim.ValuePosted`/`Anim.ValueRefused` (per track per tick), `Anim.ValueApplied` (past the stale check), `Anim.RequestDropped` (`Send` refused). Track total is the `Animations` pool's item count under `--profile-pools`, not a counter.
-- Clips `profile-state` (`state` 0 → 2) and `profile-margin` (`Margin` left 0 → 4), 1 s `PingPong` `CubicInOut`, in the engine's `UI.anim.xml` (user: data over 30 s tweens).
+- Clips `profile-state` (`state` 0 → 2) and `profile-margin` (`Margin` left 0 → 4), 1 s `PingPong` `CubicInOut`, in the engine's `UI.anim.axml` (user: data over 30 s tweens).
 - Timeline: settle 30 ticks → `CaptureUntilFlush` → one fade → per N in `{100, 1000, 5000, 20000}`:
 
 | Stage | Zone | Does |
@@ -702,13 +702,13 @@ captures.
   the reader landed** (user, 2026-09-02): `FrameCaptureReader` is hand-written and is the only
   consumer, so a schema would validate only files the engine itself wrote. See
   [[carbon-frame-viewer]] §"Left standing".
-- ~~**No keybind entry** in any application's `InputMap.inputs.xml`.~~ **Bound 2026-09-02** —
-  Thorium's `InputMap.inputs.xml` maps `F9` to `Profiling.Capture`, and it has now been pressed: two
+- ~~**No keybind entry** in any application's `InputMap.inputs.axml`.~~ **Bound 2026-09-02** —
+  Thorium's `InputMap.inputs.axml` maps `F9` to `Profiling.Capture`, and it has now been pressed: two
   real 300-frame captures exist and read back correctly. **This is the profiler's first run in a
   real application.**
 - **§11 is wrong about where the frame edges are.** `ThreadedSystem.Loop` carries `Frame.Begin`/`End`
   and `Report` — it does **not** carry a `FrameEdge` zone, which is one of `Engine.MainTick`'s. So
-  "every system has them, physics included" is false for the *zone*: `Physics.frames.xml` holds 300
+  "every system has them, physics included" is false for the *zone*: `Physics.frames.axml` holds 300
   frames and zero spans. The frame *edges* are shared, as claimed; the named zone is not. Found by
   reading a real capture in Carbon, 2026-09-02. Not yet corrected in the prose above or in
   `PROFILING.md`.

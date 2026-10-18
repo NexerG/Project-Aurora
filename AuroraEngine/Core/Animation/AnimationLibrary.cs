@@ -100,7 +100,7 @@ namespace ArctisAurora.Core.Animation
     [A_XSDType("Animations", "Animation", typeof(AnimationDefinition), Description = "Root container for named clips and state bindings")]
     public class AnimationMap { }
 
-    // Clips and state bindings from Animations/*.anim.xml; clip keys live in the Keyframes pool.
+    // Clips and state bindings from Animations/*.anim.axml; clip keys live in the Keyframes pool.
     public static class AnimationLibrary
     {
         private static readonly LogChannel Log = LogChannel.For("Animation");
@@ -114,11 +114,11 @@ namespace ArctisAurora.Core.Animation
         // An unknown name is an authoring error, not a fallback.
         public static ClipDefinition Clip(string name)
             => clips.TryGetValue(name, out ClipDefinition? clip) ? clip
-            : throw new Exception($"Clip '{name}' is not defined in any Animations/*.anim.xml.");
+            : throw new Exception($"Clip '{name}' is not defined in any Animations/*.anim.axml.");
 
         public static BindingDefinition Binding(string name)
             => bindings.TryGetValue(name, out BindingDefinition? binding) ? binding
-            : throw new Exception($"Binding '{name}' is not defined in any Animations/*.anim.xml.");
+            : throw new Exception($"Binding '{name}' is not defined in any Animations/*.anim.axml.");
 
         [A_XSDActionDependency("AnimationLibrary.LoadAnimations", "Bootstrap")]
         public static bool LoadAnimations()
@@ -128,7 +128,7 @@ namespace ArctisAurora.Core.Animation
             clips.Clear();
             bindings.Clear();
 
-            foreach (string file in VirtualFileSystem.EnumerateAll("XML/Documents/Animations", "*.anim.xml"))
+            foreach (string file in VirtualFileSystem.EnumerateAll("XML/Documents/Animations", "*.anim.axml"))
             {
                 foreach (XElement element in DataFiles.LoadXml(file).Elements())
                 {

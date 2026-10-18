@@ -163,7 +163,7 @@ namespace ArctisAurora.EngineWork.Registry
         [A_XSDActionDependency("AssetRegistries.InstantiateRegistries", "Bootstrap")]
         internal static bool InstantiateRegistries()
         {
-            assetRegistries = ParseXML("Registry.registry.xml");
+            assetRegistries = ParseXML("Registry.registry.axml");
             return true;
         }
 
@@ -184,7 +184,7 @@ namespace ArctisAurora.EngineWork.Registry
         internal static bool PreloadAssets()
         {
             Dictionary<(string, string), AssetManifestEntry> entries = new Dictionary<(string, string), AssetManifestEntry>();
-            foreach (string file in VirtualFileSystem.EnumerateAll("XML/Assets", "*.assets.xml"))
+            foreach (string file in VirtualFileSystem.EnumerateAll("XML/Assets", "*.assets.axml"))
             {
                 XElement root = DataFiles.LoadXml(file);
                 XNamespace ns = root.GetDefaultNamespace();

@@ -4,7 +4,7 @@
 **Status:** LANDED. All three buttons **verified by synthetic clicks**: minimize iconifies the window,
 maximize fills the screen and the document reflows, close exits the process with no stderr.
 **Scope:** `ArctisAurora.Core.UISystem.Actions` (`WindowActions`), `...Controls.Text`
-(`LabelControl`), `Thorium` (`UI.xml`, `VaultBrowserControl`).
+(`LabelControl`), `Thorium` (`UI.axml`, `VaultBrowserControl`).
 
 ## Context
 
@@ -127,7 +127,7 @@ so no special case is needed for that.
 Cost: the corner ~8px are clipped away, so `WindowFrameControl`'s diagonal corner resize grips lose
 their outermost pixels. The edge bands either side of each corner still hit.
 
-Also gone the same day: the `EdgeThickness="2" EdgeColorHex="#C42B1E"` left on `UI.xml`'s maximize
+Also gone the same day: the `EdgeThickness="2" EdgeColorHex="#C42B1E"` left on `UI.axml`'s maximize
 button from testing the edge feature.
 
 ## The move is Windows', not ours (2026-09-03)

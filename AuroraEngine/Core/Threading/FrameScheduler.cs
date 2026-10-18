@@ -10,7 +10,7 @@ using ArctisAurora.EngineWork;
 
 namespace ArctisAurora.Core.Threading
 {
-    // Runs Frame.frame.xml: steps placed into stages by the columns they touch, stage after stage, the
+    // Runs Frame.frame.axml: steps placed into stages by the columns they touch, stage after stage, the
     // main thread running pinned steps and helping with the rest.
     public static class FrameScheduler
     {
@@ -119,7 +119,7 @@ namespace ArctisAurora.Core.Threading
             {
                 FrameStep step = Build(element, actions);
                 if (!listed.Add(step.Name))
-                    throw new Exception($"[FrameScheduler] {step.Name} is listed twice in Frame.frame.xml.");
+                    throw new Exception($"[FrameScheduler] {step.Name} is listed twice in Frame.frame.axml.");
 
                 steps.Add(step);
                 if (step.System != null && !_scheduled.Contains(step.System))
@@ -128,7 +128,7 @@ namespace ArctisAurora.Core.Threading
 
             foreach (ThreadedSystem system in ThreadedSystem.All)
                 if (!system.Dedicated && !_scheduled.Contains(system))
-                    Log.Warn($"{system.Name} has no Step and is not Dedicated in Frame.frame.xml, so it never runs");
+                    Log.Warn($"{system.Name} has no Step and is not Dedicated in Frame.frame.axml, so it never runs");
 
             Wire(steps);
             _stages = Place(steps);
@@ -295,7 +295,7 @@ namespace ArctisAurora.Core.Threading
             }
 
             if (placed < steps.Count)
-                throw new Exception($"[FrameScheduler] Frame.frame.xml steps wait on each other in a loop: {Loop(steps, pending)}");
+                throw new Exception($"[FrameScheduler] Frame.frame.axml steps wait on each other in a loop: {Loop(steps, pending)}");
 
             FrameStep[][] stages = new FrameStep[stageCount][];
             for (int s = 0; s < stageCount; s++)

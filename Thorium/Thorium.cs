@@ -1,4 +1,5 @@
-﻿using ArctisAurora.Core.Registry;
+﻿using ArctisAurora.Core.Filing;
+using ArctisAurora.Core.Registry;
 using ArctisAurora.Core.Security;
 using ArctisAurora.Core.UI;
 using ArctisAurora.EngineWork;
@@ -16,6 +17,10 @@ namespace Thorium
 
             SettingsRegistry.SetWriteRoot(Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Arktis", "Thorium", "Settings"));
+
+            string? file = args.Length > 0 && !args[0].StartsWith('-') && File.Exists(args[0]) ? Path.GetFullPath(args[0]) : null;
+            Background.standalone = file != null;
+            FileAssociations.enabled = true;
 
             engine.Init(false);
             InputHandler.SetActiveKeybindGroup("InputMap");
@@ -43,6 +48,13 @@ namespace Thorium
             //    "ĄČĘĖĮŠŲŪŽąčęėįšųūž",
             //    "arial.ttf");
 
+            if (file != null)
+            {
+                OpenStandalone(file);
+                engine.Run();
+                return;
+            }
+
             Engine.primary.uiDocument = "main";
             Engine.primary.ui.uiRoot = (WindowRoot)Control.ParseXML("main");
             if (!Background.canTray && Engine.primary.ui.uiRoot.FindByName("TrayButton") is ButtonControl tray) tray.enabled = false;
@@ -54,6 +66,21 @@ namespace Thorium
             else SessionLayout.Restore();
 
             engine.Run();
+        }
+
+        // Shows one file in a bare tab window, leaving the vault's layout unrecorded.
+        internal static void OpenStandalone(string path)
+        {
+            SessionLayout.paused = true;
+            Engine.primary.uiDocument = "tab-window";
+            WindowRoot root = (WindowRoot)Control.ParseXML("tab-window");
+            Engine.primary.ui.uiRoot = root;
+            WorkspaceControl.In(root)?.LoadDefault();
+
+            if (root.FindByName("Tabs") is not TabViewControl tabs) return;
+            TabItemControl tab = VaultBrowserControl.BuildTab(path, false);
+            tabs.AddChild(tab);
+            tabs.SetActive(tab);
         }
     }
 }

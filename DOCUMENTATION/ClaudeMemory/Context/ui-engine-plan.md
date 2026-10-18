@@ -29,7 +29,7 @@ glyph and none for itself.
 `QuadUVs`), `Control.cs`, `WindowRoot.cs`, `PointerEvent.cs`, `TextRunControl.cs` (`StyleSpan`,
 `IGlyphPressTarget`, `TextRunControl`), `CaretControl.cs`, `UIEngine.cs`.
 
-**Pools**, in `Pools.pools.xml`, both `Ordered="true"`:
+**Pools**, in `Pools.pools.axml`, both `Ordered="true"`:
 
 | Pool | Columns | Capacity | SortAction |
 |---|---|---|---|
@@ -109,7 +109,7 @@ texel into colour and alpha, a panel's mask multiplies coverage in last, and bot
 **`ERendererTypes.UIEngine`** and its `AuroraCamera` case — ortho over `WindowRoot.ViewportSize`, falling back
 to the raw swapchain extent when the window has no root.
 
-**Bootstrap** — **gone at 6c2 (2026-09-13)**: the step is out of `Bootstrap.bootstrap.xml` and each host sets
+**Bootstrap** — **gone at 6c2 (2026-09-13)**: the step is out of `Bootstrap.bootstrap.axml` and each host sets
 `ui.uiRoot` itself. At landing 2, `<Step Action="UIEngine.Bootstrap"/>` was the last step. It logged
 the row sizes and builds a **scaffolding tree** on `Engine.primary`: a root at window size, padding 24,
 holding `card` (360×220, padding 16, Left/Top) → `inner` → `leaf` (120×60), `clipped` (200×140, Right/Top,
@@ -143,7 +143,7 @@ gradient, Right/Bottom). The landing 6 port removes all of it.
 | `Control : Entity`, per entity-kind columns | Animation runs on `OnTick` + components. See [[entity-transform-split]] |
 | ~~Row building is **incremental per element**, not a per-frame rebuild~~ **REVERSED 2026-09-07** | The 11 MB/frame was a list sized by the document. Culled, the list is sized by the screen — the probe emits 44 quads. See [[ui-draw-list]] |
 | ~~Emit rows for **all** glyphs for now, not visible-only~~ **REVERSED 2026-09-07** | A run emits a quad per visible glyph, off the lines the measurer already produced. No per-document cache was needed; the clip band and `_layout.lines` were enough |
-| An XML event attribute binds by **wrapping the tagged method into a func that returns `true`**, combined with `+=` | The tagged action pool feeds keybinds, context menus and `*.ui.xml` with three different delegate shapes; only one has a `PointerEvent`. See [[ui-engine-stack]] |
+| An XML event attribute binds by **wrapping the tagged method into a func that returns `true`**, combined with `+=` | The tagged action pool feeds keybinds, context menus and `*.ui.axml` with three different delegate shapes; only one has a `PointerEvent`. See [[ui-engine-stack]] |
 | Any **delegate**-typed member is an XSD attribute, not just `Action` | One shape test in the generator instead of a `Core.UI` type registered inside `Core.Registry` |
 | `canBeActiveContext` is a **question that returns a control**, `Control.ActiveContextTarget()` | 6c's `TextBox`/`TextInput`/`DocumentEditor` need to focus a *child* run, which a "not me" bool cannot express |
 
@@ -183,7 +183,7 @@ click and which consumed-bubbling covers. The fifteenth, `WindowFrameControl`'s 
 **sibling drawn behind them** when maximized — bubbling to a parent does not reproduce that. The user has
 deferred it to "context logic" rather than `Hide()`.
 
-**Neither `edge` nor `outline` had a single consumer** — no C# control set either, no `.ui.xml` authored either.
+**Neither `edge` nor `outline` had a single consumer** — no C# control set either, no `.ui.axml` authored either.
 
 **A new stack root paints unless told not to.** A `Control` with default `alpha = 1` and the window's rect is a
 full-window opaque quad, and the compositor puts it over everything the old stack drew — the window goes blank
@@ -312,7 +312,7 @@ on the target and clears both. **What the claimant hears is still nothing.** Sti
 [[ui-engine-stack]] § *The drag gap*.
 
 → *verified:* all four projects build clean; Thorium boots, row sizes still 140 / 96 / 92, 9 errors and all
-of them the pre-existing set. `NextProbe.ui.xml` parses and draws over the old UI: the card is exactly
+of them the pre-existing set. `NextProbe.ui.axml` parses and draws over the old UI: the card is exactly
 360×220 at (24,24) with a 2 px white edge band, its `CornerRadius="16,4,16,4"` measuring a 7 px diagonal
 inset on both left corners against 3 px on both right ones (theory 7.7 / 4.2), `ClipToBounds` cutting a
 320×260 child to its 200×140 parent on both axes, `ControlColor="teal"` resolving to `#008080`,
@@ -352,7 +352,7 @@ to the sibling behind rather than swallow the pixel.
 and three buttons left to right with 4 px `Spacing`, three distinct tints (`#EBEAE5` rest, `#E3E1D9` hover,
 `#D7D5CD` press) restoring on exit, `Icon` drawing the atlas cells as clean silhouettes at 14 and 18 px,
 and `onRelease` firing `Window.Minimize` from both an icon button and a captioned one. Then rebuilt as the
-**real title bar**: `NextProbe.ui.xml`'s root padding dropped to 0 so a `Stretch`/`Top` stack sits flush at
+**real title bar**: `NextProbe.ui.axml`'s root padding dropped to 0 so a `Stretch`/`Top` stack sits flush at
 y 0..32 across the full width, holding `Thorium`/`File`/`Edit`/`View` captions at 72/48/48/48 and the
 minimize/maximize/close trio at 46 each, with `Gradient="titlebar"` across the bar. Hover tints one button
 and leaves its neighbours at rest, close goes `#C42B1E` on hover and `#A82318` on press, and releasing close
@@ -396,7 +396,7 @@ consequence of authoring an unsized child in a bounded stack, not a repair for i
 `contentSize` rather than `child.DesiredSize`, so the child is not arranged at `MaxValue` either. The **old**
 stack keeps the bug until 6d deletes it.
 
-→ *verified:* GUI-verified in Thorium against `NextProbe.ui.xml`. A `<SplitView>` 420×200 at Left/Center
+→ *verified:* GUI-verified in Thorium against `NextProbe.ui.axml`. A `<SplitView>` 420×200 at Left/Center
 holding a 160 px pane, a 5 px `<Splitter>` and a nested vertical `<SplitView>` of two `HeightStar="1"`
 panes: grips draw at `#2A2A2A`, dragging the horizontal grip +100 px moved the sized pane 160 → 260 with the
 outer width unchanged, and dragging the vertical grip +60 px grew the top star pane and shrank the bottom one
@@ -468,12 +468,12 @@ caller.
   landing 6a commit.
 - ~~**The context-menu hooks, likewise** — `contextMenus`, `BuildContextMenu`, `OpenContextMenu` — plus
   `ContextMenus` and the menu controls that host them, so `ContextMenu="…"` binds again.~~ **Landed
-  2026-09-11, redesigned rather than restored** — a menu is a `*.menu.xml` a control names. See [[context-menus]].
+  2026-09-11, redesigned rather than restored** — a menu is a `*.menu.axml` a control names. See [[context-menus]].
 - ~~`DragGhost`, which needs `rangeRoot` on `UIEngineModule`.~~ **Landed at 6b3.**
-- ~~Delete `NextProbe.ui.xml` and `UIEngine.BuildProbe`.~~ **Done 2026-09-13** — `BuildProbe` went with the
+- ~~Delete `NextProbe.ui.axml` and `UIEngine.BuildProbe`.~~ **Done 2026-09-13** — `BuildProbe` went with the
   `UIEngine.Bootstrap` step; the document and its `next-probe` asset row followed.
 
-→ *verify:* a `Next`-prefixed copy of Thorium's `UI.ui.xml` builds the real shell — title bar, tabs, splits,
+→ *verify:* a `Next`-prefixed copy of Thorium's `UI.ui.axml` builds the real shell — title bar, tabs, splits,
 the file browser — on the new stack.
 
 #### 6c — text and documents
@@ -541,7 +541,7 @@ no note being taller than the viewport.
 `SetBlockStyling`/`SetBlockStylingBetween`, `SnapshotBlocks`, `RestoreBlocks`), `BlockControl.StyleRange`,
 `StyleSpan.IsBold`/`IsItalic`, `StyleRangeEdit`, the editor's forwarding region under a `BeginStep`, and
 `DocumentToolbarControl` (+ nested `ToolButton`, `PxBox`) replacing the stub band in
-`UI.ui.xml`. `TextInputActions.Toggle` takes a delta per stack and routes to whichever editor is focused.
+`UI.ui.axml`. `TextInputActions.Toggle` takes a delta per stack and routes to whichever editor is focused.
 `TypeChar` spends an armed style on the character it just wrote.
 
 → *verified:* builds clean; boot error set 7 (one sampler asset, six repeats of one Vulkan validation barrier
@@ -576,31 +576,31 @@ saved correctly in isolation twice.
 **Moved out of 6b to the end of the port** (user, 2026-09-11) — after 6c, before 6d.
 
 - The secondary windows built in code: `ConfirmWindow`, `NoteNameWindow`, `SettingsWindow`, `MenuScreen`,
-  Thorium's `VaultsWindow`; their documents `Settings.ui.xml` and `Vaults.ui.xml`.
+  Thorium's `VaultsWindow`; their documents `Settings.ui.axml` and `Vaults.ui.axml`.
 - `SettingsWindow` is the only consumer of `CheckBox`, `Dropdown` and `KeyCapture`, ported at 6b3
   unverified — this is where they are first driven. `Dropdown`'s list has no XML way in.
 - `UIActions.Invoking` is retargeted at 6b3, but every caller — `Settings.Open`, `Vaults.Open`, the Editor's
   `Decorations` — is one of these windows.
 - Tab tear-off: `TabViewControl.TearOff`, `tearOffDocument`, `Tab.MoveToNewWindow`, `Tab.CanTearOff`,
-  `TabWindow.ui.xml`.
+  `TabWindow.ui.axml`.
 - `SessionLayout` (user: later) — it restores torn-off windows as well as panes.
 - Hosts: Carbon's `FrameStripControl`, `SessionListControl`, `SpanChartControl` (+ `ChartScrollThumbControl`),
-  `ZoneTableControl` and Carbon's `UI.ui.xml`; the Editor's `CustomTestControl`; Thorium's old
+  `ZoneTableControl` and Carbon's `UI.ui.axml`; the Editor's `CustomTestControl`; Thorium's old
   `VaultBrowserControl`, beside the ported `VaultBrowserControl`.
 
 → *verify:* each window opens, draws and closes on the new stack; Carbon boots on it.
 
 **What landed:**
 - Windows: `SettingsWindow`, `MenuScreen` and `SessionLayout` moved into `Core.UI` on `Next` types;
-  `ConfirmWindow` and `NoteNameWindow` are new; `Settings.ui.xml`, `Vaults.ui.xml` and
-  `TabWindow.ui.xml` are `Next*` documents; tear-off is `TabViewControl.TearOff`. The old `ConfirmWindow`
+  `ConfirmWindow` and `NoteNameWindow` are new; `Settings.ui.axml`, `Vaults.ui.axml` and
+  `TabWindow.ui.axml` are `Next*` documents; tear-off is `TabViewControl.TearOff`. The old `ConfirmWindow`
   and `NoteNameWindow` stay for the old `DocumentEditorControl` and `VaultBrowserControl` and go at 6d.
 - Carbon: ported **in place of** the old classes, not beside them — `FrameStripControl`,
   `SessionListControl`, `ZoneTableControl`, `SpanChartControl` (+ `ChartScrollThumbControl`).
-  `UI.ui.xml` is a `Next*` document and `Carbon.cs` sets `ui` only. Click → `OnPointerPress`, wheel →
+  `UI.ui.axml` is a `Next*` document and `Carbon.cs` sets `ui` only. Click → `OnPointerPress`, wheel →
   `OnPointerScroll` (`delta.Y > 0` zooms in), drag → `StartDrag` + `OnDrag`.
 - Editor: `CustomTestControl` deleted, nothing else (user, 2026-09-13). The Editor still boots the old stack —
-  `Editor.cs`, its `UI.ui.xml`/`Alt.ui.xml`, `Decorations.ShowAlt`/`ShowMain` — so 6d's delete breaks it.
+  `Editor.cs`, its `UI.ui.axml`/`Alt.ui.axml`, `Decorations.ShowAlt`/`ShowMain` — so 6d's delete breaks it.
 
 → *verified:*
 - **Carbon GUI-verified** (the user, and capture): boots on the new stack alone; a session row loads a capture;
@@ -621,7 +621,7 @@ saved correctly in isolation twice.
   `UI.vert`/`UI.frag` (all four trees). Also went: `UIRenderer` (legacy, used `MCUI`), `TextEntity`,
   `GpuTransform`, `ConfirmWindow`, `NoteNameWindow`, `ContextMenus` (+ `menuFactory` and the
   `ContextMenus.LoadMenus` step), `DragGhost`, `UICollisionHandling`, Thorium's `VaultBrowserControl` and its
-  `UI.ui.xml`/`Workspace.ui.xml`/`TabPane.ui.xml`, the `styles` registry, the `Controls` entity list, the
+  `UI.ui.axml`/`Workspace.ui.axml`/`TabPane.ui.axml`, the `styles` registry, the `Controls` entity list, the
   `ActiveTabViewer` context, the `Tab.HasSiblings`/`HasRight`/`CanTearOff` predicates.
 - [x] Decided (user, 2026-09-15): the helpers **stay where they are** — `Core.UISystem` keeps `AuroraFont`,
   `Glyph`, `Gradients`, `IconSet`, `Bezier`, `UISettings`, `Actions/*`; `Controls.Text` keeps `CaretMove` +
@@ -638,7 +638,7 @@ saved correctly in isolation twice.
 - [x] Dropped every `Next` prefix (user, 2026-09-15) — 66 types and their files, their XSD names, the
   `Hovering` / `ActiveControl` / `PressTarget` / `Dragging` / `MouseOverWindow` / `ActiveWindow` /
   `ActiveTabViewer` contexts, `UI.ElementOrder`, `RenderWindow.ui`, the `next-*` asset and window names, and
-  Thorium's `UI`/`Workspace`/`TabPane.ui.xml`. XSD clashes the drop exposed: the root is `WindowRoot` and
+  Thorium's `UI`/`Workspace`/`TabPane.ui.axml`. XSD clashes the drop exposed: the root is `WindowRoot` and
   graphics settings' `Window` is `WindowSetting`; `Control` is `"Control"`, the struct `"VulkanControl"`.
   `TextInputActions.Editor()`/`Box()`, `TabActions.Tab()`, `ViewActions.Acting()` lost the prefix too.
 - [x] `Core.UISystem` is gone (user, 2026-09-15). Fonts are filing logic: `AuroraFont`, `Glyph`, `Bezier`,
@@ -647,7 +647,7 @@ saved correctly in isolation twice.
   `DocumentLayout`/`DocumentSettings` merged into `RichTextDocument.cs`.
 - [ ] Collapse the two remaining copies of the atlas-cell arithmetic (`TextRunControl`, `TextMeasurer`), and the
   duplicated `CreatePipeline` if `UIModule`'s going did not already settle it.
-- [ ] `ContextMenus.menus.xml` in `AuroraEngine/` and `Thorium/` has no loader any more — not deleted.
+- [ ] `ContextMenus.menus.axml` in `AuroraEngine/` and `Thorium/` has no loader any more — not deleted.
 - [ ] Stale comments still name deleted types: `UIEngineModule` ("composited over UIModule", and the
   transparent clear it justifies), `TextRunControl`, `TextBoxControl`, `ViewActions`, `ThoriumSettings`.
 

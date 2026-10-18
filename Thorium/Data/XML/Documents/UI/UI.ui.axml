@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Thorium's shell on the new stack, mirroring UI.ui.xml. Stubs stand in for the controls that
+<!-- Thorium's shell on the new stack, mirroring UI.ui.axml. Stubs stand in for the controls that
      have not been ported: the document toolbar is a bare band. -->
 <WindowRoot Width="1280" Height="720" WindowingMode="WindowSize" Autoscaling="false" ScalingAxis="Vertical">
 

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<FileTypes xmlns="http://arctisaurora/AuroraUITypes"
+		   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+		   xsi:schemaLocation="http://arctisaurora/AuroraUITypes ../Schemas/UITypeSchema.xsd" >
+
+	<FileType Suffix=".axml" Kind="Note" Description="Aurora note" Register="true" Mime="application/x-aurora+xml"/>
+	<FileType Suffix=".sheet.axml" Kind="Sheet" Description="Aurora sheet"/>
+	<FileType Suffix=".planner.axml" Kind="Planner" Description="Aurora planner"/>
+	<FileType Suffix=".xml" Kind="Xml" Description="XML document" Register="true" Mime="application/xml"/>
+	<FileType Suffix=".md" Kind="Markdown" Description="Markdown document" Register="true" Mime="text/markdown"/>
+	<FileType Suffix=".txt" Kind="PlainText" Description="Text document" Register="true" Mime="text/plain"/>
+	<FileType Suffix=".tex" Kind="Tex" Description="LaTeX source"/>
+</FileTypes>

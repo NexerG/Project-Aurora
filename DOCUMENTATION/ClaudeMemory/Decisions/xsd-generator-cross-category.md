@@ -86,7 +86,7 @@ a generator-version constant into every fingerprint and bump it whenever emissio
 - `TextEditorTypeSchema.xsd` is dead — the `"TextEditor"` category is unused, so the generator no
   longer emits it, but the committed file remains (and is the only committed schema with dangling
   refs: `types:ControlColor`/`DockMode`/`HorizontalAlignment`/`VeticalAlignment`, all `"UI"`).
-- `SchemaManifest.xml` lists `RegistryTypeSchema.xsd`, which no longer exists.
+- `SchemaManifest.axml` lists `RegistryTypeSchema.xsd`, which no longer exists.
 - Committed schemas under `*/Data/XML/Schemas/` are a **2026-07-17** snapshot; they regenerate only
   by running an app. The fingerprint change means the next boot rewrites all of them.
 

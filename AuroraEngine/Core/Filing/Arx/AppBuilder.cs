@@ -98,7 +98,7 @@ namespace ArctisAurora.Core.Filing.Arx
                     if (excludes.Any(r => r.IsMatch(relative)) || !seen.Add(relative)) continue;
 
                     if (loose.Any(r => r.IsMatch(relative))) looseFiles.Add((file, relative));
-                    else if (file.EndsWith(".xml", StringComparison.OrdinalIgnoreCase)) writer.AddXml(relative, XElement.Load(file));
+                    else if (file.EndsWith(".axml", StringComparison.OrdinalIgnoreCase) || file.EndsWith(".xml", StringComparison.OrdinalIgnoreCase)) writer.AddXml(relative, XElement.Load(file));
                     else writer.AddBlob(relative, File.ReadAllBytes(file));
                 }
             }

@@ -113,7 +113,7 @@ Superseded parts of §5/§6 on the new stack (`Core.UI.VulkanControl`, `Shaders/
 
 ## Still open
 
-- `UITypeSchema.xsd` and `SchemaManifest.xml` regenerate on the next run — the four properties are
+- `UITypeSchema.xsd` and `SchemaManifest.axml` regenerate on the next run — the four properties are
   not in the committed schema until then. Nothing validates at load (`XSDGenerator` writes schemas,
   no `XmlSchemaSet` reads them), so authoring works immediately; only IDE completion lags.
 - Outline width in screen px vs edge thickness in design px, per §1.

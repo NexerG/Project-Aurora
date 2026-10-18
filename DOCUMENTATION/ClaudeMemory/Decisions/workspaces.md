@@ -2,7 +2,7 @@
 
 **Date:** 2026-10-08
 **Status:** LANDED (W2, W3, W4a and W4b of `../Context/workspace-plan.md`). W2 test-verified and shot-verified; W3/W4 test-verified and golden-verified. **NOT GUI-verified.**
-**Scope:** `ArctisAurora.Core.UI` — `WorkspaceControl`, `WorkspacePageControl`, `WorkspaceKind`, `WorkspaceBarControl`, `WorkspaceActions`, `SessionLayout` (`SessionWorkspace`, `ISessionWindowChild`), `PlannerBook`, `PlannerDocument`, `SheetDocument`, `PlannerEditorControl`, `SheetEditorControl`, `TabActions`, `TabViewControl`; `Thorium.Editor.CustomControls.VaultBrowserControl`; `UI.ui.xml`, `Workspace.menu.xml`, `WorkspaceAdd.menu.xml`, `ThoriumAssets.assets.xml`; W3/W4: `TabToolsControl`, `NoteToolsControl`, `RibbonControl`, `InspectorControl`, `DocumentToolbarControl`, `SplitterControl`, `DocumentControl`, `DocumentEditorControl`, `SheetEditorControl`, `TextInputActions`, `IFileEditor`, `ArctisAurora.Core.Filing` (`FileDialog`, `FilePicker`, `FolderPicker`), Thorium `PaneNew.menu.xml`
+**Scope:** `ArctisAurora.Core.UI` — `WorkspaceControl`, `WorkspacePageControl`, `WorkspaceKind`, `WorkspaceBarControl`, `WorkspaceActions`, `SessionLayout` (`SessionWorkspace`, `ISessionWindowChild`), `PlannerBook`, `PlannerDocument`, `SheetDocument`, `PlannerEditorControl`, `SheetEditorControl`, `TabActions`, `TabViewControl`; `Thorium.Editor.CustomControls.VaultBrowserControl`; `UI.ui.axml`, `Workspace.menu.axml`, `WorkspaceAdd.menu.axml`, `ThoriumAssets.assets.axml`; W3/W4: `TabToolsControl`, `NoteToolsControl`, `RibbonControl`, `InspectorControl`, `DocumentToolbarControl`, `SplitterControl`, `DocumentControl`, `DocumentEditorControl`, `SheetEditorControl`, `TextInputActions`, `IFileEditor`, `ArctisAurora.Core.Filing` (`FileDialog`, `FilePicker`, `FolderPicker`), Thorium `PaneNew.menu.axml`
 
 ## What changed
 - `WorkspaceKind` enum `[A_XSDType("WorkspaceKind","UI")]`: General, Docs, Sheets, LaTeX, Manager, Calendar.
@@ -16,18 +16,18 @@
 - `PlannerBook` (static, in `PlannerDocument.cs`): `Open(path)`, `Close(path, document)`, `Renamed(from, to)`; one `PlannerDocument` per path, count on internal `PlannerDocument.views`. `PlannerDocument.unsaved` and `SheetDocument.unsaved` are new; `PlannerEditorControl.unsaved` and `SheetEditorControl.unsaved` read them. `PlannerEditorControl.LoadPath` opens through `PlannerBook`; private `Release()` (unsubscribe, `PlannerBook.Close`) runs from `Load` and `OnDestroy`.
 - `TabActions.Split`: any tab whose editor has a path gets a second view (was notes and `.tex` only). `TabViewControl.CloseTab(item, onClosed)` private → internal.
 - `VaultBrowserControl`: field `filtered` (shown kind); region `workspace filter` (`OnWorkspaceChanged` re-filters, sets label `VaultFilter`, `Rebuild`; `Shows(kind, path)`; `FilterName`). `Shows`: Docs = notes that are not sheets/CSV/planners/.tex; Sheets = sheets + CSV; LaTeX = .tex; Manager and Calendar = planners; General = all. Names: All files / Notes / Sheets / LaTeX / Plans. `Accepts` adds `Shows`. `Open` reuses a tab only from a shown workspace (a file open in a hidden one gets a second view in the shown one) and falls back to `ShownTabs()` (first pane of the shown page; replaces `FindByName("Tabs")`, constant `tabsName` removed). A planner opened while the shown kind is Calendar starts in `PlannerView.Calendar`. `FocusedTabs` also requires the view's page to be shown. `RenameNote` calls `PlannerBook.Renamed`.
-- Data: `UI.ui.xml` title bar gains a 1 px separator, `<WorkspaceBar Height="26"/>` and a 22×22 `MenuButton ContextMenu="workspace-add"` ("+"); sidebar gains a 24 px header row (`Label Name="VaultFilter"`); `<Workspace ... FirstRun="General Docs Sheets LaTeX Manager Calendar"/>` (every kind, user 2026-10-08). `Workspace.menu.xml` (Rename, Duplicate, Close) and `WorkspaceAdd.menu.xml` (New General/Docs/Sheets/LaTeX/Manager/Calendar workspace, Duplicate current, Rename...) are registered as `workspace` and `workspace-add`.
-- Tests: `WorkspaceTests.cs` + `Workspace.tests.xml` (`Workspace.Switch`, `Workspace.Menu`, `Workspace.SessionRoundTrip`, `Workspace.LegacySession`); `Planner.TwoViews` in `PlannerTests.cs`.
+- Data: `UI.ui.axml` title bar gains a 1 px separator, `<WorkspaceBar Height="26"/>` and a 22×22 `MenuButton ContextMenu="workspace-add"` ("+"); sidebar gains a 24 px header row (`Label Name="VaultFilter"`); `<Workspace ... FirstRun="General Docs Sheets LaTeX Manager Calendar"/>` (every kind, user 2026-10-08). `Workspace.menu.axml` (Rename, Duplicate, Close) and `WorkspaceAdd.menu.axml` (New General/Docs/Sheets/LaTeX/Manager/Calendar workspace, Duplicate current, Rename...) are registered as `workspace` and `workspace-add`.
+- Tests: `WorkspaceTests.cs` + `Workspace.tests.axml` (`Workspace.Switch`, `Workspace.Menu`, `Workspace.SessionRoundTrip`, `Workspace.LegacySession`); `Planner.TwoViews` in `PlannerTests.cs`.
 
 ### W3 — tab-row tools (built in an earlier session, written up 2026-10-08)
-- Each pane's tab row carries the active editor's tools; the 30 px `DocumentToolbar` band is gone from Thorium's `UI.ui.xml` and `TabWindow.ui.xml`.
+- Each pane's tab row carries the active editor's tools; the 30 px `DocumentToolbar` band is gone from Thorium's `UI.ui.axml` and `TabWindow.ui.axml`.
 - NEW `TabToolsControl` (StackPanel of 20 px tool buttons): `Icon`, `Text(text, press, drops)`, `Separator`, static `Light`, static `Drop`; nested `TabToolButton` acts on press and never takes the active control.
 - NEW `NoteToolsControl`: B I U, align left, bullets, Paste link.
 - `IFileEditor.tools` (default null). Implemented by `DocumentEditorControl.tools`, `SheetEditorControl.tools` (B, Format menu, Fill menu, Paste link, Sum), `TexEditorControl.tools` (Build, Live, error count, Sync, zoom), `PlannerEditorControl.tools`.
 - `TabViewControl.SyncTools()` mounts the active editor's tools at the right of the tab row.
 - `SheetEditorControl.AutoSum()`; sheet formula bar (24 px: cell name, fx, formula field) in `SheetEditorControl`.
-- Pane "+": Thorium `VaultBrowserControl.NewInPane(view, button)` — Docs → note, Sheets → sheet, LaTeX → `.tex`, Manager and Calendar → planner, General → menu `pane-new` (`PaneNew.menu.xml`, registered in `ThoriumAssets.assets.xml`).
-- Tests: `TabTools.Mount`, `TabTools.Bullets`, `TabTools.AutoSum`, `TabTools.FormulaBar`, `TabTools.Tex` (`TabToolsTests.cs`, `TabTools.tests.xml`).
+- Pane "+": Thorium `VaultBrowserControl.NewInPane(view, button)` — Docs → note, Sheets → sheet, LaTeX → `.tex`, Manager and Calendar → planner, General → menu `pane-new` (`PaneNew.menu.axml`, registered in `ThoriumAssets.assets.axml`).
+- Tests: `TabTools.Mount`, `TabTools.Bullets`, `TabTools.AutoSum`, `TabTools.FormulaBar`, `TabTools.Tex` (`TabToolsTests.cs`, `TabTools.tests.axml`).
 
 ### W4a — ribbon and inspector
 - NEW `RibbonControl` `<Ribbon>` `[A_XSDType("Ribbon","UI")]`: hidden outside Docs and Sheets. Target = the active editor of the shown workspace's focused pane: internal static `FocusedView(page)`, `Target(page)`, `Covers(view, editor)`. Categories per workspace in `WorkspacePageControl.ribbonCategory`; the inspector toggle flips `WorkspacePageControl.inspectorShown`. XML `ConvertCsv` (Action). Helpers shared with the inspector: `MarginEntries`, `MarginSides`, `MarginField`, `NumberEntries`, `NumberCaption`, `Swatch`, `SizeCaption`, `Mm`, `LightCaption`.
@@ -40,8 +40,8 @@
 - `TextInputActions`: NEW `Text.Strikethrough`, `Text.Numbers`, `Text.Tasks`, `Text.InsertPicture` (Input actions, no keybinds).
 - `SheetEditorControl.On` private → internal; NEW `FocusFormula()`.
 - `SplitterControl`: NEW field `grabNext` — between a star pane and a sized pane after it, the drag writes the after-pane's size (inverted delta).
-- Thorium `UI.ui.xml`: `<Ribbon Height="30" ConvertCsv="Sheets.ConvertOpenCsv"/>` under the TitleBar; `<Splitter Width="3"/><Inspector Width="240"/>` after the Workspace column.
-- Tests: `RibbonTests.cs` (`Ribbon.Shows`, `Ribbon.Docs`, `Ribbon.Sheets`, `Inspector.Docs`, `Inspector.Sheets`, `Ribbon.Session`), suite `Ribbon.tests.xml`; goldens `Ribbon.Docs.Format`, `Ribbon.Sheets.Format`, `Inspector.Docs.Panel`, `Inspector.Sheets.Panel`.
+- Thorium `UI.ui.axml`: `<Ribbon Height="30" ConvertCsv="Sheets.ConvertOpenCsv"/>` under the TitleBar; `<Splitter Width="3"/><Inspector Width="240"/>` after the Workspace column.
+- Tests: `RibbonTests.cs` (`Ribbon.Shows`, `Ribbon.Docs`, `Ribbon.Sheets`, `Inspector.Docs`, `Inspector.Sheets`, `Ribbon.Session`), suite `Ribbon.tests.axml`; goldens `Ribbon.Docs.Format`, `Ribbon.Sheets.Format`, `Inspector.Docs.Panel`, `Inspector.Sheets.Panel`.
 
 ### W4b — entries that needed new logic
 - `DocumentControl.ToggleList(ListKind, ListMarker?)` NEW; `ToggleBullets()` now calls it. Numbered = `ListKind.Bullet` + `ListMarker.Decimal`; "already that list" compares kind and numbered-ness. `DocumentEditorControl.ToggleNumbers()`, `ToggleTasks()` (undo steps "Numbered list", "Task list").
@@ -61,13 +61,13 @@
 - `WorkspaceBarControl.TearOff(WorkspacePageControl page)` NEW (`internal unsafe`) — mirrors `TabViewControl.TearOff`: opens a 900x640 window named `workspace-N` at the pointer from `tearOffDocument`, no `LoadDefault`, then `Move(page, 0)`; refuses when the page is its window's only workspace.
 - `WorkspaceButton`: NEW internal field `bar`; press/move threshold drag (12 px, `StartDrag` + `DragGhost.Show`; does not arm while `caption.isEditing`). `OnDrag` samples `UIEngine.mouseOverWindow != null` each tick. `OnDragStop` hides the ghost, tears off when not accepted and the pointer was outside every window, else shows the page.
 - `WindowActions`: NEW action `Window.MinimizeToTray` -> `Background.Hide()` (always the primary). NEW icon `tray.svg` (tray with down arrow) in the default set; atlas rebaked to 45 icons.
-- Data: `UI.ui.xml` (`<WorkspaceBar TearOffDocument="tab-window"/>`; tray button `Icon="tray"` before minimize); `TabWindow.ui.xml` (new `<WorkspaceBar TearOffDocument="tab-window"/>` and the `workspace-add` "+" MenuButton after the title label).
-- Tests: `WorkspaceTests` NEW `Workspace.Reorder`, `Workspace.MoveAcross`, `Workspace.TearOff` (+ helpers `ShowBar`, `AddEmpty`, `Tabs`, `Marker`, `Torn`, `Find<T>`), registered in `Workspace.tests.xml`.
+- Data: `UI.ui.axml` (`<WorkspaceBar TearOffDocument="tab-window"/>`; tray button `Icon="tray"` before minimize); `TabWindow.ui.axml` (new `<WorkspaceBar TearOffDocument="tab-window"/>` and the `workspace-add` "+" MenuButton after the title label).
+- Tests: `WorkspaceTests` NEW `Workspace.Reorder`, `Workspace.MoveAcross`, `Workspace.TearOff` (+ helpers `ShowBar`, `AddEmpty`, `Tabs`, `Marker`, `Torn`, `Find<T>`), registered in `Workspace.tests.axml`.
 
 ## Why these choices
 
 **A workspace is a code-only page inside `WorkspaceControl`** (user, 2026-10-08).
-Rejected: keeping `WorkspaceControl` as one workspace and adding a `<Workspaces>` set in `UI.ui.xml` — the torn-off window would keep a lone `<Workspace>`, and every caller that finds "the workspace" would have to find the shown one. A page is needed at all because `SplitViewControl.Split`/`Collapse` swap the single child of their host; one stable single-child host per workspace keeps those rules unchanged.
+Rejected: keeping `WorkspaceControl` as one workspace and adding a `<Workspaces>` set in `UI.ui.axml` — the torn-off window would keep a lone `<Workspace>`, and every caller that finds "the workspace" would have to find the shown one. A page is needed at all because `SplitViewControl.Split`/`Collapse` swap the single child of their host; one stable single-child host per workspace keeps those rules unchanged.
 
 **Hidden workspaces stay alive, hidden like inactive tab pages** (plan fork F1, user).
 Rejected: capture and rebuild on switch like a vault switch — closing a note's last view releases its session and loses its undo history on every switch.
@@ -144,7 +144,7 @@ Moves dispatch to the hovered control, so a flick that leaves a narrow tab befor
 - OS dialogs (Picture…, Import CSV…) and `Sheets.ConvertOpenCsv` untested; the folder-picker refactor needs one manual vault-add.
 - Inspector width from a splitter drag is not saved in the session.
 - Inspector List row is text (None/Bullets/Numbers/Tasks), not icons.
-- Status bar (Thorium `UI.ui.xml`, `Thorium.Editor.StatusBarActions`) is a mockup: storage / connection / git items toggle static state with no backing; no store/server/branch icons yet. The design's Explorations ideas are still out.
+- Status bar (Thorium `UI.ui.axml`, `Thorium.Editor.StatusBarActions`) is a mockup: storage / connection / git items toggle static state with no backing; no store/server/branch icons yet. The design's Explorations ideas are still out.
 - W3/W4 are not GUI-verified: no real-app run.
 - An empty pane shows nothing at all (no strip, no "No open files" message).
 - Folders stay listed under every filter, including ones with no matching file.

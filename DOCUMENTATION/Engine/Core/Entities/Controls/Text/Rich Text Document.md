@@ -12,7 +12,7 @@ Type:
   - Public
 ---
 ## Description
-The note document model for the Thorium (Obsidian-style) editor. It is the source of truth for a note. On disk a note is `.xml`, `.md` or `.txt`; whichever it is, it is read into the engine's `<Document>` XML tree in memory and built from that — see [[#File formats]].
+The note document model for the Thorium (Obsidian-style) editor. It is the source of truth for a note. On disk a note is `.axml`, `.md` or `.txt`; whichever it is, it is read into the engine's `<Document>` XML tree in memory and built from that — see [[#File formats]].
 
 The model / view split it was designed around did not ship at first: blocks and runs were themselves `VulkanControl`s, so the model *was* the control tree and editing mutated it directly. That was the P0 decision — blocks are controls so the engine's UI layout lays a document out for free — and everything downstream follows from it, including why [[#Edit session — `DocumentEditSession`]] is not a working copy and why the whole UI is scheduled to split into data and visualization once Thorium and the profiler are up. The note model has since split the data out (N1, 2026-10-07): `RichTextDocument.blocks` is a `NoteNode[]` and the controls are views over it; since N2 (2026-10-08) every edit goes through `RichTextDocument`, which raises a `NoteChange` the controls only react to; since N3 (2026-10-08) one note can be open in several views at once, all sharing one edit session. See [[#Model shape]] and `ClaudeMemory/Decisions/note-model.md`.
 
@@ -34,7 +34,7 @@ A document is a flat list of blocks; a block of flowing text holds a list of inl
 Planned (not yet in code): `TextRun` gains `FontSize` (0 = inherit block default), `Underline` and a highlight color — mixed fonts/sizes word-by-word are just adjacent runs, with `StyleEquals` merging same-styled neighbours on edit. New blocks arrive via the same free round-trip: `CodeBlock` (Language attribute, monospace, no wrap; syntax coloring is computed at view time and never persisted). Tables landed in a different shape — see [[#Tables]].
 
 ## File formats
-A note file is text in one of three formats, and none of them builds the editor directly. `MarkdownFormat` and `PlainTextFormat` only turn text into the `<Document>`/`<Block>`/`<Run>` tree and back; `DocumentXml.Parse` is the one thing that turns a tree into blocks, whichever file it came from. An `.xml` note is that tree already, so it goes straight to `DocumentXml`. Any `.xml` file can also be opened as coloured XML source beside its normal view — see [[Xml Editor]].
+A note file is text in one of three formats, and none of them builds the editor directly. `MarkdownFormat` and `PlainTextFormat` only turn text into the `<Document>`/`<Block>`/`<Run>` tree and back; `DocumentXml.Parse` is the one thing that turns a tree into blocks, whichever file it came from. An `.axml` note is that tree already, so it goes straight to `DocumentXml`. Any `.axml` file can also be opened as coloured XML source beside its normal view — see [[Xml Editor]].
 
 The file name becomes the note's `Name` for `.md` and `.txt`, so those notes are never unnamed. New notes from the vault browser are `.md`; a duplicate or a rename keeps the extension it had. Colour, gradient, font and size have nowhere to go in Markdown and are not written — the palette colours a Markdown note.
 
@@ -86,13 +86,13 @@ return the new depth
 A first save normalizes a few things: `_i_` becomes `*i*`, `[X]` becomes `[x]`, list indents become one tab per level, a fence loses its language, `Comment` blocks become plain lines and line endings become LF.
 
 ## Properties
-A note carries a palette of its own, the time it was created and the time it was last saved with changes. An `.xml` note keeps them as `Palette`, `Created` and `Modified` attributes on `<Document>`. A Markdown note keeps them in its frontmatter: a YAML block between `---` lines or a TOML block between `+++` lines at the very top of the file.
+A note carries a palette of its own, the time it was created and the time it was last saved with changes. An `.axml` note keeps them as `Palette`, `Created` and `Modified` attributes on `<Document>`. A Markdown note keeps them in its frontmatter: a YAML block between `---` lines or a TOML block between `+++` lines at the very top of the file.
 
-The frontmatter block is kept whole, exactly as written, so tags, aliases, comments and key order survive a save. Only the keys the note owns are read and written — `Palette`, `Created`, `Modified`, `ReadOnly`, `LineHeight`, `BlockSpacing`, `ListIndent`, `ListMarkers` and the page keys `PageMode`, `PageSize`, `Landscape`, `PageWidth`, `PageHeight`, `MarginTop`, `MarginBottom`, `MarginLeft`, `MarginRight`. `PageWidth` and `PageHeight` are only written when `PageSize` is `Custom`. The space between pages belongs to the app, not to a note, so `PageGap` is just one of your own keys now. They become the same attributes an `.xml` note has on `<Document>`, `<DocumentLayout>` and `<Page>`, so a Markdown note gets the per-note layout and page an `.xml` note has. Key names match case-insensitively and an existing line keeps its casing.
+The frontmatter block is kept whole, exactly as written, so tags, aliases, comments and key order survive a save. Only the keys the note owns are read and written — `Palette`, `Created`, `Modified`, `ReadOnly`, `LineHeight`, `BlockSpacing`, `ListIndent`, `ListMarkers` and the page keys `PageMode`, `PageSize`, `Landscape`, `PageWidth`, `PageHeight`, `MarginTop`, `MarginBottom`, `MarginLeft`, `MarginRight`. `PageWidth` and `PageHeight` are only written when `PageSize` is `Custom`. The space between pages belongs to the app, not to a note, so `PageGap` is just one of your own keys now. They become the same attributes an `.axml` note has on `<Document>`, `<DocumentLayout>` and `<Page>`, so a Markdown note gets the per-note layout and page an `.axml` note has. Key names match case-insensitively and an existing line keeps its casing.
 
 `Created` is filled from the file's creation time on disk when a note has none, and `Modified` is stamped whenever an edited note is saved, so every saved Markdown note ends up with a frontmatter block. Dates are ISO 8601 with the local offset. Turning off `StampModified` in `DocumentSettings` stops a save writing `Modified` at all — the key is taken out — and the panel shows the file's own last-write time instead.
 
-`ListMarkers` lists the marker each list level takes by default, `[Decimal, LowerAlpha, LowerRoman]`, and is the same thing as the `<ListLevel>` entries an `.xml` note carries. `ReadOnly: true` makes the editor refuse every change to the text — typing, deleting, pasting, dropping, styling, undo and moving pictures — while the properties themselves stay editable, so the lock can be taken off again.
+`ListMarkers` lists the marker each list level takes by default, `[Decimal, LowerAlpha, LowerRoman]`, and is the same thing as the `<ListLevel>` entries an `.axml` note carries. `ReadOnly: true` makes the editor refuse every change to the text — typing, deleting, pasting, dropping, styling, undo and moving pictures — while the properties themselves stay editable, so the lock can be taken off again.
 
 The properties are shown at the top of the first page in an [[Expander]]: the dates, a palette dropdown, the layout values, the list markers, a Read only checkbox and, for Markdown, every other frontmatter key. A value of `true` or `false` shows as a checkbox. A `[[note]]` link or a web address shows as a field with an Open button, which opens the note in a tab or the page in the browser. A list written as `- item` lines is edited as comma-separated text and written back as `- item` lines. A nested value stays read-only. Each of your own keys has a × that removes it, and the last row adds a new one by name. Picking a palette repaints that note only; a palette name that does not exist logs a warning and the note shows the app's palette.
 
@@ -122,7 +122,7 @@ A list item is block state, not a block type: `listKind` (`None`, `Bullet`, `Tas
 ### Markers
 Bullets and numbers are one system. A `Bullet` item shows a `ListMarker`: one of six shapes (filled or empty circle, triangle and square) or its number written as `1.`, `A.`, `a.`, `i.` or `I.`. A shape is an `IconControl` from the default icon set, centred in the indent; a number is a `LabelControl` at the block's own font size, right-aligned against the text. Tasks keep their checkbox.
 
-An item that names no marker takes its level's default from the document layout: `<ListLevel Marker="…"/>` entries inside `DocumentLayout`, one per level and cycling past the last. The editor-wide default in `DocumentSettings.settings.xml` is a single filled circle, and like every layout value a note can carry its own.
+An item that names no marker takes its level's default from the document layout: `<ListLevel Marker="…"/>` entries inside `DocumentLayout`, one per level and cycling past the last. The editor-wide default in `DocumentSettings.settings.axml` is a single filled circle, and like every layout value a note can carry its own.
 
 A marker is chosen per list, not per item. Right-click in the note, then **List marker**, gives every item at the caret's level of the caret's list that marker, as one undo step; a nested level below it and any other list keep theirs.
 
@@ -197,9 +197,9 @@ if the block's whole text is three or more of one of `-`, `*` or `_`
 	start a paragraph after the rule and put the caret in it
 
 ## Code blocks
-A code block is a run of consecutive blocks styled Code, one block per line, which is the shape `.md` notes already read fenced code into. Each block carries the fence's language name, if one was given, and a split hands it on, so Enter inside code continues the same block. The style scheme names the font: `<TextStyle Type="Code" FontName="consola"/>` in `DocumentSettings.settings.xml`, Consolas being baked from the installed system font like Arial is. A Code span inside ordinary text takes the same font. Code is inset ten pixels on both sides and drawn on the palette's sub-field colour, a band the width of the column behind every line; consecutive code blocks are stacked with no block spacing between them, so the run reads as one box and needs no grouping when it crosses a page.
+A code block is a run of consecutive blocks styled Code, one block per line, which is the shape `.md` notes already read fenced code into. Each block carries the fence's language name, if one was given, and a split hands it on, so Enter inside code continues the same block. The style scheme names the font: `<TextStyle Type="Code" FontName="consola"/>` in `DocumentSettings.settings.axml`, Consolas being baked from the installed system font like Arial is. A Code span inside ordinary text takes the same font. Code is inset ten pixels on both sides and drawn on the palette's sub-field colour, a band the width of the column behind every line; consecutive code blocks are stacked with no block spacing between them, so the run reads as one box and needs no grouping when it crosses a page.
 
-Code does not wrap. A line wider than the column runs on past the right margin, its sub-field band with it, and the note grows wide enough to hold it, so the editor's own sideways scroll reaches the end of the line. A code block in an `.xml` note can ask to wrap with `Wrap="true"`; `.md` and `.txt` have nowhere to say so, so their code never wraps.
+Code does not wrap. A line wider than the column runs on past the right margin, its sub-field band with it, and the note grows wide enough to hold it, so the editor's own sideways scroll reaches the end of the line. A code block in an `.axml` note can ask to wrap with `Wrap="true"`; `.md` and `.txt` have nowhere to say so, so their code never wraps.
 
 Code is coloured as it is shown and never saved that way. Each run of code lines with one language is read top to bottom by `SyntaxTokenizer`, which marks every character plain, keyword, string, number or comment and hands what a line leaves open — a `/*` comment, an XML comment or tag, a Python triple quote — on to the next line. C#, GLSL, XML and Python have their own rules; any other language, or none, gets C-like rules with a few common keywords. A run is read again whenever one of its lines changes, so opening a comment on the first line recolours the lines under it. The colours come from the palette's `Keyword`, `String`, `Number` and `Comment`; a palette that leaves them out shows the first three in its accent and comments in muted text. A span with its own colour or gradient keeps it.
 
@@ -286,7 +286,7 @@ for each line
 	`hang` = the width of the spaces and tabs at the line's end
 	add (`room` − (the line's width − `hang`)) × `factor` to the line's left
 
-Ctrl+L, Ctrl+E, Ctrl+R and Ctrl+J, or the four alignment buttons beside the styling menu, align every block the selection touches, or the caret's block, as one undo step. Alignment is written as `Align` on `<Block>` and only `.xml` notes have it: Markdown has no paragraph alignment, and wrapping a paragraph in HTML would stop Markdown readers formatting what is inside it.
+Ctrl+L, Ctrl+E, Ctrl+R and Ctrl+J, or the four alignment buttons beside the styling menu, align every block the selection touches, or the caret's block, as one undo step. Alignment is written as `Align` on `<Block>` and only `.axml` notes have it: Markdown has no paragraph alignment, and wrapping a paragraph in HTML would stop Markdown readers formatting what is inside it.
 
 #### Shift List Level (delta)
 for each list item the selection touches, in order
@@ -375,7 +375,7 @@ This presentation does not scale past a few pages, since every character is a fu
 
 What replaces it is engine-wide rather than document-local: the UI splits into **data and visualization**, most of the UI becoming data and controls becoming the thing that draws it, **after** Thorium's first version and the test/profiling platform are up. See `DOCUMENTATION/ClaudeMemory/Decisions/ui-data-control-split.md` and [[Document Layout Engine#Status]].
 
-- `[A_XSDType("DocumentEditor", "UI")]` so it can be placed in `UI.ui.xml`; a `Source` attribute names an engine-XML note to load (resolved via `Paths.Doc` when relative, used as-is when rooted).
+- `[A_XSDType("DocumentEditor", "UI")]` so it can be placed in `UI.ui.axml`; a `Source` attribute names an engine-XML note to load (resolved via `Paths.Doc` when relative, used as-is when rooted).
 - `LoadDocument(RichTextDocument)` — entry point used by the vault later; `LoadPath(name)` — load by file.
 - The control tree lives in the engine's `Controls` render group. **Rebuild-on-edit (P3+) must remove stale run/glyph controls from that group** — the deferred-cleanup TODO already noted in [[INPUT|TextControl]]; build-once (P2) is unaffected.
 
@@ -403,7 +403,7 @@ An open note is `{ document, path }` and a `Save()` that writes the one to the o
 A change made in one view moves the caret, the selection anchor and the text-drag press in every other view by address mapping (`NoteChange.Map`); an insert exactly at another view's caret leaves that caret in front of the insert. Only the session's `lead` view — the one whose editor last became the active control — obeys the caret an edit names. "Split right / down" in the tab menu on a note or `.tex` tab opens a second view of the same note in the new pane. `LoadDocument` on its own leaves the editor sessionless and unsavable, which is what a preview of a document that came from nowhere should do.
 
 ## Live sync with the file — `NoteFileSync`
-An open `.xml` note and its file on disk stay in step both ways, as groundwork for network replication. Each session owns one `NoteFileSync`, created by `NoteSessions.Open` and disposed by `NoteSessions.Close`; disposing flushes. Ctrl+S still saves at once.
+An open `.axml` note and its file on disk stay in step both ways, as groundwork for network replication. Each session owns one `NoteFileSync`, created by `NoteSessions.Open` and disposed by `NoteSessions.Close`; disposing flushes. Ctrl+S still saves at once.
 
 In-app edits autosave almost immediately: the first edit saves on the next tick, then at most once every 250 ms, with a final save after the last edit. A save writes only the changed top-level segments of the file, in place. The segments are the header, the `<DocumentLayout>`, each `<Block>` and `<Table>`, and each `<Footnote>` / `<Float>` group. Each node carries an internal `dirty` flag, set from `RichTextDocument.Raise` — the one exit every model edit passes — so a run never tells its block. The header and the layout are compared with the file at write time instead of being flagged, and a column drag marks its table in `TableControl.EndResize`.
 
@@ -422,7 +422,7 @@ otherwise → save when the 250 ms are up
 a save finds the note clean → nothing to write
 
 #### Write (wait)
-if the note is not `.xml` → `document.Save` (`path`), the whole file
+if the note is not `.axml` → `document.Save` (`path`), the whole file
 otherwise
 	if the file's length or write time differs from what was last written → drop `map` and `file`
 	`patch` = `NoteSegments.Prepare` (`document`, `path`, `map`, `file`)
@@ -528,7 +528,7 @@ Slots are **normalized on write**, which is what makes that equality mean anythi
 
 Ordering the two ends needs reading order, and a run does not know where it sits in the document, so `OrderedRuns` is walked and the ends compared as `(run index, offset)`. This is what lets a drag run backwards.
 
-Extending rather than collapsing is a boolean carried through the moves that already existed — `MoveCaret(move, extend)` and `SetCaret(run, offset, extend)` — and the boolean comes from the `Extend` [[INPUT#Named modifiers|named modifier]], not from a key the engine names. Shift is only what `InputMap.inputs.xml` happens to bind it to.
+Extending rather than collapsing is a boolean carried through the moves that already existed — `MoveCaret(move, extend)` and `SetCaret(run, offset, extend)` — and the boolean comes from the `Extend` [[INPUT#Named modifiers|named modifier]], not from a key the engine names. Shift is only what `InputMap.inputs.axml` happens to bind it to.
 
 ### Word and line
 Clicking the same spot twice selects the word, three times the visual line. Both arrive as [[Vulkan Control]]'s multi-click, which reports the tap count from the release, so neither needs a gesture of its own — the editor switches on the count and everything below it is selection code that already existed.
@@ -704,7 +704,7 @@ for each cell
 	if the cell is in the last column, line down its right side
 	if no row follows directly below, line along the bottom of `box`
 
-On disk a table is `<Table>` holding `<Column Width>` elements and `<Row>`s of `<Cell>`s, each cell holding `<Block>`s written exactly as the note's own. Tables live only in `.xml` notes; the Markdown and plain-text writers skip them. A `<Cell ColumnSpan="n">` spans n columns and `<Table Borders="false">` draws no borders; both are absent when the span is 1 and borders are on.
+On disk a table is `<Table>` holding `<Column Width>` elements and `<Row>`s of `<Cell>`s, each cell holding `<Block>`s written exactly as the note's own. Tables live only in `.axml` notes; the Markdown and plain-text writers skip them. A `<Cell ColumnSpan="n">` spans n columns and `<Table Borders="false">` draws no borders; both are absent when the span is 1 and borders are on.
 A cell may span several columns. Rows are stored short, with no placeholder cells behind a spanning cell, and the cell at a grid position is found by its spans, so inserting a column inside a span widens it and deleting one inside a span shrinks it. The Table submenu's Merge cell right makes the caret's cell absorb the next cell in its row, appending its blocks and dropping an empty side; it is refused on a row's last cell. Split cell turns a merged cell back into single cells with the content in the first, and is refused on a single cell. Each is one undo step. Row spans are not supported.
 A table can also carry rules, padding and an alignment, which a LaTeX preview uses to draw a tabular as LaTeX does. `<Table Align>` sets centred or right alignment, and the table is then narrower than the page and moved across it. `<Table Padding="across down">` replaces the 6 px cell inset. `<Column RuleLeft RuleRight>` draws a plain or double rule down a column's edge, and `<Cell RuleAbove RuleBelow>` draws a rule across a cell's top or bottom, named by kind (Plain, Double, Heavy, Light or Cmid) and optionally a width in pixels, so `Heavy` or `Heavy 3`. `<Cell TrimAbove TrimBelow>` pulls a rule's ends in (Left, Right or Both), which is how a `\cmidrule(lr)` is drawn. Rules are drawn in the ink colour, at least one pixel thick, scaled with the zoom; rules that touch are drawn as one line so no seam shows, and vertical rules stop at a page gap. A new row or column has no rules, deleting one drops its rules, merge keeps the left cell's, and split copies them to both halves, the Left trim to the first piece and the Right trim to the last. Nothing in the editor creates these rules or sets the alignment yet.
 
@@ -761,7 +761,7 @@ if `span` is a picture
 	else `span` = the text span after it, or a new empty one in the picture's style
 grow `span` by the text's length
 
-On disk an `.xml` note writes a picture as `<Run Image="attachments/…png" Width Height/>`, with no `Text`. Markdown writes Obsidian's `![|W](path)`, with spaces as `%20`, and reads `![alt|W](path)` and `![alt|WxH](path)`. Plain text drops pictures. See `ClaudeMemory/Decisions/note-images.md`.
+On disk an `.axml` note writes a picture as `<Run Image="attachments/…png" Width Height/>`, with no `Text`. Markdown writes Obsidian's `![|W](path)`, with spaces as `%20`, and reads `![alt|W](path)` and `![alt|WxH](path)`. Plain text drops pictures. See `ClaudeMemory/Decisions/note-images.md`.
 
 ### Wrapping text around a picture
 Right-click a picture and choose Wrap text: In line with text, Square, Tight, Top and bottom, Behind text or In front of text. Any choice but the first makes the picture float. Its character stays in its paragraph, so the picture still belongs to that paragraph, moves with it and is deleted with it, but the character takes no room in the line. The picture is placed off the paragraph instead, by an offset from the column's left edge and the paragraph's top. Switching a picture to floating keeps it where it stood in the line, and switching it back clears the offset. Each change is one undo step. Pictures in table cells stay in line.
@@ -815,7 +815,7 @@ else
 store the new size ÷ zoom, rounded; a corner on a picture with no stored height stores the width only
 
 ### Rotating
-A selected picture also gets a thin ring around it, a little outside its corners. Press on the ring and drag around the picture to turn it; the cursor is a crosshair over the ring. The turn follows the angle the pointer has swept about the picture's centre since the press, in whole degrees, and Shift steps it by 15. The whole drag is one undo step. The angle is stored in clockwise degrees — `Rotation` on the run in an `.xml` note, `data-rotate` on an `<img>` in Markdown — but everything the engine does with it, from drawing to hit-testing to wrapping, works on a quaternion made from it.
+A selected picture also gets a thin ring around it, a little outside its corners. Press on the ring and drag around the picture to turn it; the cursor is a crosshair over the ring. The turn follows the angle the pointer has swept about the picture's centre since the press, in whole degrees, and Shift steps it by 15. The whole drag is one undo step. The angle is stored in clockwise degrees — `Rotation` on the run in an `.axml` note, `data-rotate` on an `<img>` in Markdown — but everything the engine does with it, from drawing to hit-testing to wrapping, works on a quaternion made from it.
 
 The frame and handles turn with the picture, and resizing works along the picture's own sides: dragging a turned picture's handle stretches it along that side, and the opposite handle stays where it is on the page. Changing how text wraps keeps the turn.
 
@@ -841,7 +841,7 @@ for each part of the picture — the whole rectangle for Picture shape, each opa
 ## Status
 - P0 (model types) and P1 (XML persistence) complete; round-trip verified (in-code build + reload of code-built and hand-authored XML are byte/structurally equal).
 - P3 complete: click→caret, character input, arrow / Home / End / PageUp / PageDown navigation, and Ctrl+S through `DocumentEditSession`. Save verified against the sample note — no run gains a `FontSize`. Navigation itself is compile-verified and pending GUI verification.
-- P2 (`DocumentEditorControl`) implemented; built into `Thorium/Data/XML/Documents/UI/UI.ui.xml` via `<DocumentEditor Source="SampleNote.xml"/>`.
+- P2 (`DocumentEditorControl`) implemented; built into `Thorium/Data/XML/Documents/UI/UI.ui.axml` via `<DocumentEditor Source="SampleNote.axml"/>`.
 - P4 steps 1 and 2 complete: selection renders and is GUI-verified apart from drag auto-scroll, which the sample note is too short to exercise; deletion over a range, Backspace, Delete and Enter are bound and boot-verified but **not** GUI-verified. Step 3, Ctrl+B/I run split/merge, is next — `Bold` and `Italic` are still read by nothing.
 - Undo and select-all do not exist, which deletion is the first feature to make matter: a mis-aimed delete is recoverable only by reloading the note.
 - P5 complete: `Thorium` is a two-pane shell, a `VaultBrowser` listing a vault folder beside the editor, and `LoadPath` has a real caller at last. The vault is a settings path; the browser, being app rather than engine, lives in `Thorium` and is described in `DOCUMENTATION/ClaudeMemory/Decisions/vault-browser-and-shell.md`. Switching notes saves the one being left, since nothing tracks dirtiness and nothing can undo.

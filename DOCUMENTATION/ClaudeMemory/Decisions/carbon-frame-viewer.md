@@ -9,11 +9,11 @@ captures** (300 frames of `Main`/`Render`/`Physics`, F9, clean exit).
 (+ `ChartScrollThumbControl`) and `ZoneTableControl` on the new UI stack; the old names below are the
 same classes before the port. See [[ui-engine-plan]] § 6c2.
 **Scope:** new `Carbon/` project; `ArctisAurora.Core.Diagnostics.FrameCaptureReader`;
-`Thorium/Data/XML/Documents/Inputs/InputMap.inputs.xml`.
+`Thorium/Data/XML/Documents/Inputs/InputMap.inputs.axml`.
 
 ## What was there before
 
-`FrameSpool` wrote `Profiling/<session>/<thread>.frames.xml` and **nothing read them**. No capture
+`FrameSpool` wrote `Profiling/<session>/<thread>.frames.axml` and **nothing read them**. No capture
 had ever been produced by a real application either — `Mode` defaults to `Off` and nothing bound
 `Profiling.Capture`. See [[engine-profiling]] for the writer.
 
@@ -349,7 +349,7 @@ session opened on left the readout empty.
 
 Slice 2 of `test-framework-plan`. Scope: `ArctisAurora.Core.Testing.TestResultsReader` (`Enumerate`, `Load`;
 `TestRunInfo`, `TestRun`, `TestResult`, `TestFailure`); `Carbon.TestRootSetting`; `Carbon.Editor.CarbonActions`
-(`ShowCaptures`, `ShowTests`, `Switch`); `TestRunListControl`, `TestResultsControl`; Carbon `UI.ui.xml`.
+(`ShowCaptures`, `ShowTests`, `Switch`); `TestRunListControl`, `TestResultsControl`; Carbon `UI.ui.axml`.
 - Two buttons top of the left column. `Switch` `Hide()`s one pair and `Show()`s the other: `CaptureSide` (Load
   XML, baseline buttons, `Sessions`, `Zones`) + `CaptureView` (the whole right column) against `TestSide`
   (`<TestRunList>`) + `TestView` (`<TestResults>`). `Carbon.Wire` starts on Captures.
@@ -409,7 +409,7 @@ distinct image viewed in a session.
   `"../../../Shaders/UIRasterizer/UI.vert.spv"` and `RenderWindow` builds a `CompositorModule`
   unconditionally, so Carbon needs four `.spv` copies. **That makes four copies of the UI shaders,
   not three**; `CLAUDE.md` and [[../Context/where-things-live]] said three and were corrected.
-- **Carbon's `Data/Fonts` and `Data/Icons` are copied from Thorium with their `.import.xml` stamps**,
+- **Carbon's `Data/Fonts` and `Data/Icons` are copied from Thorium with their `.import.axml` stamps**,
   so first boot bakes nothing (`AssetImporter.RunImports` — 13 ms). Without the stamps it would bake
   into `Carbon/Data/Fonts`, since `Paths.FONTS` is the *running app's* folder.
 - **`InputHandler.ParseXML` throws on an action name it cannot resolve**, so a dangling `Action=` is a

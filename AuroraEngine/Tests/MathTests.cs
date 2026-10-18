@@ -17,7 +17,7 @@ namespace ArctisAurora.Tests
             atlas = new AtlasMetaData();
             Serializer.DeserializeAttributed(Paths.Font("cambria", "cambria.agd"), ref atlas);
             atlas.BuildCharIndex();
-            constants = MathConstants.Load(Paths.Font("cambria", "cambria.math.xml"));
+            constants = MathConstants.Load(Paths.Font("cambria", "cambria.math.axml"));
         }
 
         private static MathBox Lay(string tex, bool display = false)

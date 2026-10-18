@@ -20,7 +20,7 @@ measured `DesiredSize.Y == float.MaxValue`, `Arrange` used that verbatim, and:
   every earlier sibling, because paint order is the tree's DFS order;
 - `cursor += childH` sent every later sibling to `+∞`, off-screen and clipped away.
 
-The editor's placeholder `UI.xml` has three unsized buttons in a row, so its window had been solid green with
+The editor's placeholder `UI.axml` has three unsized buttons in a row, so its window had been solid green with
 everything else invisible. Confirmed pre-existing by capturing the unmodified tree — identical.
 
 ## Why these choices

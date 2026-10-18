@@ -4,7 +4,7 @@
 **Status:** LANDED. **GUI-verified by the user** — hover and press tints, row spacing, the
 left-aligned note names, and activation on release with press/release pairing all work on screen.
 **Scope:** `ArctisAurora.Core.UISystem` (`UICollisionHandling`), `...Controls` (`VulkanControl`),
-`...Controls.Interactable` (`ButtonControl`), `Thorium` (`UI.xml`, `VaultBrowserControl`).
+`...Controls.Interactable` (`ButtonControl`), `Thorium` (`UI.axml`, `VaultBrowserControl`).
 
 ## Context
 
@@ -102,7 +102,7 @@ slabs on it, hover `#2A2A2A`, press `#3A3A3A`; close hovers `#C42B1E` and presse
 
 Pressing the X and having the process die under the cursor before the button comes back up does not
 feel like a button. Every live button action moved from `onClick` to `onRelease` — the three window
-chrome actions in `UI.xml` and the vault row's `Open`, which is the whole set; nothing else in the
+chrome actions in `UI.axml` and the vault row's `Open`, which is the whole set; nothing else in the
 solution registers a click as a command. Presses that are *not* commands stay on press:
 `TitleBarControl` grabs the window on click, and the document editor places its caret on click.
 

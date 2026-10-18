@@ -8,8 +8,8 @@
 `BlockControl`, `TextRunControl`, `TextMeasurer` (`TextLine.room`), `RichTextDocument` (`TextStyleType.Rule`,
 `TextAlignment`, `TextStyle.fontName`, `DocumentLayout.FontNameFor`), `DocumentEdits` (`BlockSnapshot`,
 `DeleteRangeEdit`), `DocumentXml`, `MarkdownFormat`/`PlainTextFormat`, `DocumentEditorControl`,
-`DocumentToolbarControl`, `TextInputActions`; data `DocumentSettings.settings.xml`, `EngineFonts.imports.xml`,
-`EngineAssets.assets.xml`, Thorium `InputMap.inputs.xml`, icons `align-left/center/right.svg`
+`DocumentToolbarControl`, `TextInputActions`; data `DocumentSettings.settings.axml`, `EngineFonts.imports.axml`,
+`EngineAssets.assets.axml`, Thorium `InputMap.inputs.axml`, icons `align-left/center/right.svg`
 
 ## What changed
 - **Markdown as you type.** `TypeMarkdownPrefix` (was `TypeListPrefix`) adds `#`×1–6 + space → Heading1–6 and
@@ -74,7 +74,7 @@ and `MeasureBlock` hands back every line with its width, and picture wrapping ha
 layout. Justify is the exception — it spreads slack over the gaps, which all five sites walk advance by advance —
 and was left out (user, 2026-10-01).
 
-**Alignment is `.xml` only.** Markdown has no paragraph alignment. `<p align>` was rejected: CommonMark does not
+**Alignment is `.axml` only.** Markdown has no paragraph alignment. `<p align>` was rejected: CommonMark does not
 parse Markdown inside an HTML block, so a centred paragraph's bold would come back as literal `**`. `.md` and `.txt`
 notes refuse it (`CanAlign`), the rule tables already follow.
 

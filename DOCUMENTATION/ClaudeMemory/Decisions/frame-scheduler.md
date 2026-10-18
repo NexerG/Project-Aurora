@@ -1,18 +1,18 @@
 # Decision — systems are steps of one frame graph, placed into stages by the columns they touch
 
 **Date:** 2026-09-23 (step 1), 2026-09-23 (step 2 — § Step 2 below)
-**Scope:** `ArctisAurora.Core.Threading` — `FrameScheduler` (`FindActions`, `Build`, `Wire`, `Reaches`), `FrameStep`, `FrameGraphDefinition`, `FrameStepDefinition`, `DedicatedDefinition`, `ThreadingSettings`, `ThreadsSetting`, `FrameCapSetting`, `ThreadedSystem` (`RunStep`, `EndFrame`, `StartScheduled`, `StopScheduled`, `WaitOut`, `Dedicated`, `Period`), `MainSystem`, `PhysicsSystem`; `ArctisAurora.Core.Data` — `DataPool` (`AssertAccess`, `ElementBytes`), `IPoolColumn.ElementBytes`, `DataManager` (`ResolveComponent`), `PoolDefinition`; `ArctisAurora.Core.Animation` — `AnimationSystem`, `Animations` (`Write`, `ApplyValues`), `A_Animatable`, `AnimatableProperty`, `AnimationValue`; `ArctisAurora.Core.Diagnostics` — `Profiling.Frame.Begin(owner, frameIndex)`; `Engine` (`Input`, `Interpolate`); data `AuroraEngine/Data/XML/Documents/Frame.frame.xml`, `Pools.pools.xml`
+**Scope:** `ArctisAurora.Core.Threading` — `FrameScheduler` (`FindActions`, `Build`, `Wire`, `Reaches`), `FrameStep`, `FrameGraphDefinition`, `FrameStepDefinition`, `DedicatedDefinition`, `ThreadingSettings`, `ThreadsSetting`, `FrameCapSetting`, `ThreadedSystem` (`RunStep`, `EndFrame`, `StartScheduled`, `StopScheduled`, `WaitOut`, `Dedicated`, `Period`), `MainSystem`, `PhysicsSystem`; `ArctisAurora.Core.Data` — `DataPool` (`AssertAccess`, `ElementBytes`), `IPoolColumn.ElementBytes`, `DataManager` (`ResolveComponent`), `PoolDefinition`; `ArctisAurora.Core.Animation` — `AnimationSystem`, `Animations` (`Write`, `ApplyValues`), `A_Animatable`, `AnimatableProperty`, `AnimationValue`; `ArctisAurora.Core.Diagnostics` — `Profiling.Frame.Begin(owner, frameIndex)`; `Engine` (`Input`, `Interpolate`); data `AuroraEngine/Data/XML/Documents/Frame.frame.axml`, `Pools.pools.axml`
 
 Step 1 of [../Context/frame-scheduler-plan.md](../Context/frame-scheduler-plan.md). Supersedes the free-running thread per system of [[cross-system-change-notification]] and pool ownership of [[ecs-rework-data-pools]].
 
 ## What changed
-- **`Frame.frame.xml`** (`<FrameGraph>`, XSD category `Systems`, read by `FrameScheduler.Load` after `BuildLanes`):
+- **`Frame.frame.axml`** (`<FrameGraph>`, XSD category `Systems`, read by `FrameScheduler.Load` after `BuildLanes`):
   - `<Dedicated System="Render"/>` — its own thread, its own `Loop`, never at a barrier.
-  - `<Step System Pinned Reads Writes/>` — runs in the graph. `Reads`/`Writes` list `Pool` (every column) or `Pool.Component` (one column; the component type as `Pools.pools.xml` names it, resolved by `DataManager.ResolveComponent`).
+  - `<Step System Pinned Reads Writes/>` — runs in the graph. `Reads`/`Writes` list `Pool` (every column) or `Pool.Component` (one column; the component type as `Pools.pools.axml` names it, resolved by `DataManager.ResolveComponent`).
   - Today: Main (pinned) writes `UIElements UIQuads Entities Gradients Effects`; Animation writes `Paints Animations Signals Keyframes`; Physics touches nothing — one stage.
 - **Stages are computed** (`Wire`, `Place`): a reader waits for every writer of its column (a column a step both reads and writes counts as a write); writers of one column run in list order; a step lands one stage after the latest step it waits for; stages keep list order.
 - **Load errors:** a loop throws naming the chain, e.g. `Main waits for Animation (Paints.GpuPaint) → Animation waits for Main (UIElements.ArrangeData)`. Main as Dedicated throws. A system listed twice throws. A system listed nowhere logs a Warn.
-- **Pools have no owner.** `System=` is gone from `Pools.pools.xml` and `PoolDefinition`; `DataPool.OwnerName`/`OwnerSystemId`/`SetOwnerSystemId` and `DataManager.ResolveOwners` are deleted.
+- **Pools have no owner.** `System=` is gone from `Pools.pools.axml` and `PoolDefinition`; `DataPool.OwnerName`/`OwnerSystemId`/`SetOwnerSystemId` and `DataManager.ResolveOwners` are deleted.
 - **`DataPool.AssertAccess(need, write, op)`** (DEBUG) replaces `AssertOwner`. `need` = column bits, 0 = any column.
   - Write, one column: `GetSpan`, `GetRef`, `CopyFrom`, `UpdateRange`. Write, every column: `Allocate`, `Free`, `Rewind`, `Append`, `FrameEdge`. Write, any column: `MarkContentDirty`, `MarkRangeDirty`, `MarkOrderDirty`.
   - Read (new): `Backing`, `CopyTo`, `CopyRange`, `OwnerAt`. `CopyTo` no longer goes through `GetSpan`.
@@ -85,7 +85,7 @@ Step 1 of [../Context/frame-scheduler-plan.md](../Context/frame-scheduler-plan.m
 - **Load errors:** unknown action or pool, the same action or edge listed twice, an action of a Dedicated system, a Frame action declared twice. A system with no step and not Dedicated logs a Warn.
 - **Same-system rule live in `Wire`:** after the data waits, two steps of one system that do not already reach each other (`Reaches`, transitive) get a wait, later-listed on earlier-listed; the `Loop` message labels it `same system`.
 - **`Engine.MainTick` split** into Main actions on `MainSystem`: `Main.Input` (dt, `Engine.Input` — poll, reap, posted work, keybinds, `HandleUI`, drag ghost, context menus), `Main.Logic` (`Engine.Interpolate` — lifecycle + `OnTick`), `Main.Apply` (`Animations.ApplyValues`), `Main.Layout` (`UIEngine.ResolveLayout`, zone `ResolveLayout` kept), `Main.DrawLists` (`UIEngine.BuildDrawLists`). Zones `MainTick`, `Interpolate`, `FrameEdge`, `RefreshWindowRanges` are gone — `Step.<Action>` per step. Physics: `Physics.Step` (`PhysicsSystem.Simulate`, empty). Animation: `Animation.Step` (`AnimationSystem.Advance`).
-- **Graph today** (`Frame.frame.xml`), 7 stages: `Main.Input` → `Main.Logic` → `Animation.Step` ‖ `Physics.Step` → `Edge.UIElements` → `Main.Layout` → edges of `UIQuads Entities Gradients Effects Paints` → `Main.DrawLists` (`Main.Apply` deleted 2026-09-26, [[animation-core]] § Drained pools). Every Main step declares step 1's Main set plus `Animations Paints`; only Input and Logic add `Signals`; Logic adds `AnimationDone`, Layout `LayoutDirty`. Physics declares `Entities.TransformData` so it runs after entity logic in the same frame.
+- **Graph today** (`Frame.frame.axml`), 7 stages: `Main.Input` → `Main.Logic` → `Animation.Step` ‖ `Physics.Step` → `Edge.UIElements` → `Main.Layout` → edges of `UIQuads Entities Gradients Effects Paints` → `Main.DrawLists` (`Main.Apply` deleted 2026-09-26, [[animation-core]] § Drained pools). Every Main step declares step 1's Main set plus `Animations Paints`; only Input and Logic add `Signals`; Logic adds `AnimationDone`, Layout `LayoutDirty`. Physics declares `Entities.TransformData` so it runs after entity logic in the same frame.
 - **Pinned:** Input (GLFW), Logic (entity `OnTick` is arbitrary code — the profiling scenario calls `glfwSetWindowSize` from it), Apply (`onDone` callbacks and setters). Layout and DrawLists reach no GLFW today; pinned because every Main step already waits for the one before, so a worker would only add a handoff. All edges unpinned, `UIElements` included — its sort walks the control tree, which nothing else touches in that stage.
 - **Command lanes deleted:** `ArctisAurora.Core.Data.Commands` (`CommandLane`, `CommandArena`, `SystemCommand`, `CommandApplier`); `ThreadedSystem` `_inbox`/`_outbox`/`BuildLanes`/`Post`/`OnPost`/`Drain`/`Publish`; `IPoolColumn.WriteBytes`/`FillBytes`/`CopyWithin` (replaced by `ElementBytes`); `DataManager.FrameEdge()`; `FrameStep.WritesAll`. `SystemId` stays — the log stamps it.
 - **`ThreadedSystem`:** `Tick` is `virtual`, run only by a Dedicated `Loop` via a private `Step`. Graph steps run through `RunStep(Action)` (sets `Current`, sums step time); `FrameScheduler.Run` calls `EndFrame()` on every scheduled system after the last stage — epoch +1 and `LastTickMs` = that frame's summed step time, only if a step ran. `RenderSystem.OnStart` still waits for Main's epoch to leave 0 (after the first full frame).
@@ -100,7 +100,7 @@ Step 1 of [../Context/frame-scheduler-plan.md](../Context/frame-scheduler-plan.m
 
 **Epoch once per frame, time summed (user, option A).** Every reader — `RenderSystem`'s start gate, the log stamp, `GpuEngineStats` — means "the system's frame"; per-step epochs would change the shader-visible stats layout.
 
-**`System=` deleted from `Step` (user).** One way to name a step, the same `Action` mechanism `Bootstrap.xml` and `Shutdown.xml` use, category `Frame`.
+**`System=` deleted from `Step` (user).** One way to name a step, the same `Action` mechanism `Bootstrap.axml` and `Shutdown.axml` use, category `Frame`.
 
 **Main.Logic before Physics (user).** Entity ticks that move or push entities must reach physics in the same frame, not the next physics tick.
 
@@ -188,7 +188,7 @@ Step 1 of [../Context/frame-scheduler-plan.md](../Context/frame-scheduler-plan.m
 ## Step 5 — fewer worker wakes, parked threads hand their capture batch (2026-09-28)
 
 ### What changed
-- **Edges are pinned:** every `<Step Edge=…/>` in `Frame.frame.xml` carries `Pinned="true"`; the edge stages wake no worker.
+- **Edges are pinned:** every `<Step Edge=…/>` in `Frame.frame.axml` carries `Pinned="true"`; the edge stages wake no worker.
 - **`RunStage` wakes one fewer worker when main has no pinned step due in the stage** — main claims one step itself. `Wake(mainBusy ? count : count - 1)`. Animation ‖ Physics wakes nobody, or one worker on a frame Physics is due.
 - **`Profiling.Frame.Settle()`** — hands the calling thread's batch (via `Release`) when its capture changed since its last frame. Called by `FrameScheduler.Work` right after a worker counts itself parked, and by `RenderSystem.Tick` after each `WaitForFrame`.
 - **`FrameScheduler.WakeWaiting()`** — `Wake(workers)` + `_produced.Set()`, so every parked worker and render's frame wait come round to `Settle`.

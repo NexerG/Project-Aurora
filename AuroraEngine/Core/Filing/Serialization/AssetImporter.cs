@@ -20,7 +20,7 @@ namespace ArctisAurora.Core.Filing.Serialization
             if (!Engine.isDebug) return true;
 
             List<ImportSet> sets = new List<ImportSet>();
-            foreach (string file in VirtualFileSystem.EnumerateAll("XML/Imports", "*.imports.xml"))
+            foreach (string file in VirtualFileSystem.EnumerateAll("XML/Imports", "*.imports.axml"))
                 sets.Add(ParseImportSet(file));
 
             Dictionary<string, string> charsets = new Dictionary<string, string>();
@@ -161,7 +161,7 @@ namespace ArctisAurora.Core.Filing.Serialization
             ClearStamp(Paths.FONTS, baseName);
             ImportFont(chars, baseName, sourcePath, font.face, boldPath, italicPath, boldItalicPath, font.glyphSize, Paths.FONTS);
             MathConstants math = MathConstants.Read(sourcePath, font.face);
-            math?.Save(Path.Combine(Paths.FONTS, baseName, baseName + ".math.xml"));
+            math?.Save(Path.Combine(Paths.FONTS, baseName, baseName + ".math.axml"));
             WriteStamp(Paths.FONTS, baseName, new XElement("FontImportStamp",
                 new XAttribute("Source", wanted.source),
                 new XAttribute("Face", wanted.face),
@@ -227,7 +227,7 @@ namespace ArctisAurora.Core.Filing.Serialization
         // Drops the stamp ahead of a bake.
         private static void ClearStamp(string root, string name)
         {
-            string path = Path.Combine(root, name, name + ".import.xml");
+            string path = Path.Combine(root, name, name + ".import.axml");
             if (File.Exists(path)) File.Delete(path);
         }
 
@@ -237,7 +237,7 @@ namespace ArctisAurora.Core.Filing.Serialization
             foreach (string output in outputs)
                 if (!File.Exists(resolve(name, output))) return null;
 
-            string stampPath = resolve(name, name + ".import.xml");
+            string stampPath = resolve(name, name + ".import.axml");
             return File.Exists(stampPath) ? XElement.Load(stampPath) : null;
         }
 
@@ -245,7 +245,7 @@ namespace ArctisAurora.Core.Filing.Serialization
         {
             string dir = Path.Combine(root, name);
             Directory.CreateDirectory(dir);
-            stamp.Save(Path.Combine(dir, name + ".import.xml"));
+            stamp.Save(Path.Combine(dir, name + ".import.axml"));
         }
 
         public static void ImportFont(string characters, string baseName, string regularPath, int regularFace, string boldPath,

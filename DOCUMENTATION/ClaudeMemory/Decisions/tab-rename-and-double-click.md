@@ -4,8 +4,8 @@
 **Status:** LANDED. Builds clean and boots; **not GUI-verified.**
 **Scope:** `ArctisAurora.Core.UISystem` (`UICollisionHandling`), `ArctisAurora.EngineWork` (`Engine`),
 `ArctisAurora.Core.UISystem.Controls.Containers` (`TabViewControl`, `TabItemControl`,
-`SplitViewControl`, `EditableTabsControl`), `Thorium` (`VaultBrowserControl`, `UI.xml`,
-`TabWindow.xml`).
+`SplitViewControl`, `EditableTabsControl`), `Thorium` (`VaultBrowserControl`, `UI.axml`,
+`TabWindow.axml`).
 
 ## What shipped
 
@@ -85,12 +85,12 @@ the middle of a drag, and this codebase already leans on reflection in enough pl
 trace.
 
 Tear-off is not affected the same way: it builds its window from `tearOffDocument`, so the XML decides
-the kind. `TabWindow.xml` names `<EditableTabs>` for that reason.
+the kind. `TabWindow.axml` names `<EditableTabs>` for that reason.
 
 ### 6. The rename itself stays in Thorium, reached through `TabItemControl.onRename`
 
 The engine control edits a caption and hands the string on. `Action<string>? onRename` on the tab is
-what knows the string means a note: `VaultBrowserControl.Open` sets it, and a tab seeded by `UI.xml`
+what knows the string means a note: `VaultBrowserControl.Open` sets it, and a tab seeded by `UI.axml`
 leaves it null, which is also the check that decides whether the field opens at all.
 
 The closure reads `editor.session.path` **at commit time**, not the path captured when the tab was

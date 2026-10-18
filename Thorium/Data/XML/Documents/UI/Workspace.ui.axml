@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- The workspace's authored arrangement, mirroring Workspace.ui.xml. -->
+<!-- The workspace's authored arrangement, mirroring Workspace.ui.axml. -->
 <SplitView Orientation="Horizontal" HeightStar="1">
 
 	<EditableTabs Name="Tabs" Width="525" MinWidth="120" ContextMenu="view"

@@ -8,14 +8,14 @@ using System.Xml.Linq;
 
 namespace ArctisAurora.Core.Security
 {
-    // A vault encrypted under one master key. <vault>/.aurora/Vault.lock.xml holds that key wrapped once per way in:
+    // A vault encrypted under one master key. <vault>/.aurora/Vault.lock.axml holds that key wrapped once per way in:
     // <VaultLock Version Id State><Slot Kind="Password" Kdf… Salt…>…</Slot><Slot Kind="Recovery" Salt>…</Slot></VaultLock>.
     public static class VaultLock
     {
         private static readonly LogChannel Log = LogChannel.For("Encryption");
 
         public const string folderName = ".aurora";
-        private const string fileName = "Vault.lock.xml";
+        private const string fileName = "Vault.lock.axml";
 
         // states of the lock file
         private const string locked = "Locked";

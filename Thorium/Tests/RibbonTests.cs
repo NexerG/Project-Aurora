@@ -11,7 +11,7 @@ namespace Thorium.Tests
         [A_XSDActionDependency("Ribbon.Shows", "Test")]
         private static IEnumerator<int> Shows(TestContext t)
         {
-            string note = TempFile(".xml");
+            string note = TempFile(".axml");
             string sheet = TempFile(SheetDocument.extension);
             (RibbonControl ribbon, WorkspaceControl workspace, InspectorControl inspector) = ShowShell(t);
             WorkspacePageControl general = workspace.AddPage("General", WorkspaceKind.General);
@@ -49,7 +49,7 @@ namespace Thorium.Tests
         [A_XSDActionDependency("Ribbon.Docs", "Test")]
         private static IEnumerator<int> Docs(TestContext t)
         {
-            string note = TempFile(".xml");
+            string note = TempFile(".axml");
             (RibbonControl ribbon, WorkspaceControl workspace, _) = ShowShell(t);
             WorkspacePageControl docs = workspace.AddPage("Docs", WorkspaceKind.Docs);
             workspace.LoadPane(docs).AddChild(SessionLayout.tabFactory(note, false));
@@ -84,7 +84,7 @@ namespace Thorium.Tests
         [A_XSDActionDependency("Ribbon.Sheets", "Test")]
         private static IEnumerator<int> Sheets(TestContext t)
         {
-            string note = TempFile(".xml");
+            string note = TempFile(".axml");
             string sheet = TempFile(SheetDocument.extension);
             (RibbonControl ribbon, WorkspaceControl workspace, _) = ShowShell(t);
             WorkspacePageControl docs = workspace.AddPage("Docs", WorkspaceKind.Docs);
@@ -127,7 +127,7 @@ namespace Thorium.Tests
         [A_XSDActionDependency("Inspector.Docs", "Test")]
         private static IEnumerator<int> InspectorDocs(TestContext t)
         {
-            string note = TempFile(".xml");
+            string note = TempFile(".axml");
             (RibbonControl ribbon, WorkspaceControl workspace, InspectorControl inspector) = ShowShell(t);
             WorkspacePageControl docs = workspace.AddPage("Docs", WorkspaceKind.Docs);
             workspace.LoadPane(docs).AddChild(SessionLayout.tabFactory(note, false));
@@ -198,7 +198,7 @@ namespace Thorium.Tests
         [A_XSDActionDependency("Ribbon.Session", "Test")]
         private static IEnumerator<int> Session(TestContext t)
         {
-            string note = TempFile(".xml");
+            string note = TempFile(".axml");
             string before = SessionLayout.scope;
             (_, WorkspaceControl workspace, _) = ShowShell(t);
             SessionLayout.scope = "rb-a";

@@ -18,14 +18,14 @@ namespace Thorium.Editor.CustomControls
     {
         private static readonly LogChannel Log = LogChannel.For("Vault");
 
-        // control names in UI.ui.xml
+        // control names in UI.ui.axml
         private const string browserName = "Browser";
         private const string filterName = "VaultFilter";
 
-        // context declared in Contexts/Thorium.contexts.xml
+        // context declared in Contexts/Thorium.contexts.axml
         private const string tabsContext = "ActiveTabViewer";
 
-        // menu documents registered in ThoriumAssets.assets.xml
+        // menu documents registered in ThoriumAssets.assets.axml
         private const string vaultMenu = "vault";
         private const string folderMenu = "vault-folder";
         private const string noteMenu = "vault-note";
@@ -80,7 +80,7 @@ namespace Thorium.Editor.CustomControls
         {
             bool sheet = SheetDocument.IsSheet(path) || SheetCsv.IsCsv(path);
             bool planner = PlannerDocument.IsPlanner(path);
-            bool tex = Path.GetExtension(path).Equals(".tex", StringComparison.OrdinalIgnoreCase);
+            bool tex = FileTypes.KindOf(path) == FileKind.Tex;
             return kind switch
             {
                 WorkspaceKind.Docs => !sheet && !planner && !tex,
@@ -92,7 +92,9 @@ namespace Thorium.Editor.CustomControls
             };
         }
 
-        private static bool IsXml(string path) => Path.GetExtension(path).Equals(".xml", StringComparison.OrdinalIgnoreCase);
+        private static bool IsXml(string path) => IsAuroraXml(path) || FileTypes.KindOf(path) == FileKind.Xml;
+
+        private static bool IsAuroraXml(string path) => FileTypes.KindOf(path) is FileKind.Note or FileKind.Sheet or FileKind.Planner;
 
         private static string FilterName(WorkspaceKind kind) => kind switch
         {
@@ -149,7 +151,7 @@ namespace Thorium.Editor.CustomControls
         }
 
         protected override bool Accepts(FileObject file) =>
-            (RichTextDocument.extensions.Contains(Path.GetExtension(file.path).ToLowerInvariant()) || SheetCsv.IsCsv(file.path))
+            (FileTypes.Of(file.path) != null || SheetCsv.IsCsv(file.path))
             && Shows(filtered, file.path);
 
         protected override string DisplayName(FileObject file) =>
@@ -294,7 +296,7 @@ namespace Thorium.Editor.CustomControls
         public static void Encrypt()
         {
             FileRowControl row = MenuRow();
-            if (row == null || !IsXml(row.file.path) || EncryptedFile.IsEncrypted(row.file.path)) return;
+            if (row == null || !IsAuroraXml(row.file.path) || EncryptedFile.IsEncrypted(row.file.path)) return;
 
             string path = row.file.path;
             PasswordWindow.Ask(UIActions.Invoking(), $"Encrypt {Path.GetFileName(path)}", true, null,
@@ -661,7 +663,7 @@ namespace Thorium.Editor.CustomControls
                 case WorkspaceKind.Docs: New(); break;
                 case WorkspaceKind.Xml:
                     VaultBrowserControl? browser = Browser();
-                    browser?.NewNote(browser.RootPath, ".xml");
+                    browser?.NewNote(browser.RootPath, ".axml");
                     break;
                 case WorkspaceKind.Sheets: NewSheet(); break;
                 case WorkspaceKind.LaTeX: NewTex(); break;
@@ -713,13 +715,13 @@ namespace Thorium.Editor.CustomControls
                 : Enumerable.Empty<string>();
         }
 
-        // Notes that can hold a sheet link: .md and .xml, sheets and planners left out.
+        // Notes that can hold a sheet link: .md and .axml, sheets and planners left out.
         internal static IEnumerable<string> VaultNotes()
         {
             string root = KnownVaults.Resolve(SettingsRegistry.Get<ThoriumSettings>().vault.path);
             if (!Directory.Exists(root)) return Enumerable.Empty<string>();
             return Directory.EnumerateFiles(root, "*.md", System.IO.SearchOption.AllDirectories)
-                .Concat(Directory.EnumerateFiles(root, "*.xml", System.IO.SearchOption.AllDirectories)
+                .Concat(Directory.EnumerateFiles(root, "*.axml", System.IO.SearchOption.AllDirectories)
                     .Where(path => !SheetDocument.IsSheet(path) && !PlannerDocument.IsPlanner(path)));
         }
 
@@ -817,7 +819,7 @@ namespace Thorium.Editor.CustomControls
             if (asXml) return BuildXmlTab(notePath);
             if (SheetDocument.IsSheet(notePath) || SheetCsv.IsCsv(notePath)) return BuildSheetTab(notePath);
             if (PlannerDocument.IsPlanner(notePath)) return BuildPlannerTab(notePath);
-            if (Path.GetExtension(notePath).Equals(".tex", StringComparison.OrdinalIgnoreCase)) return BuildTexTab(notePath);
+            if (FileTypes.KindOf(notePath) == FileKind.Tex) return BuildTexTab(notePath);
 
             DocumentEditorControl editor = new DocumentEditorControl { contextMenu = "note" };
             editor.LoadPath(notePath);
@@ -909,7 +911,7 @@ namespace Thorium.Editor.CustomControls
             return tab;
         }
 
-        // A file's name without its extension; a sheet's ".sheet.xml" and a planner's ".planner.xml" count as one.
+        // A file's name without its extension; a sheet's ".sheet.axml" and a planner's ".planner.axml" count as one.
         private static string BaseName(string path) => Path.GetFileName(path)[..^Extension(path).Length];
 
         private static string Extension(string path) =>
@@ -927,10 +929,10 @@ namespace Thorium.Editor.CustomControls
             return path;
         }
 
-        // Only XML carries a name of its own; other formats are named by their file.
+        // Only .axml carries a name of its own; other formats are named by their file.
         private static void WriteName(string path, string name)
         {
-            if (!Path.GetExtension(path).Equals(".xml", StringComparison.OrdinalIgnoreCase) || EncryptedFile.IsEncrypted(path)) return;
+            if (!IsAuroraXml(path) || EncryptedFile.IsEncrypted(path)) return;
 
             PasswordKey? none = null;
             XDocument xml = EncryptedFile.LoadXml(path, LoadOptions.None, ref none);

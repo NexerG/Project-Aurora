@@ -16,8 +16,8 @@ slice 3: `TestContext` input helpers, `UI.WindowRoot.ToWindowSpace`, `AGlfwWindo
 - `--test` runs every suite except `Perf` (2026-10-09: feature work checks function and errors; perf is run only
   when measuring, via `--test=Perf` / `PerfTests.cmd`), `--test=<Suite>` one. `TestRunner.Arm` is called from `Engine.Init` after
   `ProfileScenario.Arm`.
-- A suite is `Data/XML/Documents/Tests/<Suite>.tests.xml`, found across mounts by `VirtualFileSystem.EnumerateAll`;
-  the file's name half is the suite name — the `*.inputs.xml` keybind-group rule. `<Test Action="…" Timeout="ms"/>`,
+- A suite is `Data/XML/Documents/Tests/<Suite>.tests.axml`, found across mounts by `VirtualFileSystem.EnumerateAll`;
+  the file's name half is the suite name — the `*.inputs.axml` keybind-group rule. `<Test Action="…" Timeout="ms"/>`,
   default 10000 ms. The schema (`TestTypeSchema.xsd`) is generated from `TestEntry` + `TestRunner`, `Shutdown`'s shape.
 - A test is `[A_XSDActionDependency(name, "Test")] static IEnumerator<int> X(TestContext t)`. `yield return n` waits n
   ticks. `t.Show(control)` makes it the primary window's whole tree (the `uiRoot` setter destroys the old one).
@@ -29,7 +29,7 @@ slice 3: `TestContext` input helpers, `UI.WindowRoot.ToWindowSpace`, `AGlfwWindo
 - A test fails on: a false `Check`; an exception (type, message, throw-site file:line; the exception itself is logged
   at `Warn`); running past `Timeout` (ticks × step); any `Error`/`Fatal` logged while it ran (`errorCount` delta); an
   `Action` naming no test. `--test=<Suite>` naming no suite is a failure too.
-- Output: a `PASS`/`FAIL` log line per test, a summary line, `results.xml` in `<parent>\Tests\<yyyyMMdd-HHmmss>\`
+- Output: a `PASS`/`FAIL` log line per test, a summary line, `results.axml` in `<parent>\Tests\<yyyyMMdd-HHmmss>\`
   (`<TestRun Host Build Started>` → `<Test Suite Name Result Ticks>` → `<Failure Message File Line>`),
   `Environment.ExitCode` = failed count, then `Shutdown.Request`.
 - `Engine.WireInput` returns early under `--test`: no window gets OS mouse or keyboard callbacks.
@@ -68,8 +68,8 @@ slice 3: `TestContext` input helpers, `UI.WindowRoot.ToWindowSpace`, `AGlfwWindo
   each limit exceeded (`Main/Step.Main.Layout p95 1.019 ms > 0.01`), a missing thread, or a zone that never ran.
 - Also fails: budgets with nothing measured (unless skipped); a test that ends with its capture still open
   (`EndCapture` is called, the failure says `EndMeasure never finished`).
-- `results.xml`: `Capture="<action>"` on a measured test, relative to the run folder. The run folder is now chosen once
-  (`RunDirectory`) at the first test, since captures land in it before `results.xml` is written.
+- `results.axml`: `Capture="<action>"` on a measured test, relative to the run folder. The run folder is now chosen once
+  (`RunDirectory`) at the first test, since captures land in it before `results.axml` is written.
 - `Perf.RelayoutLabels`: 1000 labels, the column's width flips 400/401 every tick, 30 warm-up + 120 measured ticks;
   budget `Step.Main.Layout` P95 3 ms, Max 25 ms, AllocKB 1 — set from the first Release+`PROFILE` run.
 - Measuring build: `dotnet build <Host>.csproj -c Release -p:DefineConstants="TRACE%3BPROFILE"` (`%3B` is the `;`).
@@ -119,7 +119,7 @@ slice 3: `TestContext` input helpers, `UI.WindowRoot.ToWindowSpace`, `AGlfwWindo
   shows its caption start and ✕ (user, 1a) instead of drawing empty.
 
 ### Save targets (2026-10-16)
-- `Perf.SaveLargeNote.InPlace` and `Perf.SaveLargeNote.Shift` (`ArctisAurora.Tests.PerfTests.SaveLargeNoteInPlace` / `SaveLargeNoteShift`, data in `Perf.tests.xml`): a note of 1000 blocks × 1000 chars (~1.05 MB file), saved through `NoteFileSync` segments. Helpers `SaveSegments`, `ToggleChars`, `LargeDocument`; constants `saveBlock = 500`, `shiftChars = 2000`, `saveWarmupTicks = 150` (own warm-up, longer than the usual 30, so the JIT's tier-up is done before measuring).
+- `Perf.SaveLargeNote.InPlace` and `Perf.SaveLargeNote.Shift` (`ArctisAurora.Tests.PerfTests.SaveLargeNoteInPlace` / `SaveLargeNoteShift`, data in `Perf.tests.axml`): a note of 1000 blocks × 1000 chars (~1.05 MB file), saved through `NoteFileSync` segments. Helpers `SaveSegments`, `ToggleChars`, `LargeDocument`; constants `saveBlock = 500`, `shiftChars = 2000`, `saveWarmupTicks = 150` (own warm-up, longer than the usual 30, so the JIT's tier-up is done before measuring).
 - The `Note.Save` zone wraps only `NoteSegments.Prepare` plus bookkeeping; the commit runs synchronously outside the zone. It measures the main-thread cost of a save, not the disk write.
 
 | Test | Budget on `Note.Save` | Baseline (Release+PROFILE, back-to-back, main thread) |
@@ -131,7 +131,7 @@ slice 3: `TestContext` input helpers, `UI.WindowRoot.ToWindowSpace`, `AGlfwWindo
 - Also failing in the same `--test=Perf` run, pre-existing and not investigated: `Perf.RelayoutLabels` max 9.2 ms, `Perf.TypeLargeNote` max 11.6 ms, `Perf.RewrapLargeNote` max 16.3 ms, `Perf.Controls.Table.Relayout` alloc 176.7 KB > 65.
 
 ### Planner Gantt targets (2026-10-16)
-- `Perf.Planner.Gantt.*` (`ArctisAurora.Tests.PlannerPerfTests`, data in `Perf.tests.xml`). Engine-side and in the `Perf` suite on purpose: `VirtualFileSystem.EnumerateAll` dedups by file name, so a host cannot add its own `Perf.tests.xml`, and any other suite name runs in plain `--test` (only `Perf` is skipped there).
+- `Perf.Planner.Gantt.*` (`ArctisAurora.Tests.PlannerPerfTests`, data in `Perf.tests.axml`). Engine-side and in the `Perf` suite on purpose: `VirtualFileSystem.EnumerateAll` dedups by file name, so a host cannot add its own `Perf.tests.axml`, and any other suite name runs in plain `--test` (only `Perf` is skipped there).
 - Fixture `LargePlanner(perCategory)`: 20 categories × 100 tickets (2,000; `Huge` = 500 each, 10,000) over 365 days from 2026-01-05, 1–5 days each; every 10th has a 3-line description, `User.current` as assignee and a 30 min `Travel` attachment; every 20th (`n % 20 == 1`) follows the one before. `Show` pins the clock to 2026-10-06 12:00 and the date settings, as `PlannerTests.Show` does. 30 warm-up + 120 measured ticks.
 - New zones in `GanttChartControl`: `Gantt.BuildRows` (around `BuildRows` in `MeasureCore`, runs only when rows are stale) and `Gantt.Arrange` (all of `ArrangeCore`). `Planner.Load` / `Planner.Save` are test-side zones around `PlannerXml.Load` / `PlannerXml.Save` on a temp file.
 - Budgets: `Step.Main.Input`, `Step.Main.Layout`, `Step.Main.DrawLists`, Render `Draw`, plus `Gantt.Arrange` where the chart re-arranges and `Gantt.BuildRows` where rows rebuild; `Static` has neither (a pinned clock never re-arranges). The edit cost of `Apply` itself runs in the test body and is not budgeted.
@@ -189,7 +189,7 @@ Baseline before the row-index fix below:
   (`N px differ, max channel delta d` or `size WxH, golden WxH`), `<run>\<Action>\<Shot>.actual.png` +
   `.diff.png` (golden greyed, differing pixels red). No golden → shot and test `New`, actual only.
 - `--test-approve` (with `--test`): a missing or mismatched golden is written, shot `Approved`, test `Pass`.
-- `Result="New"` is not in the exit code; summary `N passed, M failed, K skipped, J new`. `results.xml`:
+- `Result="New"` is not in the exit code; summary `N passed, M failed, K skipped, J new`. `results.axml`:
   `<Shot Name Result Golden(abs) Actual Diff(rel)/>`. `TestResultsReader`: `TestShot`, `TestRunInfo.newCount`.
 - `TextureAsset.LoadFile` is public (Carbon uploads shot PNGs). Carbon side: [[carbon-frame-viewer]] §17.
 - Test: `Visual.PanelAndLabel` — 200×80 `#2E5C8A` panel, radius 8, white label; golden committed.
@@ -218,7 +218,7 @@ runs in the engine it tests. `ProfileScenario` already proved the shape here. A 
 function check, so there is no second framework.
 
 **Suites are XML (user, 2026-09-25).**
-Order and grouping are data, like `Bootstrap.xml`/`Shutdown.xml`; the generated schema restricts `Action` to test
+Order and grouping are data, like `Bootstrap.axml`/`Shutdown.axml`; the generated schema restricts `Action` to test
 names. Perf budgets join the same file in slice 4. **Rejected:** attribute discovery with a name-prefix filter —
 simpler, but order lives in code.
 
@@ -302,7 +302,7 @@ because `Session.Capture` and `Settings.SaveAll` write into it at shutdown and t
 
 | Case | Result |
 |---|---|
-| `Thorium.exe --test` | exits by itself in ~5 s; Boot + 2 layout tests; `results.xml` written; exit 1 |
+| `Thorium.exe --test` | exits by itself in ~5 s; Boot + 2 layout tests; `results.axml` written; exit 1 |
 | Boot | FAIL — 55 errors since launch, all pre-existing: 48× `[Layout] skipped layout left … desired stale` (in every Thorium session since commit `bc8d73b`, none before), 6× Vulkan `vkCmdPipelineBarrier` validation, 1× default sampler asset — both in every session for weeks |
 | Boot, rerun 2026-09-27 on the queue-ownership tree | FAIL — 49: the same 48 `desired stale` (rows 98 and 167 on ticks 0–23, 216 and 219 once), the sampler; **0** `[Vulkan]` lines. Commands, Console and Layout suites all PASS |
 | `Layout.StackPanelArranges` | PASS |
@@ -313,7 +313,7 @@ because `Session.Capture` and `Settings.SaveAll` write into it at shutdown and t
 | slice 3, `Thorium.exe --test` | 11 PASS + Boot FAIL (same 48 `desired stale` + sampler); `ClickFiresRelease` 7 ticks, `KeyWithModifierFiresKeybind` 8, `DragMovesSplitter` 17 (pane 200 → 250, arranged 250), `TypeWritesText` 18 (`"Hi 5!"`) |
 | slice 3, `Carbon.exe --test` | all 10 engine tests PASS; Boot FAIL on the sampler only; `TextInput` not run (Thorium's) |
 | slice 3 throwaway suite, deleted after | click under a covering panel → `hits StackPanelControl, not the control` + no release; `` ` `` without Ctrl → console stays shut; `MoveTo` alone → no release; `Type` into an unfocused box → text check fails |
-| slice 4, Debug Thorium / Carbon `--test` | `SKIP Perf/Perf.RelayoutLabels — unoptimized JIT`; exit 1 (Boot only); `Result="Skipped" Reason=…` in `results.xml` |
+| slice 4, Debug Thorium / Carbon `--test` | `SKIP Perf/Perf.RelayoutLabels — unoptimized JIT`; exit 1 (Boot only); `Result="Skipped" Reason=…` in `results.axml` |
 | slice 4, plain Release `--test=Perf` | `SKIP — profiler not compiled in`. Boot: **1 error, the sampler only** — the 48 `desired stale` are a Debug-only check |
 | slice 4, Release+`PROFILE` `--test=Perf`, 3 runs | PASS; `Step.Main.Layout` over exactly 120 frames: p50 0.30/0.55/0.55 ms, p95 0.82/0.95/1.02, **max 5.96/10.13/10.48**, alloc 0.0 KB; 16 thread files in `<run>\Perf.RelayoutLabels\`, all closed; `%APPDATA%\Thorium\Profiling` untouched |
 | slice 4 throwaway suite, deleted after | P95 `0.01` → `p95 1.019 ms > 0.01`; `Zone="No.Such.Zone"` → `never ran in the capture`; exit 2 |
@@ -324,7 +324,7 @@ because `Session.Capture` and `Settings.SaveAll` write into it at shutdown and t
 
 ## Known gaps
 - A test that hangs inside one tick hangs the process — the timeout counts ticks.
-- Fixtures are built in code; loading a `*.ui.xml` by name goes through the asset registry.
+- Fixtures are built in code; loading a `*.ui.axml` by name goes through the asset registry.
 - AuroraEditor has not run `--test`.
 - On Linux the goldens approved on a Windows GPU fail against lavapipe (51 of them) once the swapchain is UNORM: edges, invisible 1–3 level flat deltas, and dots at TeX inter-word spaces; no Linux goldens or tolerance. [[linux-test-port]].
 - No scroll helper; double-click is two `Click`s inside the 250 ms tap window, and so is any two clicks on one

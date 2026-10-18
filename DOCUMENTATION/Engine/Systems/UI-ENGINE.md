@@ -248,7 +248,7 @@ Emit(control, depth)
 	copy the control's paint into the row
 ```
 
-The pool's rows have no handles. Nothing refers to a quad from one frame to the next, so the pool is only ever rewound and appended to. When an append finds it full it doubles, as `Pools.pools.xml` declares. Once it has stayed at most a quarter full for two seconds it halves again, like every pool, so a burst of quads does not hold its memory forever.
+The pool's rows have no handles. Nothing refers to a quad from one frame to the next, so the pool is only ever rewound and appended to. When an append finds it full it doubles, as `Pools.pools.axml` declares. Once it has stayed at most a quarter full for two seconds it halves again, like every pool, so a burst of quads does not hold its memory forever.
 
 Both prunes read rectangles the layout pass already maintains. The subtree test is sound because a child's clip is always a subset of its parent's — arrange either inherits it or intersects it, never widens it — and the chain terminates at the window root's own rectangle. So "off the screen" and "outside some ancestor's clip" are one test, not two, and a scrolled document costs what is visible rather than what it contains.
 
@@ -464,7 +464,7 @@ Parse(element)
 
 The last branch is what lets a document carry things that are not controls at all — a list of gradient stops, a set of column definitions — without the parser knowing any of their names.
 
-Motion is named the same way. `Clip` plays a keyframed clip once when the control starts, `HoverClip` and `PressClip` run a clip forward while the control is hovered or pressed and back again afterwards, and `StateBinding` eases properties between rest, hover and press values; all of them name entries in `Animations/*.anim.xml`, described in [[ANIMATION]].
+Motion is named the same way. `Clip` plays a keyframed clip once when the control starts, `HoverClip` and `PressClip` run a clip forward while the control is hovered or pressed and back again afterwards, and `StateBinding` eases properties between rest, hover and press values; all of them name entries in `Animations/*.anim.axml`, described in [[ANIMATION]].
 
 ## Context menus
 

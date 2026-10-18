@@ -302,7 +302,7 @@ namespace ArctisAurora.Core.UI
             }
 
             byte[] bytes = VaultFiles.ReadBytes(path);
-            if (Rewritten(bytes, path.EndsWith(".md", StringComparison.OrdinalIgnoreCase), rename) is not byte[] rewrittenBytes) return;
+            if (Rewritten(bytes, FileTypes.KindOf(path) == FileKind.Markdown, rename) is not byte[] rewrittenBytes) return;
             VaultFiles.WriteBytes(path, rewrittenBytes);
         }
 

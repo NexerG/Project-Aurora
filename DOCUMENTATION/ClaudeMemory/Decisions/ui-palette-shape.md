@@ -24,9 +24,9 @@
 ## Why these choices
 
 **Shape lives on the palette, not a separate style file (user, option A).**
-The Periodic artboards pair each colour scheme with its geometry (Phosphor's 3px rows, Void's hard edges), so one file per theme matches the design. A separate `*.style.xml` named by the palette would let 12 palettes share three geometry sets; rejected as more machinery than the token count needs.
+The Periodic artboards pair each colour scheme with its geometry (Phosphor's 3px rows, Void's hard edges), so one file per theme matches the design. A separate `*.style.axml` named by the palette would let 12 palettes share three geometry sets; rejected as more machinery than the token count needs.
 
-**No token references from `.ui.xml` (user).**
+**No token references from `.ui.axml` (user).**
 `CornerRadius="Row"` would need the converter to take names and a re-resolve on palette switch. Only code-built controls consume tokens; XML keeps plain numbers. This is also why `RuleWidth` was dropped — nothing could read it.
 
 **Roles resolved in `InheritPaint`, not values stamped at build.**

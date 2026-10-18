@@ -28,7 +28,7 @@ namespace ArctisAurora.Tests
             t.Check(VaultFilesOf(vault).All(f => EncryptedFile.IsVaultEnvelope(File.ReadAllBytes(f))), "every file is an envelope");
             t.Check(VaultFilesOf(vault).All(f => !Contains(f, "marker")), "no file holds plaintext");
 
-            string note = Path.Combine(vault, "note.xml");
+            string note = Path.Combine(vault, "note.axml");
             t.Check(DocumentXml.ToXml(RichTextDocument.Load(note)).ToString().Contains(noteMarker), "a note reads through the vault key");
             t.Check(VaultFiles.ReadText(Path.Combine(vault, "page.md")).Contains(markdownMarker), "Markdown reads through it");
             t.Check(VaultFiles.ReadBytes(Path.Combine(vault, "pic.png")).AsSpan().SequenceEqual(originals["pic.png"]), "a picture reads back byte for byte");
@@ -50,7 +50,7 @@ namespace ArctisAurora.Tests
             for (int i = 0; i < convertTicks && VaultLock.isConverting; i++) yield return 1;
 
             t.Check(!VaultLock.HasLock(vault) && !Directory.Exists(Path.Combine(vault, VaultLock.folderName)), "removing the lock drops it");
-            t.Check(originals.Where(o => o.Key != "note.xml").All(o => File.ReadAllBytes(Path.Combine(vault, o.Key)).AsSpan().SequenceEqual(o.Value)),
+            t.Check(originals.Where(o => o.Key != "note.axml").All(o => File.ReadAllBytes(Path.Combine(vault, o.Key)).AsSpan().SequenceEqual(o.Value)),
                 "and every file is back as it was");
             t.Check(Contains(note, "saved " + noteMarker), "the note keeps the edit made while locked");
             Directory.Delete(vault, true);
@@ -123,7 +123,7 @@ namespace ArctisAurora.Tests
         {
             string vault = Path.Combine(Path.GetTempPath(), $"aurora-vault-{Guid.NewGuid():N}");
             Directory.CreateDirectory(Path.Combine(vault, "sub"));
-            File.WriteAllText(Path.Combine(vault, "note.xml"), $"<Document><Block><Run Text=\"{noteMarker}\"/></Block></Document>\n");
+            File.WriteAllText(Path.Combine(vault, "note.axml"), $"<Document><Block><Run Text=\"{noteMarker}\"/></Block></Document>\n");
             File.WriteAllText(Path.Combine(vault, "page.md"), $"# Title\n\n{markdownMarker}\n");
             File.WriteAllText(Path.Combine(vault, "sub", "notes.txt"), textMarker + "\n");
             using (Image<Rgba32> image = new Image<Rgba32>(2, 2, new Rgba32(10, 20, 30, 255))) image.SaveAsPng(Path.Combine(vault, "pic.png"));

@@ -7,7 +7,7 @@ running it. **`Logging.Flush` is not GUI-verified** (the shutdown sequence needs
 same gap as [[shutdown-sequence]]). Swapchain-rebuild lines are not verified either — they need a
 resize.
 **Scope:** new `ArctisAurora.Core.Diagnostics` (+ `.Sinks`), `ThreadedSystem`, `Bootstrapper`,
-`Shutdown`, `Renderer`, `SettingsRegistry`, `Bootstrap.xml`, `Shutdown.xml`, and the 51
+`Shutdown`, `Renderer`, `SettingsRegistry`, `Bootstrap.axml`, `Shutdown.axml`, and the 51
 `Console.WriteLine` call sites across 24 files.
 
 ## What was there before
@@ -119,7 +119,7 @@ to be formatted — the sinks filter afterwards. `LogSpool.Configure` computes
 `XSDGenerator.GenerateXSD()` runs before `Engine.Init()` in `Thorium.Main` and logs, so the logger
 cannot be a bootstrap step. `LogChannel.For` starts the spool.
 
-`Logging.Configure` is step 2 of `Bootstrap.xml`, right after `Settings.LoadAll`. Before it: the
+`Logging.Configure` is step 2 of `Bootstrap.axml`, right after `Settings.LoadAll`. Before it: the
 console prints at a fixed `Info` default (so a boot that wedges still says where), and every line is
 also held in a bounded pending list. At `Configure` the held lines are replayed into the file and the
 recorder at their real levels. Nothing from early bootstrap is lost.

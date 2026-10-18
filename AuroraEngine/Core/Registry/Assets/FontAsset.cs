@@ -40,7 +40,7 @@ namespace ArctisAurora.Core.Registry.Assets
             textureAsset = new TextureAsset();
             textureAsset.LoadFile(Paths.Font(fontName, fontName + "_atlas.png"), Format.R8G8B8A8Unorm);
 
-            string math = Paths.Font(fontName, fontName + ".math.xml");
+            string math = Paths.Font(fontName, fontName + ".math.axml");
             if (DataFiles.Exists(math)) mathConstants = MathConstants.Load(math);
         }
 

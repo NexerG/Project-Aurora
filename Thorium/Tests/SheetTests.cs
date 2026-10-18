@@ -618,8 +618,8 @@ namespace Thorium.Tests
         [A_XSDActionDependency("Sheet.NoteFormats", "Test")]
         private static IEnumerator<int> NoteFormats(TestContext t)
         {
-            const string cell = "Budget.sheet.xml#Data!B1";
-            const string range = "Budget.sheet.xml#Data!A1:B2";
+            const string cell = "Budget.sheet.axml#Data!B1";
+            const string range = "Budget.sheet.axml#Data!A1:B2";
             string markdown = $"Total ![[{cell}]] here\n\n![[{range}]]\n\n![[Other note#Heading]]\n";
 
             XElement read = MarkdownFormat.Read(markdown, "Links");
@@ -642,9 +642,9 @@ namespace Thorium.Tests
             t.Check(DocumentXml.ToXml(document).Descendants().Any(run => run.Name.LocalName == "Run" && (string?)run.Attribute("Sheet") == cell),
                 "and saves as a Sheet run");
 
-            t.Check(SheetLinks.Parse("Budget.sheet.xml#My page!B3:A1", out string file, out string page, out int top, out int left, out int bottom, out int right)
-                && file == "Budget.sheet.xml" && page == "My page" && (top, left, bottom, right) == (0, 0, 2, 1), "a reference parses, its range ordered");
-            t.Check(!SheetLinks.Parse("Budget.sheet.xml!B3", out _, out _, out _, out _, out _, out _), "a reference without a page does not parse");
+            t.Check(SheetLinks.Parse("Budget.sheet.axml#My page!B3:A1", out string file, out string page, out int top, out int left, out int bottom, out int right)
+                && file == "Budget.sheet.axml" && page == "My page" && (top, left, bottom, right) == (0, 0, 2, 1), "a reference parses, its range ordered");
+            t.Check(!SheetLinks.Parse("Budget.sheet.axml!B3", out _, out _, out _, out _, out _, out _), "a reference without a page does not parse");
             yield break;
         }
 
@@ -657,7 +657,7 @@ namespace Thorium.Tests
             string budgetPath = BudgetSheet(folder);
 
             string notePath = Path.Combine(folder, "Links.md");
-            File.WriteAllText(notePath, "Total ![[Budget.sheet.xml#Data!B1]] here\n\n![[Budget.sheet.xml#Data!A1:B2]]\n\n![[Gone.sheet.xml#Data!A1]]\n");
+            File.WriteAllText(notePath, "Total ![[Budget.sheet.axml#Data!B1]] here\n\n![[Budget.sheet.axml#Data!A1:B2]]\n\n![[Gone.sheet.axml#Data!A1]]\n");
 
             StackPanelControl both = new StackPanelControl { orientation = StackPanelControl.Orientation.Horizontal };
             DocumentEditorControl note = new DocumentEditorControl { preferredWidth = 600f, preferredHeight = 400f };
@@ -675,9 +675,9 @@ namespace Thorium.Tests
             t.Check(narrow > 0f, $"an inline cell takes its value's width: {narrow}");
             BlockControl rangeBlock = p.First(block => block.spans.Any(span => span.IsSheet && span.sheetRef.Contains(':')));
             t.Check(rangeBlock.arrangedRect.height >= 48f, $"a range is as tall as its rows: {rangeBlock.arrangedRect.height}");
-            t.Check(SheetLinks.Plain("Budget.sheet.xml#Data!A1:B2") == "10\t20" + Environment.NewLine + "text\t" + SheetFormula.div0,
-                $"a range reads the sheet's values: {SheetLinks.Plain("Budget.sheet.xml#Data!A1:B2")}");
-            t.Check(SheetLinks.Plain("Gone.sheet.xml#Data!A1") == SheetFormula.reference, "a missing sheet is #REF!");
+            t.Check(SheetLinks.Plain("Budget.sheet.axml#Data!A1:B2") == "10\t20" + Environment.NewLine + "text\t" + SheetFormula.div0,
+                $"a range reads the sheet's values: {SheetLinks.Plain("Budget.sheet.axml#Data!A1:B2")}");
+            t.Check(SheetLinks.Plain("Gone.sheet.axml#Data!A1") == SheetFormula.reference, "a missing sheet is #REF!");
             yield return t.Golden("Links", note);
 
             sheet.Select(0, 0, false);
@@ -728,7 +728,7 @@ namespace Thorium.Tests
             note.FocusCaret();
             yield return t.Key(Keys.V, Keys.LeftControl, Keys.LeftShift);
             BlockControl first = NoteBlocks(note)[0];
-            t.Check(Link(first)?.sheetRef == "Budget.sheet.xml#Data!B1" && first.text == "start" + BlockControl.PictureChar,
+            t.Check(Link(first)?.sheetRef == "Budget.sheet.axml#Data!B1" && first.text == "start" + BlockControl.PictureChar,
                 $"Ctrl+Shift+V in a note puts in a live cell: {Link(first)?.sheetRef} '{first.text}'");
 
             content.SetCaret(first, 5);
@@ -747,7 +747,7 @@ namespace Thorium.Tests
             note.FocusCaret();
             yield return t.Key(Keys.V, Keys.LeftControl, Keys.LeftShift);
             first = NoteBlocks(note)[0];
-            t.Check(Link(first)?.sheetRef == "Budget.sheet.xml#Data!A1:B2", $"a range pastes as a range link: {Link(first)?.sheetRef}");
+            t.Check(Link(first)?.sheetRef == "Budget.sheet.axml#Data!A1:B2", $"a range pastes as a range link: {Link(first)?.sheetRef}");
 
             NoteContent(plain).SetCaret(NoteBlocks(plain)[0], 5);
             plain.FocusCaret();
@@ -778,15 +778,15 @@ namespace Thorium.Tests
             string moneyPath = Path.Combine(folder, "Money" + SheetDocument.extension);
 
             string mdPath = Path.Combine(folder, "a.md");
-            File.WriteAllText(mdPath, "x ![[Budget.sheet.xml#Data!A1]] y ![[Budgetary.sheet.xml#Data!A1]]\r\n");
-            string xmlPath = Path.Combine(folder, "b.xml");
-            File.WriteAllText(xmlPath, "<Document>\r\n  <Block><Run Text=\"a\"/><Run Sheet=\"Budget.sheet.xml#Data!A1:B2\"/></Block>\r\n</Document>\r\n",
+            File.WriteAllText(mdPath, "x ![[Budget.sheet.axml#Data!A1]] y ![[Budgetary.sheet.axml#Data!A1]]\r\n");
+            string xmlPath = Path.Combine(folder, "b.axml");
+            File.WriteAllText(xmlPath, "<Document>\r\n  <Block><Run Text=\"a\"/><Run Sheet=\"Budget.sheet.axml#Data!A1:B2\"/></Block>\r\n</Document>\r\n",
                 new System.Text.UTF8Encoding(true));
             string plainPath = Path.Combine(folder, "c.md");
             File.WriteAllText(plainPath, "nothing here\n");
             DateTime plainTime = File.GetLastWriteTimeUtc(plainPath);
             string openPath = Path.Combine(folder, "d.md");
-            File.WriteAllText(openPath, "open ![[Budget.sheet.xml#Data!A1]]\n");
+            File.WriteAllText(openPath, "open ![[Budget.sheet.axml#Data!A1]]\n");
 
             string scope = SessionLayout.scope;
             WorkspaceControl workspace = new WorkspaceControl
@@ -807,18 +807,18 @@ namespace Thorium.Tests
             SheetLinks.Renamed(budgetPath, moneyPath, new[] { mdPath, xmlPath, plainPath, openPath });
             yield return 2;
 
-            t.Check(File.ReadAllText(mdPath) == "x ![[Money.sheet.xml#Data!A1]] y ![[Budgetary.sheet.xml#Data!A1]]\r\n",
+            t.Check(File.ReadAllText(mdPath) == "x ![[Money.sheet.axml#Data!A1]] y ![[Budgetary.sheet.axml#Data!A1]]\r\n",
                 $"a .md note's link is rewritten and nothing else: {File.ReadAllText(mdPath)}");
             byte[] xml = File.ReadAllBytes(xmlPath);
-            t.Check(xml.Length > 3 && xml[0] == 0xEF && xml[1] == 0xBB && xml[2] == 0xBF, "a .xml note keeps its BOM");
-            t.Check(File.ReadAllText(xmlPath) == "<Document>\r\n  <Block><Run Text=\"a\"/><Run Sheet=\"Money.sheet.xml#Data!A1:B2\"/></Block>\r\n</Document>\r\n",
-                $"a .xml note's link is rewritten and nothing else: {File.ReadAllText(xmlPath)}");
+            t.Check(xml.Length > 3 && xml[0] == 0xEF && xml[1] == 0xBB && xml[2] == 0xBF, "a .axml note keeps its BOM");
+            t.Check(File.ReadAllText(xmlPath) == "<Document>\r\n  <Block><Run Text=\"a\"/><Run Sheet=\"Money.sheet.axml#Data!A1:B2\"/></Block>\r\n</Document>\r\n",
+                $"a .axml note's link is rewritten and nothing else: {File.ReadAllText(xmlPath)}");
             t.Check(File.GetLastWriteTimeUtc(plainPath) == plainTime, "a note without a link is not touched");
 
             BlockControl open = NoteBlocks(note)[0];
-            t.Check(open.spans.Any(span => span.sheetRef == "Money.sheet.xml#Data!A1"), "an open note's link follows the rename");
+            t.Check(open.spans.Any(span => span.sheetRef == "Money.sheet.axml#Data!A1"), "an open note's link follows the rename");
             t.Check(!note.session.isDirty, "and the open note stays unedited");
-            t.Check(SheetLinks.Plain("Money.sheet.xml#Data!A1") == "10", "the renamed link still reads");
+            t.Check(SheetLinks.Plain("Money.sheet.axml#Data!A1") == "10", "the renamed link still reads");
 
             SessionLayout.scope = scope;
             t.Show(new StackPanelControl());
@@ -836,15 +836,15 @@ namespace Thorium.Tests
             string budgetPath = BudgetSheet(folder);
             string moneyPath = Path.Combine(folder, "Money" + SheetDocument.extension);
 
-            t.Check(SheetLinks.ExpandMath(@"a = \sheet{Budget.sheet.xml#Data!B1}") == "a = {20}", "a number reads in as itself");
-            t.Check(SheetLinks.ExpandMath(@"\sheet{Budget.sheet.xml#Data!A2}") == @"\text{text}", "text reads in as \\text");
-            t.Check(SheetLinks.ExpandMath(@"\sheet{Budget.sheet.xml#Data!A1:B2}") == @"\text{" + SheetFormula.value + "}", "a range is #VALUE!");
-            t.Check(SheetLinks.ExpandMath(@"\sheet{Gone.sheet.xml#Data!A1}") == @"\text{" + SheetFormula.reference + "}", "a missing sheet is #REF!");
+            t.Check(SheetLinks.ExpandMath(@"a = \sheet{Budget.sheet.axml#Data!B1}") == "a = {20}", "a number reads in as itself");
+            t.Check(SheetLinks.ExpandMath(@"\sheet{Budget.sheet.axml#Data!A2}") == @"\text{text}", "text reads in as \\text");
+            t.Check(SheetLinks.ExpandMath(@"\sheet{Budget.sheet.axml#Data!A1:B2}") == @"\text{" + SheetFormula.value + "}", "a range is #VALUE!");
+            t.Check(SheetLinks.ExpandMath(@"\sheet{Gone.sheet.axml#Data!A1}") == @"\text{" + SheetFormula.reference + "}", "a missing sheet is #REF!");
 
             string notePath = Path.Combine(folder, "Math.md");
-            File.WriteAllText(notePath, "x $a = \\sheet{Budget.sheet.xml#Data!B1}$ y\n\n$\\sheet{Gone.sheet.xml#Data!A1}$ end\n");
-            string xmlPath = Path.Combine(folder, "Math.xml");
-            File.WriteAllText(xmlPath, "<Document><Block><Run Math=\"a&#xA;\\sheet{Budget.sheet.xml#Data!A1} &lt; b\" Display=\"true\"/></Block></Document>\n");
+            File.WriteAllText(notePath, "x $a = \\sheet{Budget.sheet.axml#Data!B1}$ y\n\n$\\sheet{Gone.sheet.axml#Data!A1}$ end\n");
+            string xmlPath = Path.Combine(folder, "Math.axml");
+            File.WriteAllText(xmlPath, "<Document><Block><Run Math=\"a&#xA;\\sheet{Budget.sheet.axml#Data!A1} &lt; b\" Display=\"true\"/></Block></Document>\n");
 
             string scope = SessionLayout.scope;
             WorkspaceControl workspace = new WorkspaceControl
@@ -884,11 +884,11 @@ namespace Thorium.Tests
             yield return t.Key(Keys.M, Keys.LeftControl);
             yield return t.Key(Keys.V, Keys.LeftControl, Keys.LeftShift);
             TextBoxControl? box = UIEngine.activeControl as TextBoxControl;
-            t.Check(box?.text == @"\sheet{Budget.sheet.xml#Data!B1}", $"Ctrl+Shift+V in the formula's source puts in a reference: {box?.text}");
+            t.Check(box?.text == @"\sheet{Budget.sheet.axml#Data!B1}", $"Ctrl+Shift+V in the formula's source puts in a reference: {box?.text}");
             yield return t.Key(Keys.Enter);
             yield return 2;
             p = NoteBlocks(note);
-            t.Check(p[0].spans.Count(span => span.IsMath && span.mathSource == @"\sheet{Budget.sheet.xml#Data!B1}") == 1, "and commits it into the note");
+            t.Check(p[0].spans.Count(span => span.IsMath && span.mathSource == @"\sheet{Budget.sheet.axml#Data!B1}") == 1, "and commits it into the note");
 
             ClipboardText.Set("q");
             yield return t.Key(Keys.M, Keys.LeftControl);
@@ -904,7 +904,7 @@ namespace Thorium.Tests
             yield return 2;
             t.Check(UIEngine.activeControl is not TextBoxControl, "a popup closed from outside is cancelled and gives the focus back");
             yield return t.Key(Keys.V, Keys.LeftControl, Keys.LeftShift);
-            t.Check(NoteBlocks(note)[0].spans.Count(span => span.IsMath && span.mathSource == @"\sheet{Budget.sheet.xml#Data!B1}") == 1,
+            t.Check(NoteBlocks(note)[0].spans.Count(span => span.IsMath && span.mathSource == @"\sheet{Budget.sheet.axml#Data!B1}") == 1,
                 "Paste link after it reaches no closed popup");
             yield return 2;
 
@@ -913,24 +913,24 @@ namespace Thorium.Tests
             SheetLinks.Renamed(budgetPath, moneyPath, new[] { notePath, xmlPath });
             yield return 2;
 
-            t.Check(NoteBlocks(note)[0].spans.Any(span => span.IsMath && span.mathSource == @"a = \sheet{Money.sheet.xml#Data!B1}"),
+            t.Check(NoteBlocks(note)[0].spans.Any(span => span.IsMath && span.mathSource == @"a = \sheet{Money.sheet.axml#Data!B1}"),
                 "an open note's formula follows the rename");
-            t.Check(File.ReadAllText(xmlPath) == "<Document><Block><Run Math=\"a&#xA;\\sheet{Money.sheet.xml#Data!A1} &lt; b\" Display=\"true\"/></Block></Document>\n",
-                $"a .xml note's formula is rewritten and nothing else: {File.ReadAllText(xmlPath)}");
-            t.Check(SheetLinks.ExpandMath(@"\sheet{Money.sheet.xml#Data!B1}") == "{2000}", "the renamed reference still reads");
+            t.Check(File.ReadAllText(xmlPath) == "<Document><Block><Run Math=\"a&#xA;\\sheet{Money.sheet.axml#Data!A1} &lt; b\" Display=\"true\"/></Block></Document>\n",
+                $"a .axml note's formula is rewritten and nothing else: {File.ReadAllText(xmlPath)}");
+            t.Check(SheetLinks.ExpandMath(@"\sheet{Money.sheet.axml#Data!B1}") == "{2000}", "the renamed reference still reads");
 
             SessionLayout.scope = scope;
             t.Show(new StackPanelControl());
             string written = File.ReadAllText(notePath);
             string body = Frontmatter.Split(written, out _, out string rest) ? rest : written;
-            t.Check(body.StartsWith("x $a = \\sheet{Money.sheet.xml#Data!B1}$"), $"a .md note's formula is rewritten: {written}");
+            t.Check(body.StartsWith("x $a = \\sheet{Money.sheet.axml#Data!B1}$"), $"a .md note's formula is rewritten: {written}");
             SheetBook.findSheet = before;
             SheetBook.Deleted(moneyPath);
             Directory.Delete(folder, true);
         }
 
         #region ---- fixtures ----
-        // Budget.sheet.xml, page Data: 10, =A1*2 / text, =1/0.
+        // Budget.sheet.axml, page Data: 10, =A1*2 / text, =1/0.
         [A_XSDActionDependency("Sheet.Formats", "Test")]
         private static IEnumerator<int> Formats(TestContext t)
         {
@@ -960,7 +960,7 @@ namespace Thorium.Tests
             fmt.Save(sheetPath);
 
             string notePath = Path.Combine(folder, "Shown.md");
-            File.WriteAllText(notePath, "Total ![[Fmt.sheet.xml#Data!A1]] here\n\n![[Fmt.sheet.xml#Data!A1:B2]]\n");
+            File.WriteAllText(notePath, "Total ![[Fmt.sheet.axml#Data!A1]] here\n\n![[Fmt.sheet.axml#Data!A1:B2]]\n");
 
             StackPanelControl both = new StackPanelControl { orientation = StackPanelControl.Orientation.Horizontal };
             DocumentEditorControl note = new DocumentEditorControl { preferredWidth = 420f, preferredHeight = 300f };
@@ -1004,7 +1004,7 @@ namespace Thorium.Tests
             editor.Select(0, 0, false);
             editor.Copy();
             t.Check(ClipboardText.Get() == "1234.5", $"a formatted number copies as the number: {ClipboardText.Get()}");
-            t.Check(SheetLinks.ExpandMath(@"\sheet{Fmt.sheet.xml#Data!A1}") == "{1234.5}", "note math reads the number unformatted");
+            t.Check(SheetLinks.ExpandMath(@"\sheet{Fmt.sheet.axml#Data!A1}") == "{1234.5}", "note math reads the number unformatted");
 
             editor.Clear();
             t.Check(page.Shown(0, 0) == null && page.Format(0, 0).number == "€#,##0.00", "Delete empties the cell and keeps its format");
@@ -1038,7 +1038,7 @@ namespace Thorium.Tests
             string budgetPath = BudgetSheet(folder);
 
             string notePath = Path.Combine(folder, "Range.md");
-            File.WriteAllText(notePath, "![[Budget.sheet.xml#Data!A1:B2]]\n");
+            File.WriteAllText(notePath, "![[Budget.sheet.axml#Data!A1:B2]]\n");
 
             StackPanelControl both = new StackPanelControl { orientation = StackPanelControl.Orientation.Horizontal };
             DocumentEditorControl note = new DocumentEditorControl { preferredWidth = 500f, preferredHeight = 300f };
@@ -1122,7 +1122,7 @@ namespace Thorium.Tests
             unopened.Save(PathOf("Unopened"));
 
             string notePath = Path.Combine(folder, "a.md");
-            File.WriteAllText(notePath, "x ![[Budget.sheet.xml#Data!A1]] $\\sheet{Budget.sheet.xml#Data!A1}$\n");
+            File.WriteAllText(notePath, "x ![[Budget.sheet.axml#Data!A1]] $\\sheet{Budget.sheet.axml#Data!A1}$\n");
 
             SheetEditorControl editor = ShowSheet(t, PathOf("Budget"));
             SheetPage summaryPage = SheetBook.Get(PathOf("Summary")).pages[0];
@@ -1154,7 +1154,7 @@ namespace Thorium.Tests
             t.Check(summaryPage.layers[0].Get(0, 0) == "=[Budget]Spend!A1+1", "a loaded sheet's reference follows");
             t.Check(SheetBook.calc.Value(summaryPage, 0, 0).Display() == "11", "and keeps its value");
             t.Check(SheetDocument.Load(PathOf("Unopened")).pages[0].Shown(0, 0) == "=[Budget]Spend!A1", "a sheet on disk is rewritten");
-            t.Check(File.ReadAllText(notePath) == "x ![[Budget.sheet.xml#Spend!A1]] $\\sheet{Budget.sheet.xml#Spend!A1}$\n",
+            t.Check(File.ReadAllText(notePath) == "x ![[Budget.sheet.axml#Spend!A1]] $\\sheet{Budget.sheet.axml#Spend!A1}$\n",
                 $"a note's link and formula follow: {File.ReadAllText(notePath)}");
             t.Check(Labels(strip).Contains("Spend"), "the tab shows the new name");
 
@@ -1385,7 +1385,7 @@ namespace Thorium.Tests
 
             t.Check(SheetBook.calc.Value(page, 0, 1).Display() == "101" && SheetBook.calc.Value(page, 1, 1).Display() == "200",
                 "a sheet formula reads a CSV, formulas inside it included");
-            t.Check(SheetBook.calc.Value(page, 0, 2).Display() == "999", "data.csv and data.sheet.xml resolve separately");
+            t.Check(SheetBook.calc.Value(page, 0, 2).Display() == "999", "data.csv and data.sheet.axml resolve separately");
             t.Check(SheetBook.calc.Value(csvPage, 1, 2).Display() == SheetFormula.reference, "a CSV reaches no other file");
             t.Check(SheetLinks.IsLink("data.csv#data!B2") && SheetLinks.Plain("data.csv#data!B2") == "100", "a note link reads a CSV cell");
             t.Check(SheetLinks.ExpandMath(@"\sheet{data.csv#data!B3}") == "{200}", "note math reads a CSV cell");
@@ -1413,7 +1413,7 @@ namespace Thorium.Tests
             t.Check(SheetBook.calc.Value(page, 0, 1).Display() == "101", "and the reference still reads");
             t.Check(csvPage.name == "cost" && csvPage.layers[0].Get(2, 1) == "=cost!B2*2" && SheetBook.calc.Value(csvPage, 2, 1).Display() == "200",
                 $"the CSV's page follows its file name, its own references too: {csvPage.layers[0].Get(2, 1)}");
-            t.Check(page.layers[0].Get(0, 2) == "=[data]Data!A1", "a reference to data.sheet.xml is left alone");
+            t.Check(page.layers[0].Get(0, 2) == "=[data]Data!A1", "a reference to data.sheet.axml is left alone");
             t.Check(SheetDocument.Load(SheetPath("Unopened")).pages[0].Shown(0, 0) == "=[cost.csv]cost!B2", "a sheet on disk is rewritten");
             t.Check(File.ReadAllText(notePath) == "x ![[cost.csv#cost!B2]] $\\sheet{cost.csv#cost!B3}$\n", $"a note's link and formula follow: {File.ReadAllText(notePath)}");
 
@@ -1424,9 +1424,9 @@ namespace Thorium.Tests
             SheetBook.Deleted(costPath);
             yield return 2;
 
-            t.Check(page.layers[0].Get(0, 1) == "=[cost.sheet.xml]cost!B2+1" && SheetBook.calc.Value(page, 0, 1).Display() == "101",
+            t.Check(page.layers[0].Get(0, 1) == "=[cost.sheet.axml]cost!B2+1" && SheetBook.calc.Value(page, 0, 1).Display() == "101",
                 $"turning the CSV into a sheet points references at the sheet: {page.layers[0].Get(0, 1)}");
-            t.Check(File.ReadAllText(notePath) == "x ![[cost.sheet.xml#cost!B2]] $\\sheet{cost.sheet.xml#cost!B3}$\n", $"notes too: {File.ReadAllText(notePath)}");
+            t.Check(File.ReadAllText(notePath) == "x ![[cost.sheet.axml#cost!B2]] $\\sheet{cost.sheet.axml#cost!B3}$\n", $"notes too: {File.ReadAllText(notePath)}");
             t.Check(!csv.document.isCsv && SheetBook.calc.Value(csvPage, 1, 2).Display() == "10", "and as a sheet it reaches other files");
 
             t.Show(new StackPanelControl());
@@ -1638,7 +1638,7 @@ namespace Thorium.Tests
             unopened.Save(PathOf("Unopened"));
 
             string notePath = Path.Combine(folder, "a.md");
-            string note = "x ![[Budget.sheet.xml#Data!A2:A3]] $\\sheet{Budget.sheet.xml#Data!A3}$\n";
+            string note = "x ![[Budget.sheet.axml#Data!A2:A3]] $\\sheet{Budget.sheet.axml#Data!A3}$\n";
             File.WriteAllText(notePath, note);
 
             SheetEditorControl editor = ShowSheet(t, PathOf("Budget"));
@@ -1663,7 +1663,7 @@ namespace Thorium.Tests
                 $"a loaded sheet's references follow: {summaryPage.layers[0].Get(1, 0)}");
             t.Check(SheetBook.calc.Value(summaryPage, 0, 0).Display() == "4", "and keep their values");
             t.Check(SheetDocument.Load(PathOf("Unopened")).pages[0].Shown(0, 0) == "=[Budget]Data!A5", "a sheet on disk is rewritten");
-            t.Check(File.ReadAllText(notePath) == "x ![[Budget.sheet.xml#Data!A4:A5]] $\\sheet{Budget.sheet.xml#Data!A5}$\n",
+            t.Check(File.ReadAllText(notePath) == "x ![[Budget.sheet.axml#Data!A4:A5]] $\\sheet{Budget.sheet.axml#Data!A5}$\n",
                 $"a note's link and formula follow: {File.ReadAllText(notePath)}");
 
             editor.Undo();

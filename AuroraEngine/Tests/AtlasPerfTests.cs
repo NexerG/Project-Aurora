@@ -52,7 +52,7 @@ namespace ArctisAurora.Tests
         private static Dictionary<string, string> ReadCharsets()
         {
             Dictionary<string, string> charsets = new Dictionary<string, string>();
-            foreach (string file in VirtualFileSystem.EnumerateAll("XML/Imports", "*.imports.xml"))
+            foreach (string file in VirtualFileSystem.EnumerateAll("XML/Imports", "*.imports.axml"))
             {
                 XElement root = XElement.Load(file);
                 foreach (XElement charset in root.Elements(root.GetDefaultNamespace() + "Charset"))

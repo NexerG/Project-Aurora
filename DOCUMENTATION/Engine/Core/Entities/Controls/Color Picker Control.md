@@ -8,7 +8,7 @@ The field is three quads on the same rectangle: a flat quad in the current hue a
 
 The handles are small filled quads in the colour they mark, with a white edge. Below the field sit a swatch of the current colour and a hex text box.
 
-The three gradients live in the engine's own `Engine.gradients.xml`, which loads before a host's `Gradients.gradients.xml`.
+The three gradients live in the engine's own `Engine.gradients.axml`, which loads before a host's `Gradients.gradients.axml`.
 
 ## State
 The colour is held as hue, saturation and brightness rather than as RGB, so dragging brightness to black and back does not lose the hue.

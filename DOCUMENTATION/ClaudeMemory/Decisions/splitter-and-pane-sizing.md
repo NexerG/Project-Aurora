@@ -3,7 +3,7 @@
 **Date:** 2026-08-18
 **Status:** LANDED. **GUI-verified** — dragged both directions, repeatedly, with the clamp holding.
 **Scope:** `ArctisAurora.Core.UISystem.Controls.Interactable` (`SplitterControl`),
-`Thorium/Data/XML/Documents/UI.xml`.
+`Thorium/Data/XML/Documents/UI.axml`.
 
 ## Decisions
 
@@ -42,7 +42,7 @@ from the size it actually has on screen instead of jumping to zero on the first 
 
 No new property. Every control already carries `minWidth`/`minHeight` as `[A_XSDElementProperty]`,
 they were simply never read by anything. The default is `0`, so a pane can be collapsed entirely
-unless the XML says otherwise — `UI.xml` gives the vault browser `MinWidth="120"`. There is no upper
+unless the XML says otherwise — `UI.axml` gives the vault browser `MinWidth="120"`. There is no upper
 clamp: dragging fully right collapses the star pane, which is recoverable by dragging back.
 
 ### 5. It derives from `ButtonControl` for the state tints
@@ -172,7 +172,7 @@ have nothing to write. **Superseded 2026-09-03 — two stars now trade weight; s
 **Status:** LANDED. Builds clean. **GUI-verified** — Carbon booted with the panes at 1:2, and the
 drag itself confirmed by the user.
 **Scope:** `ArctisAurora.Core.UISystem.Controls.Interactable` (`SplitterControl`),
-`Carbon/Data/XML/Documents/UI/UI.ui.xml`.
+`Carbon/Data/XML/Documents/UI/UI.ui.axml`.
 
 ## The caller §1 was waiting for
 

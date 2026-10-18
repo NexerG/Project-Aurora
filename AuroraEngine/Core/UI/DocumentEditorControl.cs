@@ -156,10 +156,10 @@ namespace ArctisAurora.Core.UI
             AddChild(content);
             if (session != null && session.lead == null) session.lead = content;
 
-            string extension = Extension;
-            content.plainText = extension == ".txt" || Source;
+            FileKind? kind = Kind;
+            content.plainText = kind == FileKind.PlainText || Source;
             content.readOnly = document.readOnly;
-            properties = !Source && extension is ".md" or ".xml" ? new NotePropertiesControl(this, extension == ".md") : null;
+            properties = !Source && kind is FileKind.Markdown or FileKind.Note ? new NotePropertiesControl(this, kind == FileKind.Markdown) : null;
             if (properties != null)
             {
                 ExpanderControl expander = new ExpanderControl();
@@ -257,10 +257,10 @@ namespace ArctisAurora.Core.UI
         #endregion
 
         #region ---- encryption ----
-        // Asks for a new password and seals the note-level entries the caret or selection touches; .xml notes only.
+        // Asks for a new password and seals the note-level entries the caret or selection touches; .axml notes only.
         public void EncryptBlocks()
         {
-            if (session == null || !Writable || Source || Extension != ".xml" || content.caretBlock == null) return;
+            if (session == null || !Writable || Source || Kind != FileKind.Note || content.caretBlock == null) return;
 
             if (!content.OrderedSelection(out DocumentAddress from, out DocumentAddress to))
                 from = to = content.AddressOf(content.caretBlock, 0);
@@ -376,8 +376,8 @@ namespace ArctisAurora.Core.UI
 
         public TextAlignment CaretBlockAlignment => content?.CaretBlockAlignment ?? TextAlignment.Left;
 
-        // Markdown and plain text have no way to write it, so only .xml notes align.
-        public bool CanAlign => content != null && !Source && !(Extension is ".md" or ".txt");
+        // Markdown and plain text have no way to write it, so only .axml notes align.
+        public bool CanAlign => content != null && !Source && !(Kind is FileKind.Markdown or FileKind.PlainText);
 
         public void SetAlignment(TextAlignment alignment)
         {
@@ -420,10 +420,10 @@ namespace ArctisAurora.Core.UI
             RequestScrollToCaret();
         }
 
-        private string Extension => Path.GetExtension(session?.path ?? string.Empty).ToLowerInvariant();
+        private FileKind? Kind => FileTypes.KindOf(session?.path);
 
         // shown as code lines: a .tex file, or any file opened as its source
-        private bool Source => activeDocument?.sourceLanguage != null || Extension == ".tex";
+        private bool Source => activeDocument?.sourceLanguage != null || Kind == FileKind.Tex;
 
         public void SetChecked(BlockControl block, bool value)
         {
@@ -507,9 +507,9 @@ namespace ArctisAurora.Core.UI
         public void InsertTable()
         {
             if (!Writable) return;
-            if (Source || Extension is ".md" or ".txt")
+            if (Source || Kind is FileKind.Markdown or FileKind.PlainText)
             {
-                Log.Info($"a {Extension} note cannot store a table; insert refused.");
+                Log.Info($"a {Kind} note cannot store a table; insert refused.");
                 return;
             }
 
@@ -961,7 +961,7 @@ namespace ArctisAurora.Core.UI
         private string? AttachmentsFolder(string verb)
         {
             if (content == null || session == null || !Writable) return null;
-            if (Source || Extension == ".txt")
+            if (Source || Kind == FileKind.PlainText)
             {
                 Log.Info($"a plain text note cannot hold a picture; {verb} refused.");
                 return null;

@@ -26,7 +26,7 @@ VerifiedAgainst: 2026-10-07
 ---
 ## Description
 
-One open planner in a tab: a toolbar over either a Gantt chart, a board or a calendar of the same tickets, the `PlannerDocument` they show, and the file it came from. A planner is a `*.planner.xml` file in the vault, opened from the browser like a note or a sheet, and made with "New planner" in the File, vault and folder menus.
+One open planner in a tab: a toolbar over either a Gantt chart, a board or a calendar of the same tickets, the `PlannerDocument` they show, and the file it came from. A planner is a `*.planner.axml` file in the vault, opened from the browser like a note or a sheet, and made with "New planner" in the File, vault and folder menus.
 
 A planner holds categories and the tickets filed under them. A ticket has a name, a category, an optional colour of its own, a time range, a creator and a list of assignees. A ticket without a colour takes its category's colour, and a ticket whose category is missing is shown under the first category.
 

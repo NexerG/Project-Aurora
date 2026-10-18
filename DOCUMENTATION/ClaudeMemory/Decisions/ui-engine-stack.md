@@ -11,7 +11,7 @@
 `ArctisAurora.EngineWork.Rendering.Modules` — `UIEngineModule`, `CompositorModule`;
 `ArctisAurora.EngineWork.Rendering` — `AuroraCamera`, `AGlfwWindow`;
 `Shaders/UIEngine/UIEngine.vert`, `Shaders/UIEngine/UIEngine.frag`;
-`AuroraEngine/Data/XML/Documents/Pools.pools.xml`, `Bootstrap.bootstrap.xml`
+`AuroraEngine/Data/XML/Documents/Pools.pools.axml`, `Bootstrap.bootstrap.axml`
 
 **2026-09-15:** 6d dropped every `Next` prefix and dissolved `Core.UISystem` (fonts → `Core.Filing`, the rest →
 `Core.UI`). Type names below are the current ones; prose about the prefix is history.
@@ -44,9 +44,9 @@ One `Control` owns **0..N** `VulkanControl` rows. A panel owns 1; a text run own
 ## What changed — landing 1, the stack draws
 
 - New namespace `ArctisAurora.Core.UI` beside `Core.UISystem`. The old stack is untouched and still runs.
-- Two pools in `Pools.pools.xml`: `UIElements` (`ArrangeData`) and `VulkanControls` (`ControlGeometry` +
+- Two pools in `Pools.pools.axml`: `UIElements` (`ArrangeData`) and `VulkanControls` (`ControlGeometry` +
   `VulkanControl`). Both `Ordered="true"`.
-- `UIEngine` — static, main thread, `Bootstrap` step registered as the last step of `Bootstrap.bootstrap.xml`.
+- `UIEngine` — static, main thread, `Bootstrap` step registered as the last step of `Bootstrap.bootstrap.axml`.
 - `Control : Entity`, `PoolName => "UIElements"`, second row taken through `Entity.AllocateIn`.
 - `UIEngineModule` — second `RenderingModule` on every `RenderWindow`, `compositorOrder = 10`, transparent
   clear so the old stack composites underneath.
@@ -154,7 +154,7 @@ touched, no old file deleted — 6a is additive so the tree still builds and boo
 - **`Control` is `[A_XSDType("Control", "EntityRegistry", isAbstract: true)]`**, `WindowRoot` is
   `WindowRoot`, `ContainerControl` is `Container` — `Next`-prefixed, [[parallel-stack-name-collisions]].
 - **~25 authored members gained `[A_XSDElementProperty]`** under the old attribute names, so the same
-  `Width`, `Padding`, `ColorHex`, `HorizontalAlignment` an existing `*.ui.xml` writes bind unchanged.
+  `Width`, `Padding`, `ColorHex`, `HorizontalAlignment` an existing `*.ui.axml` writes bind unchanged.
 - **`ContainerControl`** — multi-child `AddChild`, stretch defaults. `AbstractContainerControl`'s replacement,
   and like it, it does **not** override `Measure`/`Arrange`; a container that lays out more than one child is
   a subclass, and those arrive at 6b.
@@ -169,7 +169,7 @@ touched, no old file deleted — 6a is additive so the tree still builds and boo
   walk-up to whatever may hold the active context, the latter gating `SolvePress` on `takesActiveControl`.
 - **`PointerPhase.Scroll`** and `Control.OnPointerScroll`, so the wheel walks up like every other phase and
   the `ScrollableControl` special case the old `SolveScroll` carries becomes a subclass override at 6b.
-- The landing 2–5 scaffolding is gone. In its place `BuildProbe` parses **`NextProbe.ui.xml`**, which is the
+- The landing 2–5 scaffolding is gone. In its place `BuildProbe` parses **`NextProbe.ui.axml`**, which is the
   only thing XML can build until 6b tags the subclasses, and registers one delegate handler on it.
 
 **Context menus were built and then removed** (user, 2026-09-06) — `contextMenus`, `BuildContextMenu` and
@@ -251,7 +251,7 @@ the negative control that was actually run, not reasoned about.
 - **`StackPanel`'s enum is `"Orientation"`.** Same `FindType`-resolves-by-name collision as
   `VulkanControl`; the attribute stays `Orientation=` because attribute names are per-type.
 - **`WindowRoot.Arrange` ignores its children's `margin`.** It positions by alignment inside the padded box
-  and never reads `ca.margin`. Pre-existing — `NextProbe.ui.xml`'s `swatch` carries a `Margin` that does
+  and never reads `ca.margin`. Pre-existing — `NextProbe.ui.axml`'s `swatch` carries a `Margin` that does
   nothing — and it means a root child cannot be offset by margin.
 
 ## A composited module's alpha factor must be One, not SrcAlpha — 2026-09-07
@@ -278,7 +278,7 @@ checked that they do.
 ## XML event attributes — landing 6b prerequisite, 2026-09-06
 
 `Control`'s seven pointer handlers carry `[A_XSDElementProperty("onEnter"…"onScroll", "UI")]` and bind from a
-`*.ui.xml` the way the old stack's `Action` fields did. Three edits made it work:
+`*.ui.axml` the way the old stack's `Action` fields did. Three edits made it work:
 
 - `XSDGenerator.IsAttributeMember` returns true for any `Delegate`, and `ResolveTypeName` emits
   `actions:{Category}` for one — replacing the `mapped == "Action"` special case. `AnyXMLType.typeMap` is left
@@ -288,8 +288,8 @@ checked that they do.
 
 **Signatures could not change.** The tagged-action pool feeds three binding sites with three shapes —
 keybinds take `Action`, `ContextMenus.BindAction` picks `Action` or `Action<VulkanControl>` via
-`TakesTarget`, and `*.ui.xml` takes `Action` — and only one of them has a `PointerEvent` to hand over. Every
-one of the nine methods bound from a `*.ui.xml` is `public static void X()`. Adapting at the binding site is
+`TakesTarget`, and `*.ui.axml` takes `Action` — and only one of them has a `PointerEvent` to hand over. Every
+one of the nine methods bound from a `*.ui.axml` is `public static void X()`. Adapting at the binding site is
 what `ContextMenus` already does.
 
 **The wrapper returns `true`, so an XML-bound handler consumes.** Right for a button; a non-consuming XML
@@ -473,7 +473,7 @@ and a degenerate rect is simply false. `HitsNode` is the single method a future 
 
 **The new contexts are `Next`-prefixed.** `A_ActiveContext` registers by name into one dictionary and the last
 registration wins, so a second `[A_ActiveContext("ActiveControl")]` takes the old stack's slot — and
-`Thorium.contexts.xml` derives `ActiveTabViewer` from `ActiveControl`, so Thorium's tab context would quietly
+`Thorium.contexts.axml` derives `ActiveTabViewer` from `ActiveControl`, so Thorium's tab context would quietly
 stop tracking. Same shape as the `VulkanControl` XSD-name workaround; landing 6 renames both.
 
 **One handler per event, last registration wins.** A multicast `Func<PointerEvent, bool>` returns only the last
@@ -581,7 +581,7 @@ has no counterpart to collide with, and every XSD name it does introduce is alre
 binds an `Action`-typed member from a tagged static method; `Control`'s handlers are
 `Func<PointerEvent, bool>`, so that branch is inert and no XML event attribute binds yet. Rebuilding it would
 have meant settling what `BubbleClick="true"` means when bubbling is "return false" — a fork worth one
-round-trip, not a silent choice. Everything else an existing `*.ui.xml` writes binds today.
+round-trip, not a silent choice. Everything else an existing `*.ui.axml` writes binds today.
 
 **`ContainerControl` is concrete where `AbstractContainerControl` is abstract**, purely so the probe document
 has an element to instantiate. It costs nothing: a container with no layout override behaves exactly as a
@@ -621,8 +621,8 @@ from XML today, and `contextMenus` is read by `ContextMenus.Compose`, which is s
 - **`ChildDraggedOut` has no caller from a real reparent** — `StartDrag` fires it while the child is still
   attached. Nothing on the new stack detaches anything.
 - Nothing opens a menu; `ContextMenus`, `DragGhost` and `pressSwallowed` stay in the old stack.
-- **`ContextMenu="…"` in a `*.ui.xml` binds to nothing** and is silently skipped — unmatched attributes are
-  ignored by `ResolveAttributes`, not an error. Seven live sites across `UI.ui.xml` and `Workspace.ui.xml`.
+- **`ContextMenu="…"` in a `*.ui.axml` binds to nothing** and is silently skipped — unmatched attributes are
+  ignored by `ResolveAttributes`, not an error. Seven live sites across `UI.ui.axml` and `Workspace.ui.axml`.
 - **`TextRunControl` treats every character as a glyph**, `\n` included, exactly as the outgoing stack does.
   Paragraph breaks are a block concern and blocks arrive at landing 6.
 - **No `firstLineOffset` / `lastLineEndX` handshake.** A run measures from x = 0 of its own box; the flow that
@@ -645,7 +645,7 @@ from XML today, and `contextMenus` is read by `ContextMenus.Compose`, which is s
   Nothing edits one span in place yet.
 - **Only the wheel came across.** `SolveScroll`'s `ScrollableControl` walk did not — the wheel now bubbles as
   a phase and the container consumes it, which is a 6b subclass override.
-- `UIEngine.Bootstrap` parses a probe document into the primary window. 6b removes it with `NextProbe.ui.xml`.
+- `UIEngine.Bootstrap` parses a probe document into the primary window. 6b removes it with `NextProbe.ui.axml`.
 - **Only `WindowRoot` and `ContainerControl` hold siblings**, and neither lays more than one child out —
   `WindowRoot` aligns them all in its own box, `ContainerControl` inherits the one-child `Measure`/`Arrange`.
   A container that arranges a list is a 6b subclass.

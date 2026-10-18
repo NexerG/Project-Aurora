@@ -31,7 +31,7 @@ You have no Edit or Write. You never change a tracked file — you only stage an
 - `git status` shows a merge, rebase, cherry-pick or revert in progress
 - nothing to commit
 - an untracked path looks like it should never be tracked: `bin/`, `obj/`, `*.dll`, `*.pdb`, `*.log`,
-  crash dumps, screen captures, `uitree.xml` or anything else a running app dumps
+  crash dumps, screen captures, `uitree.axml` or anything else a running app dumps
 - a hook fails — report its output verbatim, do not retry around it
 
 ## Reading order
@@ -45,8 +45,8 @@ both count.
    changelog and the ClaudeMemory notes usually say in prose what landed. The subject comes from here.
 3. **Source, one file at a time:** `git diff HEAD -- path/to/File.cs`. For a file over ~300 changed lines
    use `-U1` and read for new or removed types, members and behaviour — not every line.
-4. **Generated files are stat-only:** `NAMESPACES.md`, `*.xsd`, `SchemaManifest.xml`, `*.spv`, baked fonts,
-   `*.import.xml`. Never open their diffs. They earn at most one bullet ("NAMESPACES.md regenerated"), and
+4. **Generated files are stat-only:** `NAMESPACES.md`, `*.xsd`, `SchemaManifest.axml`, `*.spv`, baked fonts,
+   `*.import.axml`. Never open their diffs. They earn at most one bullet ("NAMESPACES.md regenerated"), and
    none if they only follow from a change already listed.
 5. **A file deleted in one place and added in another is a move.** Say it moved, not that one was removed
    and one was created.

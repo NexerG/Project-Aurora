@@ -36,7 +36,7 @@ namespace ArctisAurora.Core.UI
         private int inFlight;
         private readonly ConcurrentQueue<Exception?> landed = new ConcurrentQueue<Exception?>();
 
-        // the .xml file's segments and bytes, and its length and write time as this last wrote or read it
+        // the .axml file's segments and bytes, and its length and write time as this last wrote or read it
         private List<NoteSegment>? map;
         private byte[]? file;
         private FileJournal? journal;
@@ -56,9 +56,9 @@ namespace ArctisAurora.Core.UI
             Stamp();
         }
 
-        // .xml notes are written by segment, every other format whole
+        // .axml notes are written by segment, every other format whole
         internal bool Segmented => session.document.sourceLanguage == null && session.document.encryption == null && !VaultLock.Covers(session.path) && !VaultLock.Refuses(session.path)
-            && Path.GetExtension(session.path).Equals(".xml", StringComparison.OrdinalIgnoreCase);
+            && FileTypes.KindOf(session.path) == FileKind.Note;
 
         internal void Edited()
         {

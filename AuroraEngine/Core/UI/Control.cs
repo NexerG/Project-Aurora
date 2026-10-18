@@ -238,7 +238,7 @@ namespace ArctisAurora.Core.UI
             }
         }
 
-        [A_XSDElementProperty("Palette", "UI", "Name of a palette in Palettes/*.palette.xml, for this control and everything under it that names none.")]
+        [A_XSDElementProperty("Palette", "UI", "Name of a palette in Palettes/*.palette.axml, for this control and everything under it that names none.")]
         public string paletteName
         {
             get => field;
@@ -391,7 +391,7 @@ namespace ArctisAurora.Core.UI
             v.uvs.uv4 = new Vector2(u1, v0);
         }
 
-        [A_XSDElementProperty("Gradient", "UI", "Name of a gradient in Gradients.gradients.xml, ramped across this control's rect in place of its colour.")]
+        [A_XSDElementProperty("Gradient", "UI", "Name of a gradient in Gradients.gradients.axml, ramped across this control's rect in place of its colour.")]
         public virtual string gradient
         {
             get => field;
@@ -403,7 +403,7 @@ namespace ArctisAurora.Core.UI
             }
         } = "";
 
-        [A_XSDElementProperty("EdgeGradient", "UI", "Name of a gradient in Gradients.gradients.xml, ramped across this control's rect in place of its edge colour.")]
+        [A_XSDElementProperty("EdgeGradient", "UI", "Name of a gradient in Gradients.gradients.axml, ramped across this control's rect in place of its edge colour.")]
         public string edgeGradient
         {
             get => field;
@@ -415,7 +415,7 @@ namespace ArctisAurora.Core.UI
             }
         } = "";
 
-        [A_XSDElementProperty("Effect", "UI", "Name of an effect in Effects/*.effects.xml, played on this control from when it is set.")]
+        [A_XSDElementProperty("Effect", "UI", "Name of an effect in Effects/*.effects.axml, played on this control from when it is set.")]
         public string effect
         {
             get => field;
@@ -434,7 +434,7 @@ namespace ArctisAurora.Core.UI
             FrameScheduler.RequestFrameAt(Engine.totalTime + Effects.Duration(visual.effect));
         }
 
-        [A_XSDElementProperty("Clip", "UI", "Name of a clip in Animations/*.anim.xml, played once when this control starts, or at once when set on a started control.")]
+        [A_XSDElementProperty("Clip", "UI", "Name of a clip in Animations/*.anim.axml, played once when this control starts, or at once when set on a started control.")]
         public string clip
         {
             get => field;
@@ -446,7 +446,7 @@ namespace ArctisAurora.Core.UI
             }
         } = "";
 
-        [A_XSDElementProperty("HoverClip", "UI", "Name of a clip in Animations/*.anim.xml, played while the pointer is over this control and run back when it leaves.")]
+        [A_XSDElementProperty("HoverClip", "UI", "Name of a clip in Animations/*.anim.axml, played while the pointer is over this control and run back when it leaves.")]
         public string hoverClip
         {
             get => field;
@@ -457,7 +457,7 @@ namespace ArctisAurora.Core.UI
             }
         } = "";
 
-        [A_XSDElementProperty("PressClip", "UI", "Name of a clip in Animations/*.anim.xml, played while this control is pressed and run back when it is released.")]
+        [A_XSDElementProperty("PressClip", "UI", "Name of a clip in Animations/*.anim.axml, played while this control is pressed and run back when it is released.")]
         public string pressClip
         {
             get => field;
@@ -468,7 +468,7 @@ namespace ArctisAurora.Core.UI
             }
         } = "";
 
-        [A_XSDElementProperty("StateBinding", "UI", "Name of a binding in Animations/*.anim.xml that eases this control between rest, hover and press.")]
+        [A_XSDElementProperty("StateBinding", "UI", "Name of a binding in Animations/*.anim.axml that eases this control between rest, hover and press.")]
         public string stateBinding
         {
             get => field;

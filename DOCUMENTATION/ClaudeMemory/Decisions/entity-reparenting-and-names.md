@@ -54,7 +54,7 @@ controls, since every `AddChild` on the control side throws on anything else, so
 back the control type instead of making every caller cast through `Entity`.
 
 `VaultBrowserControl`'s private `Find<T>` type walk is **deleted**; both its lookups go through the
-override against `Name="Browser"` / `Name="Editor"` in `UI.xml`, held as constants on the control.
+override against `Name="Browser"` / `Name="Editor"` in `UI.axml`, held as constants on the control.
 That trades a lookup nothing could break for one that returns null if the XML is renamed — the editor
 would simply stop opening notes, with no error. Accepted (user, 2026-08-19).
 
@@ -67,7 +67,7 @@ logic in the dock system should still refuse the move before it gets here.
 ## Verified
 
 - Builds clean.
-- **Runtime probe** (temporary, reverted): `Name` set in `UI.xml`, resolved through `FindByName` to
+- **Runtime probe** (temporary, reverted): `Name` set in `UI.axml`, resolved through `FindByName` to
   `VaultBrowserControl` / `DocumentEditorControl` / `StackPanelControl`; an unknown name returns null.
 - Reparenting the vault browser out of the horizontal pane into the vertical root, with an explicit
   `preferredHeight = 200`: old parent 3 children → 2, root 2 → 3, browser lands at `0,520 1280x200`

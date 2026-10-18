@@ -1,4 +1,5 @@
 using ArctisAurora.Core.ECS.EngineEntity;
+using ArctisAurora.Core.Filing;
 using ArctisAurora.Core.Filing.Serialization;
 using ArctisAurora.Core.Registry;
 using ArctisAurora.EngineWork;
@@ -11,7 +12,7 @@ using System.Reflection;
 namespace ArctisAurora.Core.UI
 {
     // Every settings group the registry knows, plus the active keybinds, as one screen. The shell is
-    // Settings.ui.xml — frame, title bar and star sizing come from there; only the rows are reflected,
+    // Settings.ui.axml — frame, title bar and star sizing come from there; only the rows are reflected,
     // because a new setting has to appear without anyone authoring it. Built per open and closed by
     // its own title bar, the same as a torn-off tab window.
     public static class SettingsWindow
@@ -23,6 +24,7 @@ namespace ArctisAurora.Core.UI
         private const uint windowWidth = 720;
         private const uint windowHeight = 480;
         internal const string keybindsCategory = "Keybinds";
+        internal const string fileTypesCategory = "File types";
 
         // layout
         private const int rowHeight = 26;
@@ -126,6 +128,7 @@ namespace ArctisAurora.Core.UI
                     yield return NameOf(group.GetType());
 
             yield return keybindsCategory;
+            if (FileAssociations.enabled) yield return fileTypesCategory;
         }
 
         private static string FirstCategory() => Categories().First();
@@ -139,6 +142,7 @@ namespace ArctisAurora.Core.UI
                 child.Destroy();
 
             if (category == keybindsCategory) FillKeybinds();
+            else if (category == fileTypesCategory) FillFileTypes();
             else FillSettings(category);
 
             _rows.InvalidateLayout();
@@ -174,6 +178,14 @@ namespace ArctisAurora.Core.UI
                 if (bind.actionName.Length == 0) continue;
                 _rows.AddChild(Row(bind.actionName, KeybindEditor(bind)));
             }
+        }
+
+        private static void FillFileTypes()
+        {
+            foreach (FileType type in FileAssociations.Registered)
+                _rows.AddChild(Row($"{type.description} ({type.suffix})", Button("Make default", () => FileAssociations.Claim(type), 150)));
+
+            _rows.AddChild(Row("All types", Button("Make default for all", FileAssociations.ClaimAll, 150)));
         }
 
         private static Control Row(string caption, Control editor)

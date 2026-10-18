@@ -5,7 +5,7 @@
 three new actions resolve. **Not GUI-verified.**
 **Scope:** `ArctisAurora.Core.UISystem.Controls.Text.Document` (`DocumentControl`,
 `DocumentEditorControl`, `TextRun`), `...Controls.Text` (`TextInputActions`),
-`Thorium/Data/XML/Documents/Inputs/InputMap.xml`.
+`Thorium/Data/XML/Documents/Inputs/InputMap.axml`.
 
 ## Context
 
@@ -117,7 +117,7 @@ added.
 
 ### 9. Plain `Backspace` sits under the existing `Ctrl+Backspace`
 
-`InputMap.xml` already binds `Ctrl+Backspace` to `ExitApplication`. Modified binds are evaluated in
+`InputMap.axml` already binds `Ctrl+Backspace` to `ExitApplication`. Modified binds are evaluated in
 the first pass and consume the trigger, and `IsShadowed` then skips the unmodified bind, so the two
 coexist without a change to either. Backspace and Delete use `<Repeat />`; so does Enter, so holding
 it makes paragraphs the way holding a letter makes letters.

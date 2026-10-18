@@ -3,15 +3,15 @@
 **Date:** 2026-08-22
 **Status:** LANDED. Boot-verified. **NOT GUI-verified** — no pane click has been walked.
 **Scope:** `ArctisAurora.Core.Registry` (`Context`, new `ContextDefinition`/`ContextMap`),
-`ArctisAurora.Core.UISystem` (`UICollisionHandling`), `Bootstrap.xml`,
-`Thorium/Data/XML/Documents/Contexts/Thorium.xml`, `Thorium.Editor.CustomControls`
+`ArctisAurora.Core.UISystem` (`UICollisionHandling`), `Bootstrap.axml`,
+`Thorium/Data/XML/Documents/Contexts/Thorium.axml`, `Thorium.Editor.CustomControls`
 (`VaultBrowserControl`).
 
 ## The problem this solves
 
 `VaultBrowserControl.Open` always opened a note in the **left** pane. `FocusedTabs` walked up from
 `UICollisionHandling.activeControl` looking for a `TabViewControl`, but the browser sits beside the
-`SplitView` in `UI.xml`, not inside a pane — and clicking a row *makes that row the active control*.
+`SplitView` in `UI.axml`, not inside a pane — and clicking a row *makes that row the active control*.
 The walk therefore ended at the root every time and `Open` fell through to `FindByName("Tabs")`.
 
 **The pane focus is destroyed by the very click that needs it.** Any fix has to remember it before
@@ -39,10 +39,10 @@ field, no branch on "bound or declared" at read time — `Get<T>` cannot tell th
 
 ### 2. Loaded from a folder, not a file
 
-`VirtualFileSystem.EnumerateAll("XML/Documents/Contexts", "*.xml")` — the `Inputs/` pattern.
+`VirtualFileSystem.EnumerateAll("XML/Documents/Contexts", "*.axml")` — the `Inputs/` pattern.
 
-`Gradients.xml` and `ContextMenus.xml` use `TryResolveFile`, which is *first mount wins*: Thorium
-shipping a `Gradients.xml` means the engine's would be invisible. That is correct for a theme, where
+`Gradients.axml` and `ContextMenus.axml` use `TryResolveFile`, which is *first mount wins*: Thorium
+shipping a `Gradients.axml` means the engine's would be invisible. That is correct for a theme, where
 the app wants to replace what the engine offers. It is wrong for contexts, where the user's ask was
 explicitly that "systems and apps can add custom contexts" — an app declaring one must not silence
 the engine's. `EnumerateAll` unions across mounts and only dedupes on *file name*, so one file per
@@ -61,7 +61,7 @@ Whenever `ActiveControl` is set, every context registered under it is recomputed
 `Entity.parent` from the new value, inclusive, to the first entity assignable to `Type`.
 `Type` resolves through `AnyXMLType.FindType`, so the XML names the XSD name (`TabView`) and gets
 `TabViewControl` — and `IsInstanceOfType` means `EditableTabsControl` matches, which is what
-`UI.xml` actually instantiates.
+`UI.axml` actually instantiates.
 
 The walk is over `Entity`, not `VulkanControl`, so `Context` stays out of the UI namespace and the
 mechanism is not UI-only.

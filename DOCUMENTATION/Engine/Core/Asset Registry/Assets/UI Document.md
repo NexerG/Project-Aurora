@@ -56,9 +56,9 @@ Documents are declared in the ordinary asset manifest under `Data/XML/Assets/`, 
 
 ```xml
 <AssetManifest xmlns="http://arctisaurora/AuroraAssetRegistryTypes">
-  <Asset Type="UIDocumentAsset" Name="main"       Source="XML/Documents/UI.xml"/>
-  <Asset Type="UIDocumentAsset" Name="tab-window" Source="XML/Documents/TabWindow.xml"/>
-  <Asset Type="UIDocumentAsset" Name="settings"   Source="XML/Documents/Settings.xml"/>
+  <Asset Type="UIDocumentAsset" Name="main"       Source="XML/Documents/UI.axml"/>
+  <Asset Type="UIDocumentAsset" Name="tab-window" Source="XML/Documents/TabWindow.axml"/>
+  <Asset Type="UIDocumentAsset" Name="settings"   Source="XML/Documents/Settings.axml"/>
 </AssetManifest>
 ```
 

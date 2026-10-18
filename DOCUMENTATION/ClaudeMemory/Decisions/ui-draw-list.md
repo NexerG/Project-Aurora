@@ -5,7 +5,7 @@
 **Scope:** `ArctisAurora.Core.UI` — `DrawList`, `Control.Emit`, `Control.geometry`/`visual`,
 `UIEngine.BuildDrawLists`, `UIEngine.ElementOrder`, `TextRunControl.Emit`, `LayoutRect.Overlaps`;
 `ArctisAurora.EngineWork.Rendering.Modules` — `UIEngineModule`;
-`AuroraEngine/Data/XML/Documents/Pools.pools.xml`
+`AuroraEngine/Data/XML/Documents/Pools.pools.axml`
 
 **Reverses:** the landing 1 and landing 4 storage decisions in [ui-engine-stack](ui-engine-stack.md),
 and the "row building is incremental per element" row in

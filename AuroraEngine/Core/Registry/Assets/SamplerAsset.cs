@@ -73,7 +73,7 @@ namespace ArctisAurora.Core.Registry.Assets
         {
             Dictionary<string, SamplerAsset> dSamplers = AssetRegistries.GetRegistryByValueType<string, SamplerAsset>(typeof(SamplerAsset));
 
-            string[] files = VirtualFileSystem.EnumerateAll("XML/Documents/Samplers", "*.sampler.xml").ToArray();
+            string[] files = VirtualFileSystem.EnumerateAll("XML/Documents/Samplers", "*.sampler.axml").ToArray();
             for (int i = 0; i < files.Length; i++)
             {
                 XElement samplerRoot = DataFiles.LoadXml(files[i]);

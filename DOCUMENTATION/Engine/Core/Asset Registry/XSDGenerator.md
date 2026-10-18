@@ -24,7 +24,7 @@ Attributes:
 ## Description
 A general XSD generator for Aurora engine XML data types. It generates an XSD to the given parameters that can be used to write XML code for other systems. Basically a data-type rule-set generator.
 
-Regeneration is incremental: each schema's inputs are fingerprinted, hashed, and recorded in `SchemaManifest.xml`; unchanged schemas are skipped (the `[XSD] Skipping … unchanged` log lines). The file also defines `AnyXMLType` (string ↔ `Type` resolution via `typeMap` + `FindType`) and the `IXMLParser<T>` parse contract.
+Regeneration is incremental: each schema's inputs are fingerprinted, hashed, and recorded in `SchemaManifest.axml`; unchanged schemas are skipped (the `[XSD] Skipping … unchanged` log lines). The file also defines `AnyXMLType` (string ↔ `Type` resolution via `typeMap` + `FindType`) and the `IXMLParser<T>` parse contract.
 
 ## Input/Output
 

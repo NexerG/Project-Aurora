@@ -4,7 +4,7 @@
   <xs:import schemaLocation="AllTypesSchema.xsd" namespace="http://arctisaurora/AuroraTypes" />
   <xs:import schemaLocation="EntityRegistryTypeSchema.xsd" namespace="http://arctisaurora/AuroraEntityRegistryTypes" />
   <xs:simpleType name="UI">
-    <xs:union memberTypes="types:ListMarker types:EffectLoop types:GradientKind types:GridSizeMode types:PaletteRole types:WindowCorners types:TextStyleType types:TextAlignment types:PageMode types:PageSize types:SlotPlace types:ScrollDirection types:PictureWrap types:PictureCollision types:WorkspaceKind types:Orientation" />
+    <xs:union memberTypes="types:ListMarker types:EffectLoop types:GradientKind types:GridSizeMode types:PaletteRole types:WindowCorners types:TextStyleType types:TextAlignment types:PageMode types:PageSize types:SlotPlace types:ScrollDirection types:PictureWrap types:PictureCollision types:WorkspaceKind types:FileKind types:Orientation" />
   </xs:simpleType>
   <xs:attributeGroup name="VaultBrowser.Attributes">
     <xs:attributeGroup ref="types:Scrollable.Attributes" />
@@ -849,6 +849,40 @@
   <xs:complexType name="WrapPanel">
     <xs:sequence />
     <xs:attributeGroup ref="types:WrapPanel.Attributes" />
+  </xs:complexType>
+  <xs:simpleType name="FileKind">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="Note" />
+      <xs:enumeration value="Markdown" />
+      <xs:enumeration value="PlainText" />
+      <xs:enumeration value="Tex" />
+      <xs:enumeration value="Xml" />
+      <xs:enumeration value="Sheet" />
+      <xs:enumeration value="Planner" />
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:attributeGroup name="FileType.Attributes">
+    <xs:attribute name="Suffix" type="xs:string" />
+    <xs:attribute name="Kind" type="types:FileKind" />
+    <xs:attribute name="Description" type="xs:string" />
+    <xs:attribute name="Register" type="xs:boolean" />
+    <xs:attribute name="Mime" type="xs:string" />
+  </xs:attributeGroup>
+  <xs:element name="FileType" type="types:FileType" />
+  <xs:complexType name="FileType">
+    <xs:sequence />
+    <xs:attributeGroup ref="types:FileType.Attributes" />
+  </xs:complexType>
+  <xs:element name="FileTypes" type="types:FileTypes" />
+  <xs:group name="FileType.Children">
+    <xs:choice>
+      <xs:element name="FileType" type="types:FileType" />
+    </xs:choice>
+  </xs:group>
+  <xs:complexType name="FileTypes">
+    <xs:sequence>
+      <xs:group minOccurs="0" maxOccurs="unbounded" ref="types:FileType.Children" />
+    </xs:sequence>
   </xs:complexType>
   <xs:simpleType name="Orientation">
     <xs:restriction base="xs:string">

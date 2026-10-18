@@ -900,7 +900,7 @@ namespace ArctisAurora.Tests
             t.Check(whole.lines.Count == 1 && whole.lines[0].hyphen == 0f, "an unbroken soft hyphen shows nothing");
 
             XElement document = new XElement("Document", new XElement("Block", new XElement("Run", new XAttribute("Text", text))));
-            string path = Path.Combine(Path.GetTempPath(), $"aurora-tex-{Guid.NewGuid():N}.xml");
+            string path = Path.Combine(Path.GetTempPath(), $"aurora-tex-{Guid.NewGuid():N}.axml");
             document.Save(path);
             DocumentEditorControl editor = new DocumentEditorControl
             {
@@ -1001,9 +1001,9 @@ namespace ArctisAurora.Tests
             XElement written = DocumentXml.ToXml(parsed);
             List<XElement> blocks = written.Elements().Where(e => e.Name.LocalName == "Block").ToList();
             t.Check((string?)blocks[1].Attribute("Indent") == "30" && (string?)blocks[1].Attribute("SpaceBefore") == "40"
-                && blocks[1].Elements().Any(r => (string?)r.Attribute("Space") == "25"), "Indent, SpaceBefore and Space round-trip through .xml");
+                && blocks[1].Elements().Any(r => (string?)r.Attribute("Space") == "25"), "Indent, SpaceBefore and Space round-trip through .axml");
 
-            string path = Path.Combine(Path.GetTempPath(), $"aurora-tex-{Guid.NewGuid():N}.xml");
+            string path = Path.Combine(Path.GetTempPath(), $"aurora-tex-{Guid.NewGuid():N}.axml");
             source.Save(path);
             DocumentEditorControl editor = new DocumentEditorControl
             {
@@ -1051,7 +1051,7 @@ namespace ArctisAurora.Tests
                     new XElement("Run", new XAttribute("Text", words + " ")),
                     new XElement("Run", new XAttribute("Math", "x^2"), new XAttribute("Display", "true")),
                     new XElement("Run", new XAttribute("Text", " " + words))));
-            string path = Path.Combine(Path.GetTempPath(), $"aurora-tex-{Guid.NewGuid():N}.xml");
+            string path = Path.Combine(Path.GetTempPath(), $"aurora-tex-{Guid.NewGuid():N}.axml");
             document.Save(path);
             DocumentEditorControl editor = new DocumentEditorControl
             {
@@ -1083,7 +1083,7 @@ namespace ArctisAurora.Tests
         // A lowered or hand-built <Document> in a note editor, from a temporary file.
         private static DocumentEditorControl ShowDocument(TestContext t, XElement document)
         {
-            string path = Path.Combine(Path.GetTempPath(), $"aurora-tex-{Guid.NewGuid():N}.xml");
+            string path = Path.Combine(Path.GetTempPath(), $"aurora-tex-{Guid.NewGuid():N}.axml");
             document.Save(path);
             DocumentEditorControl editor = new DocumentEditorControl
             {
@@ -1213,7 +1213,7 @@ namespace ArctisAurora.Tests
             t.Check((string?)written[1].Attribute("PageBreak") == "Page" && (string?)written[1].Attribute("MarkRight") == "R"
                 && (string?)written[1].Attribute("PageStyle") == "empty" && (string?)written[2].Attribute("PageBreak") == "Clear"
                 && (string?)written[3].Attribute("PageBreak") == "Page" && written[0].Attribute("PageBreak") == null,
-                "PageBreak, PageStyle and the marks round-trip through .xml, tables' breaks too");
+                "PageBreak, PageStyle and the marks round-trip through .axml, tables' breaks too");
 
             DocumentEditorControl editor = ShowDocument(t, document);
             yield return 2;
@@ -1261,7 +1261,7 @@ namespace ArctisAurora.Tests
             XElement written = DocumentXml.ToXml(parsed);
             t.Check(written.Elements().Count(e => e.Name.LocalName == "Footnote") == 2
                 && written.Elements().First(e => e.Name.LocalName == "Block").Elements().Count(r => (string?)r.Attribute("Note") != null) == 2,
-                "footnotes and their anchors round-trip through .xml");
+                "footnotes and their anchors round-trip through .axml");
 
             BlockSnapshot snapshot = blocks[1].Snapshot();
             NoteBlock tail = blocks[1].SplitAt(3);
@@ -1360,7 +1360,7 @@ namespace ArctisAurora.Tests
             t.Check(figure is { floatKind: "figure", placement: "!t" } && (blocks[2] as NoteBlock)?.insert == figure && (blocks[3] as NoteBlock)?.insert == null,
                 "a <Float> reads as its blocks with one PageInsert");
             XElement written = DocumentXml.ToXml(parsed);
-            t.Check(written.Elements().Count(e => e.Name.LocalName == "Float") == 2, "floats round-trip through .xml");
+            t.Check(written.Elements().Count(e => e.Name.LocalName == "Float") == 2, "floats round-trip through .axml");
             yield break;
         }
 
@@ -1470,7 +1470,7 @@ namespace ArctisAurora.Tests
             RichTextDocument parsed = DocumentXml.Parse(document);
             XElement page = DocumentXml.ToXml(parsed).Descendants().Single(e => e.Name.LocalName == "Page");
             t.Check(page.Elements().Count(e => e.Name.LocalName == "PageStyle") == 2 && (string?)page.Attribute("Style") == "heads"
-                && page.Elements().First().Elements().Count() == 2, "page styles and their slots round-trip through .xml");
+                && page.Elements().First().Elements().Count() == 2, "page styles and their slots round-trip through .axml");
 
             DocumentEditorControl editor = ShowDocument(t, document);
             yield return 2;

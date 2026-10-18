@@ -332,7 +332,7 @@ namespace ArctisAurora.Core.UI
             return folder + BaseName(newPath) + written;
         }
 
-        // A reference's file part for a path: a sheet's name without ".sheet.xml", a CSV's with ".csv".
+        // A reference's file part for a path: a sheet's name without ".sheet.axml", a CSV's with ".csv".
         internal static string FileName(string path) =>
             SheetCsv.IsCsv(path) ? Path.GetFileName(path) : BaseName(path);
 

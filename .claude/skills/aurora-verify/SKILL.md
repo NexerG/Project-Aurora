@@ -32,8 +32,8 @@ scale 1, no OS input, no idle waiting — not what the user sees with real input
 `golden-verified` or `shot-verified`, and still `NOT GUI-verified` next to it. A golden you approved in the same
 change is `shot-verified`, not `golden-verified`: the approval is the thing being checked.
 
-Bootstrap gives one check for free: an action name in `AuroraEngine/Data/XML/Documents/Bootstrap.bootstrap.xml`
-or a host's `Data/XML/Documents/Inputs/InputMap.inputs.xml` that resolves to nothing throws at
+Bootstrap gives one check for free: an action name in `AuroraEngine/Data/XML/Documents/Bootstrap.bootstrap.axml`
+or a host's `Data/XML/Documents/Inputs/InputMap.inputs.axml` that resolves to nothing throws at
 `InputHandler.LoadInputs`, so a clean boot proves every declared action exists.
 
 ## Build
@@ -82,7 +82,7 @@ verifies geometry and wiring and says nothing about what is drawn. This exact su
 `maskAsset` and was painting a solid quad under white text. If capture fails, say the visual check did not
 happen. Do not reuse the word for a proxy.
 
-**F10 writes that dump for the new stack** — `UI.UITreeDump` (`UI.DumpTree`) → `uitree.xml` beside the
+**F10 writes that dump for the new stack** — `UI.UITreeDump` (`UI.DumpTree`) → `uitree.axml` beside the
 exe: every window's tree with arranged `X Y W H`, desired `W H`, `Hidden`. Thorium's is ~17 KB, so grep it for
 the control in question; never read it whole. With the root unscaled a rect is client pixels, i.e. directly a
 `-Region` — grep the control, then crop the capture to it. Rects are design units: at a UI zoom or display

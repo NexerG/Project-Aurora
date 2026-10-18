@@ -165,7 +165,7 @@ namespace ArctisAurora.Core.UI
         {
             if (string.IsNullOrEmpty(name)) return null;
             if (byName.TryGetValue(name, out PaletteDefinition palette)) return palette;
-            throw new Exception($"Palette '{name}' is not defined in any Palettes/*.palette.xml.");
+            throw new Exception($"Palette '{name}' is not defined in any Palettes/*.palette.axml.");
         }
 
         // Crossfades the app to a palette, then makes it the default and re-rounds every window.
@@ -200,7 +200,7 @@ namespace ArctisAurora.Core.UI
             baking.Clear();
             Put(Vector4.Zero);
 
-            foreach (string file in VirtualFileSystem.EnumerateAll("XML/Documents/Palettes", "*.palette.xml"))
+            foreach (string file in VirtualFileSystem.EnumerateAll("XML/Documents/Palettes", "*.palette.axml"))
             {
                 PaletteDefinition palette = Parse(DataFiles.LoadXml(file));
                 palette.firstSlot = (uint)Paints.Count;

@@ -214,6 +214,7 @@
           <xs:enumeration value="TextInput.PictureRotateLayout" />
           <xs:enumeration value="TextInput.PictureRotate" />
           <xs:enumeration value="TextInput.PictureRotateDraws" />
+          <xs:enumeration value="Workspace.StandaloneFile" />
           <xs:enumeration value="Workspace.Switch" />
           <xs:enumeration value="Workspace.Menu" />
           <xs:enumeration value="Workspace.SessionRoundTrip" />
@@ -248,6 +249,9 @@
           <xs:enumeration value="Crypto.PasswordKey" />
           <xs:enumeration value="Crypto.EncryptedFiles" />
           <xs:enumeration value="Crypto.SealedBlocks" />
+          <xs:enumeration value="FileTypes.ClaimOne" />
+          <xs:enumeration value="FileTypes.ClaimAll" />
+          <xs:enumeration value="FileTypes.LinuxFiles" />
           <xs:enumeration value="Fonts.MathFontBaked" />
           <xs:enumeration value="Fonts.CffCharstring" />
           <xs:enumeration value="Input.ClickFiresRelease" />
@@ -281,6 +285,7 @@
           <xs:enumeration value="Math.Tag" />
           <xs:enumeration value="Math.EnvErrors" />
           <xs:enumeration value="Math.AmsCommands" />
+          <xs:enumeration value="Notes.FileKinds" />
           <xs:enumeration value="Notes.DirtyTracking" />
           <xs:enumeration value="Notes.PartialWrite" />
           <xs:enumeration value="Notes.JournalReplay" />
@@ -632,6 +637,7 @@
           <xs:enumeration value="Context.LoadDeclared" />
           <xs:enumeration value="EntityRegistry.ParseXML" />
           <xs:enumeration value="Settings.LoadAll" />
+          <xs:enumeration value="FileTypes.Load" />
           <xs:enumeration value="AssetImporter.RunImports" />
           <xs:enumeration value="Logging.Configure" />
           <xs:enumeration value="Profiling.Configure" />

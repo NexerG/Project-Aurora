@@ -1,7 +1,7 @@
 # Decision — code blocks are coloured at view time and do not wrap unless the block says so
 
 **Date:** 2026-10-02
-**Scope:** `ArctisAurora.Core.UI` — `SyntaxTokenizer`, `SyntaxToken`, `SyntaxState`, `DocumentControl` (`HighlightCode`, `Tokenize`, `CodeWidth`, `contentWidth`), `TextRunControl.syntax`, `BlockControl` (`codeWrap`, `Wraps`), `BlockSnapshot.codeWrap`, `Palettes.Code`, `PaletteDefinition`, `DocumentXml`; `Thorium/Data/XML/Documents/Palettes/thorium-*.palette.xml`
+**Scope:** `ArctisAurora.Core.UI` — `SyntaxTokenizer`, `SyntaxToken`, `SyntaxState`, `DocumentControl` (`HighlightCode`, `Tokenize`, `CodeWidth`, `contentWidth`), `TextRunControl.syntax`, `BlockControl` (`codeWrap`, `Wraps`), `BlockSnapshot.codeWrap`, `Palettes.Code`, `PaletteDefinition`, `DocumentXml`; `Thorium/Data/XML/Documents/Palettes/thorium-*.palette.axml`
 
 ## What changed
 - `SyntaxTokenizer.Tokenize(line, language, state, tokens)` writes one `SyntaxToken` (`Plain`, `Keyword`, `String`,

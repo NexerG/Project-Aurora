@@ -8,7 +8,7 @@
 ## Three layers, usually collapsed by mistake
 
 ```
-1. SOURCE       .fbx, .png, scene .xml          what the user edits
+1. SOURCE       .fbx, .png, scene .axml          what the user edits
       | import (slow, once per change)
 2. COOK CACHE   per-asset binary blob in the    keyed by hash(source) + importerVersion
                 engine's exact vertex layout

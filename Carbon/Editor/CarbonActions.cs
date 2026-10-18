@@ -8,7 +8,7 @@ namespace Carbon.Editor
 {
     public static class CarbonActions
     {
-        // control names in UI.ui.xml
+        // control names in UI.ui.axml
         private const string sessionsName = "Sessions";
         private const string captureSideName = "CaptureSide";
         private const string captureViewName = "CaptureView";

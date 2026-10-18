@@ -37,6 +37,9 @@ namespace ArctisAurora.EngineWork.Rendering
 
         public static bool active => _window != IntPtr.Zero;
 
+        // set before Init by a host opened on one file: no tray, no single running copy
+        public static bool standalone;
+
         // Tray is enabled and the OS has one.
         public static bool canTray => OperatingSystem.IsWindows() && Tray();
 
@@ -68,7 +71,7 @@ namespace ArctisAurora.EngineWork.Rendering
 
         private static WindowSetting Settings() =>SettingsRegistry.Get<GraphicsSettings>().window;
 
-        private static bool Tray() => SettingsRegistry.Get<GraphicsSettings>().tray.enabled;
+        private static bool Tray() => !standalone && SettingsRegistry.Get<GraphicsSettings>().tray.enabled;
 
         private static string HostName() => Assembly.GetEntryAssembly()?.GetName().Name ?? "Aurora";
 

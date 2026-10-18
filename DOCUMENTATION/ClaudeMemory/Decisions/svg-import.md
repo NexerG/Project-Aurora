@@ -1,7 +1,7 @@
 # Decision — the SVG icon importer reads fills and strokes; evenodd is per glyph, strokes are baked from the centreline, dashes are next
 
 **Date:** 2026-10-09
-**Scope:** `ArctisAurora.Core.Filing.Serialization` — `SvgPath`; `ArctisAurora.Core.Filing` — `Glyph`, `StrokeRun`, `StrokeCap`, `StrokeJoin`; `ArctisAurora.Core.Generators` — `MTSDFGen`; `ArctisAurora.Tests` — `SvgTests`; `AuroraEngine/Data/XML/Documents/Tests/Svg.tests.xml`
+**Scope:** `ArctisAurora.Core.Filing.Serialization` — `SvgPath`; `ArctisAurora.Core.Filing` — `Glyph`, `StrokeRun`, `StrokeCap`, `StrokeJoin`; `ArctisAurora.Core.Generators` — `MTSDFGen`; `ArctisAurora.Tests` — `SvgTests`; `AuroraEngine/Data/XML/Documents/Tests/Svg.tests.axml`
 
 User goal (2026-10-09): full SVG shaping support except colouring. The first pass covered fills; the second (same day) covers strokes. Dashes and the rest are listed under Known gaps.
 
@@ -24,7 +24,7 @@ User goal (2026-10-09): full SVG shaping support except colouring. The first pas
 - REMOVED the `Log` channel from `SvgPath` (its only use was the evenodd warning).
 - `Glyph`: NEW `[@NonSerializable] public bool evenOdd` — bake-time only, not in `.aid`.
 - `MTSDFGen.GenerateCell`: "outside" is `glyph.evenOdd ? (winding & 1) == 0 : winding == 0`.
-- NEW `SvgTests` and suite `Svg.tests.xml`: `Svg.InheritedFill`, `Svg.Unrendered`, `Svg.Transform`, `Svg.Malformed`, `Svg.FillRule`, `Svg.Arc`, `Svg.Shapes`.
+- NEW `SvgTests` and suite `Svg.tests.axml`: `Svg.InheritedFill`, `Svg.Unrendered`, `Svg.Transform`, `Svg.Malformed`, `Svg.FillRule`, `Svg.Arc`, `Svg.Shapes`.
 
 ## What changed — strokes (second pass)
 - `SvgPath` imports `stroke`, `stroke-width`, `stroke-linecap` (butt/round/square), `stroke-linejoin` (miter/round/bevel; SVG2 `arcs` and `miter-clip` fall back to miter) and `stroke-miterlimit`. `fill="none"` is no longer refused; it means no fill. Stroke properties go through the inherited `Property`, so `stroke-*` on `<svg>`/`<g>` is inherited.
@@ -40,7 +40,7 @@ User goal (2026-10-09): full SVG shaping support except colouring. The first pas
 - NEW `SvgPath.Run(points, closed, current, start)` (subpath to `StrokeRun`); NEW `SvgPath.Number(string, fallback)`, which `Length` now calls.
 - `MTSDFGen.GenerateCell` precomputes per run the inverse of `toGlyph`, a distance scale `sqrt|det(toGlyph)|` and a glyph-space reach box; runs with a singular matrix are skipped. Per pixel: `stroke = max over runs of StrokeDistance(p mapped to local) × scale`, then each of `minR/minG/minB/minAll = max(channel, stroke)`.
 - NEW private in `MTSDFGen`: `RunBounds`, `StrokeDistance`, `Cap`, `Join`, `Direction`, `Box`, `Polygon`.
-- Tests: NEW `Svg.StrokeRuns` and `Svg.StrokeBake` in `Svg.tests.xml`; `Svg.InheritedFill` now expects the "no shape" refusal.
+- Tests: NEW `Svg.StrokeRuns` and `Svg.StrokeBake` in `Svg.tests.axml`; `Svg.InheritedFill` now expects the "no shape" refusal.
 
 ## Why these choices
 
@@ -118,7 +118,7 @@ Stroke pass:
 - `<use>`/`xlink:href`, nested `<svg>` viewports, `preserveAspectRatio`, percentage/unit lengths (lengths strip a trailing px/em and read the number), `display="none"`/`visibility`.
 - Mixed fill rules in one icon are refused.
 - A polygon/polyline with an odd coordinate count reads the missing y as 0.
-- `ImporterVersion` in `*.import.xml` not bumped — existing atlases are byte-identical, so no rebake is needed.
+- `ImporterVersion` in `*.import.axml` not bumped — existing atlases are byte-identical, so no rebake is needed.
 - Pre-existing, noticed, not touched: the four default-icon atlas copies differ — AuroraEngine and AuroraEditor hold an older `default_atlas.png`/`default.aid` than Thorium and Carbon (md5 886bb... vs fb2b7...).
 
 Supersedes the importer-limit statements in [[workspaces]] (W4b) and [[document-format-bar]] (Icons): no `A` command and evenodd-as-nonzero are no longer true. The stroke pass supersedes their "strokes are refused" and "`fill:none` is refused" statements too.

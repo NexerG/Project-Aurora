@@ -12,7 +12,7 @@ namespace ArctisAurora.Core.UI
     [A_XSDType("Palette", "Settings")]
     public class PaletteSetting : Setting
     {
-        [A_XSDElementProperty("Name", "Settings", "Palette a tree that names none paints with, from Palettes/*.palette.xml.")]
+        [A_XSDElementProperty("Name", "Settings", "Palette a tree that names none paints with, from Palettes/*.palette.axml.")]
         public string name { get; set; } = "default";
     }
 

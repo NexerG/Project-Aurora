@@ -117,7 +117,7 @@ namespace ArctisAurora.Core.Diagnostics
 
             foreach (string directory in Directory.GetDirectories(root))
             {
-                string[] files = Directory.GetFiles(directory, "*.frames.xml");
+                string[] files = Directory.GetFiles(directory, "*.frames.axml");
                 if (files.Length == 0) continue;
 
                 sessions.Add(new CaptureSessionInfo
@@ -132,7 +132,7 @@ namespace ArctisAurora.Core.Diagnostics
             return sessions;
         }
 
-        // Every *.frames.xml in one session folder.
+        // Every *.frames.axml in one session folder.
         public static CaptureSession LoadSession(string directory)
         {
             CaptureSession session = new CaptureSession
@@ -143,7 +143,7 @@ namespace ArctisAurora.Core.Diagnostics
 
             if (!Directory.Exists(directory)) return session;
 
-            foreach (string file in Directory.GetFiles(directory, "*.frames.xml").OrderBy(f => f, StringComparer.Ordinal))
+            foreach (string file in Directory.GetFiles(directory, "*.frames.axml").OrderBy(f => f, StringComparer.Ordinal))
             {
                 CapturedThread? thread = LoadFile(file);
                 if (thread != null) session.threads.Add(thread);
@@ -299,7 +299,7 @@ namespace ArctisAurora.Core.Diagnostics
             thread.names[index] = reader.GetAttribute("V") ?? string.Empty;
         }
 
-        // "Main.frames.xml" is the Main thread, matching the name half rule of every data file.
+        // "Main.frames.axml" is the Main thread, matching the name half rule of every data file.
         private static string ThreadName(string path)
         {
             string file = Path.GetFileName(path);

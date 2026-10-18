@@ -115,7 +115,7 @@ Profiling.Capture(1200);      // or a length of your own
 Profiling.CaptureUntilFlush(); // every frame until shutdown's Profiling.Flush
 ```
 
-`Profiling.Capture` is tagged as an `Input` action, so it can be bound to a key in an application's `InputMap.inputs.xml`; Thorium binds it to `F9`. Setting `ProfilingCapture.Mode` to `Continuous` starts one at launch instead and never ends it, rolling into a new session folder every `MaxFileMB` and keeping the last `Keep` of them.
+`Profiling.Capture` is tagged as an `Input` action, so it can be bound to a key in an application's `InputMap.inputs.axml`; Thorium binds it to `F9`. Setting `ProfilingCapture.Mode` to `Continuous` starts one at launch instead and never ends it, rolling into a new session folder every `MaxFileMB` and keeping the last `Keep` of them.
 
 While a capture is live, `Zone.Start` appends a record and `Zone.End` patches its end time. Opens happen in the order the zones nest, so the array is already in document order and needs no sorting. Nothing on the timed thread formats anything: `FrameSpool`, a background thread, does every `XmlWriter` call and every file write, which is the point — batching the writes without moving the formatting would only have relocated the cost.
 
@@ -129,7 +129,7 @@ Thorium.exe --profile          # BurstFrames frames of every thread, from boot
 Thorium.exe --profile=1200     # or a length of your own
 ```
 
-`Profiling.ArmBoot` reads that off the process command line and opens the session from `Engine.Init`, before the bootstrap phase runs — which is why **the bootstrap phase itself is captured**, as one frame holding a zone per step, written as `Bootstrap.frames.xml` beside the thread files. It lives in the engine rather than in each application's `Main`, so Thorium, Carbon and the Editor all take the flag without knowing about it.
+`Profiling.ArmBoot` reads that off the process command line and opens the session from `Engine.Init`, before the bootstrap phase runs — which is why **the bootstrap phase itself is captured**, as one frame holding a zone per step, written as `Bootstrap.frames.axml` beside the thread files. It lives in the engine rather than in each application's `Main`, so Thorium, Carbon and the Editor all take the flag without knowing about it.
 
 Setting `ProfilingCapture.Mode` to `Boot` does the same for a run with no argument, and is the one to reach for when every launch should be profiled. It cannot capture the bootstrap phase: the setting is read by `Profiling.Configure`, which is itself a step of the phase in question, so the capture only opens in time for the first real frame. The flag wins when both are set.
 
@@ -151,7 +151,7 @@ One number to read carefully: `--profile=N` is N frames **per thread**, and on t
 Thorium.exe --profile-scenario
 ```
 
-Adding `--dump-tree` to either scenario writes the laid-out tree of every window, as `UITreeDump` does, to `uitree-<label>.xml` beside the executable at points where nothing is moving: `open`, `typed` and `settings` in the document scenario, `grid-N` after each grid is built in the animation one. Each control carries its rect, desired size, clip, paint words and alpha, so two builds can be compared file against file. The files are identical between two runs of one build.
+Adding `--dump-tree` to either scenario writes the laid-out tree of every window, as `UITreeDump` does, to `uitree-<label>.axml` beside the executable at points where nothing is moving: `open`, `typed` and `settings` in the document scenario, `grid-N` after each grid is built in the animation one. Each control carries its rect, desired size, clip, paint words and alpha, so two builds can be compared file against file. The files are identical between two runs of one build.
 
 `ProfileScenario.Arm` reads the flag from `Engine.Init`, right after `ArmBoot`. It points the settings write root at a `ProfileScenario` folder beside the application's own, because the scenario replaces the window's tree and shutdown would otherwise save that empty layout over the real one. Captures and the log still land in the application's usual folders, so Carbon lists the session with the rest. The scenario itself is an entity, so it runs once a tick inside `Interpolate`, before layout resolves — an edit and the remeasure it causes land in the same frame.
 
@@ -192,7 +192,7 @@ RunAnimation()
 	fade every paint slot once, then hold
 	for each grid size N
 		replace the window's tree with N buttons in rows of 100, destroying the last grid
-		with --dump-tree, write the settled tree to uitree-grid-N.xml
+		with --dump-tree, write the settled tree to uitree-grid-N.axml
 		burst: start N tweens in one tick, then hold
 		start the looping profile-state clip on every button over about 20 ticks, then hold, then stop them over about 80
 		start the looping profile-margin clip the same way, then hold, then stop them
@@ -206,7 +206,7 @@ RunAnimation()
 Every stage marks the main thread's frames with a `Scenario.*` zone, so a stage can be picked out of the capture. The animation step reports `Anim.Step`, `Anim.Emit` inside it and `Anim.Fades`, and counts tracks stepped. Main counts each request written and the values it applies each frame. Starts and stops are spread over a fixed number of ticks, at least 1,000 and 250 a tick, so a stage takes as many frames at 200,000 buttons as at 20,000; only the burst starts everything at once. The two clips differ only in what they move: `state` repaints a button, `Margin` makes layout run, so comparing them separates the cost of animating from the cost of layout. See `ClaudeMemory/Decisions/engine-profiling.md` §17 for the design, and `animation-core.md` for what the first run measured.
 
 ### The frame file
-One file per thread, `Profiling/<yyyyMMdd-HHmmss>/<thread>.frames.xml`.
+One file per thread, `Profiling/<yyyyMMdd-HHmmss>/<thread>.frames.axml`.
 
 ```xml
 <FrameCapture Thread="Main" Frequency="10000000" Started="…" Mode="Burst" Requested="300">
@@ -269,7 +269,7 @@ Profiling.Frame.Pool(name, count, capacity, bytes)
 	append a pool record to the batch
 ```
 
-Sampling after `FrameEdge` means a freed row is already gone, so the count is what the pool carries into the next frame. The profiler never walks the pools itself — a pool may only be read on the thread that owns it, and the pool's owner is exactly who calls this. Every pool is owned by Main today, so pools appear only in `Main.frames.xml`.
+Sampling after `FrameEdge` means a freed row is already gone, so the count is what the pool carries into the next frame. The profiler never walks the pools itself — a pool may only be read on the thread that owns it, and the pool's owner is exactly who calls this. Every pool is owned by Main today, so pools appear only in `Main.frames.axml`.
 
 Reserved bytes are the capacity times the size of one slot, and a slot is every column's element plus the pool's own bookkeeping — the slot map, back map, versions, published versions and owner reference, 24 bytes. Because every array the pool holds is sized to its capacity, the bytes actually in use are exactly `M × C / K`. What is not counted: array headers, the small side tables, the objects an owner reference points at, and any GPU buffer a pool is mirrored into. See `ClaudeMemory/Decisions/engine-profiling.md` §14.
 

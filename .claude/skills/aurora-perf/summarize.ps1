@@ -1,6 +1,6 @@
 # Summarizes a frame capture folder: per thread, frame time and per-zone cost per frame.
 # Per-frame zone totals and nearest-rank percentiles match TestRunner.CheckBudgets.
-#   -Dir     a session folder (*.frames.xml), e.g. %APPDATA%\Arktis\Thorium\Profiling\<session> or <run>\<Action>
+#   -Dir     a session folder (*.frames.axml), e.g. %APPDATA%\Arktis\Thorium\Profiling\<session> or <run>\<Action>
 #   -Thread  only this thread file (Main, Render, Worker0, Bootstrap ...)
 #   -From/-To  frame index range (the F I attribute), inclusive
 #   -Zone    only zones whose name contains any of these texts
@@ -25,11 +25,11 @@ function Skip([string]$name) {
     return $true
 }
 
-$files = Get-ChildItem -LiteralPath $Dir -Filter *.frames.xml | Sort-Object Name
-if (-not $files) { Write-Output "no *.frames.xml in $Dir"; exit 1 }
+$files = Get-ChildItem -LiteralPath $Dir -Filter *.frames.axml | Sort-Object Name
+if (-not $files) { Write-Output "no *.frames.axml in $Dir"; exit 1 }
 
 foreach ($file in $files) {
-    $lane = $file.Name -replace '\.frames\.xml$', ''
+    $lane = $file.Name -replace '\.frames\.axml$', ''
     if ($Thread -and $lane -ne $Thread) { continue }
 
     $names = @{}

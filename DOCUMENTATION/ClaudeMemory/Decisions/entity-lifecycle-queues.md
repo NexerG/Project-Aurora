@@ -109,7 +109,7 @@ this loop needs revisiting.
 - **`EntitiesToUpdate`** is still written on every `isDirty` set, cascades to children, and its drain
   is still commented out in `Interpolate` — duplicates accumulate forever. That is the separate
   locked item "defer isDirty propagation to one pass per tick".
-- **`EntitiesOnDestroy`** (group in `EntityRegistry.xml`, `Engine.entitiesOnDestroy` field) is dead —
+- **`EntitiesOnDestroy`** (group in `EntityRegistry.axml`, `Engine.entitiesOnDestroy` field) is dead —
   never assigned, never read, its only consumer commented out. Left alone as pre-existing.
 
 ## Verified
@@ -128,5 +128,5 @@ teardown is correct by inspection only. The old `DestroySelf` scene trick is the
 
 `Entity` (ctors, lifecycle region, `OnDestroy`, `IsEnabled`, `CreateComponent`), `EntityComponent`
 (`started`), `EntityRegistry` (three queues + three drains), `Engine` (`entitiesOnStart` field and
-its `SetupSystems` assignment deleted, `Interpolate` rewritten), `EntityRegistry.xml`
+its `SetupSystems` assignment deleted, `Interpolate` rewritten), `EntityRegistry.axml`
 (`EntitiesOnStart` list removed). Resolve paths via `NAMESPACES.md`.

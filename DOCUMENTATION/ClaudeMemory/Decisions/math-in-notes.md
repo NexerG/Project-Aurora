@@ -1,7 +1,7 @@
 # Decision — math in notes is laid out natively on a Cambria Math atlas
 
 **Date:** 2026-10-01
-**Scope:** `ArctisAurora.Core.Filing` — `MathConstants`; `ArctisAurora.Core.Filing.Serialization` — `AssetImporter` (`FaceOffset`, `ImportFont`, `ReadFace`), `FontImport.face`, `FontImportStamp.face`; `EngineFonts.imports.xml`; `ArctisAurora.Core.UI` — `MathParser`, `MathSymbols`, `MathLayout`, `MathBox`, `MathGlyph`, `MathRule`, `MathClass`, `MathStyle`, `Run.math`/`display`, `StyleSpan.mathSource`/`mathDisplay`/`IsMath`/`IsObject`, `TextMeasurer.Run.math`/`depth`, `TextRunControl` (`MathBoxFor`, `Emit`), `DocumentControl.CopySelection`, `MarkdownFormat` (`MathAt`, `MathRun`); `ArctisAurora.Core.Registry.Assets.FontAsset.mathConstants`; `EngineAssets.assets.xml` (`math`)
+**Scope:** `ArctisAurora.Core.Filing` — `MathConstants`; `ArctisAurora.Core.Filing.Serialization` — `AssetImporter` (`FaceOffset`, `ImportFont`, `ReadFace`), `FontImport.face`, `FontImportStamp.face`; `EngineFonts.imports.axml`; `ArctisAurora.Core.UI` — `MathParser`, `MathSymbols`, `MathLayout`, `MathBox`, `MathGlyph`, `MathRule`, `MathClass`, `MathStyle`, `Run.math`/`display`, `StyleSpan.mathSource`/`mathDisplay`/`IsMath`/`IsObject`, `TextMeasurer.Run.math`/`depth`, `TextRunControl` (`MathBoxFor`, `Emit`), `DocumentControl.CopySelection`, `MarkdownFormat` (`MathAt`, `MathRun`); `ArctisAurora.Core.Registry.Assets.FontAsset.mathConstants`; `EngineAssets.assets.axml` (`math`)
 
 **Status: LANDED** — M1 (the font), M2 (parser + layout), M3 (notes hold, draw, save and copy formulas) and M4 (insert and edit) landed, and M5 (environments, `\tag`, amsmath commands) landed 2026-10-06 together with LaTeX L6; plan in [../Context/math-plan.md](../Context/math-plan.md). M4 scope: `FormulaPopup`, `MathEdit`, `DocumentControl` region `formulas` (`SelectedMath`, `StoredMath`, `SetMath`, `PlaceMath`, `RecordPlaced`, `RecordMath`, `RemovePlaced`, `MathAnchor`), `BlockControl.SetMath`, `TextRunControl` (`MathAt`, `MathBox`), `DocumentEditorControl` (`InsertFormula`, `EditFormula`), `TextBoxControl.onEdited`, `TextInputActions` (`Math.Insert`, `Math.InsertDisplay`, `Math.Edit`).
 
@@ -17,7 +17,7 @@
 - **Math rules get a 1 px minimum width (user chose option b after the first golden).** Latin Modern at 10pt (13.3 px) draws rules 0.53 px wide: in the first `Tex.Amsmath` shot the vmatrix's left `|` was faint and its right `|` missing. `TextRunControl.Emit` now gives math rules a 1 px minimum width, matching the existing 1 px minimum height. `MathDraws` unchanged; `TextInput.MathArrays` changed in 98 px (the array `|` and `\boxed` sides) and was re-approved.
 - Errors stay F7 (the whole formula becomes `MathError`): an unclosed or mismatched `\end`, an unknown environment, `&` in `gather`/`multline`/`\substack` or past an `array` spec's columns, a spec character other than `l c r |`, an unknown `\\[len]` unit, `\\` inside `equation`, `\hline` mid-row.
 - No new data XML, no atlas re-bake: every glyph needed (⎧⎨⎩⎪, ⋮⋱⋯, ‖, ∬∭) was already in both math charsets.
-- Tests: engine `Math.tests.xml`/`MathTests` add `Math.Matrix`, `Math.Cases`, `Math.Aligned`, `Math.Array`, `Math.Tag`, `Math.EnvErrors`, `Math.AmsCommands`; Thorium `TextInput.MathArrays`, golden `Goldens/TextInput.MathArrays.Math.png` (Cambria notes). Thorium `--test=Math` 17/17 (10 existing + 7 new); golden PNG inspected. NOT GUI-verified: the formula popup with environments in a normally launched Thorium.
+- Tests: engine `Math.tests.axml`/`MathTests` add `Math.Matrix`, `Math.Cases`, `Math.Aligned`, `Math.Array`, `Math.Tag`, `Math.EnvErrors`, `Math.AmsCommands`; Thorium `TextInput.MathArrays`, golden `Goldens/TextInput.MathArrays.Math.png` (Cambria notes). Thorium `--test=Math` 17/17 (10 existing + 7 new); golden PNG inspected. NOT GUI-verified: the formula popup with environments in a normally launched Thorium.
 
 ## Width-aware align, flalign and multline (2026-10-06, LaTeX L7g)
 - Top-level `align`/`align*`, `flalign`/`flalign*`, `multline`/`multline*` spread over the line width with amsmath's rules, in notes math too. Fork record: L7g-F4 and L7g-F5 in [[latex-editor]]; revisits L6-F1.
@@ -29,7 +29,7 @@
 - Gaps: a tag never moves to its own line; only top-level forms are width-aware (nested `aligned` etc. are not).
 
 ## Sheet cells in formulas (sheets S2c, 2026-10-04)
-- A formula may hold `\sheet{Budget.sheet.xml#Data!B1}`: `TextRunControl.MathBoxFor` caches and parses `SheetLinks.ExpandMath(source)`, not the source. Number → `{value}`, text → `\text{value}`, range → `\text{#VALUE!}`, missing → `\text{#REF!}`.
+- A formula may hold `\sheet{Budget.sheet.axml#Data!B1}`: `TextRunControl.MathBoxFor` caches and parses `SheetLinks.ExpandMath(source)`, not the source. Number → `{value}`, text → `\text{value}`, range → `\text{#VALUE!}`, missing → `\text{#REF!}`.
 - A math run's `FontName` picks its math face when that asset has MATH constants (else the `"math"` asset); `TextRunControl.mathBoxes` is keyed `(source, display, FontAsset)`. `MathLayout.Present` falls back to the Regular face when the requested face lacks a character (L3; LM Math's italic has no Greek).
 - A changed cell value is a new cache key, so the cache never goes stale; `MathParser` is unchanged and still pure. Substitution only — nothing is evaluated. Rationale and gaps: [[sheets]] § S2c.
 - `FormulaPopup.PasteLink` (Ctrl+Shift+V in the source box) inserts `\sheet{ref}` for the last copied sheet cells; a sheet rename rewrites the references in open notes and on disk (`SheetLinks.RenameMath`).
@@ -52,7 +52,7 @@
 - **Laid-out boxes live in a static cache keyed by (source, display) in `TextRunControl` (F11)**, not on the span: `StyleSpan` is a struct copied through snapshots, and caching on it would mean writing spans back during measure. Since sheets S2c the key's source is the expanded source: `\sheet{…}` is replaced by the cell's value before parsing (see below).
 - Drawing: each `MathGlyph` through `WriteGlyph` (whose `size` became `float`) from the `math` font asset; each `MathRule` through `WriteRect` with its top rounded to a pixel and a 1 px floor — the underline's precedent. Sub-pixel rules straddled two rows: a 0.85 px rule drew as a dark 2-row bar beside a faint 1.04 px one.
 - A formula that fails to parse draws its source in `PaletteRole.Danger`.
-- `FontAsset.Load` reads `{font}.math.xml` into `mathConstants` when it exists; `EngineAssets.assets.xml` names the asset `math` → `Fonts/cambria`. The Thorium bake was copied byte-for-byte into AuroraEditor and Carbon — host bakes are identical (same `arial` hashes).
+- `FontAsset.Load` reads `{font}.math.axml` into `mathConstants` when it exists; `EngineAssets.assets.axml` names the asset `math` → `Fonts/cambria`. The Thorium bake was copied byte-for-byte into AuroraEditor and Carbon — host bakes are identical (same `arial` hashes).
 - Plain-text copy writes a formula as `$src$` / `$$src$$`; our own paste keeps the span.
 - Markdown: `$…$` by Obsidian's rules (no space inside either fence, no digit after the closer, `\$` escapes), `$$…$$` inline is display, a `$$` line opens a display block closed by the next `$$` line (flushed at end of file). A Text block holding only a display formula writes as `$$` / source / `$$`. `$` joined `escapable` and the writer's escape set; the writer's re-read check means a literal `$` is escaped only when the plain form would read back as math.
 - Delimiters may stop short of the content by TeX's rule (0.901 / 0.5 em shortfall); a deep denominator sticks out below the paren, as in TeX.
@@ -81,7 +81,7 @@
 ## What changed
 - `<FontImport Face="n">` picks a face out of a `.ttc`; `AssetImporter.FaceOffset` reads the collection header and `ReadFace` starts its table directory there. Table offsets in a TTC are absolute, so nothing past the header moved.
 - `Face` is in the stamp and in `Matches`; a stamp without it reads 0, so existing bakes stay current.
-- After a bake, a face with a `MATH` table gets `{name}.math.xml` — `MathConstants`, every MathConstants-subtable field, lengths divided by `unitsPerEm`, the three percentages as read (73, 60, 65 for Cambria Math).
+- After a bake, a face with a `MATH` table gets `{name}.math.axml` — `MathConstants`, every MathConstants-subtable field, lengths divided by `unitsPerEm`, the three percentages as read (73, 60, 65 for Cambria Math).
 - `<Charset Name="Math">`: ASCII, Greek (incl. ϑ ϕ ϖ ϱ ϵ), letterlike ℂℕℙℚℝℤℏℓ℘ℑℜℵ, operators, relations, arrows, ⟨⟩⌈⌉⌊⌋‖, delimiter pieces U+239B–U+23AE, ⌠⌡⎷, spacing accents and U+20D7 — 293 chars.
 - `cambria.ttc` face 1 baked with `cambriai.ttf` / `cambriab.ttf` as Italic / Bold → asset folder `Fonts/cambria`.
 

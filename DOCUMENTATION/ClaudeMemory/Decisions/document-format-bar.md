@@ -9,7 +9,7 @@
 `ArctisAurora.Core.UISystem.Controls.Text.Document` (`TextMeasurer`, `Inlines`, `Blocks`,
 `DocumentControl`, `DocumentEditorControl`, `DocumentToolbarControl`, `DocumentXml`),
 `.Document.Edits` (`StyleRangeEdit`, `BlockSnapshot`),
-`Thorium` (`UI.ui.xml`, `TabWindow.ui.xml`, `InputMap.inputs.xml`, `SampleNote.xml`).
+`Thorium` (`UI.ui.axml`, `TabWindow.ui.axml`, `InputMap.inputs.axml`, `SampleNote.axml`).
 
 ## What the bake left unfinished
 

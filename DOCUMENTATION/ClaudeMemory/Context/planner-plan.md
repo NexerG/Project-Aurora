@@ -1,15 +1,15 @@
-# Planner plan — Gantt, board and calendar over one `*.planner.xml`
+# Planner plan — Gantt, board and calendar over one `*.planner.axml`
 
 **Status:** every phase landed 2026-10-07 — F0, P1, P2, P3, P4 (P2: Gantt editing; P3: board drag; P4: categories and assignee chips), PC (calendar view) and C2 (attachments and links). Open follow-ups are in the WIP list under "planner".
 Decision record: [planner](../Decisions/planner.md). Part of the Thorium productivity suite (WIP list, Phase A). The calendar was merged into this plan on 2026-10-07; what stays parked is in [calendar-plan](calendar-plan.md).
 
 ## Settled by the user (2026-10-07)
-- A planner is its own file, `*.planner.xml`, opened in a tab like sheets.
+- A planner is its own file, `*.planner.axml`, opened in a tab like sheets.
 - Board columns are the categories.
 - Times are date + time ranges (`TimeRange`), not whole days.
 - `User` class with a hand-set current user "Grexen"; no accounts.
 - Assignees are stored as `<Assignee User/>` and shown as initials; edited as comma text (stub).
-- The calendar is merged into the planner as a third view; no `*.calendar.xml`.
+- The calendar is merged into the planner as a third view; no `*.calendar.axml`.
 - Google / iCloud sync is out for now.
 
 ## Phases
@@ -29,8 +29,8 @@ Decision record: [planner](../Decisions/planner.md). Part of the Thorium product
 - `PlannerTicketPopup`, built like `SheetGrowPopup`: name box, category `DropdownControl`, `ColorPickerControl`, start/end `yyyy-MM-dd` (+ time) boxes, read-only creator, assignees box. Enter = one undo record, Esc cancels.
 - Delete a ticket; undo/redo.
 - Edit records in `PlannerEdits.cs`: `PlannerTicketEdit`, `PlannerTicketAddEdit`, `PlannerCategoryEdit`.
-- `PlannerActions.cs` with `Planner.Undo` / `Planner.Redo` / `Planner.Delete` as second binds (like `Sheet.*`) in `InputMap.inputs.xml`.
-- `Planner.menu.xml` context menu (Edit, Delete ticket, Move to category ▸) registered in `ThoriumAssets.assets.xml`.
+- `PlannerActions.cs` with `Planner.Undo` / `Planner.Redo` / `Planner.Delete` as second binds (like `Sheet.*`) in `InputMap.inputs.axml`.
+- `Planner.menu.axml` context menu (Edit, Delete ticket, Move to category ▸) registered in `ThoriumAssets.assets.axml`.
 
 **P2 landed 2026-10-07. Departures from the plan above** (record: [planner](../Decisions/planner.md), section "P2 — Gantt editing"):
 - The popup's category dropdown needed an engine change: `ContextMenus.OpenFrom` (a menu opens inside an open popup without closing it).
@@ -58,7 +58,7 @@ Decision record: [planner](../Decisions/planner.md). Part of the Thorium product
 **P4 landed 2026-10-07. Departures from the plan above** (record: [planner](../Decisions/planner.md), section "P4 — categories and assignee chips"):
 - `PlannerCategoryAddEdit` (the plan named only `PlannerCategoryEdit`).
 - `PlannerCategoryPopup` (the plan did not name a popup), entered from a toolbar "+ Category", a double click on a category row / column, and right-click menus.
-- `PlannerCategory.menu.xml` (registered `planner-category`) for the board columns; `Planner.menu.xml` gained Edit / Add category.
+- `PlannerCategory.menu.axml` (registered `planner-category`) for the board columns; `Planner.menu.axml` gained Edit / Add category.
 - `stopsContextMenu` on the chart and the board columns.
 - `PlannerBoardControl.RebuildSoon`: the board rebuild is posted once per tick; the P3 per-call deferral of the drop was removed.
 - The plan's GUI check in a running Thorium was not done (see the Verified lines in the record).

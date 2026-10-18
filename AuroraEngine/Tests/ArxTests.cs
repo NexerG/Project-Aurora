@@ -21,7 +21,7 @@ namespace ArctisAurora.Tests
             for (int i = 0; i < mounts.Count; i++)
             {
                 if (mounts[i] is not DirectoryMount mount || !Directory.Exists(mount.Root)) continue;
-                foreach (string file in Directory.EnumerateFiles(mount.Root, "*.xml", SearchOption.AllDirectories))
+                foreach (string file in Directory.EnumerateFiles(mount.Root, "*.axml", SearchOption.AllDirectories))
                 {
                     string relative = Path.GetRelativePath(mount.Root, file).Replace('\\', '/');
                     if (relative.StartsWith("XML/Schemas/", StringComparison.OrdinalIgnoreCase)) continue;
@@ -76,8 +76,8 @@ namespace ArctisAurora.Tests
             ArxKeys keys = NewKeys();
             XElement suite = new XElement(XName.Get("TestSuite", "http://arctisaurora/AuroraTestTypes"), new XElement(XName.Get("Test", "http://arctisaurora/AuroraTestTypes"), new XAttribute("Action", "A")));
             ArxWriter writer = new ArxWriter();
-            writer.AddXml("XML/Documents/Tests/One.tests.xml", suite);
-            writer.AddXml("XML/Documents/Tests/Two.other.xml", suite);
+            writer.AddXml("XML/Documents/Tests/One.tests.axml", suite);
+            writer.AddXml("XML/Documents/Tests/Two.other.axml", suite);
             writer.AddBlob("Fonts/f/f.agd", new byte[] { 1, 2, 3 });
 
             string path = TempArchive();
@@ -85,12 +85,12 @@ namespace ArctisAurora.Tests
             using (ArxArchive archive = ArxArchive.Open(path, keys))
             {
                 ArxMount mount = new ArxMount(archive);
-                string[] found = mount.Enumerate("XML/Documents/Tests", "*.tests.xml").ToArray();
-                t.Check(found.Length == 1 && found[0] == Path.Combine(archive.file, "XML", "Documents", "Tests", "One.tests.xml"),
+                string[] found = mount.Enumerate("XML/Documents/Tests", "*.tests.axml").ToArray();
+                t.Check(found.Length == 1 && found[0] == Path.Combine(archive.file, "XML", "Documents", "Tests", "One.tests.axml"),
                     "enumerate matches the pattern and returns a path under the archive file");
                 t.Check(mount.DirExists("XML/Documents") && !mount.DirExists("XML/Missing"), "directories exist by entry prefix");
                 t.Check(DataFiles.Exists(found[0]) && !DataFiles.Exists(found[0] + ".nope"), "DataFiles.Exists sees archive entries");
-                t.Check(XNode.DeepEquals(DataFiles.LoadXml(Path.Combine(Path.GetDirectoryName(found[0])!, "..", "Tests", "One.tests.xml")), suite),
+                t.Check(XNode.DeepEquals(DataFiles.LoadXml(Path.Combine(Path.GetDirectoryName(found[0])!, "..", "Tests", "One.tests.axml")), suite),
                     "DataFiles.LoadXml reads an entry through a non-normalised path");
                 using Stream blob = DataFiles.Open(mount.GetFullPath("Fonts/f/f.agd"));
                 t.Check(blob.Length == 3 && blob.ReadByte() == 1, "DataFiles.Open streams a blob entry");

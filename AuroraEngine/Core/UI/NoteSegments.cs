@@ -34,7 +34,7 @@ namespace ArctisAurora.Core.UI
     // A note file's pending writes, its final length, and its segments and bytes once they land.
     public readonly record struct SegmentPatch(List<(long offset, byte[] bytes)> writes, long length, List<NoteSegment> map, byte[] file);
 
-    // A note's .xml file as segments: written through XMLWriter, mapped back from any file.
+    // A note's .axml file as segments: written through XMLWriter, mapped back from any file.
     public static class NoteSegments
     {
         private static readonly byte[] bom = { 0xEF, 0xBB, 0xBF };

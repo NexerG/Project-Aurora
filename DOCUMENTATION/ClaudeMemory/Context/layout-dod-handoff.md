@@ -149,7 +149,7 @@ New `Decisions/layout-dod.md` + INDEX row; [[layout-dod-plan]] (step 4 ticked, r
 
 ### The animation scenario's tree
 - `WindowRoot` → vertical `StackPanelControl` → rows of 100 (horizontal `StackPanelControl`) → 16×16 `ButtonControl`, no children.
-- `profile-margin` (`UI.anim.xml`) ping-pongs the left margin 0 → 4 over 1 s: a row's width changes, its height and the rows below don't.
+- `profile-margin` (`UI.anim.axml`) ping-pongs the left margin 0 → 4 over 1 s: a row's width changes, its height and the rows below don't.
 - Sparse stage: every (N/1000)th button → 1,000 dirty rows at 200k (every other row) and at 1M (every tenth).
 
 ## Reproducing
@@ -157,12 +157,12 @@ New `Decisions/layout-dod.md` + INDEX row; [[layout-dod-plan]] (step 4 ticked, r
 - **Run** `Thorium/bin/<Debug|Release>/net10.0-windows10.0.22621.0/Thorium.exe` — any working directory since 2026-09-27. Cap every run at 3 minutes (user).
   - `--profile-scenario`: a note of 1,000 blocks × 1,000 chars — open, type, resize, settings; dumps `open`, `typed`, `settings`.
   - `--profile-scenario=animation`: ladder `{ 100, 1000, 5000, 20000 }` under one capture; dumps `grid-<N>` after each build settles.
-  - `--dump-tree` → `uitree-<label>.xml` beside the exe; `--profile-pools` → each pool's rows and bytes per frame in the capture.
+  - `--dump-tree` → `uitree-<label>.axml` beside the exe; `--profile-pools` → each pool's rows and bytes per frame in the capture.
   - The scenario points the settings write root at a sibling `ProfileScenario` folder; a plain boot re-saves the user's real session, so tests don't boot Thorium plainly.
-- **Captures:** `%APPDATA%\Arktis\Thorium\Profiling\<yyyyMMdd-HHmmss>\*.frames.xml`; older sessions are pruned.
+- **Captures:** `%APPDATA%\Arktis\Thorium\Profiling\<yyyyMMdd-HHmmss>\*.frames.axml`; older sessions are pruned.
 - **Perf cuts** (scratch edits to `ProfileScenario`, reverted after): 200k = `ladder = { 200000 }`; 1M = `ladder = { 1000000 }` with the stages cut to build → settle → sparse (60-tick hold) → teardown, to fit the 3-minute cap.
 - **Stage tables:** `stages.ps1 -Dirs <capture dir> -Log <run stdout> -Show Step.Main.Layout,Layout.Measure,Layout.Arrange,…` (appendix).
-- **Dump compare:** `run.ps1 -Name <label> -AppArgs '--profile-scenario','--dump-tree'` (or `'--profile-scenario=animation','--dump-tree'`), then `cmpdump.ps1 -Before <old>\uitree-X.xml -After <new>\uitree-X.xml` (appendix). Baselines for step 4 = the current code (steps 0–3): the old session's `C:\Users\gmgyt\AppData\Local\Temp\claude\D--Repositories-Project-Aurora\6baa924f-16e7-44fd-a80a-92b5859c7d91\scratchpad\step2-doc` and `step2-anim` if still there — otherwise regenerate them from the tree before editing code.
+- **Dump compare:** `run.ps1 -Name <label> -AppArgs '--profile-scenario','--dump-tree'` (or `'--profile-scenario=animation','--dump-tree'`), then `cmpdump.ps1 -Before <old>\uitree-X.axml -After <new>\uitree-X.axml` (appendix). Baselines for step 4 = the current code (steps 0–3): the old session's `C:\Users\gmgyt\AppData\Local\Temp\claude\D--Repositories-Project-Aurora\6baa924f-16e7-44fd-a80a-92b5859c7d91\scratchpad\step2-doc` and `step2-anim` if still there — otherwise regenerate them from the tree before editing code.
 - **Debug verifiers:** `LayoutEngine.VerifyStructure` (channel `Layout`) and `UIEngine.VerifySubtreeCache` (channel `UIEngine`), both at `Error`.
 - **Visual:** the aurora-verify skill's `capture.ps1`. A dump is not a visual check.
 
@@ -179,13 +179,13 @@ New `Decisions/layout-dod.md` + INDEX row; [[layout-dod-plan]] (step 4 ticked, r
 param([string]$Name, [string[]]$AppArgs, [int]$CapSeconds = 180)
 $S = $PSScriptRoot
 $bin = (Resolve-Path "D:\Repositories\Project-Aurora\Thorium\bin\Release\net10.0-windows10.0.22621.0").Path
-Remove-Item "$bin\uitree-*.xml" -ErrorAction SilentlyContinue
+Remove-Item "$bin\uitree-*.axml" -ErrorAction SilentlyContinue
 $sw = [Diagnostics.Stopwatch]::StartNew()
 $p = Start-Process -FilePath "$bin\Thorium.exe" -ArgumentList $AppArgs -WorkingDirectory $bin -RedirectStandardOutput "$S\$Name.log" -RedirectStandardError "$S\$Name.err" -PassThru
 if (-not $p.WaitForExit($CapSeconds * 1000)) { "TIMEOUT at $($sw.Elapsed); closing"; $p.CloseMainWindow() | Out-Null; if (-not $p.WaitForExit(60000)) { "still alive" } }
 "elapsed $($sw.Elapsed)"
 New-Item -ItemType Directory -Force "$S\$Name" | Out-Null
-Get-ChildItem "$bin\uitree-*.xml" -ErrorAction SilentlyContinue | Move-Item -Destination "$S\$Name" -Force
+Get-ChildItem "$bin\uitree-*.axml" -ErrorAction SilentlyContinue | Move-Item -Destination "$S\$Name" -Force
 Get-ChildItem "$S\$Name" | ForEach-Object { "  dump $($_.Name) $($_.Length) B" }
 Get-Content "$S\$Name.err" -TotalCount 6
 Select-String -Path "$S\$Name.log" -Pattern "FATAL|ERROR|WARN|scenario" | Where-Object { $_.Line -notmatch 'ValidationBitExt.*SHADER_READ_BIT|default sampler|not handed within' } | Select-Object -First 12 | ForEach-Object { $_.Line }
@@ -229,7 +229,7 @@ foreach ($m in (Select-String -Path $Log -Pattern 'Main:(\d+) \[Profiling\] anim
 }
 $frameMs = @{}; $phase = @{}; $zone = @{}
 foreach ($dir in $Dirs) {
-  foreach ($file in Get-ChildItem $dir -Filter *.frames.xml) {
+  foreach ($file in Get-ChildItem $dir -Filter *.frames.axml) {
     if ($file.Name -like 'Render*') { continue }
     $isMain = $file.Name -like 'Main*'
     $names = @{}; $freq = 1e7; $frame = -1

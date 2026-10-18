@@ -3,7 +3,7 @@
 **Date:** 2026-08-17
 **Status:** LANDED (P5). Builds; verified at runtime that the vault resolves, the rows build and the
 first note loads. **Not GUI-verified** — nothing was eyeballed or clicked.
-**Scope:** `Thorium` (`ThoriumSettings`, `VaultBrowserControl`, `Thorium.Main`, `UI.xml`,
+**Scope:** `Thorium` (`ThoriumSettings`, `VaultBrowserControl`, `Thorium.Main`, `UI.axml`,
 `Data/Notes/*`), `ArctisAurora.Core.Filing` (`FileObject`).
 
 ## Decisions
@@ -16,11 +16,11 @@ first note loads. **Not GUI-verified** — nothing was eyeballed or clicked.
 
 Defaulting inside the app's own Data rather than `%APPDATA%` keeps the notes in the repo as
 version-controlled fixtures and means the app has something to open on first run. Pointing it at a
-real vault is one attribute in `UserSettings.xml`.
+real vault is one attribute in `UserSettings.axml`.
 
-`SampleNote.xml` moved out of `Data/XML/Documents` into `Data/Notes`, and a second note landed in
+`SampleNote.axml` moved out of `Data/XML/Documents` into `Data/Notes`, and a second note landed in
 `Data/Notes/Reference` so the browser has a folder to indent and switching has somewhere to switch
-to. The old home is engine config — `Bootstrap.xml`, `Registry.xml`, `UI.xml` — and a browser
+to. The old home is engine config — `Bootstrap.axml`, `Registry.axml`, `UI.axml` — and a browser
 pointed at it would have listed all of them as notes.
 
 ### 2. Siblings find each other by walking the tree, because controls have no names
@@ -70,7 +70,7 @@ moved into the engine as `FileBrowserControl` + `FileTreeControl`, and `FileObje
 lazily instead of walking the whole subtree in its constructor. See [[file-browser-tree]] — it is
 the current description of this area. Decisions 1, 2, 4 and 6 below still hold.
 
-Files are filtered to `*.xml`. The first note in tree order is the one opened at startup, and
+Files are filtered to `*.axml`. The first note in tree order is the one opened at startup, and
 `FileObject` lists directories before files, so a note inside a subfolder wins over one at the root.
 
 ### 6. The shell is dark by default, and a container that does not say otherwise paints white

@@ -6,13 +6,13 @@
 **Scope:** `ArctisAurora.Core.UISystem` (`NoteNameWindow`, `UICollisionHandling`, `WindowActions`,
 `TabViewControl`, `TextControl`, `TextInputActions`, `TextBoxControl`, `DocumentEditorControl`,
 `DocumentEditSession`, `RichTextDocument`), `ArctisAurora.EngineWork.Rendering` (`RenderWindow`),
-`Thorium` (`VaultBrowserControl`, `InputMap.xml`).
+`Thorium` (`VaultBrowserControl`, `InputMap.axml`).
 
 ## Decisions
 
 ### 1. `RichTextDocument.name` is authored or absent — never derived
 
-`<Document Name="Release checklist">`. A heading is not a name (`SampleNote.xml` opens with "Welcome
+`<Document Name="Release checklist">`. A heading is not a name (`SampleNote.axml` opens with "Welcome
 to Thorium") and a file name is not one either, since the file can be renamed underneath the note.
 
 **This reverses the same day's call that the loader should stamp the file name into `name` on first
@@ -44,13 +44,13 @@ one untouched prompts once, and the untouched note's file is **byte-identical** 
 `TabViewControl` in each tree, and compares `DocumentEditorControl.session.path`. Replaces
 `FindTab(name)`, whose one caller was the vault browser.
 
-Matching on the tab's name could never have worked: a tab seeded from `UI.xml` carries no `Name`, so
+Matching on the tab's name could never have worked: a tab seeded from `UI.axml` carries no `Name`, so
 a note already on screen was invisible to the check and opened a second time.
 
 **The normalization is not incidental.** `Paths.Doc` resolves a relative `Source` through
 `Path.Combine`, which does not collapse `..` — so the XML-seeded tab held
-`…\Data\XML\Documents\..\..\Notes\Reference\Keybinds.xml` while the browser passed
-`…\Data\Notes\Reference\Keybinds.xml`. Same file, different strings, and the first fixed build still
+`…\Data\XML\Documents\..\..\Notes\Reference\Keybinds.axml` while the browser passed
+`…\Data\Notes\Reference\Keybinds.axml`. Same file, different strings, and the first fixed build still
 opened duplicates. `LoadPath` now stores `Path.GetFullPath(...)` and the compare is
 `OrdinalIgnoreCase`.
 
@@ -88,7 +88,7 @@ had a fallback. Each now checks the document editor first and falls through to `
 `TextBoxControl` above `activeControl` — so a host declares no input code for a field either.
 
 `Text.NewBlock` (Enter) commits a field when there is no document, and a new `Text.Cancel` action is
-bound to Escape in Thorium's `InputMap.xml`. Vertical and page moves collapse onto the field's ends,
+bound to Escape in Thorium's `InputMap.axml`. Vertical and page moves collapse onto the field's ends,
 since it is one line.
 
 ### 6. The prompt takes the active context as it opens
@@ -153,7 +153,7 @@ A clean note is still rewritten on tab close. Byte-identical, but it touches the
 - **A named note is written on window close with no prompt** — a note carrying
   `Name="Release checklist"`, edited and then closed with the X, exits straight away and comes back
   from disk carrying the edit. This fails on the build before decision 8.
-- **Tab header**: a temporary note whose file is `Named.xml` and whose `Name` is `Release checklist`
+- **Tab header**: a temporary note whose file is `Named.axml` and whose `Name` is `Release checklist`
   shows `Named` in the browser row and `Release checklist` on the tab.
 - No stderr on any run.
 - **Not verified**: the prompt over a torn-off window, more than one unnamed note in a single close,

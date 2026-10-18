@@ -12,7 +12,7 @@ namespace Thorium.Tests
         [A_XSDActionDependency("TabTools.Mount", "Test")]
         private static IEnumerator<int> Mount(TestContext t)
         {
-            string note = TempFile(".xml", "<Document><Block><Run Text=\"tools\"/></Block></Document>\n");
+            string note = TempFile(".axml", "<Document><Block><Run Text=\"tools\"/></Block></Document>\n");
             string sheet = TempFile(SheetDocument.extension, null);
             WorkspaceControl workspace = ShowWorkspace(t);
             TabViewControl view = workspace.LoadPane();
@@ -46,7 +46,7 @@ namespace Thorium.Tests
         [A_XSDActionDependency("TabTools.Bullets", "Test")]
         private static IEnumerator<int> Bullets(TestContext t)
         {
-            string note = TempFile(".xml", "<Document><Block><Run Text=\"one\"/></Block><Block><Run Text=\"two\"/></Block></Document>\n");
+            string note = TempFile(".axml", "<Document><Block><Run Text=\"one\"/></Block><Block><Run Text=\"two\"/></Block></Document>\n");
             DocumentEditorControl editor = new DocumentEditorControl { horizontalAlignment = HorizontalAlignment.Stretch, verticalAlignment = VerticalAlignment.Stretch };
             t.Show(editor);
             editor.LoadPath(note);

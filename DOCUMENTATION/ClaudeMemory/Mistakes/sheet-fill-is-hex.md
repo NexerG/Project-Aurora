@@ -1,6 +1,6 @@
 # Mistake — a sheet `Fill` stores a hex colour, never the menu caption
 
-**What I did wrong (2026-10-06):** hand-writing `Company finances.sheet.xml`, I wrote `<Format Fill="Yellow"/>` and
+**What I did wrong (2026-10-06):** hand-writing `Company finances.sheet.axml`, I wrote `<Format Fill="Yellow"/>` and
 `Fill="Green"` — the captions of the Fill menu. Opening the sheet threw `Hex color must be 6 characters long.` from
 `Control.HexToRGB` when the grid painted the fill.
 
@@ -13,5 +13,5 @@ no control was built, so no fill was ever painted. Values evaluating is not the 
 **Now:** `SheetXml.Fill` drops any `Fill` that is not `#RRGGBB` / `RRGGBB`, so a bad colour reads as no fill instead
 of crashing (`Sheet.Formats` covers it).
 
-**Rule:** writing a `.sheet.xml` by hand, use the hex from `highlightOptions`, and verify by opening it in a
+**Rule:** writing a `.sheet.axml` by hand, use the hex from `highlightOptions`, and verify by opening it in a
 `SheetEditorControl` (the `ShowSheet` test helper) and showing every page — not by reading values.

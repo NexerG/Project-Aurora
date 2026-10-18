@@ -9,7 +9,7 @@ the current description of this area. L1/L2/P3 below are kept as history and are
 no longer describe the code.
 
 ## Confirmed decisions
-- ~~**Note format:** engine **XML** (not markdown, not JSON), via `[A_XSDType]`/`[A_XSDElementProperty]`.~~ — **SUPERSEDED 2026-09-17.** `.xml`, `.md` and `.txt`, each read into the XML tree in memory. See [[note-file-formats]].
+- ~~**Note format:** engine **XML** (not markdown, not JSON), via `[A_XSDType]`/`[A_XSDElementProperty]`.~~ — **SUPERSEDED 2026-09-17.** `.axml`, `.md` and `.txt`, each read into the XML tree in memory. See [[note-file-formats]].
 - **Editing UX:** live-preview WYSIWYG; edits hit a **working copy**; **Ctrl+S** commits + writes XML.
 - **Architecture:** plain-data **document model = source of truth**; control tree is a **view**.
 - **Scope now:** offline desktop only. Online multi-editor / browser are later (model/view split chosen to allow a CRDT layer later).
@@ -60,12 +60,12 @@ for the decision to accept them and the escape hatch if they bite.
 ## Engine vs Thorium boundary
 - **Engine** (`AuroraEngine/Core/UI/`): document model, edit session,
   cursor/selection, caret control, editor view control, char/special-key routing.
-- **Thorium** (app): vault mount, file-tree browse, app-shell `UI.xml`, open/save actions, sample notes.
+- **Thorium** (app): vault mount, file-tree browse, app-shell `UI.axml`, open/save actions, sample notes.
 - ~~**Held as of P5** — `VaultBrowserControl` and `ThoriumSettings` are Thorium's; the engine gained
   nothing for the browser except the `FileObject` recursion fix.~~ — **REVERSED 2026-08-20 (user).**
   The browser's row-building and tree behaviour are engine controls (`FileBrowserControl`,
   `FileTreeControl`); `VaultBrowserControl` is the Thorium leaf supplying the vault root, the
-  `.xml` filter and the tab-opening action, and `ThoriumSettings` is still Thorium's. Taken so the
+  `.axml` filter and the tab-opening action, and `ThoriumSettings` is still Thorium's. Taken so the
   editor's folder-descending browser is a sibling leaf instead of a fork. See [[file-browser-tree]].
 
 ## Phases (see TODO/plan)
@@ -74,13 +74,13 @@ for the decision to accept them and the escape hatch if they bite.
   (a `PanelControl` derivative) → `ContentBlock` (the one concrete block, `[A_XSDType("Block")]`), and
   `TextRun : TextInputControl` (no `Inline` base; run reuses the control's style/text). All four
   `[A_XSDType]` types are category **`"UI"`** (moved off the orphan `"TextEditor"` category), so they
-  generate into `UITypeSchema.xsd` and a note is authored like `UI.xml`. Caveat: no schema actually
+  generate into `UITypeSchema.xsd` and a note is authored like `UI.axml`. Caveat: no schema actually
   compiles yet — see [[xsd-generator-cross-category]] (systemic cross-category ref bug, deferred).
 - **P1 — done.** `DocumentXml` load/save + `RichTextDocument : IXMLParser`. Round-trip verified.
 - **P2 — done (pending GUI verify), INTERIM.** `DocumentEditorControl` (`[A_XSDType("DocumentEditor")]`,
   Scrollable > StackPanel of block controls, reusing `TextBlockControl` + `TextInputControl` as run
-  renderer). Wired into `Thorium` `UI.xml` as `<DocumentEditor Source="SampleNote.xml"/>`; sample
-  note at `Thorium/Data/XML/Documents/SampleNote.xml`. The `ScrollableControl` alias that this used
+  renderer). Wired into `Thorium` `UI.axml` as `<DocumentEditor Source="SampleNote.axml"/>`; sample
+  note at `Thorium/Data/XML/Documents/SampleNote.axml`. The `ScrollableControl` alias that this used
   to need is gone with WinForms — see [[winforms-to-console]].
   The StackPanel-of-everything presentation and `TextInputControl`-as-run-renderer are replaced in L2.
 - **L1 — done (2026-07-31). `TextMeasurer` survives and is now the only wrapper; the
@@ -121,7 +121,7 @@ for the decision to accept them and the escape hatch if they bite.
     end of a **wrapped** line is claimed by the line *below*, so the caret sits before the wrapped
     word instead of off the right edge above. No affinity tracking — not needed until selection
     rendering makes the two visibly distinct.
-  - `DocumentLayout.blockSpacing` (new, default 8, in `XML/Settings/DocumentSettings.xml`) replaced the hardcoded
+  - `DocumentLayout.blockSpacing` (new, default 8, in `XML/Settings/DocumentSettings.axml`) replaced the hardcoded
     `Spacing = 8f` on `DocumentEditorControl`'s StackPanel — cache and view stack blocks by the same
     number, same rationale as `FontSizeFor`. Divergence here compounds with scroll depth.
   - Structural edits (block added/removed) = full `Rebuild`, no splice. Fine at a few hundred blocks.
@@ -238,7 +238,7 @@ for the decision to accept them and the escape hatch if they bite.
     drag / shift+click / shift+arrows. **GUI-verified by the user** except auto-scroll, which has
     nothing to scroll on the sample note. See [[document-selection]].
   - Step 2, editing over a range: `Text.Backspace`, `Text.Delete`, `Text.NewBlock` bound in
-    `InputMap.xml`, and typing over a selection replaces it. One primitive, `DeleteRange(from, to)`
+    `InputMap.axml`, and typing over a selection replaces it. One primitive, `DeleteRange(from, to)`
     — Backspace/Delete with no selection make a one-slot one by extending the caret through the
     existing `MoveLeft`/`MoveRight`, so run/block boundary rules are not written twice. Cross-block
     delete collapses into the head block; Enter splits a block and the new one keeps the styling
@@ -251,7 +251,7 @@ for the decision to accept them and the escape hatch if they bite.
   MVP fixed/star columns, no merges): model + layout + view.
 - **L3 — done (2026-09-27).** Paged/pageless on paper (A4 default, no viewport-wide mode); the
   paginator rewrites each block's own `TextLine.top`s, not a cache. See [[document-pages]].
-- **P5 — done (2026-08-17).** `VaultBrowserControl` in Thorium + a 2-pane `UI.xml`. The vault is a
+- **P5 — done (2026-08-17).** `VaultBrowserControl` in Thorium + a 2-pane `UI.axml`. The vault is a
   `<Vault Path="Notes"/>` setting on a `Thorium` category; notes live in `Thorium/Data/Notes`, not
   in the engine-config `Data/XML/Documents`. Rows are a flat indented list, not a collapsible tree.
   Controls have no names, so the browser finds the editor with a `Find<T>` walk from
@@ -271,7 +271,7 @@ for the decision to accept them and the escape hatch if they bite.
 - **Styling types are data, headings are not a class.** `TextStyleType` = `Inherit, Text,
   Heading1-6, Comment, Code, Quote`; `TextStyle` = (`type`, `fontSize`). A block names a
   `StylingType` and the scheme says what it looks like — see [[text-styling-types]].
-- **Three tiers, via the settings registry.** `Data/XML/Settings/DocumentSettings.xml` is the
+- **Three tiers, via the settings registry.** `Data/XML/Settings/DocumentSettings.axml` is the
   editor-wide scheme, cascading engine → app → the host's write root **per attribute**; a note then
   overrides per-document by embedding its own `<DocumentLayout>`. See [[settings-registry]].
 - **Empty list = inherit.** Declaring even one style replaces the whole set (no entry-by-entry merge
@@ -282,7 +282,7 @@ for the decision to accept them and the escape hatch if they bite.
 - **Live-path risk, not GUI-verified:** the scheme now arrives at the `Settings.LoadAll` bootstrap
   step, not lazily on first note open. Headings at scheme sizes = cascade resolved; headings at 18
   = nothing resolved and `fallbackFontSize` won. The engine mount is `Engine.isDebug`-gated (same as
-  `Bootstrap.xml`), so a release build needs the file in the app's own Data folder.
+  `Bootstrap.axml`), so a release build needs the file in the app's own Data folder.
 
 ## Gotchas
 - The binary `Serializer` is **not** the note format — notes are XML via `DocumentXml`. See

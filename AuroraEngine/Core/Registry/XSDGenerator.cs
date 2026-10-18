@@ -178,7 +178,7 @@ namespace ArctisAurora.Core.Registry
         #region ---- HASHING ----
         private static Dictionary<string, string> _previousHashes = new Dictionary<string, string>();
         private static Dictionary<string, string> _currentHashes = new Dictionary<string, string>();
-        private static string ManifestPath => Path.Combine(Paths.XMLSCHEMAS, "SchemaManifest.xml");
+        private static string ManifestPath => Path.Combine(Paths.XMLSCHEMAS, "SchemaManifest.axml");
 
         private static void LoadHashes()
         {

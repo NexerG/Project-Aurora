@@ -20,7 +20,7 @@ namespace ArctisAurora.Core.Tex
         public readonly int leftMin;
         public readonly int rightMin;
 
-        private static readonly Lazy<TexHyphenator?> english = new Lazy<TexHyphenator?>(() => Load(Paths.Doc("Hyphenation/en-us.hyphenation.xml")));
+        private static readonly Lazy<TexHyphenator?> english = new Lazy<TexHyphenator?>(() => Load(Paths.Doc("Hyphenation/en-us.hyphenation.axml")));
 
         // US English, or null when its pattern file is missing.
         public static TexHyphenator? English => english.Value;

@@ -1,7 +1,7 @@
 # Decision — an idle app waits for OS events instead of running frames
 
 **Date:** 2026-09-27
-**Scope:** `ArctisAurora.Core.Threading` — `FrameScheduler` (`Run`, `RequestFrameAt`, `Resumed`, `WaitForFrame`), `MainSystem` (`Pending`, `IdleWait`), `RenderSystem.Tick`, `IdleSetting`; `ArctisAurora.Core.Animation.AnimationSystem.Advance`; `ArctisAurora.Core.UI` — `CaretControl.OnTick`, `Control.RestartEffect`, `TextRunControl` glyph loop, `Effects.Duration`; `ArctisAurora.EngineWork` — `Engine.Post`, `Engine.HasPosted`, `KeyStateTracker.AnyDown`; `ArctisAurora.Core.Diagnostics.ProfileScenario`; data `Thorium/Data/XML/Settings/Threading.settings.xml`, `Carbon/Data/XML/Settings/Threading.settings.xml`
+**Scope:** `ArctisAurora.Core.Threading` — `FrameScheduler` (`Run`, `RequestFrameAt`, `Resumed`, `WaitForFrame`), `MainSystem` (`Pending`, `IdleWait`), `RenderSystem.Tick`, `IdleSetting`; `ArctisAurora.Core.Animation.AnimationSystem.Advance`; `ArctisAurora.Core.UI` — `CaretControl.OnTick`, `Control.RestartEffect`, `TextRunControl` glyph loop, `Effects.Duration`; `ArctisAurora.EngineWork` — `Engine.Post`, `Engine.HasPosted`, `KeyStateTracker.AnyDown`; `ArctisAurora.Core.Diagnostics.ProfileScenario`; data `Thorium/Data/XML/Settings/Threading.settings.axml`, `Carbon/Data/XML/Settings/Threading.settings.axml`
 
 ## What changed
 - **Setting** `<Threading><Idle Wait="true"/></Threading>`, default `false`. On in Thorium and Carbon. Thorium also sets `<FrameCap MaxFps="120"/>`.

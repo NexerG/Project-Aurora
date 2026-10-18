@@ -1093,7 +1093,7 @@ namespace Thorium.Tests
         private static IEnumerator<int> ViewStateRoundTrip(TestContext t)
         {
             string words = string.Join(" ", Enumerable.Repeat("lorem ipsum dolor sit", 12));
-            string path = Path.Combine(Path.GetTempPath(), $"aurora-view-{Guid.NewGuid():N}.xml");
+            string path = Path.Combine(Path.GetTempPath(), $"aurora-view-{Guid.NewGuid():N}.axml");
             RichTextDocument fixture = Paragraphs(Enumerable.Repeat(words, 60).ToArray());
             DocumentXml.Save(fixture, path);
 
@@ -1187,7 +1187,7 @@ namespace Thorium.Tests
         {
             static string TempNote(string text)
             {
-                string path = Path.Combine(Path.GetTempPath(), $"aurora-scope-{Guid.NewGuid():N}.xml");
+                string path = Path.Combine(Path.GetTempPath(), $"aurora-scope-{Guid.NewGuid():N}.axml");
                 RichTextDocument note = Paragraphs(text);
                 DocumentXml.Save(note, path);
                 return Path.GetFullPath(path);
@@ -1789,7 +1789,7 @@ namespace Thorium.Tests
 
         private static void Load(DocumentEditorControl editor, RichTextDocument fixture)
         {
-            string path = Path.Combine(Path.GetTempPath(), $"aurora-edit-{Guid.NewGuid():N}.xml");
+            string path = Path.Combine(Path.GetTempPath(), $"aurora-edit-{Guid.NewGuid():N}.axml");
             DocumentXml.Save(fixture, path);
             editor.LoadPath(path);
             File.Delete(path);
@@ -2369,7 +2369,7 @@ namespace Thorium.Tests
             };
             t.Show(editor);
 
-            string path = Path.Combine(Path.GetTempPath(), $"aurora-table-{Guid.NewGuid():N}.xml");
+            string path = Path.Combine(Path.GetTempPath(), $"aurora-table-{Guid.NewGuid():N}.axml");
             DocumentXml.Save(fixture, path);
             editor.LoadPath(path);
             File.Delete(path);
@@ -2464,7 +2464,7 @@ namespace Thorium.Tests
             string dir = PictureFolder();
             string picture = PicturePng(Path.Combine(dir, "attachments", "my pic.png"), 30, 20);
 
-            foreach (string extension in new[] { ".xml", ".md" })
+            foreach (string extension in new[] { ".axml", ".md" })
             {
                 RichTextDocument fixture = DocumentXml.Parse(new XElement("Document",
                     new XElement("Block", RunX("a"), PictureRun(picture, ("Width", "120")))));
@@ -2622,7 +2622,7 @@ namespace Thorium.Tests
             span = Paragraphs(editor)[0].spans.First(s => s.IsPicture);
             t.Check(span.wrap == PictureWrap.Inline && span.imageX == 0f, "undo puts it back in line");
 
-            foreach (string extension in new[] { ".xml", ".md" })
+            foreach (string extension in new[] { ".axml", ".md" })
             {
                 RichTextDocument fixture = DocumentXml.Parse(new XElement("Document", new XElement("Block",
                     RunX("a"), PictureRun(picture, ("Width", "100"), ("Wrap", "Square"), ("X", "10"), ("Y", "20")))));
@@ -2630,7 +2630,7 @@ namespace Thorium.Tests
                 fixture.Save(path);
 
                 string written = File.ReadAllText(path);
-                t.Check(extension == ".xml" || written.Contains("data-wrap=\"square\" data-x=\"10\" data-y=\"20\""),
+                t.Check(extension == ".axml" || written.Contains("data-wrap=\"square\" data-x=\"10\" data-y=\"20\""),
                     $"Markdown writes a floating picture as <img>: {written}");
 
                 RichTextDocument back = RichTextDocument.Load(path);
@@ -2786,7 +2786,7 @@ namespace Thorium.Tests
             string dir = PictureFolder();
             string picture = PicturePng(Path.Combine(dir, "pic.png"), 30, 20);
 
-            foreach (string extension in new[] { ".xml", ".md" })
+            foreach (string extension in new[] { ".axml", ".md" })
             {
                 RichTextDocument fixture = DocumentXml.Parse(new XElement("Document",
                     new XElement("Block", RunX("a"), PictureRun(picture, ("Width", "120"), ("Rotation", "30"))),

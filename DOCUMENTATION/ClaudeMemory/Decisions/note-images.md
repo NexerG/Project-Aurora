@@ -9,7 +9,7 @@ handles, wrap modes, moving, rotating); plan in [../Context/note-images-plan.md]
 `Table`), `SamplerAsset.maxLod`; `Core.UI` — `ImageControl`, `StyleSpan`, `TextMeasurer`, `TextRunControl`,
 `BlockControl`, `Run`, `DocumentControl.PasteImage`, `DocumentEditorControl.PasteImage`, `IClipboardTarget`,
 `TextInputActions.Paste`, `DocumentXml`, `RichTextDocument`, `MarkdownFormat`; `Core.Filing.ClipboardImage`;
-`ControlSampler.sampler.xml`
+`ControlSampler.sampler.axml`
 
 ## What changed
 - `CreateTextureBuffer(…, mipmaps)` builds the full mip chain on the CPU: each level `Resize` from the one above,
@@ -82,7 +82,7 @@ handles, wrap modes, moving, rotating); plan in [../Context/note-images-plan.md]
     box inline; resize on a float moves X/Y from the left/top handles (Y ≥ 0).
   - Edit: `DocumentControl.SetPictureWrap` (inline → float takes its inline box as X/Y; → inline clears them;
     refused in table cells), `DocumentEditorControl.SetPictureWrap` under `BeginStep("Wrap picture")`, actions
-    `Picture.WrapInline/Square/TopAndBottom/Behind/InFront`, "Wrap text ▸" in `Note.menu.xml`. `PictureEdit` and
+    `Picture.WrapInline/Square/TopAndBottom/Behind/InFront`, "Wrap text ▸" in `Note.menu.axml`. `PictureEdit` and
     `SetPicture(at, StyleSpan)` / `BlockControl.SetPicture` carry the whole picture span.
   - `IGlyphPressTarget.PicturePressed(run, index, button)`: a non-left press only selects the picture.
   - Markdown: a floating picture writes `<img src width height data-wrap data-x data-y>` (lower-case wrap, rounded px),
@@ -138,7 +138,7 @@ handles, wrap modes, moving, rotating); plan in [../Context/note-images-plan.md]
     top stays at or below the paragraph's top. Move drop and rotate end share `PlaceFloat` (was `EndPictureMove`'s
     body): `AnchorFor(top + lift)`, re-anchor when it rises above. Resize and inline → float clamp Y to it too.
   - Wrap changes keep the turn. `SetPictureCollision` under `BeginStep("Picture collision")`; actions
-    `Picture.CollideBox/CollideShape`, "Collision ▸" in `Note.menu.xml`.
+    `Picture.CollideBox/CollideShape`, "Collision ▸" in `Note.menu.axml`.
   - Tests: `TestContext.Drag(control, from, to, steps, params Keys[] held)` presses at a point and holds keys.
 
 ## Why these choices
@@ -179,7 +179,7 @@ exists, so a table lands as its text.
 one. Avoids resolving the column width at paste time; `.md` writes no `|W` for it.
 
 **Paths are absolute in memory, relative on disk, converted on the XML tree.** One place per direction covers
-`.xml` and `.md` alike; spans never need the note's folder. `DocumentXml.Load`/`Save` do the `.xml` case because
+`.axml` and `.md` alike; spans never need the note's folder. `DocumentXml.Load`/`Save` do the `.axml` case because
 they own that tree.
 
 **Wrap, X and Y are deferred to stage 6** (user, 2026-10-01) — nothing reads them before then.

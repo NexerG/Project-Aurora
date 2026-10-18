@@ -38,7 +38,7 @@ graph TD
   Gen --> Schema["SettingsTypeSchema.xsd"]
   Schema -. validates .-> Files
   Scan --> Groups["one live instance per group"]
-  Files["Data/XML/Settings/*.settings.xml — every mount, lowest first"] --> Groups
+  Files["Data/XML/Settings/*.settings.axml — every mount, lowest first"] --> Groups
   Root["the host's write root — read last"] --> Groups
   Groups --> Read["engine and game code, through Get"]
   Groups --> Save["Save — the diff, back to the write root"]
@@ -140,7 +140,7 @@ Scope does not gate a runtime write either: `App` means the *file* cannot carry 
 
 `Width` and `Height` are that size, 1280x720 unless something says otherwise, and they are what `Windowed` opens at and what it is centred by. The other two modes ignore them and take the monitor's video mode instead. Placement follows `Monitor`: name one and the window is centred on it, name none and the window manager decides, exactly as it did before any of this existed. The values are read once, when the window is created — nothing resizes a live window, because a GLFW window call has to happen on the thread that made the window and an applied setting has no way to get there yet.
 
-`Tray`, a bool `Enabled` that defaults to false, decides whether a host application has a tray icon, a single running copy and close-to-tray at all. It is `App` scope, set by the host's own `Graphics.settings.xml` and not by the user: Thorium ships it on, while Carbon and AuroraEditor take the default and get no tray. It is a setting of its own rather than a member of `Window` because scope belongs to a setting, and `Window` — which holds `OnClose` — has to stay `User` scope so that the close prompt's "Don't ask again" can be saved. `App`-scoped values are ignored in the write root and are not offered in the Settings window. Test runs never create a tray whatever it says. Whether a tray can exist at all is a second question, answered by `Background.canTray`, which is true only on Windows with `Enabled` on. Where `Enabled` is on but the OS cannot have a tray, minimize-to-tray does not hide the window, because nothing could bring it back: the title bar's tray button is greyed out, and so is the Minimize answer in the close prompt, which stays on screen until the user picks another. With `Enabled` off nothing changes — closing the window quits without asking.
+`Tray`, a bool `Enabled` that defaults to false, decides whether a host application has a tray icon, a single running copy and close-to-tray at all. It is `App` scope, set by the host's own `Graphics.settings.axml` and not by the user: Thorium ships it on, while Carbon and AuroraEditor take the default and get no tray. It is a setting of its own rather than a member of `Window` because scope belongs to a setting, and `Window` — which holds `OnClose` — has to stay `User` scope so that the close prompt's "Don't ask again" can be saved. `App`-scoped values are ignored in the write root and are not offered in the Settings window. Test runs never create a tray whatever it says, and neither does a Thorium process started to open one file from the command line (`Background.standalone`), which is therefore never the single running copy. Whether a tray can exist at all is a second question, answered by `Background.canTray`, which is true only on Windows with `Enabled` on. Where `Enabled` is on but the OS cannot have a tray, minimize-to-tray does not hide the window, because nothing could bring it back: the title bar's tray button is greyed out, and so is the Minimize answer in the close prompt, which stays on screen until the user picks another. With `Enabled` off nothing changes — closing the window quits without asking.
 
 How the UI then fills whatever window that produced is a separate question, answered by the `WindowingMode` on the UI tree's root rather than here — the display says how big the window is, the tree says what to do about it.
 
@@ -160,7 +160,7 @@ That is also why these are **global and a keybind cannot override them**: `Repea
 
 1. `Settings.LoadAll` is the **first** step of the `Bootstrap` phase in [[Bootstrapper]], so every later step and everything at runtime can read a group without checking whether it is ready.
 2. The scan constructs one instance per `ISettingsGroup` implementer across all loaded assemblies. Everything below this point is override.
-3. Every mount's `Data/XML/Settings/*.settings.xml` is applied, **lowest-priority mount first** — engine, then application — files within a mount in name order.
+3. Every mount's `Data/XML/Settings/*.settings.axml` is applied, **lowest-priority mount first** — engine, then application — files within a mount in name order.
 4. Every group is snapshotted. This is the baseline a save later diffs against, and taking it here is what makes "only what the user changed" mean the user and not the application.
 5. The host's write root is applied last, and each group's stored element is kept for the save to read back.
 
@@ -174,9 +174,9 @@ A `List<>` member is the exception: the first file in a tier that declares any e
 
 ## Saving
 
-`SaveAll` writes one `UserSettings.settings.xml` into the write root holding every group, each carrying only what differs from the step-4 snapshot, so a user who changed one value pins one value and keeps receiving engine changes to everything else. A group with nothing to say is left out of the file entirely rather than written empty. A changed list is written whole, its entries still skipping their own type defaults. The write root is **not** a mount — mounting it would let a stray file there shadow engine *assets* and not just settings.
+`SaveAll` writes one `UserSettings.settings.axml` into the write root holding every group, each carrying only what differs from the step-4 snapshot, so a user who changed one value pins one value and keeps receiving engine changes to everything else. A group with nothing to say is left out of the file entirely rather than written empty. A changed list is written whole, its entries still skipping their own type defaults. The write root is **not** a mount — mounting it would let a stray file there shadow engine *assets* and not just settings.
 
-Saving is all-or-nothing because the file is: there is no `Save<T>`, since rewriting one group means rewriting the document that holds the others. Reading is not — the write root is still read as *every* `*.settings.xml` in it, so a file left over from an earlier layout is still applied rather than orphaned. Nothing prunes it. A file there that predates the `[name].[type].xml` convention is the exception: it no longer matches the pattern, so it is silently ignored rather than orphaned-but-applied.
+Saving is all-or-nothing because the file is: there is no `Save<T>`, since rewriting one group means rewriting the document that holds the others. Reading is not — the write root is still read as *every* `*.settings.axml` in it, so a file left over from an earlier layout is still applied rather than orphaned. Nothing prunes it. A file there that predates the `[name].[type].axml` convention is the exception: it no longer matches the pattern, so it is silently ignored rather than orphaned-but-applied.
 
 ## Versioning and migration
 
@@ -202,7 +202,7 @@ What is still not covered is a group **renamed or deleted outright**. The regist
 
 ## Data / XML formats
 
-`Data/XML/Settings/*.settings.xml`, any number of files, the name half free, unioned across mounts:
+`Data/XML/Settings/*.settings.axml`, any number of files, the name half free, unioned across mounts:
 
 ```xml
 <UserSettings xmlns="http://arctisaurora/AuroraSettingsTypes"

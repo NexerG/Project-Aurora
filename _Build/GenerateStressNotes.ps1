@@ -32,7 +32,7 @@ $words = @(
 )
 $wordCount = $words.Length
 
-# run styles the note format already proves, from SampleNote.xml
+# run styles the note format already proves, from SampleNote.axml
 $runStyles = @(
     '',
     ' Bold="true"',
@@ -168,7 +168,7 @@ $utf8Bom = New-Object System.Text.UTF8Encoding($true)
 $report = foreach ($rung in $rungs)
 {
     $note = New-Note -Target $rung.Chars -Title $rung.Title -NoteSeed $Seed
-    $path = Join-Path $Out ($rung.File + '.xml')
+    $path = Join-Path $Out ($rung.File + '.axml')
     [System.IO.File]::WriteAllText($path, $note.Xml, $utf8Bom)
 
     [pscustomobject]@{

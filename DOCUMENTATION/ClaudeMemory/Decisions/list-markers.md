@@ -6,7 +6,7 @@
 **Scope:** `ArctisAurora.Core.UI` — `ListMarker`, `ListMarkers`, `BlockControl` (`listMarker`, `shownMarker`,
 `listNumber`, `ShowMarker`, `SyncMarker`), `ListLevel`, `DocumentLayout.listLevels`/`MarkerFor`, `DocumentControl`
 (`RenumberLists`, `ListsChanged`, `SetListMarker`, `TypeMarkdownPrefix`, `SplitBlock`), `DocumentEditorControl.SetListMarker`,
-`TextInputActions` (`List.*`), `DocumentXml`, `MarkdownFormat`; `Thorium/…/Menus/Note.menu.xml`
+`TextInputActions` (`List.*`), `DocumentXml`, `MarkdownFormat`; `Thorium/…/Menus/Note.menu.axml`
 
 ## What changed
 - `ListKind` stays `None | Bullet | Task`. **`Bullet` means "a list item with a marker"**; the marker is
@@ -22,7 +22,7 @@
   the indent at the block's font size; `ListMarkers.Format` writes `1.`, `A.`, `a.`, `i.`, `I.` (letters a..z, aa..;
   roman to 3999)
 - `SetListMarker`: every item at the caret's level in the caret's list (contiguous items at that level or deeper, in
-  one container) takes the marker — one `BlockStateEdit`. Right-click → **List marker ▸** (`Note.menu.xml`, eleven
+  one container) takes the marker — one `BlockStateEdit`. Right-click → **List marker ▸** (`Note.menu.axml`, eleven
   `List.*` actions); the note editors now name `ContextMenu="note"`
 - Typing `1. ` / `1) ` at a plain paragraph's start makes a `Decimal` item; `- ` makes a default-marker item. Enter
   continues an item's marker (`SplitAt` copies `listMarker`)

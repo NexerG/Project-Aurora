@@ -13,7 +13,7 @@ namespace Thorium.Tests
         private static IEnumerator<int> NumbersToggle(TestContext t)
         {
             string folder = TempFolder();
-            DocumentEditorControl editor = ShowNote(t, Path.Combine(folder, "list.xml"));
+            DocumentEditorControl editor = ShowNote(t, Path.Combine(folder, "list.axml"));
             yield return 2;
 
             editor.FocusCaret();
@@ -44,7 +44,7 @@ namespace Thorium.Tests
         private static IEnumerator<int> TasksToggle(TestContext t)
         {
             string folder = TempFolder();
-            DocumentEditorControl editor = ShowNote(t, Path.Combine(folder, "tasks.xml"));
+            DocumentEditorControl editor = ShowNote(t, Path.Combine(folder, "tasks.axml"));
             yield return 2;
 
             editor.FocusCaret();
@@ -74,7 +74,7 @@ namespace Thorium.Tests
             using (Image<Rgba32> image = new Image<Rgba32>(30, 20, new Rgba32(40, 120, 200)))
                 image.SaveAsPng(source);
 
-            DocumentEditorControl editor = ShowNote(t, Path.Combine(folder, "pictures.xml"));
+            DocumentEditorControl editor = ShowNote(t, Path.Combine(folder, "pictures.axml"));
             yield return 2;
             editor.FocusCaret();
             PlaceCaret(editor);

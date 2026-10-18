@@ -106,7 +106,7 @@ namespace Thorium.Tests
 
         private static string TempNote()
         {
-            string path = Path.GetFullPath(Path.Combine(Path.GetTempPath(), $"aurora-sticky-{Guid.NewGuid():N}.xml"));
+            string path = Path.GetFullPath(Path.Combine(Path.GetTempPath(), $"aurora-sticky-{Guid.NewGuid():N}.axml"));
             File.WriteAllText(path, "<Document><Block><Run Text=\"sticky text\"/></Block></Document>\n");
             return path;
         }

@@ -1,11 +1,11 @@
 ---
 name: aurora-perf
-description: Measure, profile and compare Aurora's performance — frame time, stutter, hitches, lag, slow layout or typing, allocation/GC per frame, before/after timings, perf budgets and regressions. Use whenever a change is about being faster or allocating less, when something feels slow, when asked to profile, capture, benchmark or optimize, when reading a *.frames.xml capture or a Carbon comparison, and before stating any millisecond or KB number.
+description: Measure, profile and compare Aurora's performance — frame time, stutter, hitches, lag, slow layout or typing, allocation/GC per frame, before/after timings, perf budgets and regressions. Use whenever a change is about being faster or allocating less, when something feels slow, when asked to profile, capture, benchmark or optimize, when reading a *.frames.axml capture or a Carbon comparison, and before stating any millisecond or KB number.
 ---
 
 # Measuring performance
 
-The profiler is zones that time and increments that count, recorded per thread into `*.frames.xml` captures.
+The profiler is zones that time and increments that count, recorded per thread into `*.frames.axml` captures.
 It is CPU only — GPU time is not captured. Every number you report comes from a capture of an **optimized**
 build, read with `summarize.ps1` beside this file, and goes in a table labelled with its build.
 
@@ -70,11 +70,11 @@ Scenarios point the settings root at a `ProfileScenario` folder, so the user's l
 `--exec` run a normally launched app — that loads and saves the user's vault; copy `%APPDATA%\Arktis\<Host>\Settings`
 aside first. **An idle host draws no frames** (Thorium and Carbon wait on OS events), so a burst over an idle
 window records almost nothing — capture while something is happening, or use a scenario or a test.
-`--dump-tree` on a scenario writes `uitree-<label>.xml` at still points, for comparing two builds' layouts.
+`--dump-tree` on a scenario writes `uitree-<label>.axml` at still points, for comparing two builds' layouts.
 
 ## 3. Where captures land
 
-- `%APPDATA%\Arktis\<Host>\Profiling\<yyyyMMdd-HHmmss>\<Thread>.frames.xml` — one file per thread (Main, Render,
+- `%APPDATA%\Arktis\<Host>\Profiling\<yyyyMMdd-HHmmss>\<Thread>.frames.axml` — one file per thread (Main, Render,
   `Worker N`, Physics, and `Bootstrap` for `--profile`).
 - A measured test: `%APPDATA%\Arktis\<Host>\Tests\<run>\<Action>\`.
 - **Only the newest 5 sessions survive** (`<ProfilingCapture Keep>`): every new session prunes the rest. Copy a
@@ -95,7 +95,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .claude/skills/aurora-perf/s
 - `-Zone` takes several substrings, comma-separated (`-Zone Layout.,Text.`); a zone or counter matching any is kept.
 - `-From`/`-To` take the frame index (`F I`) — cut off warm-up and tiering, or isolate a phase of a scenario.
 - Header flags `dropped` (the spool fell behind, frames missing) and `TRUNCATED`.
-- Never read a `.frames.xml` whole — they are megabytes. Never `grep` them for numbers either; names are ids.
+- Never read a `.frames.axml` whole — they are megabytes. Never `grep` them for numbers either; names are ids.
 
 Reading traps:
 - **A worker's frame time is not work.** It spans the wait between jobs (p95 of 100–350 ms is normal). Read a

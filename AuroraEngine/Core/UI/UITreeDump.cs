@@ -7,14 +7,14 @@ using System.Xml.Linq;
 
 namespace ArctisAurora.Core.UI
 {
-    // Writes every window's control tree, as laid out, to uitree.xml beside the executable.
+    // Writes every window's control tree, as laid out, to uitree.axml beside the executable.
     public static class UITreeDump
     {
-        [A_XSDActionDependency("UI.DumpTree", "Input", "Writes every window's control tree, as laid out, to uitree.xml beside the executable")]
-        public static void Dump() => Write("uitree.xml");
+        [A_XSDActionDependency("UI.DumpTree", "Input", "Writes every window's control tree, as laid out, to uitree.axml beside the executable")]
+        public static void Dump() => Write("uitree.axml");
 
-        // Writes the same tree to uitree-<label>.xml.
-        internal static void Dump(string label) => Write($"uitree-{label}.xml");
+        // Writes the same tree to uitree-<label>.axml.
+        internal static void Dump(string label) => Write($"uitree-{label}.axml");
 
         private static void Write(string fileName)
         {

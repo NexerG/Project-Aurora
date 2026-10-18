@@ -2,19 +2,19 @@
 
 **Date:** 2026-08-21
 **Status:** LANDED. Builds clean, boots, all three action names resolve. **No exit path GUI-verified.**
-**Amended 2026-10-15:** `Notes.SettleUnnamed` (and `FirstUnnamed`, `discarded`, `ForgetDiscarded`; `Shutdown.Request` no longer calls the last) was removed from `Shutdown.shutdown.xml` and `NoteActions`, so the `SettleUnnamed` example in decision 4 and the discarded-set consequence no longer exist in code. `<Phase Name="Request">` stays as an empty element, because a missing phase makes `RunPhase` log an error and return false and the app could never quit. `Shutdown.Resume` has no callers now but stays as the Request-phase re-entry mechanism. See [[note-live-sync]].
-**Amended 2026-10-16:** the `Commit` phase gained `<Step Action="Files.Drain"/>` right after `Notes.SaveEdited` (`FileWriteQueue.DrainAll`, `[A_XSDActionDependency("Files.Drain", "Shutdown")]`). Autosave of an open `.xml` note now runs on a background writer thread, and process exit would kill that thread mid-write, so the sequence waits until nothing is pending. See [[note-live-sync]].
+**Amended 2026-10-15:** `Notes.SettleUnnamed` (and `FirstUnnamed`, `discarded`, `ForgetDiscarded`; `Shutdown.Request` no longer calls the last) was removed from `Shutdown.shutdown.axml` and `NoteActions`, so the `SettleUnnamed` example in decision 4 and the discarded-set consequence no longer exist in code. `<Phase Name="Request">` stays as an empty element, because a missing phase makes `RunPhase` log an error and return false and the app could never quit. `Shutdown.Resume` has no callers now but stays as the Request-phase re-entry mechanism. See [[note-live-sync]].
+**Amended 2026-10-16:** the `Commit` phase gained `<Step Action="Files.Drain"/>` right after `Notes.SaveEdited` (`FileWriteQueue.DrainAll`, `[A_XSDActionDependency("Files.Drain", "Shutdown")]`). Autosave of an open `.axml` note now runs on a background writer thread, and process exit would kill that thread mid-write, so the sequence waits until nothing is pending. See [[note-live-sync]].
 **Scope:** `ArctisAurora.EngineWork` (`Shutdown`, `Bootstrapper`),
 `ArctisAurora.Core.UISystem.Actions` (`NoteActions`, `WindowActions`),
 `ArctisAurora.Core.Registry` (`SettingsRegistry`), `Paths`, `Engine`,
-`AuroraEngine/Data/XML/Documents/Shutdown.xml`, and the 21 bootstrap steps.
+`AuroraEngine/Data/XML/Documents/Shutdown.axml`, and the 21 bootstrap steps.
 
 ## What was already true, and wasn't documented
 
 `CLAUDE.md` described the Bootstrapper as `[A_BootstrapStage]` + reflection with undefined ordering,
 and the XML rework as planned. **It had already shipped.** `Bootstrapper.Load` reflects over
 `[A_XSDActionDependency(name, "Bootstrap")]` statics once and `RunPhase` invokes them in the order
-`Bootstrap.xml` lists. Corrected in `CLAUDE.md` as part of this.
+`Bootstrap.axml` lists. Corrected in `CLAUDE.md` as part of this.
 
 Two other findings: `SettingsRegistry.SaveAll` had **zero callers**, so settings were loaded at boot
 and never written back; and nothing polls `WindowShouldClose` or registers a GLFW close callback, so
@@ -104,7 +104,7 @@ primary, on app windows and on chrome menu windows (the primary's close follows 
 ## Known gaps
 
 - Session restore is not here. A `Commit` step can capture it; the restore side, and who wins between
-  a restored layout and the panes `UI.xml` authors, is a separate slice.
+  a restored layout and the panes `UI.axml` authors, is a separate slice.
 - `Engine.CloseWindow(primary)` is still reachable directly and skips the whole sequence.
   `Shutdown.Request()` is the front door by convention only.
 

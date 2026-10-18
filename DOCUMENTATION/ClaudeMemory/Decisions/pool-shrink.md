@@ -1,7 +1,7 @@
 # Decision — pools double when full and halve after staying a quarter full
 
 **Date:** 2026-09-25
-**Scope:** `ArctisAurora.Core.Data` — `DataPool` (`TryShrink`, `Resize`, `_freeIds`, `_versionFloor`), `PoolColumn`, `PoolCursor`; `ArctisAurora.EngineWork.Rendering.Modules.UIEngineModule` (`MirrorTooBig`); `Pools.pools.xml`
+**Scope:** `ArctisAurora.Core.Data` — `DataPool` (`TryShrink`, `Resize`, `_freeIds`, `_versionFloor`), `PoolColumn`, `PoolCursor`; `ArctisAurora.EngineWork.Rendering.Modules.UIEngineModule` (`MirrorTooBig`); `Pools.pools.axml`
 
 ## What changed
 - **Every pool that was `Additive` is now `Multiplicative` ×2** (`UIQuads`, `Paints`, `Animations`, `Signals`, `Keyframes`, `AnimationValues`). `Gradients`/`Effects` stay additive 32.

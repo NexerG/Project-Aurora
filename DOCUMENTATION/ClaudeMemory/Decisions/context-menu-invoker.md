@@ -26,7 +26,7 @@ because there `hovering` *is* the button.
 `ViewActions.Acting()` had the same defect silently: `Split right`/`Split down` from a menu walked up
 from the menu item, found no `TabViewControl`, and no-opped.
 
-Reachable from the whole app because `UI.xml`'s root `<Window>` names `ContextMenu="window"` and
+Reachable from the whole app because `UI.axml`'s root `<Window>` names `ContextMenu="window"` and
 `VulkanControl.OpenContextMenu` walks up until something offers entries — which the file browser and
 its rows did not.
 
@@ -109,7 +109,7 @@ tree to throw away.
 
 **The `"window"` menu sits on the root `<Window>`, so it is the fallback for the entire app.**
 Right-clicking anything with no menu of its own — a splitter, the outer stack panel — still offers
-Minimize/Maximize/Close. `TabWindow.xml`'s root names no `ContextMenu` at all, so a torn-off window
+Minimize/Maximize/Close. `TabWindow.axml`'s root names no `ContextMenu` at all, so a torn-off window
 offers them nowhere, **including its own title bar**. The fix is moving the attribute onto
 `<TitleBar>` in both files. Deferred at the user's call (2026-08-20): the crash is fixed, the
 placement is a separate decision.

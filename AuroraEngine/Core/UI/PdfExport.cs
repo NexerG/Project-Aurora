@@ -225,7 +225,7 @@ namespace ArctisAurora.Core.UI
                 if (faces.TryGetValue((font, style), out PdfType3Font? known)) return known;
 
                 PdfType3Font? face = null;
-                string stampPath = Paths.Font(font.folder, font.folder + ".import.xml");
+                string stampPath = Paths.Font(font.folder, font.folder + ".import.axml");
                 if (DataFiles.Exists(stampPath))
                 {
                     XElement stamp = DataFiles.LoadXml(stampPath);

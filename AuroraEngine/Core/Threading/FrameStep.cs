@@ -3,7 +3,7 @@ using ArctisAurora.Core.Diagnostics;
 
 namespace ArctisAurora.Core.Threading
 {
-    // One Step of Frame.frame.xml: an action or a pool's edge, where it may run, and the columns it touches.
+    // One Step of Frame.frame.axml: an action or a pool's edge, where it may run, and the columns it touches.
     public sealed class FrameStep
     {
         [ThreadStatic] private static FrameStep? _current;

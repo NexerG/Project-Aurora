@@ -7,9 +7,9 @@ deleted note both handled.
 **Scope:** `ArctisAurora.Core.UISystem` (`SessionLayout`, `SessionScope`, `SessionWindow`, `SessionPane`,
 `SessionTab`, `ISessionChild`), `ArctisAurora.Core.UISystem.Controls.Containers` (`WorkspaceControl`,
 `SplitViewControl.Collapse`, `TabViewControl.TearOff`), `ArctisAurora.EngineWork.Rendering`
-(`RenderWindow.uiDocument`, `AGlfwWindow` placement helpers), `Shutdown.shutdown.xml`, `Thorium`
-(`Thorium.Main`, `VaultBrowserControl.BuildTab`, `UI.ui.xml`, `TabWindow.ui.xml`, `Workspace.ui.xml`,
-`TabPane.ui.xml`, `ThoriumAssets.assets.xml`).
+(`RenderWindow.uiDocument`, `AGlfwWindow` placement helpers), `Shutdown.shutdown.axml`, `Thorium`
+(`Thorium.Main`, `VaultBrowserControl.BuildTab`, `UI.ui.axml`, `TabWindow.ui.axml`, `Workspace.ui.axml`,
+`TabPane.ui.axml`, `ThoriumAssets.assets.axml`).
 
 Closes the `session restore` item. Builds on [[render-window-owns-the-swapchain]] and the tear-off work in
 `../Context/multi-windowing-plan.md`, and stores through [[settings-registry]].
@@ -22,7 +22,7 @@ Closes the `session restore` item. Builds on [[render-window-owns-the-swapchain]
 nothing for this window, and `Pane`, one empty pane a restored arrangement splits to rebuild itself.
 
 **Rejected: session replaces whatever pane subtree it finds** (the first proposal). Restore would have had
-to locate the workspace by "first `TabView` or `SplitView` in DFS", and the authored panes in `UI.ui.xml`
+to locate the workspace by "first `TabView` or `SplitView` in DFS", and the authored panes in `UI.ui.axml`
 would have been silently discarded — editing them would have stopped having any visible effect with no sign
 of why. The declared control says on sight which document is the first-run seed.
 
@@ -57,7 +57,7 @@ generically and dispatch by element name, so the tree persists with no reader or
 **Rejected: a separate `SessionSplit` type.** It needs a polymorphic child slot, which the schema generator
 expresses only through a marker interface anyway — and then two types where one does.
 
-**Rejected: its own `Session.xml`, hand-parsed like `Bootstrap.xml`.** It was the first proposal, on the
+**Rejected: its own `Session.axml`, hand-parsed like `Bootstrap.axml`.** It was the first proposal, on the
 grounds that a session is infrastructure rather than settings. Once the encoding stopped being polymorphic
 the settings path cost nothing: no new file, no new write root, and the XSD comes out of `XSDGenerator` free.
 `KnownVaults` had already set the precedent of app state living in that file.
@@ -154,7 +154,7 @@ old vault's key.
 - Action `Session.Reset` (`WorkspaceActions.ResetUI`): `Engine.Post` → `NoteActions.SettleAll(Reset)` — same order as the vault switch, so unnamed notes are prompted before their tabs go. Thorium app menu entry "Reset UI".
 - Window rect, maximize and zoom are NOT reset.
 - Test-verified: `Workspace.Reset` (pages back to `FirstRun`, nothing open, torn window closed, sticky kept). NOT GUI-verified.
-- The seeded notes (`SampleNote.xml`, `Reference/Keybinds.xml`) were removed with the other test notes; `Workspace.ui.xml` now seeds two empty panes, and `NoteModel.SaveIsStable` reads `Data/Notes` if present instead of anchoring on `SampleNote.xml`.
+- The seeded notes (`SampleNote.axml`, `Reference/Keybinds.axml`) were removed with the other test notes; `Workspace.ui.axml` now seeds two empty panes, and `NoteModel.SaveIsStable` reads `Data/Notes` if present instead of anchoring on `SampleNote.axml`.
 
 ## The `Collapse` ordering defect this exposed
 

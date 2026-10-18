@@ -15,10 +15,10 @@
 
 	<Asset Type="IconSetAsset" Name="default"   Source="Icons/default"/>
 
-	<Asset Type="UIDocumentAsset" Name="settings" Source="XML/Documents/UI/Settings.ui.xml"/>
+	<Asset Type="UIDocumentAsset" Name="settings" Source="XML/Documents/UI/Settings.ui.axml"/>
 
 	<!-- context menus on the new stack, named by a control's ContextMenu attribute -->
-	<Asset Type="ContextMenuAsset" Name="view" Source="XML/Documents/Menus/View.menu.xml"/>
-	<Asset Type="ContextMenuAsset" Name="tab"  Source="XML/Documents/Menus/Tab.menu.xml"/>
+	<Asset Type="ContextMenuAsset" Name="view" Source="XML/Documents/Menus/View.menu.axml"/>
+	<Asset Type="ContextMenuAsset" Name="tab"  Source="XML/Documents/Menus/Tab.menu.axml"/>
 
 </AssetManifest>

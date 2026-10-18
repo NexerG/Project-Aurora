@@ -5,7 +5,7 @@
 **Scope:** `ArctisAurora.EngineWork` (`InputSettings`, `KeyStateTracker`, `RepeatCondition`),
 `ArctisAurora.Core.UISystem.Controls.Text` (`TextInputActions`, `TextControl.Layout`),
 `...Text.Document` (`DocumentControl`, `DocumentEditorControl`, `DocumentEditSession`, `DocumentXml`),
-`Thorium/Editor/Decorations.cs`, `Thorium/Data/XML/Documents/Inputs/InputMap.xml`.
+`Thorium/Editor/Decorations.cs`, `Thorium/Data/XML/Documents/Inputs/InputMap.axml`.
 
 ## The ask
 
@@ -140,7 +140,7 @@ Running `Thorium`, throwaway harness in `Thorium.Main`, since removed:
   unresolved action name, so a clean boot proves all ten `Text.*` actions resolve.
 - `SettingsTypeSchema.xsd` and `InputTypeSchema.xsd` regenerated — `Input` category present,
   `Repeat` no longer carries `Delay`/`Rate`.
-- Save round-trip of `SampleNote.xml` after `ApplyLayout`: **no run gained a `FontSize`** (Heading1
+- Save round-trip of `SampleNote.axml` after `ApplyLayout`: **no run gained a `FontSize`** (Heading1
   would have been 34, Heading2 28, body 18), `ControlColor="gray"` stayed alone with no `ColorHex`
   beside it, `Bold="true"` stayed lowercase, and no `<DocumentLayout />` was appended. The output is
   structurally the hand-authored note it was loaded from.

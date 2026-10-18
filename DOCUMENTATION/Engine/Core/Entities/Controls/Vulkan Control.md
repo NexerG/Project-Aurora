@@ -93,7 +93,7 @@ Setting `width`/`height`/`preferred*`/`margin`/`padding` calls `InvalidateLayout
 ```
 Every setter writes its `controlData` field and calls `UpdateControlData()`.
 
-`Gradient` names a ramp in `Gradients.gradients.xml` and paints it in place of `ColorHex` — see [[Gradients]]. It is a row number in a shared table rather than stops carried here, so a definition used by many controls exists once. The ramp measures across `arrangedRect`, which the setter mirrors into `controlData` so no `Arrange` override has to know gradients exist, and which a text control overwrites on its glyphs so a ramp spans a run instead of restarting per letter.
+`Gradient` names a ramp in `Gradients.gradients.axml` and paints it in place of `ColorHex` — see [[Gradients]]. It is a row number in a shared table rather than stops carried here, so a definition used by many controls exists once. The ramp measures across `arrangedRect`, which the setter mirrors into `controlData` so no `Arrange` override has to know gradients exist, and which a text control overwrites on its glyphs so a ramp spans a run instead of restarting per letter.
 
 There are two separate strokes because there are two distance fields to stroke: `EdgeThickness` is a band of the rounded-box silhouette the corner radius already produces, so it is a border on the control's own rectangle and is measured in design-space pixels, while `OutlineWidth` is a second threshold on the mask's MSDF distance, so it traces the shape inside the quad — the letter, not the letter's box — and is measured in screen pixels because that is the space the MSDF distance is resolved in. A control carrying both gets a box border and an outlined glyph, and the edge is composited last so it wins where they overlap.
 

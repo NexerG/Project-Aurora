@@ -22,9 +22,9 @@ Thorium/bin/Debug/net10.0-windows10.0.22621.0/Thorium.exe --test > <scratchpad>/
 - Any working directory works. `--test=<Suite>` runs one suite. The app exits by itself; the exit code is the number
   of failed entries. Add `--test-approve` to write missing or mismatched goldens (see Golden images).
 - `grep -aE '\[Test\]' run.txt` — one `PASS`/`FAIL`/`SKIP`/`NEW` line per test (`APPROVED <path>` per golden
-  written), then `N passed, M failed, K skipped, J new — <results.xml>`. `SKIP` and `NEW` are not in the exit code.
+  written), then `N passed, M failed, K skipped, J new — <results.axml>`. `SKIP` and `NEW` are not in the exit code.
   Don't read the whole log.
-- `results.xml` lands in `%APPDATA%\<Host>\Tests\<yyyyMMdd-HHmmss>\`: `<Test Suite Name Result Ticks>`, with
+- `results.axml` lands in `%APPDATA%\<Host>\Tests\<yyyyMMdd-HHmmss>\`: `<Test Suite Name Result Ticks>`, with
   `<Failure Message File Line>` and `<Shot Name Result Golden Actual Diff>` children. A shot's PNGs are in
   `<run>\<Action>\`.
 - **Boot** is always first: the host's own UI runs 60 ticks, and Boot fails on any `Error`/`Fatal` logged since
@@ -74,7 +74,7 @@ private static IEnumerator<int> StarChildCrossSize(TestContext t)
 - List it in a suite — one file per suite, the file name is the suite name:
 
 ```xml
-<!-- AuroraEngine/Data/XML/Documents/Tests/Layout.tests.xml -->
+<!-- AuroraEngine/Data/XML/Documents/Tests/Layout.tests.axml -->
 <TestSuite xmlns="http://arctisaurora/AuroraTestTypes">
 	<Test Action="Layout.StarChildCrossSize" Timeout="5000"/>
 </TestSuite>
@@ -115,7 +115,7 @@ launched app, idle/wake behaviour, OS window chrome, the real display scale, sec
 `aurora-verify`'s `capture.ps1`.
 
 Traps:
-- **Build fixtures in code.** A `*.ui.xml` loads by name through the asset registry; there is no fixture loader.
+- **Build fixtures in code.** A `*.ui.axml` loads by name through the asset registry; there is no fixture loader.
 - **Idle behaviour cannot be tested.** Idle waiting is off under `--test`, so wake and idle bugs only show against a
   normally launched app.
 - **A test that hangs inside one tick hangs the process** — the timeout counts ticks, not wall time.

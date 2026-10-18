@@ -11,12 +11,12 @@ Type:
   - Public
 ---
 ## Description
-The control that shows an XML file as coloured, editable XML source, next to the file's normal view. Thorium can open any `.xml` file in the vault this way: a note, a `*.sheet.xml`, a `*.planner.xml` or a `[name].[type].xml` data file. The two views stay in step both ways: an edit in the note, sheet or planner regenerates the XML text, and every keystroke in the XML that leaves it well formed (and that the model's reader accepts) is copied into the model. Half-typed XML leaves the model alone.
+The control that shows an XML file as coloured, editable XML source, next to the file's normal view. Thorium can open any `.axml` file in the vault this way: a note, a `*.sheet.axml`, a `*.planner.axml` or a `[name].[type].axml` data file. The two views stay in step both ways: an edit in the note, sheet or planner regenerates the XML text, and every keystroke in the XML that leaves it well formed (and that the model's reader accepts) is copied into the model. Half-typed XML leaves the model alone.
 
 The source view is the `.tex` source path made generic: a [[Rich Text Document|RichTextDocument]] with `sourceLanguage` set holds one wrapping `Code` block per line with `Language="xml"`, coloured by the `SyntaxTokenizer` XML mode, and saves byte-for-byte keeping its newline and BOM. It is not a tree view.
 
 ## Opening a file as XML
-A workspace of kind `Xml` lists only `.xml` files and always opens them as XML. Elsewhere, right-clicking an `.xml` file in the vault offers "Open as XML". Inside the XML workspace the same menu offers "Open as note", "Open as sheet" and "Open as planner". The + in an XML workspace creates a `.xml` note and opens it as XML. A `[name].[type].xml` data file still opens as a note outside the XML workspace.
+A workspace of kind `Xml` lists only `.axml` files and always opens them as XML. Elsewhere, right-clicking an `.axml` file in the vault offers "Open as XML". Inside the XML workspace the same menu offers "Open as note", "Open as sheet" and "Open as planner". The + in an XML workspace creates a `.axml` note and opens it as XML. A `[name].[type].axml` data file still opens as a note outside the XML workspace.
 
 ## Members
 - `source` — the `DocumentEditorControl` showing the text, over its own unregistered `DocumentEditSession`.

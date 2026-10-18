@@ -17,12 +17,12 @@ namespace Thorium.Tests
             string notes = Path.GetFullPath(Paths.Doc("../../Notes"));
             List<(string name, string extension, string text)> sources = !Directory.Exists(notes) ? new() : Directory
                 .EnumerateFiles(notes, "*", SearchOption.AllDirectories)
-                .Where(path => RichTextDocument.extensions.Contains(Path.GetExtension(path).ToLowerInvariant())
+                .Where(path => RichTextDocument.Opens(path)
                     && !SheetDocument.IsSheet(path) && !PlannerDocument.IsPlanner(path))
                 .Select(path => (Path.GetRelativePath(notes, path), Path.GetExtension(path).ToLowerInvariant(), File.ReadAllText(path)))
                 .ToList();
 
-            sources.Add(("everything.xml", ".xml", Everything.ToString()));
+            sources.Add(("everything.axml", ".axml", Everything.ToString()));
             sources.Add(("plain.txt", ".txt", "first line\n\nthird line"));
             sources.Add(("source.tex", ".tex", "\\documentclass{article}\n\\begin{document}\nx\n\\end{document}\n"));
 
@@ -285,14 +285,14 @@ namespace Thorium.Tests
         [A_XSDActionDependency("NoteModel.SegmentMap", "Test")]
         private static IEnumerator<int> SegmentMap(TestContext t)
         {
-            string path = Path.Combine(Path.GetTempPath(), "aurora-segments.xml");
+            string path = Path.Combine(Path.GetTempPath(), "aurora-segments.axml");
             string notes = Path.GetFullPath(Paths.Doc("../../Notes"));
             List<(string name, RichTextDocument document)> sources = !Directory.Exists(notes) ? new() : Directory
-                .EnumerateFiles(notes, "*.xml", SearchOption.AllDirectories)
+                .EnumerateFiles(notes, "*.axml", SearchOption.AllDirectories)
                 .Where(file => !SheetDocument.IsSheet(file) && !PlannerDocument.IsPlanner(file))
                 .Select(file => (Path.GetRelativePath(notes, file), DocumentXml.Load(file)))
                 .ToList();
-            sources.Add(("everything.xml", DocumentXml.Parse(Everything)));
+            sources.Add(("everything.axml", DocumentXml.Parse(Everything)));
 
             foreach ((string name, RichTextDocument document) in sources)
             {
@@ -379,7 +379,7 @@ namespace Thorium.Tests
         // A note of plain paragraphs written to a temp file.
         private static string Fixture(params string[] texts)
         {
-            string path = Path.Combine(Path.GetTempPath(), $"aurora-views-{Guid.NewGuid():N}.xml");
+            string path = Path.Combine(Path.GetTempPath(), $"aurora-views-{Guid.NewGuid():N}.axml");
             DocumentXml.Save(DocumentXml.Parse(new XElement("Document", texts.Select(text => Block(text)))), path);
             return path;
         }
@@ -430,7 +430,7 @@ namespace Thorium.Tests
                 new XElement("Run", new XAttribute("Text", " math ")),
                 new XElement("Run", new XAttribute("Math", "x^2")),
                 new XElement("Run", new XAttribute("Math", "y"), new XAttribute("Display", "true")),
-                new XElement("Run", new XAttribute("Sheet", "Budget.sheet.xml#Sheet1!A1")),
+                new XElement("Run", new XAttribute("Sheet", "Budget.sheet.axml#Sheet1!A1")),
                 new XElement("Run", new XAttribute("Space", "12")),
                 new XElement("Run", new XAttribute("Text", "fn"), new XAttribute("Note", "n1"))),
             new XElement("Table",

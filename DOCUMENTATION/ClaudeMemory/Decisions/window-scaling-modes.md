@@ -8,7 +8,7 @@ below describe the original spelling.
 **Scope:** `ArctisAurora.Core.UISystem.Controls` (`WindowControl`), `ArctisAurora.EngineWork.Rendering`
 (`AuroraCamera.UpdateCameraMatrix`, `AGlfwWindow.WindwoResizeCallback`), `ArctisAurora.Core.Registry`
 (`EntityRegistry.uiTree`), `Engine.HandleUI`, `DocumentEditorControl.ResolveOnClick`,
-`Thorium`/`AuroraEditor` `UI.xml`.
+`Thorium`/`AuroraEditor` `UI.axml`.
 
 ## The bug
 
@@ -29,7 +29,7 @@ causes, all of them "nothing tells the UI the window changed":
 `WindowControl.windowingMode` — `KeepLocal` / `ScaleUp` / `WindowSize`, default **`WindowSize`**.
 It belongs on the control because it is a property of the UI tree, not of the display: a game HUD
 and a note editor want different answers on the same monitor. `fillWindow` is deleted — it was the
-same question as a bool, and both `UI.xml` files now say `WindowingMode` instead of `Fill`.
+same question as a bool, and both `UI.axml` files now say `WindowingMode` instead of `Fill`.
 
 ### 2. One formula: the mode picks the box, and everything follows from it
 
@@ -91,7 +91,7 @@ so nothing changes unless the content actually scales. See [[thorium-editor-arch
 
 ## Verified
 
-Screenshots at 1920x1080 borderless, `Thorium` with `SampleNote.xml`:
+Screenshots at 1920x1080 borderless, `Thorium` with `SampleNote.axml`:
 
 - `WindowSize` — the long paragraph occupies one full-width line instead of wrapping at 1280.
 - `KeepLocal` — identical to the pre-change build, wrapping at 1280.

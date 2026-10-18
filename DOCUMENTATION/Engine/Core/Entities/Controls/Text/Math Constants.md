@@ -25,7 +25,7 @@ VerifiedAgainst: 2026-10-01
 ---
 ## Description
 
-The layout constants of an OpenType math font, read once at import from the font's `MATH` table and kept beside the baked atlas as `{font}.math.xml`. Math layout reads them instead of the font: every length is stored as a fraction of the em, so a formula scales with its run's font size, and the three percentages (script scale-downs and the radical degree's raise) are kept as the font states them.
+The layout constants of an OpenType math font, read once at import from the font's `MATH` table and kept beside the baked atlas as `{font}.math.axml`. Math layout reads them instead of the font: every length is stored as a fraction of the em, so a formula scales with its run's font size, and the three percentages (script scale-downs and the radical degree's raise) are kept as the font states them.
 
 > Only the first step of math in notes exists. The font is baked (Cambria Math, face 1 of `cambria.ttc`, with Cambria Italic for variables); the parser, layout and drawing are planned in `ClaudeMemory/Context/math-plan.md`.
 
@@ -35,7 +35,7 @@ The layout constants of an OpenType math font, read once at import from the font
 | --- | --- | --- |
 | `Read(string fontPath, int face)` | static | Read a face's MathConstants subtable; null when the face has no `MATH` table. |
 | `Save(string path)` | public | Write every constant as an attribute of one `<MathConstants>` element. |
-| `Load(string path)` | static | Read a `.math.xml` back. |
+| `Load(string path)` | static | Read a `.math.axml` back. |
 
 ## Fields & Properties
 

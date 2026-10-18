@@ -10,6 +10,27 @@ namespace Thorium.Tests
 {
     internal static class WorkspaceTests
     {
+        [A_XSDActionDependency("Workspace.StandaloneFile", "Test")]
+        private static IEnumerator<int> StandaloneFile(TestContext t)
+        {
+            string note = TempNote("alone");
+            string document = Engine.primary.uiDocument;
+            bool paused = SessionLayout.paused;
+            global::Thorium.Thorium.OpenStandalone(note);
+            yield return 2;
+
+            TabViewControl? tabs = Engine.primary.ui.uiRoot.FindByName("Tabs") as TabViewControl;
+            t.Check(Engine.primary.uiDocument == "tab-window" && SessionLayout.paused, "the primary window is a bare tab window and the layout is not recorded");
+            t.Check(tabs != null && tabs.Items.Count() == 1 && TabViewControl.FileEditorOf(tabs.Items.First())?.path == note,
+                $"its one tab holds the file: {(tabs == null ? "no tabs" : string.Join(",", tabs.Items.Select(item => TabViewControl.FileEditorOf(item)?.path)))}");
+
+            t.Show(new StackPanelControl());
+            Engine.primary.uiDocument = document;
+            SessionLayout.paused = paused;
+            yield return 1;
+            File.Delete(note);
+        }
+
         [A_XSDActionDependency("Workspace.Switch", "Test")]
         private static IEnumerator<int> Switch(TestContext t)
         {
@@ -347,7 +368,7 @@ namespace Thorium.Tests
 
         private static string TempNote(string text)
         {
-            string path = Path.GetFullPath(Path.Combine(Path.GetTempPath(), $"aurora-ws-{Guid.NewGuid():N}.xml"));
+            string path = Path.GetFullPath(Path.Combine(Path.GetTempPath(), $"aurora-ws-{Guid.NewGuid():N}.axml"));
             File.WriteAllText(path, $"<Document><Block><Run Text=\"{text}\"/></Block></Document>\n");
             return path;
         }

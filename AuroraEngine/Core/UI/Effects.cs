@@ -86,7 +86,7 @@ namespace ArctisAurora.Core.UI
         public Vector4 bezier;
     }
 
-    // Named effects authored in Effects/*.effects.xml, a table the vertex shader evaluates against engine time.
+    // Named effects authored in Effects/*.effects.axml, a table the vertex shader evaluates against engine time.
     public static class Effects
     {
         private static readonly Diagnostics.LogChannel Log = Diagnostics.LogChannel.For("UI");
@@ -101,7 +101,7 @@ namespace ArctisAurora.Core.UI
         {
             if (string.IsNullOrEmpty(name)) return 0;
             if (indices.TryGetValue(name, out uint index)) return index;
-            throw new Exception($"Effect '{name}' is not defined in any Effects/*.effects.xml.");
+            throw new Exception($"Effect '{name}' is not defined in any Effects/*.effects.axml.");
         }
 
         // Seconds between consecutive glyphs of a run under this effect.
@@ -119,7 +119,7 @@ namespace ArctisAurora.Core.UI
             Pool.GetSpan<GpuEffect>()[reserved] = default;
             indices.Clear();
 
-            foreach (string path in VirtualFileSystem.EnumerateAll("XML/Documents/Effects", "*.effects.xml"))
+            foreach (string path in VirtualFileSystem.EnumerateAll("XML/Documents/Effects", "*.effects.axml"))
             {
                 foreach (XElement element in DataFiles.LoadXml(path).Elements())
                 {

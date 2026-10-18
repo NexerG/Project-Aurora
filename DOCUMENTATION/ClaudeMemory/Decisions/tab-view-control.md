@@ -4,7 +4,7 @@
 **Status:** LANDED. Builds clean; boots and parses. **NOT GUI-verified.**
 **Scope:** `ArctisAurora.Core.UISystem.Controls` (`VulkanControl`),
 `ArctisAurora.Core.UISystem.Controls.Containers` (`TabViewControl`, `TabItemControl`),
-`Thorium` (`VaultBrowserControl`, `UI.xml`).
+`Thorium` (`VaultBrowserControl`, `UI.axml`).
 
 The tab well [[entity-reparenting-and-names]] was groundwork for, and the thing multi-windowing is
 sequenced behind — tearing a tab off into its own OS window needs a tab to tear off first.
@@ -116,7 +116,7 @@ so Ctrl+S, typing and every caret action already target whichever editor was las
 ## Verified
 
 - Builds clean, 0 errors.
-- Boots: `UI.xml` parses with `<TabView>`, `XSDGenerator` emits `TabView`/`TabItem` into
+- Boots: `UI.axml` parses with `<TabView>`, `XSDGenerator` emits `TabView`/`TabItem` into
   `UITypeSchema.xsd`, `OpenFirstNote` builds the first tab from `Main`, all three threads start, no
   exception.
 - **NOT GUI-verified** — nothing has been eyeballed or clicked. See [[verify-what-the-user-sees]].
@@ -214,7 +214,7 @@ throw in `AddChild` alone. Tried and reverted, 2026-08-19.
 GUI-verified.**
 **Scope:** `ArctisAurora.Core.UISystem.Actions` (`TabActions`, `ViewActions`),
 `ArctisAurora.Core.UISystem.Controls.Containers` (`TabViewControl`, `SplitViewControl`),
-`AuroraEngine/Data/XML/Documents/ContextMenus.xml`.
+`AuroraEngine/Data/XML/Documents/ContextMenus.axml`.
 
 ## The defect
 
@@ -222,7 +222,7 @@ Right-clicking a tab and choosing `Split right`/`Split down` moved **the view's 
 one under the pointer** (user, 2026-08-21).
 
 `TabStripButtonControl` offered no menu entries, so `VulkanControl.OpenContextMenu` walked past it —
-button → strip → `TabViewControl`, which is what names `ContextMenu="view"` in `UI.xml`. The menu's
+button → strip → `TabViewControl`, which is what names `ContextMenu="view"` in `UI.axml`. The menu's
 owner, and therefore `ContextMenus.invoker`, was the *view*. `ViewActions.Split` had nothing to act on
 but `source.activeItem`, so right-clicking tab C while A was showing split A off and left C where it
 was.
@@ -259,7 +259,7 @@ are cheaper than touching it.
 
 ### 3. Entries are XML with `EnabledWhen`, not code
 
-All six live in `ContextMenus.xml` bound to `[A_XSDActionDependency]` statics taking a
+All six live in `ContextMenus.axml` bound to `[A_XSDActionDependency]` statics taking a
 `VulkanControl` — the form `ContextMenus.BindAction` already resolves to `Action<VulkanControl>`.
 `Close others`, `Close to the right`, both splits and `Move to new window` grey out through
 `Tab.HasSiblings` / `Tab.HasRight` / `Tab.CanTearOff` rather than being conditionally added, so
@@ -282,7 +282,7 @@ single menu cannot group itself. Not worth widening the API for.
 # Amendment — focused pane, idle accent bar, tabs shrink to fit (2026-10-08)
 
 **Status:** LANDED (workspace plan W1). Builds clean. Test-verified and golden-verified: full Thorium suite 257 passed / 3 failed / 40 skipped, identical to the baseline (Boot, Sheet.FixedSize, Perf.TypeLargeNote all failed before W1). 26 goldens rebaselined with user approval; `Sheet.FixedSize.Page.png` deliberately left unapproved because it failed before W1. Shot-verified: a throwaway test's window readback showed the focused pane's bar #2F6FB3 and the idle pane's #D8D6D0 (canvas mock #CFCCC4). **NOT GUI-verified** (not driven in a normally launched app). Not perf-measured.
-**Scope:** `ArctisAurora.Core.UI` (`TabViewControl`, `SplitViewControl`, `AccentRole`, `PaletteDefinition`, `Palettes`, `Control`, `SheetControl`), `AuroraEngine/Data/XML/Settings/DocumentSettings.settings.xml`, Thorium `UI.ui.xml`, `Workspace.ui.xml`, `TabPane.ui.xml`, `TabWindow.ui.xml`.
+**Scope:** `ArctisAurora.Core.UI` (`TabViewControl`, `SplitViewControl`, `AccentRole`, `PaletteDefinition`, `Palettes`, `Control`, `SheetControl`), `AuroraEngine/Data/XML/Settings/DocumentSettings.settings.axml`, Thorium `UI.ui.axml`, `Workspace.ui.axml`, `TabPane.ui.axml`, `TabWindow.ui.axml`.
 
 ## What changed
 - `TabViewControl`: NEW field `minTabWidth` (XML `MinTabWidth`, default 64). NEW private `FitTabs(float width)`, called in `MeasureCore` before `strip.Measure`: each strip button's `preferredWidth` = floor(clamp(width / count, min(minTabWidth, tabWidth), tabWidth)).
@@ -293,7 +293,7 @@ single menu cannot group itself. Not worth widening the API for.
 - `Control.ApplyShape`: `TabIdle` gets the same top bar thickness as `Tab` (`tabAccentWidth`); for `Tab`/`TabIdle` on an unauthored edge it sets `visual.edgePaint` (TabIdle → `Palettes.IdleAccent`, Tab → role-derived edge paint). NEW private `EdgePaint(PaletteDefinition)` extracted from `InheritPaint`, which now calls it.
 - `SplitViewControl`: `gripThickness` 5 → 3; `NewPane` copies `minTabWidth`.
 - `SheetControl`: `headerHeight` 24 → 20, `fontSize` 14 → 12.
-- Compact chrome data: `DocumentSettings.settings.xml` `TextStyle Type="Text"` FontSize 18 → 16 (note body text, engine default for all hosts). `UI.ui.xml`: title bar 32 → 26, menu buttons height 26, menu captions 13 → 12, caption buttons 46×32 → 40×26, minimize/close icons 14 → 12, maximize icon 18 → 14, sidebar 220 → 200, splitter 5 → 3. `Workspace.ui.xml`: TabHeight 28 → 24, TabWidth 180 → 140, splitter 5 → 3. `TabPane.ui.xml`: TabHeight 24, TabWidth 140. `TabWindow.ui.xml`: title bar 26, caption buttons 40×26, title label 14 → 12.
+- Compact chrome data: `DocumentSettings.settings.axml` `TextStyle Type="Text"` FontSize 18 → 16 (note body text, engine default for all hosts). `UI.ui.axml`: title bar 32 → 26, menu buttons height 26, menu captions 13 → 12, caption buttons 46×32 → 40×26, minimize/close icons 14 → 12, maximize icon 18 → 14, sidebar 220 → 200, splitter 5 → 3. `Workspace.ui.axml`: TabHeight 28 → 24, TabWidth 180 → 140, splitter 5 → 3. `TabPane.ui.axml`: TabHeight 24, TabWidth 140. `TabWindow.ui.axml`: title bar 26, caption buttons 40×26, title label 14 → 12.
 - Test: `Tex.Footnotes` fixture's DocumentLayout now pins `TextStyle Type="Text" FontSize="18"` because its line counts are tuned to 18 px.
 
 ## Why these choices

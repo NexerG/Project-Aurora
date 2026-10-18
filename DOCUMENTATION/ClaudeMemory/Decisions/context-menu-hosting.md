@@ -14,7 +14,7 @@ window the right click came from, and `WindowedContextMenuControl : ContextMenuC
 column in an OS window of its own. `ContextMenuWindow.cs` is deleted.
 
 Nothing about *composition* changed — `ContextMenus.Compose`, `ContextMenuBuilder`, `invoker`,
-`ContextMenus.xml` and `ContextMenuItemControl` are untouched. They never knew where the menu lived.
+`ContextMenus.axml` and `ContextMenuItemControl` are untouched. They never knew where the menu lived.
 
 ## Decisions
 
@@ -92,7 +92,7 @@ construction. `SolveLMBPress`/`SolveRMBPress` gained the `root` parameter `Solve
 `ContextMenus.menuFactory = () => new WindowedContextMenuControl();`. Menus that spill past the
 window edge are the point of it for a desktop note app.
 
-**Rejected: a bootstrap step or an XML attribute.** `Bootstrap.xml` is shared by every host, so a
+**Rejected: a bootstrap step or an XML attribute.** `Bootstrap.axml` is shared by every host, so a
 Thorium-only step would be a name that resolves to nothing in the editor; and an authored attribute
 buys per-menu choice nobody asked for, at the cost of a schema regen.
 

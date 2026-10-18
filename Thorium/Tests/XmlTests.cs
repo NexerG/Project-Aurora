@@ -10,7 +10,7 @@ namespace Thorium.Tests
         [A_XSDActionDependency("Xml.NoteSync", "Test")]
         private static IEnumerator<int> NoteSync(TestContext t)
         {
-            string path = Temp(".xml", "<Document><Block><Run Text=\"shared\"/></Block></Document>\n");
+            string path = Temp(".axml", "<Document><Block><Run Text=\"shared\"/></Block></Document>\n");
             DocumentEditorControl note = new DocumentEditorControl { widthStar = 1f };
             note.LoadPath(path);
             XmlEditorControl xml = new XmlEditorControl { widthStar = 1f };
@@ -43,7 +43,7 @@ namespace Thorium.Tests
         [A_XSDActionDependency("Xml.Invalid", "Test")]
         private static IEnumerator<int> Invalid(TestContext t)
         {
-            string path = Temp(".xml", "<Document><Block><Run Text=\"kept\"/></Block></Document>\n");
+            string path = Temp(".axml", "<Document><Block><Run Text=\"kept\"/></Block></Document>\n");
             DocumentEditorControl note = new DocumentEditorControl { widthStar = 1f };
             note.LoadPath(path);
             XmlEditorControl xml = new XmlEditorControl { widthStar = 1f };
@@ -121,7 +121,7 @@ namespace Thorium.Tests
         [A_XSDActionDependency("Xml.Restore", "Test")]
         private static IEnumerator<int> Restore(TestContext t)
         {
-            string path = Temp(".xml", "<Document><Block><Run Text=\"tab\"/></Block></Document>\n");
+            string path = Temp(".axml", "<Document><Block><Run Text=\"tab\"/></Block></Document>\n");
             string before = SessionLayout.scope;
 
             WorkspaceControl workspace = new WorkspaceControl

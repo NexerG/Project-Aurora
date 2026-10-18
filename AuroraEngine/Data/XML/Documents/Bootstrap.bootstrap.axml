@@ -4,6 +4,7 @@
 
 	<Phase Name="Bootstrap">
 		<!--pre-renderer-->
+		<Step Action="FileTypes.Load"/>
 		<Step Action="Settings.LoadAll"/>
 		<Step Action="Logging.Configure"/>
 		<Step Action="Glfw.Init"/>

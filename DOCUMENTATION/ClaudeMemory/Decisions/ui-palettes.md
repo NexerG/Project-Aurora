@@ -1,7 +1,7 @@
 # Decision — a control's colour comes from a palette role, carried as a paint word
 
 **Date:** 2026-09-17
-**Scope:** `ArctisAurora.Core.UI` — `Palettes`, `PaletteDefinition`, `PaletteRole`, `PaletteSetting`, `UISettings`, `Control` (paint region, `InheritPaint`), `UIEngine.Collect`, `ButtonControl`, `TextRunControl`, `VulkanControl`, the composite controls under § Thorium on the palette; `ArctisAurora.EngineWork.Rendering.Modules.UIEngineModule`; `Shaders/UIEngine/UIEngine.vert`; data `*/Data/XML/Documents/Palettes/*.palette.xml`, `Thorium/Data/XML/Settings/UI.settings.xml`
+**Scope:** `ArctisAurora.Core.UI` — `Palettes`, `PaletteDefinition`, `PaletteRole`, `PaletteSetting`, `UISettings`, `Control` (paint region, `InheritPaint`), `UIEngine.Collect`, `ButtonControl`, `TextRunControl`, `VulkanControl`, the composite controls under § Thorium on the palette; `ArctisAurora.EngineWork.Rendering.Modules.UIEngineModule`; `Shaders/UIEngine/UIEngine.vert`; data `*/Data/XML/Documents/Palettes/*.palette.axml`, `Thorium/Data/XML/Settings/UI.settings.axml`
 
 Slice 1 of 3, then slices 2 and 3 for everything Thorium shows (same day). What is left of them is under Known gaps.
 
@@ -14,11 +14,11 @@ Slice 1 of 3, then slices 2 and 3 for everything Thorium shows (same day). What 
   - since 2026-09-18 a third form, `01` = gradient (`Palettes.gradientBit`), put on the row at emit only — see [[ui-gradients]] §9
   - since 2026-10-01 `0xC0000000` exactly = `Palettes.clear`: no fill, the edge band alone (`UIEngine.frag` `isClear`); the vertex side reads it as inline black — see [[note-images]] stage 7
 - **Paint table on the GPU.** Set 1 binding 4 `PaintBuffer`, vertex stage. `UIEngineModule.MirrorPaints` keeps one host-visible mapped buffer per swapchain image and rewrites it when `Palettes.Table` is a different array (reference identity is the version). The table is replaced whole on load, never written in place.
-- **Palettes.** One `<Palette>` per `XML/Documents/Palettes/*.palette.xml`, unioned across mounts (`VirtualFileSystem.EnumerateAll`); a same-named file in an app replaces the engine's. Bootstrap step `Palettes.LoadPalettes`, after `Gradients.LoadGradients`.
+- **Palettes.** One `<Palette>` per `XML/Documents/Palettes/*.palette.axml`, unioned across mounts (`VirtualFileSystem.EnumerateAll`); a same-named file in an app replaces the engine's. Bootstrap step `Palettes.LoadPalettes`, after `Gradients.LoadGradients`.
   - authored: `Ground Surface Chrome Field SubField Line Accent Danger` (surfaces), `DarkInk LightInk`, `Step`, `Muted`, `EdgeAccent` — all required except `Step`/`Muted`/`EdgeAccent`
   - baked per palette, a 44-slot block: 8 surfaces × rest/hover/press, ink + muted ink per surface, the two raw inks, the edge accent (`EdgeAccent`, else `Accent`), the ground's ink stepped once (gradient `Ink` stops, [[ui-gradients]] §8); since then the four code colours and, last, the idle tab accent (`IdleAccent`, else `Line` stepped twice toward its ink — [[tab-view-control]], 2026-10-08)
 - **Edges belong to the palette** (variant A, user 2026-09-17). Every unauthored edge paints `Palettes.EdgeAccent`; no per-control edge role. Optional so existing palette files load unchanged. See [[control-edge-and-outline]] §7.
-- **The app's palette is a setting.** `UISettings.palette` (`PaletteSetting`, `<UI><Palette Name="…"/>`, default `default`) names `Palettes.Default`. `Settings.LoadAll` is step 1 of bootstrap, so `LoadPalettes` just reads it; boot halts when no loaded palette has that name. Thorium's `UI.settings.xml` names `thorium-light`.
+- **The app's palette is a setting.** `UISettings.palette` (`PaletteSetting`, `<UI><Palette Name="…"/>`, default `default`) names `Palettes.Default`. `Settings.LoadAll` is step 1 of bootstrap, so `LoadPalettes` just reads it; boot halts when no loaded palette has that name. Thorium's `UI.settings.axml` names `thorium-light`.
 - **Derivation.** Text colour = whichever of `DarkInk`/`LightInk` has the higher WCAG contrast against the ground. Muted = ink blended toward the ground by `Muted`. Hover/press = colour blended toward its ink by `Step` × 1 / × 2.
 - **Slot rule.** A derived colour is a slot only when every input is a slot of that palette. Ink on another palette's surface or on an inline ground picks the raw ink slot; muted ink or a stepped inline colour is computed on the CPU and written inline.
 - **Roles.** `Control.role` (`Role=`): `None` (no palette), `Clear` (paints nothing, ground passes through), the 8 surfaces, `Ink`, `MutedInk`. Defaults: `PanelControl`, `ContainerControl`, `ButtonControl` → `Clear`; `TextRunControl` → `Ink`; `IconControl` → `MutedInk`; `WindowFrameControl` → `Ground`; `TitleBarControl` → `Chrome`; `SplitterControl` → `Line`; `CaretControl` → `Ink`; `HintControl` → `Accent`; `ContextMenuControl` → `Ground`; everything else `None`.
@@ -38,7 +38,7 @@ Slice 1 of 3, then slices 2 and 3 for everything Thorium shows (same day). What 
 - **`TextBoxControl.PaintText` / `EditableLabelControl.PaintText(string? hex, PaletteRole role)`** — text colour passes through both halves; folder rows need `MutedInk`, not the text default.
 - **Built in code, no attribute:** `ContextMenuControl` (+ `ApplyRole` override writing `edgePaint` from `Line`), `ConfirmWindow`, `NoteNameWindow`, `SettingsWindow` rows, `CheckBoxControl` mark, `DropdownControl`/`KeyCaptureControl` captions; Thorium `VaultsWindow` rows, `VaultBrowserControl.BuildTab`.
 - **Document ink.** `BlockControl` authors no colour, so blocks paint `Ink`. A run saved as exactly `#2C2B26` (the old block ink, `legacyInkHex`) loads uncoloured and drops the attribute on its next save. The toolbar's "Default" swatch applies `StyleDelta(colorHex: "")`: an empty colour clears the span's. `CaretStyle.colorHex` is null for a palette-inked span; the toolbar readout paints it `Ink`, or `MutedInk` with no editor.
-- **Thorium's six `*.ui.xml` carry no colour** except the title-bar close buttons' red `HoverColorHex`/`PressColorHex`. `Vaults.ui.xml` no longer names a palette.
+- **Thorium's six `*.ui.axml` carry no colour** except the title-bar close buttons' red `HoverColorHex`/`PressColorHex`. `Vaults.ui.axml` no longer names a palette.
 
 | Part | Role |
 |---|---|
@@ -84,7 +84,7 @@ Slice 1 of 3, then slices 2 and 3 for everything Thorium shows (same day). What 
 
 Slice 2 of [../Context/animation-plan.md](../Context/animation-plan.md).
 
-- **Two handle-less pools in `Pools.pools.xml`:** `Paints` (`GpuPaint { Vector4 color }`, 1024 +512) and `Gradients` (`GpuGradient`, 32 +32), both `System="Main"` until the animation system takes them. Row index = slot / gradient id; `Append` only, never freed, so rows never move.
+- **Two handle-less pools in `Pools.pools.axml`:** `Paints` (`GpuPaint { Vector4 color }`, 1024 +512) and `Gradients` (`GpuGradient`, 32 +32), both `System="Main"` until the animation system takes them. Row index = slot / gradient id; `Append` only, never freed, so rows never move.
 - **`Palettes.Table` → `Palettes.Paints`**, `Gradients.Table`/`Count` → `Gradients.Pool`. `LoadPalettes`/`LoadGradients` `Rewind` and `Append`; `Palettes.Put` appends one slot and `Bake` fills through it. `ColorOf`/`PicksDark` read `GetSpan`, owner-asserted to Main.
 - **A runtime write is a column write plus `MarkRangeDirty`.** It reaches the GPU after the next `FrameEdge` publishes the generation.
 - **`UIEngineModule.TableMirror<T>`** — per image: mapped buffer, capacity, `since` generation. `Sync` recreates the buffer when the pool's backing length changes (returns true, the module rebuilds that image's descriptors) and otherwise writes the range `TryGetDirtyRange(since)` reports. One instance each for paints and gradients; replaces `MirrorPaints`, the reference-identity version, and the static `DEVICE_LOCAL` gradient buffer.
@@ -106,7 +106,7 @@ It keeps a palette small and is the only form that stays correct on an arbitrary
 thorium-light's `Field` equals its `Surface` (`#F2F1ED`), so a field sitting on a panel — a rename field on a sidebar row, every Settings editor, the dialog fields — vanished into it. Rejected: retuning `Field`, which also moves the toolbar's px field on the window ground. `default` gets `#1B1B1B`, the engine dialogs' old field ground; thorium-light gets `#EAE8E2`, the vault browser's old rename ground.
 
 **The app's palette is a setting, not a root attribute.** (user, 2026-09-17)
-Windows built in code — context menus hosted in their own window, the confirm and note-name dialogs — have no authored root to carry `Palette=`, so they resolved against `default` (dark) inside a light app. Naming `Palettes.Default` once covers every root. Rejected: overriding the engine's `default.palette.xml` from Thorium (loses the named `thorium-light`), and plumbing a palette name into each code-built window. Settings load before anything parses UI, so reading at boot needs no live-switch machinery.
+Windows built in code — context menus hosted in their own window, the confirm and note-name dialogs — have no authored root to carry `Palette=`, so they resolved against `default` (dark) inside a light app. Naming `Palettes.Default` once covers every root. Rejected: overriding the engine's `default.palette.axml` from Thorium (loses the named `thorium-light`), and plumbing a palette name into each code-built window. Settings load before anything parses UI, so reading at boot needs no live-switch machinery.
 
 **Thumbs and selection use `Line`.** (user, 2026-09-17)
 The palette has nothing darker short of the inks. They are fainter than Thorium's hand-picked `#D7D5CD`: thumb rest `#E6E4DE`, hover `#DFDDD7`, press `#D8D6D0`. Rejected: a dedicated handle surface.
@@ -159,7 +159,7 @@ Slice 5 of [../Context/animation-plan.md](../Context/animation-plan.md).
 
 Slice 6 of [../Context/animation-plan.md](../Context/animation-plan.md).
 
-- **`Paints` is owned by Animation** (`System="Animation"`); `Gradients` stays on Main until something animates it. Bootstrap still fills `Paints` (no system is running). **REVISED 2026-09-23:** no pool has an owner; the Animation step declares `Writes="Paints"` in `Frame.frame.xml` — [[frame-scheduler]].
+- **`Paints` is owned by Animation** (`System="Animation"`); `Gradients` stays on Main until something animates it. Bootstrap still fills `Paints` (no system is running). **REVISED 2026-09-23:** no pool has an owner; the Animation step declares `Writes="Paints"` in `Frame.frame.axml` — [[frame-scheduler]].
 - **Main reads `Palettes.baked`**, the load-time colours, never the pool: `ColorOf` and `PicksDark` (so `Ink`, `Step`, `ButtonControl`'s CPU lerp). Contrast and ink decisions never see a mid-fade value or a pool Main does not own.
 - **Only the new palette's block fades.** `Animations.FadeSlots(fromFirst, toFirst, count, seconds, curve, onSeeded)` → `AnimationOp.FadeSlots`. Animation copies the source block's *displayed* colours into the target block's slots, then tweens each back to where it was headed — its value, or the target of a fade already running on it — so a pick mid-fade continues from what is on screen. Fades are a private list on the Animation thread, not a pool.
 - **The switch waits for the seed.** Animation posts `FadeSeeded` (kind `fadeSeededKind`); `MainSystem.OnPost` → `Animations.OnFadeSeeded` runs `onSeeded`, which sets `Default`, re-rounds and re-arranges every window. An unsent acknowledgement is re-posted each tick; a refused request runs `onSeeded` at once.
@@ -202,7 +202,7 @@ Slice 6 of [../Context/animation-plan.md](../Context/animation-plan.md).
 
 - **A selection inside a `SubField` text box is invisible** — `Line` `#E6E4DE` on `SubField` `#EAE8E2`, 4 levels (thorium-light; seen selecting "Untitled" in the new-note dialog). The document editor's selection on `Ground` is fine. Needs a decision.
 - **Slice 2, what is left:** `SliderControl` (Carbon only, authored there), Carbon's custom controls, `ButtonControl`'s `#8C8C8C` fallback for a `None` role, `TabViewControl`'s red close-hover consts, the toolbar's seven fixed swatches (One Dark values; Yellow is low-contrast on a light ground).
-- **Slice 3, what is left:** engine `Settings.ui.xml`, Carbon `UI.ui.xml`. Gradient stops follow the palette through `Role` since 2026-09-18, see [[ui-gradients]] §8.
+- **Slice 3, what is left:** engine `Settings.ui.axml`, Carbon `UI.ui.axml`. Gradient stops follow the palette through `Role` since 2026-09-18, see [[ui-gradients]] §8.
 - `thorium-yellow`'s `F0B400` accent is low-contrast as ink on its light ground.
 - **Continuous state, GUI-verified on thorium-void (2026-09-19):** builds clean; `spirv-dis` `state` at 84, stride 88; four shader trees identical; at rest pixel-identical to the pools capture except the OS corners. With a temporary `StateFrequency="0.5"` (reverted): file row (GPU path) `#000000` → `#030303` → `#070707` → `#090909`, back to `#000000` on leave; close button (CPU path, authored red) `#410E0A` → `#A8251A` → `#C02A1E` → `#C42B1E` and back. At the default feel a hover lands on `#090909` within 1 s. **NOT verified:** press (state 2), a live palette switch restarting springs, a light palette, `Clear` alpha on a non-surface ground.
 - A gradient button still ignores hover: `state` only blends slot words, not gradient words.

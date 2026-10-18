@@ -44,10 +44,12 @@ ArctisAurora.Core.Filing -> AuroraEngine/Core/Filing/Bezier.cs
 ArctisAurora.Core.Filing -> AuroraEngine/Core/Filing/CffOutlines.cs
 ArctisAurora.Core.Filing -> AuroraEngine/Core/Filing/ClipboardImage.cs
 ArctisAurora.Core.Filing -> AuroraEngine/Core/Filing/ClipboardText.cs
+ArctisAurora.Core.Filing -> AuroraEngine/Core/Filing/FileAssociations.cs
 ArctisAurora.Core.Filing -> AuroraEngine/Core/Filing/FileDialog.cs
 ArctisAurora.Core.Filing -> AuroraEngine/Core/Filing/FileJournal.cs
 ArctisAurora.Core.Filing -> AuroraEngine/Core/Filing/FileObject.cs
 ArctisAurora.Core.Filing -> AuroraEngine/Core/Filing/FilePicker.cs
+ArctisAurora.Core.Filing -> AuroraEngine/Core/Filing/FileTypes.cs
 ArctisAurora.Core.Filing -> AuroraEngine/Core/Filing/FileWriteQueue.cs
 ArctisAurora.Core.Filing -> AuroraEngine/Core/Filing/FolderPicker.cs
 ArctisAurora.Core.Filing -> AuroraEngine/Core/Filing/Glyph.cs
@@ -308,6 +310,7 @@ ArctisAurora.Tests -> AuroraEngine/Tests/BackgroundTests.cs
 ArctisAurora.Tests -> AuroraEngine/Tests/CommandTests.cs
 ArctisAurora.Tests -> AuroraEngine/Tests/ConsoleTests.cs
 ArctisAurora.Tests -> AuroraEngine/Tests/CryptoTests.cs
+ArctisAurora.Tests -> AuroraEngine/Tests/FileAssociationTests.cs
 ArctisAurora.Tests -> AuroraEngine/Tests/FontTests.cs
 ArctisAurora.Tests -> AuroraEngine/Tests/InputTests.cs
 ArctisAurora.Tests -> AuroraEngine/Tests/LayoutTests.cs

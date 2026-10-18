@@ -1,4 +1,4 @@
-# Decision — a note is any of .xml, .md, .txt, read into an in-memory <Document> tree
+# Decision — a note is any of .axml, .md, .txt, read into an in-memory <Document> tree
 
 **Date:** 2026-09-17
 **Status:** LANDED. Solution builds clean. `Thorium` boots, and `Text.Indent`/`Text.Outdent` resolve at
@@ -9,21 +9,21 @@ edited or saved in Thorium, no checkbox clicked, no Tab pressed.
 **Scope:** `ArctisAurora.Core.UI` — `RichTextDocument`, `DocumentXml`, new `MarkdownFormat` and
 `PlainTextFormat` (`NoteFormats.cs`), `BlockControl`, `ListKind`, `BlockSnapshot`, `BlockStateEdit`,
 `DocumentControl`, `DocumentEditorControl`, `DocumentLayout`, `TextInputActions`;
-`Thorium.Editor.CustomControls.VaultBrowserControl`; Thorium `InputMap.inputs.xml`
+`Thorium.Editor.CustomControls.VaultBrowserControl`; Thorium `InputMap.inputs.axml`
 
 Supersedes the "Note format: engine XML (not markdown, not JSON)" line in
 [../Context/thorium-editor-architecture.md](../Context/thorium-editor-architecture.md).
 
 ## What changed
-- `RichTextDocument.Load(path)` / `Save(path)` switch on the extension. `.md` and `.txt` go through
-  `MarkdownFormat` / `PlainTextFormat` to an `XElement`; `.xml` stays `DocumentXml.Load` / `Save`.
-  `RichTextDocument.extensions` lists the three. `ParseXML` was renamed `Load`.
+- `RichTextDocument.Load(path)` / `Save(path)` switch on the file kind from `FileTypes` ([[axml-file-types]]), not the extension. `.md` and `.txt` go through
+  `MarkdownFormat` / `PlainTextFormat` to an `XElement`; `.axml` stays `DocumentXml.Load` / `Save`.
+  `RichTextDocument.Opens(path)` says which files open (`extensions` was removed). `ParseXML` was renamed `Load`.
 - `DocumentXml` split: `Parse(XElement)` builds the blocks, `ToXml(document)` builds the tree. `Save`
-  is `ToXml` + the `schemaLocation` stamp + write, and stays `.xml`-only.
+  is `ToXml` + the `schemaLocation` stamp + write, and stays `.axml`-only.
 - The formats never touch controls: `Read(text, name) → XElement`, `Write(XElement) → string`. The
   file name becomes `Name`, so a `.md`/`.txt` note never asks to be named.
-- Vault: `Accepts` checks `extensions`; new notes are `.md`; duplicate and rename keep the source
-  extension (`FreePath(folder, name, extension)`); `WriteName` only touches `.xml`.
+- Vault: `Accepts` asks `FileTypes`; new notes are `.md`; duplicate and rename keep the source
+  extension (`FreePath(folder, name, extension)`); `WriteName` only touches `.axml`.
 - Lists: `BlockControl` gained `listKind` (`None`/`Bullet`/`Task`), `listLevel`, `isChecked`, carried
   by `SplitAt` (kind + level, unchecked), `SliceSnapshot`/`Restore`, and the `Block` attributes
   `List`/`Level`/`Checked`. `ApplyLayout` sets `padding.left = (level + 1) × DocumentLayout.listIndent`
@@ -98,6 +98,6 @@ inverse, the same argument `StyleRangeEdit` makes.
   2026-09-29 ([[list-markers]]); colour, highlight and underline write as Obsidian HTML/`==`
   ([[text-decorations-and-colour]]). Per-role palette colours for headings/code/quotes do not exist.
 - A double-click on a checkbox bubbles a 2-tap to `DocumentControl` and selects a word.
-- Only Thorium's `InputMap.inputs.xml` binds Tab — it is the only host with `Text.*` binds.
+- Only Thorium's `InputMap.inputs.axml` binds Tab — it is the only host with `Text.*` binds.
 
 Related: [[xml-editor]], [[document-undo]], [[text-styling-types]], [[xml-save-skips-defaults]], [[vault-browser-and-shell]], [[ui-palettes]], [[note-properties]]

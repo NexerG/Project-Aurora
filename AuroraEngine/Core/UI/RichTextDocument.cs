@@ -48,17 +48,19 @@ namespace ArctisAurora.Core.UI
         // the key the file is encrypted under; null for a plain file
         public PasswordKey? encryption;
 
-        // note file extensions the editor opens
-        public static readonly string[] extensions = { ".xml", ".md", ".txt", ".tex" };
+        // Whether the document editor opens this file.
+        public static bool Opens(string path) =>
+            FileTypes.KindOf(path) is FileKind.Note or FileKind.Markdown or FileKind.PlainText or FileKind.Tex or FileKind.Xml;
 
         public static RichTextDocument Load(string path, PasswordKey? key = null)
         {
             FileJournal.Replay(path);
-            RichTextDocument document = Path.GetExtension(path).ToLowerInvariant() switch
+            RichTextDocument document = FileTypes.KindOf(path) switch
             {
-                ".md" => DocumentXml.Parse(MarkdownPictures(MarkdownFormat.Read(VaultFiles.ReadText(path), Path.GetFileNameWithoutExtension(path)), path)),
-                ".txt" => DocumentXml.Parse(PlainTextFormat.Read(VaultFiles.ReadText(path), Path.GetFileNameWithoutExtension(path))),
-                ".tex" => LoadSource(path, "latex"),
+                FileKind.Markdown => DocumentXml.Parse(MarkdownPictures(MarkdownFormat.Read(VaultFiles.ReadText(path), Path.GetFileNameWithoutExtension(path)), path)),
+                FileKind.PlainText => DocumentXml.Parse(PlainTextFormat.Read(VaultFiles.ReadText(path), Path.GetFileNameWithoutExtension(path))),
+                FileKind.Tex => LoadSource(path, "latex"),
+                FileKind.Xml => LoadSource(path, "xml"),
                 _ => DocumentXml.Load(path, key)
             };
 
@@ -103,15 +105,15 @@ namespace ArctisAurora.Core.UI
                 return;
             }
 
-            switch (Path.GetExtension(path).ToLowerInvariant())
+            switch (FileTypes.KindOf(path))
             {
-                case ".md":
+                case FileKind.Markdown:
                     XElement root = DocumentXml.ToXml(this);
                     DocumentXml.RelativePictures(root, Path.GetDirectoryName(Path.GetFullPath(path))!);
                     VaultFiles.WriteText(path, MarkdownFormat.Write(root));
                     break;
-                case ".txt": VaultFiles.WriteText(path, PlainTextFormat.Write(DocumentXml.ToXml(this))); break;
-                case ".tex": VaultFiles.WriteText(path, SourceText(), new UTF8Encoding(sourceBom)); break;
+                case FileKind.PlainText: VaultFiles.WriteText(path, PlainTextFormat.Write(DocumentXml.ToXml(this))); break;
+                case FileKind.Tex: VaultFiles.WriteText(path, SourceText(), new UTF8Encoding(sourceBom)); break;
                 default: DocumentXml.Save(this, path); break;
             }
         }

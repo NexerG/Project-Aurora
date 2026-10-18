@@ -23,7 +23,7 @@ Follows [note-model-plan](note-model-plan.md): notes and `.tex` are multi-view s
 - F16 (W4b, a): one internal `FileDialog` behind both pickers. Rejected: a second copy of the COM interop
 
 ## W1 — compact chrome — LANDED 2026-10-08
-- Sizes: title bar 32 → 26, caption buttons 46×32 → 40×26, icons 14 → 12, maximize 18 → 14, menu captions 13 → 12, sidebar 220 → 200, splitter 5 → 3 (`UI.ui.xml`, `Workspace.ui.xml`, `TabWindow.ui.xml`, `SplitViewControl.gripThickness`); `TabHeight` 28 → 24, `TabWidth` 180 → 140 (`Workspace.ui.xml`, `TabPane.ui.xml`); tab caption 14 → 12 (`TabViewControl.captionSize`); `SheetControl` `headerHeight` 24 → 20, `fontSize` 14 → 12; note body 18 → 16
+- Sizes: title bar 32 → 26, caption buttons 46×32 → 40×26, icons 14 → 12, maximize 18 → 14, menu captions 13 → 12, sidebar 220 → 200, splitter 5 → 3 (`UI.ui.axml`, `Workspace.ui.axml`, `TabWindow.ui.axml`, `SplitViewControl.gripThickness`); `TabHeight` 28 → 24, `TabWidth` 180 → 140 (`Workspace.ui.axml`, `TabPane.ui.axml`); tab caption 14 → 12 (`TabViewControl.captionSize`); `SheetControl` `headerHeight` 24 → 20, `fontSize` 14 → 12; note body 18 → 16
 - NEW `TabViewControl.minTabWidth` (`MinTabWidth`, default 64): `FitTabs` shares the strip between tabs before `strip.Measure`; `SplitViewControl.NewPane` copies it
 - NEW `TabViewControl.focused`: nearest `TabView` above `ActiveControl`, kept when the control has none (same rule as Thorium's `ActiveTabViewer` context); a change repaints every view in every window
 - NEW `AccentRole.TabIdle`: the active tab of a view that is not `focused` (when one is) gets a top bar in NEW palette slot `Palettes.IdleAccent` — optional palette attribute `IdleAccent`, else `Line` stepped twice toward its ink; `Control.ApplyShape` sets the edge paint for `Tab`/`TabIdle`
@@ -55,8 +55,8 @@ Follows [note-model-plan](note-model-plan.md): notes and `.tex` are multi-view s
 ## W3 — tab-row tools — LANDED 2026-10-08
 **Built** (in an earlier session, written up 2026-10-08):
 - NEW `TabToolsControl` (20 px tool buttons: `Icon`, `Text`, `Separator`, `Light`, `Drop`; nested `TabToolButton` acts on press) and `NoteToolsControl` (B I U, align left, bullets, Paste link); `IFileEditor.tools` (default null) implemented by `DocumentEditorControl`, `SheetEditorControl` (B, Format menu, Fill menu, Paste link, Sum), `TexEditorControl` (Build, Live, error count, Sync, zoom), `PlannerEditorControl`; `TabViewControl.SyncTools()` mounts the active editor's tools at the right of the tab row
-- The 30 px `DocumentToolbar` band is gone from Thorium's `UI.ui.xml` and `TabWindow.ui.xml`
-- Pane "+" (`VaultBrowserControl.NewInPane`): Docs → note, Sheets → sheet, LaTeX → `.tex`, Manager/Calendar → planner, General → menu `pane-new` (`PaneNew.menu.xml`)
+- The 30 px `DocumentToolbar` band is gone from Thorium's `UI.ui.axml` and `TabWindow.ui.axml`
+- Pane "+" (`VaultBrowserControl.NewInPane`): Docs → note, Sheets → sheet, LaTeX → `.tex`, Manager/Calendar → planner, General → menu `pane-new` (`PaneNew.menu.axml`)
 - `SheetEditorControl.AutoSum()` and a 24 px sheet formula bar (cell name, fx, formula field)
 - LaTeX tools: Build, Live, error count, Sync, zoom (`TexEditorControl.tools`); planner tools carry its view and zoom switches and, in Calendar view, Today and the Day/Week/Month span (`PlannerEditorControl.tools`)
 - Not built: popping the LaTeX preview out of its tab

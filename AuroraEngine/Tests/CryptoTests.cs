@@ -86,7 +86,7 @@ namespace ArctisAurora.Tests
             using PasswordKey key = PasswordKey.Derive("pw", 1024, 1, 1, Filled(16, 0x09));
             try
             {
-                string note = Path.Combine(folder, "secret.xml");
+                string note = Path.Combine(folder, "secret.axml");
                 RichTextDocument document = DocumentXml.Parse(XElement.Parse("<Document><Block><Run Text=\"plaintext marker\"/></Block></Document>"));
                 document.encryption = key;
                 document.Save(note);
@@ -130,7 +130,7 @@ namespace ArctisAurora.Tests
         {
             string folder = Path.Combine(Path.GetTempPath(), $"aurora-sealed-{Guid.NewGuid():N}");
             Directory.CreateDirectory(folder);
-            string path = Path.Combine(folder, "sealed.xml");
+            string path = Path.Combine(folder, "sealed.axml");
             try
             {
                 RichTextDocument document = DocumentXml.Parse(XElement.Parse(
