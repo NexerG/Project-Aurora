@@ -18,6 +18,7 @@ namespace ArctisAurora.Core.Tex
             If, Ifx, Ifcat, Ifnum, Ifdim, Ifodd, Ifcase, Iftrue, Iffalse, Ifdefined, Ifcsname, Else, Or, Fi,
             NewCommand, RenewCommand, ProvideCommand, NewEnvironment, RenewEnvironment, Begin, End, EndEnvironment,
             MakeAtLetter, MakeAtOther, NewIf, NewCounter, SetCounter, AddToCounter, StepCounter, Value, IfNextChar, IfStar,
+            NewLength, SetLength, AddToLength, Dimexpr, Pagetotal,
             Caller
         }
 
@@ -102,7 +103,9 @@ namespace ArctisAurora.Core.Tex
             ("begin", Op.Begin), ("end", Op.End), (EndEnvironmentName, Op.EndEnvironment),
             ("makeatletter", Op.MakeAtLetter), ("makeatother", Op.MakeAtOther), ("newif", Op.NewIf),
             ("newcounter", Op.NewCounter), ("setcounter", Op.SetCounter), ("addtocounter", Op.AddToCounter), ("stepcounter", Op.StepCounter), ("value", Op.Value),
-            ("@ifnextchar", Op.IfNextChar), ("@ifstar", Op.IfStar)
+            ("@ifnextchar", Op.IfNextChar), ("@ifstar", Op.IfStar),
+            ("newlength", Op.NewLength), ("setlength", Op.SetLength), ("addtolength", Op.AddToLength),
+            ("dimexpr", Op.Dimexpr), ("pagetotal", Op.Pagetotal)
         }.ToDictionary(p => p.name, p => new Primitive(p.op));
         #endregion
 
@@ -210,6 +213,10 @@ namespace ArctisAurora.Core.Tex
         private bool halted;
         private bool finished;
         private int nextCounter = 256;
+        private int nextLength = 256;
+
+        // set when a scanned dimension read \pagetotal, which is always 0 here
+        public bool pagetotalRead;
 
         public TexExpander(string source, string prelude = "")
         {
@@ -519,6 +526,19 @@ namespace ArctisAurora.Core.Tex
                     break;
                 case Op.StepCounter:
                     if (NameArgument(t) is string stepped) StepCounter(stepped);
+                    break;
+                case Op.NewLength:
+                    NewLength(t);
+                    break;
+                case Op.SetLength or Op.AddToLength:
+                    TexToken[]? target = Argument(t, true);
+                    TexToken[]? amount = target == null ? null : Argument(t, true);
+                    if (amount == null) break;
+                    IEnumerable<TexToken> assignment = target!.Concat(amount).Append(TexToken.Cs("relax"));
+                    Push((p.op == Op.AddToLength ? assignment.Prepend(TexToken.Cs("advance")) : assignment).ToArray());
+                    break;
+                case Op.Dimexpr or Op.Pagetotal:
+                    Error($"You can't use {t} in this mode");
                     break;
             }
         }
@@ -891,6 +911,13 @@ namespace ArctisAurora.Core.Tex
                 value = (int)catcodes.Get(ScanCharCode());
                 return true;
             }
+            if (meaning is Primitive { op: Op.Dimexpr or Op.Pagetotal } dimension)
+            {
+                kind = RegisterKind.Dimen;
+                pagetotalRead |= dimension.op == Op.Pagetotal;
+                value = dimension.op == Op.Dimexpr ? DimExpr() : 0;
+                return true;
+            }
             if (!RegisterOf(t, out kind, out int index) || kind == RegisterKind.Toks) return false;
 
             switch (kind)
@@ -903,6 +930,72 @@ namespace ArctisAurora.Core.Tex
                     break;
             }
             return true;
+        }
+
+        // An e-TeX \dimexpr in sp: + - between terms, * / by integers, parentheses; an ending \relax is taken.
+        private int DimExpr()
+        {
+            long value = DimSum();
+            if (GetNonBlankX(out TexToken t) && MeaningOf(t) is not Primitive { op: Op.Relax }) Back(t);
+            if (value is > MaxDimen or < -MaxDimen)
+            {
+                Error("Arithmetic overflow");
+                return 0;
+            }
+            return (int)value;
+        }
+
+        private long DimSum()
+        {
+            long sum = DimTerm();
+            while (GetNonBlankX(out TexToken t))
+            {
+                if (t.IsChar('+', TexCatcode.Other)) sum += DimTerm();
+                else if (t.IsChar('-', TexCatcode.Other)) sum -= DimTerm();
+                else
+                {
+                    Back(t);
+                    break;
+                }
+            }
+            return sum;
+        }
+
+        private long DimTerm()
+        {
+            long value;
+            if (GetNonBlankX(out TexToken t) && t.IsChar('(', TexCatcode.Other))
+            {
+                value = DimSum();
+                bool read = GetNonBlankX(out TexToken close);
+                if (!read || !close.IsChar(')', TexCatcode.Other))
+                {
+                    Error("Missing ) inserted for expression");
+                    if (read) Back(close);
+                }
+            }
+            else
+            {
+                Back(t);
+                value = ScanDimen();
+            }
+
+            while (GetNonBlankX(out t))
+            {
+                if (t.IsChar('*', TexCatcode.Other)) value *= ScanInt();
+                else if (t.IsChar('/', TexCatcode.Other))
+                {
+                    int d = ScanInt();
+                    if (d == 0) Error("Arithmetic overflow");
+                    else value = (long)Math.Round(value / (double)d, MidpointRounding.AwayFromZero);
+                }
+                else
+                {
+                    Back(t);
+                    break;
+                }
+            }
+            return value;
         }
 
         private int ScanRegisterNumber()
@@ -1868,6 +1961,32 @@ namespace ArctisAurora.Core.Tex
             inner.Add(name);
         }
 
+        // \newlength{\name}: a new skip register, globally zero.
+        private void NewLength(TexToken owner)
+        {
+            TexToken[]? arg = Argument(owner, true);
+            TexToken[]? names = arg?.Where(a => !IsSpace(a)).ToArray();
+            if (names is not { Length: 1 } || !names[0].IsCs)
+            {
+                Error("Missing control sequence inserted");
+                return;
+            }
+            if (meanings.Get(names[0].name!) != null)
+            {
+                Error($"LaTeX Error: Command {names[0]} already defined");
+                return;
+            }
+            if (nextLength > 32767)
+            {
+                Error("No room for a new \\skip");
+                return;
+            }
+
+            int index = nextLength++;
+            skips.Set(index, default, true, groups);
+            meanings.Set(names[0].name!, new Register(RegisterKind.Skip, index), true, groups);
+        }
+
         private void CounterAssign(Op op, TexToken owner)
         {
             string? name = NameArgument(owner);
@@ -1921,6 +2040,18 @@ namespace ArctisAurora.Core.Tex
         #endregion
 
         #region ---- typesetter interface ----
+        // A count, dimen or skip register's value by name (dimensions and glue widths in sp); null when it names none.
+        public int? RegisterValue(string name)
+        {
+            switch (meanings.Get(name))
+            {
+                case Register { kind: RegisterKind.Count } r: return counts.Get(r.index);
+                case Register { kind: RegisterKind.Dimen } r: return dimens.Get(r.index);
+                case Register { kind: RegisterKind.Skip } r: return skips.Get(r.index).width;
+                default: return null;
+            }
+        }
+
         // A control sequence Next hands to the caller unexpanded, under its own name.
         public void DefinePrimitive(string name) => meanings.Set(name, new Primitive(Op.Caller, name), true, groups);
 

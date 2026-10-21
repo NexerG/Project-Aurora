@@ -77,6 +77,9 @@ namespace ArctisAurora.Core.UI
         // a spacer: each character advances this far and draws nothing; 0 for text
         public float spaceWidth;
 
+        // a fill: takes its line's slack and draws nothing
+        public bool fill;
+
         // a footnote anchor: the id of the footnote its page makes room for
         public string note;
 
@@ -95,6 +98,7 @@ namespace ArctisAurora.Core.UI
             StyleSpan text = this;
             text.sheetRef = null;
             text.spaceWidth = 0f;
+            text.fill = false;
             text.note = null;
             text.mathSource = null;
             text.mathDisplay = false;
@@ -365,7 +369,7 @@ namespace ArctisAurora.Core.UI
                 else
                 {
                     _runs.Add(new TextMeasurer.Run(s, start, count, spanFont, font.atlasMetaData, Zoomed(spanSize), spans[i].style,
-                        space: spans[i].spaceWidth * textZoom));
+                        space: spans[i].spaceWidth * textZoom, fill: spans[i].fill));
                     _runTextures.Add(null);
                     _runPictures.Add((Vector2.Zero, Quaternion.Identity));
                     _runMath.Add(null);
@@ -447,20 +451,25 @@ namespace ArctisAurora.Core.UI
         // Shifts each line across its room by the alignment, trailing spaces left hanging.
         private void Align()
         {
-            if (_layout != null && Alignment == TextAlignment.Justify)
+            if (_layout == null) return;
+            Fill();
+            if (Alignment == TextAlignment.Justify)
             {
                 Justify();
                 return;
             }
+            if (OptimalBreaks)
+                foreach (TextLine line in _layout.lines)
+                    Spread(line, false);
 
             float factor = Alignment switch { TextAlignment.Center => 0.5f, TextAlignment.Right => 1f, _ => 0f };
-            if (factor == 0f || _layout == null) return;
+            if (factor == 0f) return;
 
             string s = text ?? string.Empty;
             foreach (TextLine line in _layout.lines)
             {
                 float room = line.room > 0f ? line.room : _wrapWidth;
-                if (room == float.MaxValue) continue;
+                if (room == float.MaxValue || line.fillExtra != 0f) continue;
 
                 float pen = 0f, visible = 0f;
                 foreach (LineSegment segment in line.segments)
@@ -478,44 +487,74 @@ namespace ArctisAurora.Core.UI
                 _layout.width = MathF.Max(_layout.width, line.left + line.width);
         }
 
-        // Spreads every line but the last across its room through its inner spaces; a line holding a tab stays as it is.
+        // Spreads every line but the last and one before a display across its room; those only shrink.
         private void Justify()
         {
-            string s = text ?? string.Empty;
-            for (int i = 0; i < _layout.lines.Count - 1; i++)
-            {
-                TextLine line = _layout.lines[i];
-                float room = line.room > 0f ? line.room : _wrapWidth;
-                if (room == float.MaxValue || line.segments.Count == 0 || BeforeDisplay(i)) continue;
+            for (int i = 0; i < _layout.lines.Count; i++)
+                Spread(_layout.lines[i], i < _layout.lines.Count - 1 && !BeforeDisplay(i));
+        }
 
-                float pen = 0f, visible = 0f, spaceWidth = 0f, inner = 0f;
-                int end = 0;
-                bool tab = false;
+        // Fits a line to its room through its inner spaces: wider only when stretch, tighter where Knuth-Plass set it over;
+        // a line holding a tab or a fill stays as it is.
+        private void Spread(TextLine line, bool stretch)
+        {
+            string s = text ?? string.Empty;
+            float room = line.room > 0f ? line.room : _wrapWidth;
+            if (room == float.MaxValue || line.segments.Count == 0 || line.fillExtra != 0f) return;
+
+            float pen = 0f, visible = 0f, spaceWidth = 0f, inner = 0f;
+            int end = 0;
+            bool tab = false;
+            foreach (LineSegment segment in line.segments)
+                for (int k = segment.charStart; k < segment.charStart + segment.charCount && k < s.Length; k++)
+                {
+                    float advance = TextMeasurer.MeasureAdvance(s[k], _runs[segment.runIndex], pen);
+                    pen += advance;
+                    if (s[k] == '\t') tab = true;
+                    else if (s[k] == ' ') spaceWidth += advance;
+                    else
+                    {
+                        visible = pen;
+                        end = k + 1;
+                        inner = spaceWidth;
+                    }
+                }
+
+            visible += line.hyphen;
+            int spaces = 0;
+            for (int k = line.segments[0].charStart; k < end; k++)
+                if (s[k] == ' ') spaces++;
+            if (tab || spaces == 0 || visible == room || visible < room && !stretch) return;
+            if (visible > room && (!OptimalBreaks || visible - room > inner * TextMeasurer.GlueShrink + 0.01f)) return;
+
+            line.spaceExtra = (room - visible) / spaces;
+            line.justifyEnd = end;
+            line.width += room - visible;
+        }
+
+        // Gives each line's slack to the fill characters on it, shared evenly.
+        private void Fill()
+        {
+            string s = text ?? string.Empty;
+            foreach (TextLine line in _layout.lines)
+            {
+                float room = line.room > 0f ? line.room : _wrapWidth;
+                if (room == float.MaxValue) continue;
+
+                float pen = 0f, visible = 0f;
+                int fills = 0;
                 foreach (LineSegment segment in line.segments)
                     for (int k = segment.charStart; k < segment.charStart + segment.charCount && k < s.Length; k++)
                     {
-                        float advance = TextMeasurer.MeasureAdvance(s[k], _runs[segment.runIndex], pen);
-                        pen += advance;
-                        if (s[k] == '\t') tab = true;
-                        else if (s[k] == ' ') spaceWidth += advance;
-                        else
-                        {
-                            visible = pen;
-                            end = k + 1;
-                            inner = spaceWidth;
-                        }
+                        if (segment.runIndex < spans.Count && spans[segment.runIndex].fill) fills++;
+                        pen += TextMeasurer.MeasureAdvance(s[k], _runs[segment.runIndex], pen);
+                        if (s[k] != ' ' && s[k] != '\t') visible = pen;
                     }
 
-                visible += line.hyphen;
-                int spaces = 0;
-                for (int k = line.segments[0].charStart; k < end; k++)
-                    if (s[k] == ' ') spaces++;
-                if (tab || spaces == 0 || visible == room) continue;
-                if (visible > room && (!OptimalBreaks || visible - room > inner * TextMeasurer.GlueShrink + 0.01f)) continue;
-
-                line.spaceExtra = (room - visible) / spaces;
-                line.justifyEnd = end;
-                line.width += room - visible;
+                float slack = room - visible - line.hyphen;
+                if (fills == 0 || slack <= 0f) continue;
+                line.fillExtra = slack / fills;
+                line.width = MathF.Max(line.width, room);
             }
         }
 
@@ -524,13 +563,28 @@ namespace ArctisAurora.Core.UI
             _layout.lines[line + 1].segments is { Count: > 0 } next && next[0].runIndex < spans.Count && spans[next[0].runIndex].mathDisplay;
 
         // The justify stretch a character takes after its own advance.
-        private float Stretch(TextLine line, int index) =>
-            line.spaceExtra != 0f && index < line.justifyEnd && text[index] == ' ' ? line.spaceExtra : 0f;
+        private float Stretch(TextLine line, int index)
+        {
+            if (line.fillExtra != 0f && FillAt(index)) return line.fillExtra;
+            return line.spaceExtra != 0f && index < line.justifyEnd && text[index] == ' ' ? line.spaceExtra : 0f;
+        }
+
+        // Whether character index belongs to a fill span.
+        private bool FillAt(int index)
+        {
+            int start = 0;
+            foreach (StyleSpan span in spans)
+            {
+                if (index < start + span.count) return span.fill;
+                start += span.count;
+            }
+            return false;
+        }
 
         // A segment's width with the justify stretch of its spaces.
         private float Stretched(TextLine line, LineSegment segment)
         {
-            if (line.spaceExtra == 0f) return segment.width;
+            if (line.spaceExtra == 0f && line.fillExtra == 0f) return segment.width;
 
             float width = segment.width;
             for (int k = segment.charStart; k < segment.charStart + segment.charCount; k++)
@@ -703,10 +757,10 @@ namespace ArctisAurora.Core.UI
                         if (index >= s.Length) break;
 
                         float effectStart = started + (index - run.charStart) * stagger;
-                        if (run.space != 0f)
+                        if (run.space != 0f || run.fill)
                         {
                             UIEngine.recorder?.Glyph(font, font.atlasMetaData.Effective(run.style), ' ', run.fontSize, pen, baselineY, paint, clip);
-                            pen += run.space;
+                            pen += run.fill ? Stretch(line, index) : run.space;
                             continue;
                         }
                         if (s[index] == '\t')

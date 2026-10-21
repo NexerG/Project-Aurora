@@ -4,7 +4,7 @@
   <xs:import schemaLocation="AllTypesSchema.xsd" namespace="http://arctisaurora/AuroraTypes" />
   <xs:import schemaLocation="EntityRegistryTypeSchema.xsd" namespace="http://arctisaurora/AuroraEntityRegistryTypes" />
   <xs:simpleType name="UI">
-    <xs:union memberTypes="types:SpanChartMode types:ListMarker types:EffectLoop types:GradientKind types:GridSizeMode types:PaletteRole types:WindowCorners types:TextStyleType types:TextAlignment types:PageMode types:PageSize types:SlotPlace types:ScrollDirection types:PictureWrap types:PictureCollision types:WorkspaceKind types:Orientation" />
+    <xs:union memberTypes="types:SpanChartMode types:ListMarker types:EffectLoop types:GradientKind types:GridSizeMode types:PaletteRole types:WindowCorners types:TextStyleType types:TextAlignment types:PageMode types:PageSize types:SlotPlace types:ScrollDirection types:PictureWrap types:PictureCollision types:WorkspaceKind types:FileKind types:Orientation" />
   </xs:simpleType>
   <xs:attributeGroup name="FrameStrip.Attributes">
     <xs:attributeGroup ref="EntityRegistry:Control.Attributes" />
@@ -178,6 +178,7 @@
     <xs:attribute name="Display" type="xs:boolean" />
     <xs:attribute name="Sheet" type="xs:string" />
     <xs:attribute name="Space" type="xs:float" />
+    <xs:attribute name="Fill" type="xs:boolean" />
     <xs:attribute name="Note" type="xs:string" />
   </xs:attributeGroup>
   <xs:element name="Run" type="types:Run" />
@@ -730,6 +731,7 @@
     <xs:attribute name="FloatSep" type="xs:float" />
     <xs:attribute name="TextFloatSep" type="xs:float" />
     <xs:attribute name="InTextSep" type="xs:float" />
+    <xs:attribute name="FitHeight" type="xs:float" />
   </xs:attributeGroup>
   <xs:element name="Page" type="types:Page" />
   <xs:complexType name="Page">
@@ -871,6 +873,7 @@
   <xs:attributeGroup name="TextBox.Attributes">
     <xs:attributeGroup ref="EntityRegistry:Control.Attributes" />
     <xs:attribute name="Text" type="xs:string" />
+    <xs:attribute name="Masked" type="xs:boolean" />
     <xs:attribute name="FontSize" type="xs:int" />
     <xs:attribute name="TextColorHex" type="xs:string" />
     <xs:attribute name="SelectionColorHex" type="xs:string" />
@@ -947,8 +950,52 @@
       <xs:enumeration value="LaTeX" />
       <xs:enumeration value="Manager" />
       <xs:enumeration value="Calendar" />
+      <xs:enumeration value="Xml" />
     </xs:restriction>
   </xs:simpleType>
+  <xs:attributeGroup name="WrapPanel.Attributes">
+    <xs:attributeGroup ref="EntityRegistry:Control.Attributes" />
+    <xs:attribute name="Spacing" type="xs:float" />
+  </xs:attributeGroup>
+  <xs:element name="WrapPanel" type="types:WrapPanel" />
+  <xs:complexType name="WrapPanel">
+    <xs:sequence />
+    <xs:attributeGroup ref="types:WrapPanel.Attributes" />
+  </xs:complexType>
+  <xs:simpleType name="FileKind">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="Note" />
+      <xs:enumeration value="Markdown" />
+      <xs:enumeration value="PlainText" />
+      <xs:enumeration value="Tex" />
+      <xs:enumeration value="Xml" />
+      <xs:enumeration value="Sheet" />
+      <xs:enumeration value="Planner" />
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:attributeGroup name="FileType.Attributes">
+    <xs:attribute name="Suffix" type="xs:string" />
+    <xs:attribute name="Kind" type="types:FileKind" />
+    <xs:attribute name="Description" type="xs:string" />
+    <xs:attribute name="Register" type="xs:boolean" />
+    <xs:attribute name="Mime" type="xs:string" />
+  </xs:attributeGroup>
+  <xs:element name="FileType" type="types:FileType" />
+  <xs:complexType name="FileType">
+    <xs:sequence />
+    <xs:attributeGroup ref="types:FileType.Attributes" />
+  </xs:complexType>
+  <xs:element name="FileTypes" type="types:FileTypes" />
+  <xs:group name="FileType.Children">
+    <xs:choice>
+      <xs:element name="FileType" type="types:FileType" />
+    </xs:choice>
+  </xs:group>
+  <xs:complexType name="FileTypes">
+    <xs:sequence>
+      <xs:group minOccurs="0" maxOccurs="unbounded" ref="types:FileType.Children" />
+    </xs:sequence>
+  </xs:complexType>
   <xs:simpleType name="Orientation">
     <xs:restriction base="xs:string">
       <xs:enumeration value="Horizontal" />

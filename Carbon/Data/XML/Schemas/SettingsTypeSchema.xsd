@@ -5,7 +5,7 @@
   <xs:import schemaLocation="InputTypeSchema.xsd" namespace="http://arctisaurora/AuroraInputTypes" />
   <xs:import schemaLocation="UITypeSchema.xsd" namespace="http://arctisaurora/AuroraUITypes" />
   <xs:simpleType name="Settings">
-    <xs:union memberTypes="types:SettingScope types:LogLevel types:CaptureMode types:WindowMode types:CloseAction" />
+    <xs:union memberTypes="types:WeekDay types:ClockFormat types:DateOrder types:SettingScope types:LogLevel types:CaptureMode types:WindowMode types:CloseAction" />
   </xs:simpleType>
   <xs:attributeGroup name="CaptureRoot.Attributes">
     <xs:attributeGroup ref="types:Setting.Attributes" />
@@ -38,6 +38,9 @@
       <xs:element name="Tray" type="types:Tray" />
       <xs:element name="VSync" type="types:VSync" />
       <xs:element name="Validation" type="types:Validation" />
+      <xs:element name="WeekStart" type="types:WeekStart" />
+      <xs:element name="TimeFormat" type="types:TimeFormat" />
+      <xs:element name="DateFormat" type="types:DateFormat" />
       <xs:element name="SheetGrow" type="types:SheetGrow" />
       <xs:element name="DragGhost" type="types:DragGhost" />
       <xs:element name="Palette" type="types:Palette" />
@@ -171,6 +174,66 @@
       <xs:group minOccurs="0" maxOccurs="unbounded" ref="types:Setting.Children" />
     </xs:sequence>
   </xs:complexType>
+  <xs:simpleType name="WeekDay">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="System" />
+      <xs:enumeration value="Monday" />
+      <xs:enumeration value="Tuesday" />
+      <xs:enumeration value="Wednesday" />
+      <xs:enumeration value="Thursday" />
+      <xs:enumeration value="Friday" />
+      <xs:enumeration value="Saturday" />
+      <xs:enumeration value="Sunday" />
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:simpleType name="ClockFormat">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="System" />
+      <xs:enumeration value="H24" />
+      <xs:enumeration value="H12" />
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:simpleType name="DateOrder">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="System" />
+      <xs:enumeration value="DayMonthYear" />
+      <xs:enumeration value="MonthDayYear" />
+      <xs:enumeration value="YearMonthDay" />
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:attributeGroup name="WeekStart.Attributes">
+    <xs:attributeGroup ref="types:Setting.Attributes" />
+    <xs:attribute name="Day" type="types:WeekDay" />
+  </xs:attributeGroup>
+  <xs:element name="WeekStart" type="types:WeekStart" />
+  <xs:complexType name="WeekStart">
+    <xs:sequence />
+    <xs:attributeGroup ref="types:WeekStart.Attributes" />
+  </xs:complexType>
+  <xs:attributeGroup name="TimeFormat.Attributes">
+    <xs:attributeGroup ref="types:Setting.Attributes" />
+    <xs:attribute name="Clock" type="types:ClockFormat" />
+  </xs:attributeGroup>
+  <xs:element name="TimeFormat" type="types:TimeFormat" />
+  <xs:complexType name="TimeFormat">
+    <xs:sequence />
+    <xs:attributeGroup ref="types:TimeFormat.Attributes" />
+  </xs:complexType>
+  <xs:attributeGroup name="DateFormat.Attributes">
+    <xs:attributeGroup ref="types:Setting.Attributes" />
+    <xs:attribute name="Order" type="types:DateOrder" />
+  </xs:attributeGroup>
+  <xs:element name="DateFormat" type="types:DateFormat" />
+  <xs:complexType name="DateFormat">
+    <xs:sequence />
+    <xs:attributeGroup ref="types:DateFormat.Attributes" />
+  </xs:complexType>
+  <xs:element name="DateTime" type="types:DateTime" />
+  <xs:complexType name="DateTime">
+    <xs:sequence>
+      <xs:group minOccurs="0" maxOccurs="unbounded" ref="types:Setting.Children" />
+    </xs:sequence>
+  </xs:complexType>
   <xs:attributeGroup name="DocumentSettings.Attributes">
     <xs:attribute name="StampModified" type="xs:boolean" />
   </xs:attributeGroup>
@@ -196,6 +259,7 @@
     <xs:attribute name="TopDelta" type="xs:float" />
     <xs:attribute name="ScrollX" type="xs:float" />
     <xs:attribute name="PropertiesOpen" type="xs:boolean" />
+    <xs:attribute name="AsXml" type="xs:boolean" />
   </xs:attributeGroup>
   <xs:element name="SessionTab" type="types:SessionTab" />
   <xs:complexType name="SessionTab">
@@ -395,6 +459,7 @@
       <xs:element name="InputBindings" type="types:InputBindings" />
       <xs:element name="Input" type="types:Input" />
       <xs:element name="Graphics" type="types:Graphics" />
+      <xs:element name="DateTime" type="types:DateTime" />
       <xs:element name="DocumentSettings" type="types:DocumentSettings" />
       <xs:element name="Session" type="types:Session" />
       <xs:element name="Sheets" type="types:Sheets" />

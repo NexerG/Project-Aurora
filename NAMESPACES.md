@@ -52,6 +52,8 @@ ArctisAurora.Core.Filing -> AuroraEngine/Core/Filing/FilePicker.cs
 ArctisAurora.Core.Filing -> AuroraEngine/Core/Filing/FileTypes.cs
 ArctisAurora.Core.Filing -> AuroraEngine/Core/Filing/FileWriteQueue.cs
 ArctisAurora.Core.Filing -> AuroraEngine/Core/Filing/FolderPicker.cs
+ArctisAurora.Core.Filing -> AuroraEngine/Core/Filing/FontCatalog.cs
+ArctisAurora.Core.Filing -> AuroraEngine/Core/Filing/FontPreviews.cs
 ArctisAurora.Core.Filing -> AuroraEngine/Core/Filing/Glyph.cs
 ArctisAurora.Core.Filing -> AuroraEngine/Core/Filing/IconSet.cs
 ArctisAurora.Core.Filing -> AuroraEngine/Core/Filing/MathConstants.cs
@@ -155,6 +157,9 @@ ArctisAurora.Core.UI -> AuroraEngine/Core/UI/ExpanderControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/FileBrowserControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/FileRowControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/FileTreeControl.cs
+ArctisAurora.Core.UI -> AuroraEngine/Core/UI/FontImportWindow.cs
+ArctisAurora.Core.UI -> AuroraEngine/Core/UI/FontLibrary.cs
+ArctisAurora.Core.UI -> AuroraEngine/Core/UI/FontSettings.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/FormulaPopup.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/Frontmatter.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/GanttChartControl.cs
@@ -311,6 +316,7 @@ ArctisAurora.Tests -> AuroraEngine/Tests/CommandTests.cs
 ArctisAurora.Tests -> AuroraEngine/Tests/ConsoleTests.cs
 ArctisAurora.Tests -> AuroraEngine/Tests/CryptoTests.cs
 ArctisAurora.Tests -> AuroraEngine/Tests/FileAssociationTests.cs
+ArctisAurora.Tests -> AuroraEngine/Tests/FontPickerTests.cs
 ArctisAurora.Tests -> AuroraEngine/Tests/FontTests.cs
 ArctisAurora.Tests -> AuroraEngine/Tests/InputTests.cs
 ArctisAurora.Tests -> AuroraEngine/Tests/LayoutTests.cs

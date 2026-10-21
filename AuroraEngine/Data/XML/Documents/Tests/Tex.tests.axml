@@ -48,4 +48,14 @@
 	<Test Action="Tex.Footnotes"/>
 	<Test Action="Tex.Lowering.Float"/>
 	<Test Action="Tex.FloatPlacement"/>
+	<Test Action="Tex.Lengths"/>
+	<Test Action="Tex.Parameters"/>
+	<Test Action="Tex.DimExpr"/>
+	<Test Action="Tex.Preamble"/>
+	<Test Action="Tex.Enumitem"/>
+	<Test Action="Tex.Titlesec"/>
+	<Test Action="Tex.Lowering.Fill"/>
+	<Test Action="Tex.FitPage"/>
+	<Test Action="Tex.CenteredOverfull"/>
+	<Test Action="Tex.Pdf.Bullets"/>
 </TestSuite>

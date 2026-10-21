@@ -68,6 +68,25 @@ namespace ArctisAurora.Core.UI
             InvalidateLayout();
         }
 
+        // Recorded by name over its artwork box while an export records; otherwise drawn as a quad.
+        internal override void Emit(float z)
+        {
+            if (UIEngine.recorder == null)
+            {
+                base.Emit(z);
+                return;
+            }
+
+            ref ArrangeData a = ref arrange;
+            if (!a.arranged.Overlaps(a.clip)) return;
+            VulkanControl row = visual;
+            PaintRow(ref row);
+            LayoutRect r = a.arranged;
+            float w = r.width / cellScale, h = r.height / cellScale;
+            UIEngine.recorder.Icon(iconName, new LayoutRect(r.x + (r.width - w) * 0.5f, r.y + (r.height - h) * 0.5f, w, h), row.paint,
+                new Vector4(a.clip.x, a.clip.y, a.clip.Right, a.clip.Bottom));
+        }
+
         // Width/Height are the artwork, not the cell; cellScale is the set's bake margin undone.
         protected override Vector2 MeasureCore(Vector2 availableSize)
         {

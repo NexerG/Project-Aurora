@@ -1,4 +1,5 @@
 using ArctisAurora.Core.ECS.EngineEntity;
+using ArctisAurora.Core.Filing;
 using ArctisAurora.Core.Registry;
 using System.Globalization;
 using System.Numerics;
@@ -45,6 +46,13 @@ namespace ArctisAurora.Core.UI
         private const int markerButtonWidth = 16;
         private const int iconSize = 14;
         private const int captionSize = 13;
+        private const int fontButtonWidth = 140;
+
+        // the font list
+        private const float fontListWidth = 220f;
+        private const float fontListHeight = 360f;
+        private const float fontRowHeight = 26f;
+        private const int fontRowSize = 14;
 
         // what the px field will accept
         private const int minPx = 6;
@@ -121,6 +129,7 @@ namespace ArctisAurora.Core.UI
         private readonly IconControl numbersInk;
         private readonly IconControl tasksInk;
         private readonly LabelControl stylingCaption;
+        private readonly LabelControl fontCaption;
         private readonly LabelControl colorInk;
         private readonly PxBox pxField;
 
@@ -155,6 +164,7 @@ namespace ArctisAurora.Core.UI
         private string? shownColor;
         private PaletteRole? shownInk;
         private int? shownPx;
+        private string? shownFont;
 
         public override bool takesActiveControl => false;
 
@@ -168,6 +178,10 @@ namespace ArctisAurora.Core.UI
 
             stylingCaption = Caption(stylingOptions[0].caption);
             AddChild(CaptionButton(stylingCaption, 124, OpenStyling));
+            AddChild(Separator());
+
+            fontCaption = Caption(string.Empty);
+            AddChild(CaptionButton(fontCaption, fontButtonWidth, OpenFonts));
             AddChild(Separator());
 
             boldInk = Ink("bold");
@@ -288,6 +302,14 @@ namespace ArctisAurora.Core.UI
                 shownColor = color;
                 shownInk = ink;
                 Paint(colorInk, color, ink);
+            }
+
+            string font = source?.fontName ?? "default";
+            if (shownFont != font)
+            {
+                shownFont = font;
+                fontCaption.fontName = font;
+                fontCaption.text = FontLibrary.FamilyOf(font);
             }
 
             // never while it is being typed into, or the reflection would fight the keystrokes
@@ -445,6 +467,98 @@ namespace ArctisAurora.Core.UI
                 hex => new StyleDelta(highlightHex: hex))));
             Drop(owner, entries);
         }
+
+        private void OpenFonts(ToolButton owner)
+        {
+            DocumentEditorControl? editor = Target();
+            if (editor != null) Drop(owner, new List<ContextMenuEntry> { new ContextMenuContent(FontList(editor)) });
+        }
+
+        // Imported families in their own fonts, then the installed ones in their previews.
+        internal static ScrollableControl FontList(DocumentEditorControl editor)
+        {
+            StackPanelControl rows = new StackPanelControl
+            {
+                orientation = Orientation.Vertical,
+                alpha = 0f,
+                horizontalAlignment = HorizontalAlignment.Stretch
+            };
+
+            List<(string asset, string family)> imported = FontLibrary.Imported();
+            HashSet<string> names = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach ((string asset, string family) in imported)
+            {
+                names.Add(family);
+                string picked = asset;
+                rows.AddChild(FontRow(family, asset, () => PickFont(editor, picked)));
+            }
+
+            rows.AddChild(FontHeader("More fonts"));
+            IReadOnlyList<InstalledFamily>? installed = FontCatalog.Families;
+            if (installed == null) rows.AddChild(FontHeader("Finding installed fonts…"));
+            else
+                foreach (InstalledFamily family in installed)
+                {
+                    if (names.Contains(family.name)) continue;
+                    string? preview = FontLibrary.PreviewOf(family.name);
+                    InstalledFamily picked = family;
+                    rows.AddChild(FontRow(preview ?? family.name, preview != null ? FontPreviews.AssetName : "default",
+                        () => FontLibrary.Import(picked, asset => PickFont(editor, asset))));
+                }
+
+            ScrollableControl list = new ScrollableControl
+            {
+                alpha = 0f,
+                preferredWidth = fontListWidth,
+                preferredHeight = Math.Min(fontListHeight, rows.children.Count * fontRowHeight)
+            };
+            list.AddChild(rows);
+            return list;
+        }
+
+        private static void PickFont(DocumentEditorControl editor, string asset)
+        {
+            editor.ApplyStyle(new StyleDelta(fontName: asset));
+            editor.FocusCaret();
+        }
+
+        private static FontRowButton FontRow(string text, string font, Action pick)
+        {
+            FontRowButton row = new FontRowButton
+            {
+                preferredHeight = fontRowHeight,
+                horizontalAlignment = HorizontalAlignment.Stretch,
+                padding = new Thickness(4f, 10f, 4f, 10f),
+                cornerRadius = new CornerRadii(4f),
+                stateBinding = "menu-row",
+                edgeRole = PaletteRole.Accent
+            };
+            row.AddChild(new LabelControl
+            {
+                text = text,
+                fontName = font,
+                fontSize = fontRowSize,
+                horizontalPosition = 0f,
+                verticalPosition = 0.5f,
+                hitTestable = false
+            });
+            row.pressed = () =>
+            {
+                ContextMenus.Close();
+                pick();
+            };
+            return row;
+        }
+
+        private static LabelControl FontHeader(string text) => new LabelControl
+        {
+            text = text,
+            fontSize = captionSize,
+            role = PaletteRole.MutedInk,
+            preferredHeight = fontRowHeight,
+            horizontalPosition = 0f,
+            padding = new Thickness(4f, 10f, 4f, 10f)
+        };
 
         // A picker styling the editor with each pick.
         private static ColorPickerControl Picker(DocumentEditorControl editor, string? current, Func<string, StyleDelta> delta)
@@ -704,6 +818,21 @@ namespace ArctisAurora.Core.UI
             {
                 base.OnPointerPress(e);
                 if (e.button == PointerEvent.leftButton) pressed?.Invoke(this);
+                return true;
+            }
+        }
+
+        // A font list row; acts on press like a ToolButton.
+        private sealed class FontRowButton : ButtonControl
+        {
+            public Action pressed;
+
+            public override bool takesActiveControl => false;
+
+            public override bool OnPointerPress(PointerEvent e)
+            {
+                base.OnPointerPress(e);
+                if (e.button == PointerEvent.leftButton) pressed?.Invoke();
                 return true;
             }
         }

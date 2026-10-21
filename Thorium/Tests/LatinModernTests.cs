@@ -248,6 +248,75 @@ namespace Thorium.Tests
             t.Show(new StackPanelControl());
         }
 
+        [A_XSDActionDependency("Tex.Resume", "Test")]
+        private static IEnumerator<int> TexResume(TestContext t)
+        {
+            const string source = """
+                \documentclass[11pt,letterpaper]{article}
+                \usepackage[left=0.5in, right=0.5in, top=0.4in, bottom=0.4in, paperwidth=8.5in, paperheight=100in]{geometry}
+                \usepackage{enumitem}
+                \usepackage{titlesec}
+                \usepackage{hyperref}
+                \usepackage{xcolor}
+                \usepackage{mathptmx}
+                \usepackage[normalem]{ulem}
+                \hyphenpenalty=10000
+                \exhyphenpenalty=10000
+                \tolerance=9999
+                \emergencystretch=3em
+                \definecolor{sectioncolor}{HTML}{000000}
+                \hypersetup{colorlinks=false, hidelinks}
+                \newcommand{\ulink}[2]{\href{#1}{\uline{#2}}}
+                \pagestyle{empty}
+                \titleformat{\section}{\large\bfseries}{}{0pt}{}[\vspace{-7pt}{\color{sectioncolor}\rule{\textwidth}{1.5pt}}]
+                \titlespacing*{\section}{0pt}{8pt}{2pt}
+                \setlength{\parindent}{0pt}
+                \setlength{\parskip}{0pt}
+                \newlist{resumelist}{itemize}{1}
+                \setlist[resumelist]{label=\raisebox{0.45ex}{\rule{2.8pt}{2.8pt}}, leftmargin=12pt, itemsep=0pt, parsep=0pt, topsep=1pt}
+                \begin{document}
+                \begin{center}
+                    {\LARGE\bfseries Grexen Example} \\[3pt]
+                    {\small Somewhere \,|\, \ulink{https://example.org}{example.org} \,|\, \ulink{https://example.org/docs}{Documentation}}
+                \end{center}
+                \section*{EXPERIENCE}
+                \textbf{Example Studio} -- \ulink{https://example.org}{Website} \hfill \textbf{March 2024 -- May 2025} \\
+                \textit{Engine Programmer} \textbullet \space \textit{Full-time} \hfill Somewhere
+                \begin{resumelist}
+                    \item Wrote the renderer and the tools around it.
+                    \item Profiled and trimmed the frame until it fit the budget on every target platform we shipped.
+                \end{resumelist}
+                \section*{SKILLS}
+                \textbf{Languages:} C\#, C++, GLSL, Python. \\
+                \textbf{Interests:} rendering; shaders; typesetting.
+                \pdfpageheight=\dimexpr\pagetotal+0.8in+12pt\relax
+                \end{document}
+                """;
+            XElement document = TexLowering.Compile(source, out List<TexError> errors);
+            t.Check(errors.Count == 0, $"the sample compiles clean: {string.Join("; ", errors.Select(e => $"{e.line}: {e.message}"))}");
+            XElement page = document.Element("DocumentLayout")!.Element("Page")!;
+            t.Check(page.Attribute("FitHeight") != null && (string?)page.Attribute("Size") == "Custom", "a custom paper cut to its content");
+            t.Check(document.Descendants("Run").Count(r => (string?)r.Attribute("Fill") == "true") == 2, "both \\hfill lines carry a fill");
+            t.Check(document.Elements("Block").Count(b => (string?)b.Attribute("StylingType") == "Rule") == 2, "a rule under each section");
+            t.Check(document.Elements("Block").Count(b => (string?)b.Attribute("Marker") == "Square") == 2, "square bullets");
+            t.Check(document.Elements("DocumentLayout").Elements("TextStyle").All(s => (string?)s.Attribute("FontName") != TexLowering.RomanFont),
+                "mathptmx sets the text in Termes");
+
+            string path = Path.Combine(Path.GetTempPath(), $"aurora-resume-{Guid.NewGuid():N}.axml");
+            document.Save(path);
+            DocumentEditorControl editor = new DocumentEditorControl
+            {
+                horizontalAlignment = HorizontalAlignment.Stretch,
+                verticalAlignment = VerticalAlignment.Stretch
+            };
+            t.Show(editor);
+            editor.LoadPath(path);
+            File.Delete(path);
+            yield return 2;
+            yield return t.Golden("Page", editor);
+            t.Show(new StackPanelControl());
+        }
+
         [A_XSDActionDependency("Tex.Amsmath", "Test")]
         private static IEnumerator<int> TexAmsmath(TestContext t)
         {
@@ -570,6 +639,42 @@ namespace Thorium.Tests
             t.Check(text.Contains("see page 1."), $"\\pageref resolved before the export: {shown}");
             t.Check(text.EndsWith("2\n"), $"the page number last: {shown}");
             t.Check(!text.Contains("??"), "no unresolved reference");
+        }
+
+        [A_XSDActionDependency("Tex.FocusCommand", "Test")]
+        private static IEnumerator<int> FocusCommand(TestContext t)
+        {
+            string folder = Path.Combine(Path.GetTempPath(), $"aurora-focus-{Guid.NewGuid():N}");
+            Directory.CreateDirectory(folder);
+            string path = Path.Combine(folder, "doc.tex");
+            File.WriteAllText(path, "\\documentclass{article}\n\\begin{document}\nFocused.\n\\end{document}\n");
+
+            string before = SessionLayout.scope;
+            SessionLayout.scope = "focus-command";
+            WorkspaceControl workspace = new WorkspaceControl
+            {
+                paneDocument = "tab-pane",
+                defaultDocument = "tab-pane",
+                horizontalAlignment = HorizontalAlignment.Stretch,
+                verticalAlignment = VerticalAlignment.Stretch
+            };
+            t.Show(workspace);
+            workspace.LoadPane(workspace.AddPage("General", WorkspaceKind.General)).AddChild(SessionLayout.tabFactory(path, false));
+            yield return 3;
+
+            t.Check(UIEngine.activeControl is not DocumentEditorControl, "nothing holds the caret before the command");
+            List<string> replies = new List<string>();
+            ArctisAurora.Core.Commands.CommandConsole.Execute("Focus; Tex.ExportPdf", replies.Add);
+            string target = Path.Combine(folder, "doc.pdf");
+            for (int i = 0; i < 30 && !File.Exists(target); i++) yield return 1;
+            t.Check(replies.Count > 0 && !replies[0].Contains("error"), $"Focus answers ok: {string.Join(" | ", replies)}");
+            t.Check(UIEngine.activeControl is DocumentEditorControl, "the .tex source holds the caret");
+            t.Check(File.Exists(target), "Tex.ExportPdf acts on the focused file");
+
+            SessionLayout.scope = before;
+            t.Show(new StackPanelControl());
+            yield return 3;
+            Directory.Delete(folder, true);
         }
 
         // Exports a two-page .tex with a heading, a ligature, a JPEG, a translucent PNG and a \pageref; hands over the file.

@@ -97,7 +97,7 @@ The grid shows the topmost visible layer's text, while an edit goes into the pic
 
 ## Fixed sheets and growing
 
-The "New sheet" entries of the vault menus open a submenu with "Fixed size" and "Unfixed". The type cannot be changed afterwards.
+The "New sheet" entries of the vault menus open a submenu with "Fixed size" and "Unfixed". The type cannot be changed afterwards. "Fixed size" asks for the page size along with the name, in Rows and Columns boxes that start at 25; a count below 1 or past the grid limit keeps the prompt open.
 
 On a fixed sheet the selection is clamped to the page, and the grid, its lines and its cells stop at the page edge. A strip 20 pixels wide runs along the whole bottom edge and the whole right edge, each showing a "+". The strips sit 4 pixels clear of the grid and of each other, with the palette's rounded corners, and fade from the palette's Field colour at the centre to its Accent colour at the edges, which reads white to blue on the light palette. Left-clicking a strip adds one row or column. Shift+left-click adds the number set under Sheets in the Settings window, 10 by default. Right-clicking a strip opens a small popup with an "Add horizontal" box (columns) and an "Add vertical" box (rows), both starting at 0. The bottom strip focuses "Add vertical" and the right strip "Add horizontal", Tab swaps them, Enter grows the page once by both amounts, and Esc or a click outside cancels. Anything that is not a number counts as 0. Each grow is one undo step, and undoing it shrinks the page again.
 

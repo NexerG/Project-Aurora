@@ -12,6 +12,10 @@ namespace ArctisAurora.Core.Filing.Serialization
 
         public static bool packed { get; private set; }
 
+        // writable per-user data shared by every app, mounted last
+        public static string USER_DATA { get; private set; }
+        private static DirectoryMount userMount;
+
         public static readonly string DATA = GetPath("Data");
         public static readonly string BUILD_UI = GetPath("Data/XML");
         public static readonly string FONTS = GetPath("Data/Fonts");
@@ -76,7 +80,20 @@ namespace ArctisAurora.Core.Filing.Serialization
                 string[] archives = Directory.GetFiles(AppContext.BaseDirectory, "*.arx");
                 if (archives.Length > 0) packed = MountArchives(archives);
             }
+
+            USER_DATA = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Arktis", "Data");
+            userMount = new DirectoryMount(USER_DATA);
+            VirtualFileSystem.Mount(userMount);
             return true;
+        }
+
+        // Points the user mount at another folder.
+        public static void RedirectUserData(string root)
+        {
+            DirectoryMount moved = new DirectoryMount(root);
+            VirtualFileSystem.Replace(userMount, moved);
+            userMount = moved;
+            USER_DATA = moved.Root;
         }
 
         // Mounts the archives beside the exe below the loose Data folder; exits when one fails its checks.

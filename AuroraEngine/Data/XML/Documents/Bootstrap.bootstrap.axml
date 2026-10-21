@@ -35,6 +35,7 @@
 		<Step Action="AssetRegistries.PrepareDefaultAssets"/>
 		<Step Action="AssetRegistries.PreloadAssets"/>
 		<Step Action="AssetRegistries.PrepareAllAssets"/>
+		<Step Action="Fonts.StartCatalog"/>
 		<!--post-renderer-->
 
 		<Step Action="Renderer.SetupObjects"/>

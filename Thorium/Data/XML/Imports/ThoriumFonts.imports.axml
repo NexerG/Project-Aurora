@@ -6,5 +6,6 @@
 
 	<FontImport Source="lmroman10-regular.otf" Italic="lmroman10-italic.otf" Bold="lmroman10-bold.otf" BoldItalic="lmroman10-bolditalic.otf" Charset="Latex" GlyphSize="64"/>
 	<FontImport Source="lmmono10-regular.otf" Charset="Latex" GlyphSize="64"/>
+	<FontImport Source="texgyretermes-regular.otf" Italic="texgyretermes-italic.otf" Bold="texgyretermes-bold.otf" BoldItalic="texgyretermes-bolditalic.otf" Charset="Latex" GlyphSize="64"/>
 	<FontImport Source="latinmodern-math.otf" Italic="lmroman10-italic.otf" Bold="lmroman10-bold.otf" Charset="Math" GlyphSize="64"/>
 </ImportSet>

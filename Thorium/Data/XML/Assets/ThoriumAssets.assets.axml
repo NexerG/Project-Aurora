@@ -38,5 +38,7 @@
 	<Asset Type="FontAsset" Name="latin-modern"      Source="Fonts/lmroman10-regular"/>
 	<Asset Type="FontAsset" Name="latin-modern-mono" Source="Fonts/lmmono10-regular"/>
 	<Asset Type="FontAsset" Name="latin-modern-math" Source="Fonts/latinmodern-math"/>
+	<!-- TeX Gyre Termes, the Times of mathptmx and kin, baked from _Build/FontSources -->
+	<Asset Type="FontAsset" Name="tex-gyre-termes"   Source="Fonts/texgyretermes-regular"/>
 
 </AssetManifest>

@@ -40,6 +40,7 @@
           <xs:enumeration value="Workspace.NewLaTeX" />
           <xs:enumeration value="Workspace.NewManager" />
           <xs:enumeration value="Workspace.NewCalendar" />
+          <xs:enumeration value="Workspace.NewXml" />
           <xs:enumeration value="Workspace.Duplicate" />
           <xs:enumeration value="Workspace.Rename" />
           <xs:enumeration value="Workspace.Close" />
@@ -58,7 +59,10 @@
           <xs:enumeration value="Planner.Redo" />
           <xs:enumeration value="Planner.Delete" />
           <xs:enumeration value="Planner.Edit" />
+          <xs:enumeration value="Planner.Collapse" />
           <xs:enumeration value="Planner.EditCategory" />
+          <xs:enumeration value="Planner.AddTicketHere" />
+          <xs:enumeration value="Planner.DeleteCategoryWithTickets" />
           <xs:enumeration value="Planner.AddCategory" />
           <xs:enumeration value="Planner.Save" />
           <xs:enumeration value="Sheet.Up" />
@@ -150,6 +154,7 @@
           <xs:enumeration value="Text.Redo" />
           <xs:enumeration value="Text.Cancel" />
           <xs:enumeration value="Text.Save" />
+          <xs:enumeration value="Notes.EncryptBlocks" />
           <xs:enumeration value="Tex.ExportPdf" />
           <xs:enumeration value="Text.CaretLeft" />
           <xs:enumeration value="Text.CaretRight" />
@@ -172,6 +177,12 @@
     <xs:union memberTypes="actions:Any">
       <xs:simpleType>
         <xs:restriction base="xs:string">
+          <xs:enumeration value="Arx.XmlRoundTrip" />
+          <xs:enumeration value="Arx.BlobRoundTrip" />
+          <xs:enumeration value="Arx.MountResolves" />
+          <xs:enumeration value="Arx.TamperedEntryRefused" />
+          <xs:enumeration value="Arx.TamperedTocRefused" />
+          <xs:enumeration value="Arx.WrongKeyRefused" />
           <xs:enumeration value="Perf.AtlasBake" />
           <xs:enumeration value="Background.HideShow" />
           <xs:enumeration value="Background.MenuClamp" />
@@ -181,6 +192,15 @@
           <xs:enumeration value="Commands.ArgumentsConvert" />
           <xs:enumeration value="Commands.WaitResumesOnTime" />
           <xs:enumeration value="Console.ToggleAndAnswer" />
+          <xs:enumeration value="Crypto.RoundTrip" />
+          <xs:enumeration value="Crypto.Rejects" />
+          <xs:enumeration value="Crypto.Argon2idVector" />
+          <xs:enumeration value="Crypto.PasswordKey" />
+          <xs:enumeration value="Crypto.EncryptedFiles" />
+          <xs:enumeration value="Crypto.SealedBlocks" />
+          <xs:enumeration value="FileTypes.ClaimOne" />
+          <xs:enumeration value="FileTypes.ClaimAll" />
+          <xs:enumeration value="FileTypes.LinuxFiles" />
           <xs:enumeration value="Fonts.MathFontBaked" />
           <xs:enumeration value="Fonts.CffCharstring" />
           <xs:enumeration value="Input.ClickFiresRelease" />
@@ -190,6 +210,7 @@
           <xs:enumeration value="Input.DropdownInsidePopup" />
           <xs:enumeration value="Input.SourceSubmenu" />
           <xs:enumeration value="Layout.StackPanelArranges" />
+          <xs:enumeration value="Layout.WrapPanelWraps" />
           <xs:enumeration value="Layout.StarChildCrossSize" />
           <xs:enumeration value="Layout.GridAutoRowWrapsAtColumn" />
           <xs:enumeration value="Layout.RotatedHitTest" />
@@ -213,10 +234,20 @@
           <xs:enumeration value="Math.Tag" />
           <xs:enumeration value="Math.EnvErrors" />
           <xs:enumeration value="Math.AmsCommands" />
+          <xs:enumeration value="Notes.FileKinds" />
+          <xs:enumeration value="Notes.DirtyTracking" />
+          <xs:enumeration value="Notes.PartialWrite" />
+          <xs:enumeration value="Notes.JournalReplay" />
+          <xs:enumeration value="Notes.Autosave" />
+          <xs:enumeration value="Notes.DiskReload" />
+          <xs:enumeration value="Notes.LocalWins" />
+          <xs:enumeration value="Notes.NoNamingPrompt" />
           <xs:enumeration value="Perf.RelayoutLabels" />
           <xs:enumeration value="Perf.TypeLargeNote" />
           <xs:enumeration value="Perf.RewrapLargeNote" />
           <xs:enumeration value="Perf.ResizeLargeNote" />
+          <xs:enumeration value="Perf.SaveLargeNote.InPlace" />
+          <xs:enumeration value="Perf.SaveLargeNote.Shift" />
           <xs:enumeration value="Perf.AnimationBurst" />
           <xs:enumeration value="Perf.AnimationLayoutClip" />
           <xs:enumeration value="Perf.Controls.Panel.Static" />
@@ -253,10 +284,33 @@
           <xs:enumeration value="Perf.Controls.TabView.Relayout" />
           <xs:enumeration value="Perf.Controls.Table.Static" />
           <xs:enumeration value="Perf.Controls.Table.Relayout" />
+          <xs:enumeration value="Perf.Planner.Gantt.Static" />
+          <xs:enumeration value="Perf.Planner.Gantt.Static.Huge" />
+          <xs:enumeration value="Perf.Planner.Gantt.ScrollVertical" />
+          <xs:enumeration value="Perf.Planner.Gantt.ScrollVertical.Huge" />
+          <xs:enumeration value="Perf.Planner.Gantt.ScrollHorizontal" />
+          <xs:enumeration value="Perf.Planner.Gantt.Zoom" />
+          <xs:enumeration value="Perf.Planner.Gantt.ContentZoom" />
+          <xs:enumeration value="Perf.Planner.Gantt.Resize" />
+          <xs:enumeration value="Perf.Planner.Gantt.Expand" />
+          <xs:enumeration value="Perf.Planner.Gantt.DragBar" />
+          <xs:enumeration value="Perf.Planner.Gantt.Edit" />
+          <xs:enumeration value="Perf.Planner.Gantt.Load" />
+          <xs:enumeration value="Perf.Planner.Gantt.Save" />
+          <xs:enumeration value="Svg.InheritedFill" />
+          <xs:enumeration value="Svg.Unrendered" />
+          <xs:enumeration value="Svg.Transform" />
+          <xs:enumeration value="Svg.Malformed" />
+          <xs:enumeration value="Svg.FillRule" />
+          <xs:enumeration value="Svg.Arc" />
+          <xs:enumeration value="Svg.Shapes" />
+          <xs:enumeration value="Svg.StrokeRuns" />
+          <xs:enumeration value="Svg.StrokeBake" />
           <xs:enumeration value="Syntax.CSharpLine" />
           <xs:enumeration value="Syntax.CommentSpansLines" />
           <xs:enumeration value="Syntax.Languages" />
           <xs:enumeration value="Syntax.Latex" />
+          <xs:enumeration value="Syntax.XmlSourceRoundTrip" />
           <xs:enumeration value="Tex.SourceRoundTrip" />
           <xs:enumeration value="Tex.Catcodes" />
           <xs:enumeration value="Tex.DelimitedDef" />
@@ -303,6 +357,20 @@
           <xs:enumeration value="Tex.Lowering.Float" />
           <xs:enumeration value="Tex.FloatPlacement" />
           <xs:enumeration value="Tex.RunningHeads" />
+          <xs:enumeration value="Tex.Lengths" />
+          <xs:enumeration value="Tex.Parameters" />
+          <xs:enumeration value="Tex.DimExpr" />
+          <xs:enumeration value="Tex.Preamble" />
+          <xs:enumeration value="Tex.Enumitem" />
+          <xs:enumeration value="Tex.Titlesec" />
+          <xs:enumeration value="Tex.Lowering.Fill" />
+          <xs:enumeration value="Tex.CenteredOverfull" />
+          <xs:enumeration value="Tex.Pdf.Bullets" />
+          <xs:enumeration value="Tex.FitPage" />
+          <xs:enumeration value="Vault.LockRoundTrip" />
+          <xs:enumeration value="Vault.WrongPassword" />
+          <xs:enumeration value="Vault.ConvertResumes" />
+          <xs:enumeration value="Vault.HelloSlot" />
           <xs:enumeration value="Visual.PanelAndLabel" />
           <xs:enumeration value="Visual.TabStrip" />
           <xs:enumeration value="Visual.Expander" />
@@ -340,6 +408,7 @@
           <xs:enumeration value="Context.LoadDeclared" />
           <xs:enumeration value="EntityRegistry.ParseXML" />
           <xs:enumeration value="Settings.LoadAll" />
+          <xs:enumeration value="FileTypes.Load" />
           <xs:enumeration value="AssetImporter.RunImports" />
           <xs:enumeration value="Logging.Configure" />
           <xs:enumeration value="Profiling.Configure" />
@@ -354,10 +423,10 @@
       <xs:simpleType>
         <xs:restriction base="xs:string">
           <xs:enumeration value="Background.Remove" />
-          <xs:enumeration value="Notes.SettleUnnamed" />
           <xs:enumeration value="Notes.SaveEdited" />
           <xs:enumeration value="Session.Capture" />
           <xs:enumeration value="Settings.SaveAll" />
+          <xs:enumeration value="Files.Drain" />
           <xs:enumeration value="Logging.Flush" />
           <xs:enumeration value="Profiling.Flush" />
         </xs:restriction>
@@ -369,6 +438,7 @@
       <xs:simpleType>
         <xs:restriction base="xs:string">
           <xs:enumeration value="Renderer.RequestSwapchainRebuild" />
+          <xs:enumeration value="Planner.Reformat" />
           <xs:enumeration value="Document.Rezoom" />
           <xs:enumeration value="UI.Rescale" />
         </xs:restriction>
@@ -380,6 +450,7 @@
       <xs:simpleType>
         <xs:restriction base="xs:string">
           <xs:enumeration value="Palettes.Set" />
+          <xs:enumeration value="Focus" />
           <xs:enumeration value="Help" />
           <xs:enumeration value="Quit" />
         </xs:restriction>

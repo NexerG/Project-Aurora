@@ -185,7 +185,7 @@ namespace ArctisAurora.Core.UI
         }
 
         // Text typed into it stays text: not a picture, formula, sheet link or spacer.
-        private static bool Typable(StyleSpan span) => !span.IsObject && span.spaceWidth == 0f;
+        private static bool Typable(StyleSpan span) => !span.IsObject && span.spaceWidth == 0f && !span.fill;
 
         private static StyleSpan ZeroText(StyleSpan picture)
         {
@@ -254,6 +254,7 @@ namespace ArctisAurora.Core.UI
             && a.stylingType == b.stylingType
             && a.fontSizeAuthored == b.fontSizeAuthored
             && a.spaceWidth == b.spaceWidth
+            && a.fill == b.fill
             && a.note == b.note;
 
         // Save: the spans cut back into runs. The last span absorbs whatever is left of the string,
@@ -280,6 +281,7 @@ namespace ArctisAurora.Core.UI
                     display = span.mathDisplay,
                     sheet = span.sheetRef,
                     space = span.spaceWidth,
+                    fill = span.fill,
                     note = span.note,
                     width = span.imageWidth,
                     height = span.imageHeight,

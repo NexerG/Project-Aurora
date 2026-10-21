@@ -25,6 +25,7 @@ namespace ArctisAurora.Core.UI
         public TextStyleType stylingType;
         public TextAlignment alignment;
         public float firstIndent;
+        public float? ruleWeight;
         public float? spaceBefore;
         public PageBreak pageBreak;
         public string? pageStyle;
@@ -37,6 +38,7 @@ namespace ArctisAurora.Core.UI
         public ListKind listKind;
         public int listLevel;
         public ListMarker? listMarker;
+        public float? listIndent;
         public int? listStart;
         public bool isChecked;
         public string text = string.Empty;

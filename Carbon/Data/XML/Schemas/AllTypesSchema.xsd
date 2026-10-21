@@ -18,6 +18,13 @@
       <xs:enumeration value="VSync" />
       <xs:enumeration value="Validation" />
       <xs:enumeration value="Graphics" />
+      <xs:enumeration value="WeekDay" />
+      <xs:enumeration value="ClockFormat" />
+      <xs:enumeration value="DateOrder" />
+      <xs:enumeration value="WeekStart" />
+      <xs:enumeration value="TimeFormat" />
+      <xs:enumeration value="DateFormat" />
+      <xs:enumeration value="DateTime" />
       <xs:enumeration value="DocumentSettings" />
       <xs:enumeration value="SessionTab" />
       <xs:enumeration value="SessionPane" />
@@ -136,6 +143,10 @@
       <xs:enumeration value="WorkspaceBar" />
       <xs:enumeration value="Workspace" />
       <xs:enumeration value="WorkspaceKind" />
+      <xs:enumeration value="WrapPanel" />
+      <xs:enumeration value="FileKind" />
+      <xs:enumeration value="FileType" />
+      <xs:enumeration value="FileTypes" />
       <xs:enumeration value="Orientation" />
     </xs:restriction>
   </xs:simpleType>
@@ -265,6 +276,14 @@
       <xs:enumeration value="SamplerAsset" />
     </xs:restriction>
   </xs:simpleType>
+  <xs:simpleType name="Build">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="BuildSource" />
+      <xs:enumeration value="BuildPattern" />
+      <xs:enumeration value="BuildTarget" />
+      <xs:enumeration value="Build" />
+    </xs:restriction>
+  </xs:simpleType>
   <xs:simpleType name="Animation">
     <xs:restriction base="xs:string">
       <xs:enumeration value="ClipLoop" />
@@ -278,7 +297,7 @@
     </xs:restriction>
   </xs:simpleType>
   <xs:simpleType name="Uncategorized">
-    <xs:union memberTypes="types:Settings types:UI types:Bootstrap types:Input types:Shutdown types:AssetRegistry types:EntityRegistry types:DataPools types:Systems types:Test types:Context types:Rendering types:Animation">
+    <xs:union memberTypes="types:Settings types:UI types:Bootstrap types:Input types:Shutdown types:AssetRegistry types:EntityRegistry types:DataPools types:Systems types:Test types:Context types:Rendering types:Build types:Animation">
       <xs:simpleType>
         <xs:restriction base="xs:string">
           <xs:enumeration value="xs:string" />

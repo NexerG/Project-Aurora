@@ -42,6 +42,7 @@ None of these run during `--test`, because a test run only stays repeatable if n
 | `Help` | lists every command |
 | `Quit` | closes the app through the normal shutdown |
 | `Wait <ms>` | pauses the rest of the line |
+| `Focus` | gives the focused pane's editor the caret, so a headless `--exec` can run an action that needs a focused editor, such as `Tex.ExportPdf` |
 | any keybind or UI action | runs it — `UI.DumpTree`, `Profiling.Capture`, `Settings.Open`, … |
 
 A console-only command is a static method tagged with the `Console` category. It may take numbers, true/false, text or an enum value, and whatever string it returns becomes its answer.

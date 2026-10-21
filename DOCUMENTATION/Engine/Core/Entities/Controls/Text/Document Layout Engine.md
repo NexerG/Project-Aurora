@@ -177,6 +177,13 @@ The pages themselves are plain panels drawn behind the highlights and the text. 
 		record block top and height
 	paged: page count = page y ends on + 1; pageless: one page, height max(paper, y + bottom margin)
 
+#### Last Page Height (fitHeight)
+A page can ask for its last sheet to be cut to its content, `<Page FitHeight="mm">`, which is how a LaTeX `\pdfpageheight=\dimexpr\pagetotal+…` becomes one tall page without blank space at the bottom.
+	if `fitHeight` is set
+		`lastPageHeight` = the content below the top margin on the last page + `fitHeight`   // set in Paginate
+	ArrangePages uses `lastPageHeight` for the last page
+	`PageRects` and the PDF MediaBox follow it
+
 #### Push (y, span height)
 	band top = the text-area top of the page y falls on
 	if y is above it: return band top

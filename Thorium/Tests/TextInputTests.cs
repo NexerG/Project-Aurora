@@ -2257,6 +2257,37 @@ namespace Thorium.Tests
             t.Show(new StackPanelControl());
         }
 
+        [A_XSDActionDependency("TextInput.FillRun", "Test")]
+        private static IEnumerator<int> FillRun(TestContext t)
+        {
+            XElement source = new XElement("Document",
+                new XElement("Block", new XAttribute("Align", "Justify"), RunX("Left side"), RunX(" ", ("Fill", "true")), RunX("Right")),
+                new XElement("Block", new XAttribute("StylingType", "Rule"), new XAttribute("Weight", "3"), RunX("")),
+                new XElement("Block", new XAttribute("List", "Bullet"), new XAttribute("ListIndent", "10"), RunX("item")));
+            XElement once = DocumentXml.ToXml(DocumentXml.Parse(source));
+            t.Check(XNode.DeepEquals(once, DocumentXml.ToXml(DocumentXml.Parse(once))) && once.Descendants().Any(e => (string?)e.Attribute("Fill") == "true")
+                && once.Descendants().Any(e => (string?)e.Attribute("Weight") == "3") && once.Descendants().Any(e => (string?)e.Attribute("ListIndent") == "10"),
+                $"Fill, Weight and ListIndent survive a save and load: {once.ToString(SaveOptions.DisableFormatting)}");
+
+            DocumentEditorControl editor = ShowFixture(t, DocumentXml.Parse(source));
+            yield return 2;
+            float zoom = Content(editor).zoom;
+            List<BlockControl> p = Paragraphs(editor);
+            TextLine line = p[0].Lines[0];
+            float inner = p[0].arrangedRect.width - p[0].padding.left - p[0].padding.right;
+            t.Check(p[0].Lines.Count == 1 && MathF.Abs(line.left + line.width - inner) < 1f && line.fillExtra > 0f && line.spaceExtra == 0f,
+                $"the fill takes the slack, the line is not justified: {line.left + line.width} of {inner}, fill {line.fillExtra}, space {line.spaceExtra}");
+            t.Check(p[1].arrangedRect.height > 6f * zoom, $"a weighted rule keeps a text line, not just its weight: {p[1].arrangedRect.height}");
+            t.Check(MathF.Abs(p[2].padding.left - 10f * zoom) < 0.5f, $"ListIndent replaces the layout's indent: {p[2].padding.left}");
+
+            Content(editor).SetCaret(p[0], "Left side ".Length);
+            yield return t.Type("X");
+            XElement typed = DocumentXml.ToXml(editor.session.document).Descendants().First(e => e.Name.LocalName == "Block");
+            string runs = string.Join("|", typed.Elements().Select(r => $"{r.Attribute("Text")?.Value}{(r.Attribute("Fill") != null ? "(fill)" : "")}"));
+            t.Check(runs == "Left side| (fill)|XRight", $"text typed beside the fill stays text: {runs}");
+            t.Show(new StackPanelControl());
+        }
+
         [A_XSDActionDependency("TextInput.TableRules", "Test")]
         private static IEnumerator<int> TableRules(TestContext t)
         {

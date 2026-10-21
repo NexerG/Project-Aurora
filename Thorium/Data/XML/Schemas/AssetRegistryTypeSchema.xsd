@@ -140,6 +140,7 @@
     <xs:attribute name="BoldItalic" type="xs:string" />
     <xs:attribute name="Charset" type="xs:string" />
     <xs:attribute name="GlyphSize" type="xs:int" />
+    <xs:attribute name="Covered" type="xs:boolean" />
   </xs:attributeGroup>
   <xs:element name="FontImport" type="types:FontImport" />
   <xs:complexType name="FontImport">

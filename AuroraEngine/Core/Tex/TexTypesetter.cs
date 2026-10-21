@@ -23,6 +23,7 @@ namespace ArctisAurora.Core.Tex
             public readonly int kindDepth;
             public int count;
             public bool started;
+            public ListSettings settings = new ListSettings();
 
             public ListFrame(TexListKind kind, ListFrame? parent)
             {
@@ -55,6 +56,30 @@ namespace ArctisAurora.Core.Tex
             }
         }
 
+        // enumitem keys; null leaves the class's value, dimensions in sp
+        private sealed class ListSettings
+        {
+            public TexToken[]? label;
+            public int? leftMargin, itemSep, parSep, topSep;
+
+            public void Apply(ListSettings other)
+            {
+                label = other.label ?? label;
+                leftMargin = other.leftMargin ?? leftMargin;
+                itemSep = other.itemSep ?? itemSep;
+                parSep = other.parSep ?? parSep;
+                topSep = other.topSep ?? topSep;
+            }
+        }
+
+        // titlesec for one section level; null skips leave the class's, sp
+        private sealed class TitleFormat
+        {
+            public TexToken[]? format, label, before, after;
+            public int sep;
+            public int? beforeSkip, afterSkip;
+        }
+
         private sealed class FixedMetrics : ITexFontMetrics
         {
             public int Quad(TexFont font) => font.size;
@@ -78,8 +103,12 @@ namespace ArctisAurora.Core.Tex
         private static readonly HashSet<string> knownPackages = new HashSet<string>
         {
             "amsmath", "amssymb", "amsfonts", "geometry", "xcolor", "color", "hyperref", "url",
-            "inputenc", "fontenc", "lmodern", "textcomp", "babel", "microtype", "graphicx", "graphics", "booktabs", "fancyhdr"
+            "inputenc", "fontenc", "lmodern", "textcomp", "babel", "microtype", "graphicx", "graphics", "booktabs", "fancyhdr",
+            "ulem", "enumitem", "titlesec", "mathptmx", "times", "tgtermes", "newtxtext"
         };
+
+        // packages that set the roman family in Times
+        private static readonly HashSet<string> timesPackages = new HashSet<string> { "mathptmx", "times", "tgtermes", "newtxtext" };
 
         // article's \textwidth at 10pt, 11pt, 12pt and its \textheight, pt
         public static readonly float[] textWidths = { 345f, 360f, 390f };
@@ -135,6 +164,10 @@ namespace ArctisAurora.Core.Tex
         public int sizeOption;
         public string paper = "letter";
         public float? marginTop, marginBottom, marginLeft, marginRight;
+        // geometry's paperwidth/paperheight or \pdfpagewidth/\pdfpageheight, mm; fitHeight cuts the last page to its content plus this
+        public float? customWidth, customHeight, fitHeight;
+        // the roman family is Times (mathptmx and kin), not Latin Modern
+        public bool times;
 
         // \label key -> its text, cited keys in citation order, \bibitem key -> its label
         public readonly Dictionary<string, string> labels = new Dictionary<string, string>();
@@ -201,17 +234,34 @@ namespace ArctisAurora.Core.Tex
         private (int depth, string number)? headingMark;
         private bool inSlot;
 
+        // what the preamble typesets, dropped
+        private readonly List<TexNode> preamble = new List<TexNode>();
+        private bool preambleReported;
+
+        // \definecolor names
+        private readonly Dictionary<string, (int r, int g, int b)> definedColors = new Dictionary<string, (int, int, int)>();
+
+        // enumitem: \setlist keys by list name ("" for every list)
+        private readonly Dictionary<string, ListSettings> listSettings = new Dictionary<string, ListSettings>();
+
+        // titlesec: \titleformat and \titlespacing by section depth, and the after-code of the heading being set
+        private readonly Dictionary<int, TitleFormat> titleFormats = new Dictionary<int, TitleFormat>();
+        private TexToken[]? headingAfterCode;
+
         private List<TexNode> HList => box?.list ?? par!.list;
 
         // \normalsize at the class option, sp
         public int normalSize => Size(NormalSize);
-        public float parIndent => parIndents[sizeOption];
+
+        // \parindent in pt, and whether \hyphenpenalty allows hyphens
+        public float parIndent => (expander.RegisterValue("parindent") ?? 0) / (float)Unity;
+        public bool hyphenate => (expander.RegisterValue("hyphenpenalty") ?? 0) < 10000;
 
         private bool Chapters => documentClass is "report" or "book";
 
         // paper, mm
-        public float paperWidth => paper == "a4" ? 210f : 215.9f;
-        public float paperHeight => paper == "a4" ? 297f : 279.4f;
+        public float paperWidth => customWidth ?? (paper == "a4" ? 210f : 215.9f);
+        public float paperHeight => customHeight ?? (paper == "a4" ? 297f : 279.4f);
 
         // \textwidth and \textheight, sp: the class's, or the paper less geometry's margins
         public int textWidth => Extent(paperWidth, marginLeft, marginRight, textWidths[sizeOption]);
@@ -261,7 +311,9 @@ namespace ArctisAurora.Core.Tex
             On("geometry", t => Geometry(expander.Argument(t, true)));
             On("document", _ =>
             {
+                EndParagraph();
                 inDocument = true;
+                vtarget = vlist;
                 PageDimens();
             });
             On("@pagedimens", _ => PageDimens());
@@ -271,6 +323,20 @@ namespace ArctisAurora.Core.Tex
                 done = true;
             });
             On("today", _ => AddText(Today()));
+            On("pdfpageheight", _ => PdfPage(false));
+            On("pdfpagewidth", _ => PdfPage(true));
+            On("definecolor", DefineColor);
+            On("newlist", NewList);
+            On("setlist", SetList);
+            On("titleformat", TitleFormatCommand);
+            On("titlespacing", TitleSpacing);
+            On("@endheadafter", _ =>
+            {
+                EndParagraph();
+                VSkip(headingAfter);
+                afterHeading = true;
+            });
+            On("rule", RuleBox);
 
             for (int i = 0; i < sectionNames.Length; i++)
             {
@@ -283,8 +349,13 @@ namespace ArctisAurora.Core.Tex
                 if (headingMark is (int depth, string number) && vtarget.Count > 0 && vtarget[^1] is TexParagraph heading)
                     HeadingMarks(heading, depth, number);
                 headingMark = null;
-                VSkip(headingAfter);
                 afterHeading = true;
+                if (headingAfterCode != null)
+                {
+                    expander.Insert(headingAfterCode.Append(TexToken.Cs("@endheadafter")).ToArray());
+                    headingAfterCode = null;
+                }
+                else VSkip(headingAfter);
             });
             On("@runin", _ =>
             {
@@ -316,11 +387,11 @@ namespace ArctisAurora.Core.Tex
             On("@underline", _ => SetStyle(style with { underline = true }));
             On("color", Color);
 
-            On("itemize", _ => BeginList(TexListKind.Itemize));
-            On("enumerate", _ => BeginList(TexListKind.Enumerate));
-            On("description", _ => BeginList(TexListKind.Description));
+            On("itemize", t => BeginList(TexListKind.Itemize, "itemize", t));
+            On("enumerate", t => BeginList(TexListKind.Enumerate, "enumerate", t));
+            On("description", t => BeginList(TexListKind.Description, "description", t));
             foreach (string name in new[] { "enditemize", "endenumerate", "enddescription" })
-                On(name, _ => EndEnvironment(list?.depth ?? 1));
+                On(name, _ => EndEnvironment(list?.depth ?? 1, list?.settings.topSep));
             foreach (string name in new[] { "endquote", "endquotation", "endcenter", "endflushleft", "endflushright" })
                 On(name, _ => EndEnvironment((list?.depth ?? 0) + 1));
             On("item", Item);
@@ -552,6 +623,7 @@ namespace ArctisAurora.Core.Tex
             string? name = expander.NameArgument(t);
             if (name == null) return;
             inDocument = false;
+            vtarget = preamble;
 
             foreach (string option in Options(options))
                 switch (option)
@@ -566,6 +638,7 @@ namespace ArctisAurora.Core.Tex
             else Log.Info($"document class {name} is set as article");
             pageStyle = documentClass == "book" ? "headings" : "plain";
             style = style with { font = style.font with { size = Size(NormalSize) } };
+            expander.InsertSource($"\\global\\parindent={parIndents[sizeOption].ToString(CultureInfo.InvariantCulture)}pt\\relax ");
         }
 
         private void UsePackage(TexToken t)
@@ -578,6 +651,7 @@ namespace ArctisAurora.Core.Tex
             foreach (string name in names.Split(',').Select(n => n.Trim()).Where(n => n.Length > 0))
             {
                 if (name == "geometry" && options != null) Geometry(options);
+                if (timesPackages.Contains(name)) times = true;
                 if (!knownPackages.Contains(name)) Log.Info($"package {name} is not supported and is ignored");
             }
         }
@@ -612,8 +686,63 @@ namespace ArctisAurora.Core.Tex
                     case "right" or "rmargin" or "outer": marginRight = mm; break;
                     case "top" or "tmargin": marginTop = mm; break;
                     case "bottom" or "bmargin": marginBottom = mm; break;
+                    case "paperwidth": customWidth = mm; break;
+                    case "paperheight": customHeight = mm; break;
                 }
             }
+        }
+
+        // \pdfpageheight=…; a \pagetotal in it cuts the last page to its content plus the rest instead.
+        private void PdfPage(bool width)
+        {
+            expander.ScanKeyword("=");
+            expander.pagetotalRead = false;
+            float mm = expander.ScanDimen() / (float)Unity * MmPerPt;
+            if (width) customWidth = mm;
+            else if (expander.pagetotalRead) fitHeight = mm;
+            else customHeight = mm;
+        }
+
+        // \definecolor{name}{model}{spec}
+        private void DefineColor(TexToken t)
+        {
+            string? name = expander.NameArgument(t);
+            string? model = name == null ? null : expander.NameArgument(t);
+            string? spec = model == null ? null : expander.NameArgument(t);
+            if (spec == null) return;
+            if (ResolveColor(model!.Trim(), spec.Trim()) is not string hex)
+            {
+                expander.Error($"Package xcolor Error: Undefined color model `{model}'");
+                return;
+            }
+            int rgb = int.Parse(hex[1..], NumberStyles.HexNumber, CultureInfo.InvariantCulture);
+            definedColors[name!.Trim()] = (rgb >> 16 & 255, rgb >> 8 & 255, rgb & 255);
+        }
+
+        // \rule[raise]{width}{height}: a box in the paragraph; a paragraph of rules alone becomes a rule line.
+        private void RuleBox(TexToken t)
+        {
+            TexToken[]? raise = expander.Optional(t);
+            TexToken[]? width = expander.Argument(t, false);
+            TexToken[]? height = width == null ? null : expander.Argument(t, false);
+            if (height == null) return;
+            StartParagraph();
+            HList.Add(new TexRuleBox(Dimen(width!), Dimen(height), raise == null ? 0 : Dimen(raise), style));
+        }
+
+        // A value with one pair of outer braces taken off.
+        private static TexToken[] Unbraced(TexToken[] value)
+        {
+            TexToken[] trimmed = value.SkipWhile(v => v.IsChar(v.ch, TexCatcode.Space)).Reverse().SkipWhile(v => v.IsChar(v.ch, TexCatcode.Space)).Reverse().ToArray();
+            if (trimmed.Length < 2 || !trimmed[0].IsChar(trimmed[0].ch, TexCatcode.BeginGroup) || !trimmed[^1].IsChar(trimmed[^1].ch, TexCatcode.EndGroup)) return trimmed;
+            int depth = 0;
+            for (int i = 0; i < trimmed.Length - 1; i++)
+            {
+                if (trimmed[i].IsChar(trimmed[i].ch, TexCatcode.BeginGroup)) depth++;
+                else if (trimmed[i].IsChar(trimmed[i].ch, TexCatcode.EndGroup)) depth--;
+                if (depth == 0) return trimmed;
+            }
+            return trimmed[1..^1];
         }
 
         private float Millimetres(TexToken[] value) => Dimen(value) / (float)Unity * 25.4f / 72.27f;
@@ -668,8 +797,9 @@ namespace ArctisAurora.Core.Tex
             if (title == null) return;
             EndParagraph();
             int ex = metrics.XHeight(new TexFont(TexFamily.Roman, false, false, Size(NormalSize)));
-            VSkip(depth switch { 0 => 50f * Unity, 1 => 3.5f * ex, _ => 3.25f * ex }, true);
-            headingAfter = depth switch { 0 => 40f * Unity, 1 => 2.3f * ex, _ => 1.5f * ex };
+            TitleFormat? titled = titleFormats.GetValueOrDefault(depth);
+            VSkip(titled?.beforeSkip ?? depth switch { 0 => 50f * Unity, 1 => 3.5f * ex, _ => 3.25f * ex }, true);
+            headingAfter = titled?.afterSkip ?? depth switch { 0 => 40f * Unity, 1 => 2.3f * ex, _ => 1.5f * ex };
 
             int top = Chapters ? 0 : 1;
             bool numbered = !star && depth <= (Chapters ? 2 : 3);
@@ -694,6 +824,26 @@ namespace ArctisAurora.Core.Tex
                 AddText("Chapter " + number);
                 Resume();
                 number = "";
+            }
+
+            if (titled?.format != null)
+            {
+                Suspend(new TexParStyle { kind = TexParKind.Heading, level = heading, align = TexAlign.Left }, normal with { bold = false });
+                List<TexToken> set = new List<TexToken>(titled.format);
+                if (number.Length > 0 && titled.label == null) set.AddRange(Chars(number).Append(TexToken.Cs("quad")));
+                else if (number.Length > 0 && titled.label!.Length > 0)
+                {
+                    set.AddRange(titled.label.SelectMany(l => l.IsCs && l.name == "the" + sectionNames[depth] ? Chars(number) : new[] { l }));
+                    set.Add(TexToken.Cs("hskip"));
+                    set.AddRange(Chars(titled.sep.ToString(CultureInfo.InvariantCulture) + "sp"));
+                    set.Add(TexToken.Cs("relax"));
+                }
+                set.AddRange(titled.before ?? Array.Empty<TexToken>());
+                set.AddRange(title);
+                set.Add(TexToken.Cs("@endhead"));
+                headingAfterCode = titled.after;
+                expander.Insert(set.ToArray());
+                return;
             }
 
             int size = depth switch { 0 => 9, 1 => 6, 2 => 5, _ => NormalSize };
@@ -723,18 +873,26 @@ namespace ArctisAurora.Core.Tex
         private float ListSkip(float[] points, int depth) => points[sizeOption] * Unity / (depth <= 1 ? 1f : depth == 2 ? 2f : 4f);
 
         // A list or a trivlist environment ends: \topsep below it, and no indent until a blank line.
-        private void EndEnvironment(int depth)
+        private void EndEnvironment(int depth, int? topSep = null)
         {
             EndParagraph();
-            VSkip(ListSkip(topSeps, depth), true);
+            VSkip(topSep ?? ListSkip(topSeps, depth), true);
             afterEnvironment = true;
         }
 
-        private void BeginList(TexListKind kind)
+        // A list environment: the keys \setlist gave every list, its kind and its name, then its own [keys].
+        private void BeginList(TexListKind kind, string name, TexToken t)
         {
             EndParagraph();
-            VSkip(ListSkip(topSeps, (list?.depth ?? 0) + 1), true);
-            ListFrame frame = new ListFrame(kind, list);
+            ListSettings settings = new ListSettings();
+            foreach (string key in new[] { "", kind.ToString().ToLowerInvariant(), name }.Distinct())
+                if (listSettings.TryGetValue(key, out ListSettings? set)) settings.Apply(set);
+            if (expander.Optional(t) is TexToken[] options) settings.Apply(ListKeys(options));
+            if (settings.label != null && LabelMarker(settings.label) == null && kind != TexListKind.Description)
+                Log.Info($"list label {Text(settings.label)} is set as the default marker");
+
+            VSkip(settings.topSep ?? ListSkip(topSeps, (list?.depth ?? 0) + 1), true);
+            ListFrame frame = new ListFrame(kind, list) { settings = settings };
             if (frame.depth > 4) expander.Error("LaTeX Error: Too deeply nested");
             ListFrame? outer = list;
             expander.Save(() => list = outer);
@@ -754,7 +912,8 @@ namespace ArctisAurora.Core.Tex
 
             if (list != null)
             {
-                if (list.started) VSkip(2f * ListSkip(itemSeps, list.depth));
+                float sep = ListSkip(itemSeps, list.depth);
+                if (list.started) VSkip((list.settings.itemSep ?? sep) + (list.settings.parSep ?? sep));
                 list.started = true;
             }
             itemPending = true;
@@ -763,6 +922,152 @@ namespace ArctisAurora.Core.Tex
             if (label != null)
                 expander.Insert(Grouped(list?.kind == TexListKind.Description ? new[] { TexToken.Cs("bfseries") }.Concat(label) : label)
                     .Append(TexToken.Cs("@label")).ToArray());
+        }
+
+        // \newlist{name}{itemize|enumerate|description}{depth}
+        private void NewList(TexToken t)
+        {
+            string? name = expander.NameArgument(t)?.Trim();
+            string? type = name == null ? null : expander.NameArgument(t)?.Trim();
+            if (type == null || expander.Argument(t, false) == null) return;
+            if (!Enum.TryParse(type, true, out TexListKind kind))
+            {
+                expander.Error($"Package enumitem Error: Unknown list type `{type}'");
+                return;
+            }
+            expander.DefinePrimitive(name!);
+            commands[name!] = begin => BeginList(kind, name!, begin);
+            expander.DefinePrimitive("end" + name);
+            commands["end" + name] = _ => EndEnvironment(list?.depth ?? 1, list?.settings.topSep);
+        }
+
+        // \setlist[names]{keys}; levels in the names are read as every level
+        private void SetList(TexToken t)
+        {
+            TexToken[]? names = expander.Optional(t);
+            TexToken[]? keys = expander.Argument(t, false);
+            if (keys == null) return;
+            ListSettings settings = ListKeys(keys);
+            string[] targets = names == null ? new[] { "" } : Keys(Text(names)).Where(n => !n.All(char.IsDigit)).DefaultIfEmpty("").ToArray();
+            foreach (string target in targets)
+            {
+                if (!listSettings.TryGetValue(target, out ListSettings? set)) listSettings[target] = set = new ListSettings();
+                set.Apply(settings);
+            }
+        }
+
+        private ListSettings ListKeys(TexToken[] keys)
+        {
+            ListSettings settings = new ListSettings();
+            foreach (TexToken[] option in Split(keys))
+            {
+                int equals = Array.FindIndex(option, x => x.IsChar('=', TexCatcode.Other));
+                string key = Text(equals < 0 ? option : option[..equals]).Trim();
+                TexToken[] value = equals < 0 ? Array.Empty<TexToken>() : Unbraced(option[(equals + 1)..]);
+                switch (key)
+                {
+                    case "label": settings.label = value; break;
+                    case "leftmargin" when Text(value).Trim() != "*": settings.leftMargin = Dimen(value); break;
+                    case "itemsep": settings.itemSep = Dimen(value); break;
+                    case "parsep": settings.parSep = Dimen(value); break;
+                    case "topsep": settings.topSep = Dimen(value); break;
+                    case "noitemsep": settings.itemSep = settings.parSep = 0; break;
+                    case "nosep": settings.itemSep = settings.parSep = settings.topSep = 0; break;
+                    default: Log.Info($"enumitem key {key} is not supported and is ignored"); break;
+                }
+            }
+            return settings;
+        }
+
+        // The list marker a label's commands draw, or null for one there is none of.
+        private static string? LabelMarker(TexToken[] label)
+        {
+            foreach (TexToken token in label)
+                if (token.IsCs && token.name switch
+                    {
+                        "rule" or "blacksquare" => "Square",
+                        "square" => "SquareOutline",
+                        "textbullet" or "bullet" => "Disc",
+                        "circ" or "textopenbullet" => "Circle",
+                        "blacktriangleright" or "blacktriangle" => "Triangle",
+                        "triangleright" or "triangle" => "TriangleOutline",
+                        "arabic" => "Decimal",
+                        "alph" => "LowerAlpha",
+                        "Alph" => "UpperAlpha",
+                        "roman" => "LowerRoman",
+                        "Roman" => "UpperRoman",
+                        _ => null
+                    } is string marker)
+                    return marker;
+            return null;
+        }
+
+        // \titleformat{\cmd}[shape]{format}{label}{sep}{before}[after], or \titleformat*{\cmd}{format}
+        private void TitleFormatCommand(TexToken t)
+        {
+            bool star = expander.TakeStar();
+            int depth = TitleDepth(expander.Argument(t, false));
+            if (star)
+            {
+                TexToken[]? only = expander.Argument(t, true);
+                if (only != null && depth >= 0) Titled(depth).format = only;
+                return;
+            }
+
+            TexToken[]? shape = expander.Optional(t);
+            TexToken[]? format = expander.Argument(t, true);
+            TexToken[]? label = format == null ? null : expander.Argument(t, true);
+            TexToken[]? sep = label == null ? null : expander.Argument(t, true);
+            TexToken[]? before = sep == null ? null : expander.Argument(t, true);
+            if (before == null || depth < 0) return;
+            TexToken[]? after = expander.Optional(t);
+            if (shape != null && Text(shape).Trim() is not ("hang" or "block"))
+                Log.Info($"titlesec shape {Text(shape).Trim()} is set as hang");
+
+            TitleFormat titled = Titled(depth);
+            titled.format = format;
+            titled.label = label;
+            titled.sep = Dimen(sep!);
+            titled.before = before;
+            titled.after = after;
+        }
+
+        // \titlespacing*{\cmd}{left}{before}{after}[right]; *n is n ex
+        private void TitleSpacing(TexToken t)
+        {
+            expander.TakeStar();
+            int depth = TitleDepth(expander.Argument(t, false));
+            TexToken[]? left = expander.Argument(t, false);
+            TexToken[]? before = left == null ? null : expander.Argument(t, false);
+            TexToken[]? after = before == null ? null : expander.Argument(t, false);
+            if (after == null) return;
+            expander.Optional(t);
+            if (depth < 0) return;
+
+            int ex = metrics.XHeight(new TexFont(TexFamily.Roman, false, false, Size(NormalSize)));
+            int Skip(TexToken[] value)
+            {
+                string text = Text(value).Trim();
+                if (text.StartsWith('*') && float.TryParse(text[1..], NumberStyles.Float, CultureInfo.InvariantCulture, out float n)) return (int)(n * ex);
+                return Dimen(value);
+            }
+            Titled(depth).beforeSkip = Skip(before!);
+            Titled(depth).afterSkip = Skip(after);
+        }
+
+        // The section depth a \titleformat names, or -1 with a note for one that is not a sectioning command.
+        private static int TitleDepth(TexToken[]? command)
+        {
+            string? name = command?.Where(c => c.IsCs).Select(c => c.name).FirstOrDefault();
+            int depth = name == null ? -1 : Array.IndexOf(sectionNames, name);
+            if (depth < 0) Log.Info($"titlesec: {(command == null ? "" : Text(command))} is not a sectioning command and is ignored");
+            return depth;
+        }
+
+        private TitleFormat Titled(int depth)
+        {
+            if (!titleFormats.TryGetValue(depth, out TitleFormat? titled)) titleFormats[depth] = titled = new TitleFormat();
+            return titled;
         }
 
         private void BeginQuote()
@@ -1780,7 +2085,8 @@ namespace ArctisAurora.Core.Tex
             TexParStyle parStyle = new TexParStyle { kind = quote ? TexParKind.Quote : TexParKind.Text };
             parStyle.indent = !noIndent && !afterHeading && !afterEnvironment && list == null && !quote;
             noIndent = afterHeading = afterEnvironment = false;
-            if (list != null && !itemPending) VSkip(ListSkip(itemSeps, list.depth));
+            if (list != null && !itemPending) VSkip(list.settings.parSep ?? ListSkip(itemSeps, list.depth));
+            if (list == null && expander.RegisterValue("parskip") is int parskip and not 0) VSkip(parskip);
             if (list != null)
             {
                 parStyle.list = list.kind;
@@ -1788,6 +2094,8 @@ namespace ArctisAurora.Core.Tex
                 parStyle.listKindDepth = list.kindDepth;
                 parStyle.itemNumber = list.count;
                 parStyle.item = itemPending;
+                parStyle.marker = list.settings.label is TexToken[] label ? LabelMarker(label) : null;
+                parStyle.leftMargin = list.settings.leftMargin ?? 0;
             }
             itemPending = false;
             par = new TexParagraph(parStyle) { line = sourceLine };
@@ -1825,9 +2133,9 @@ namespace ArctisAurora.Core.Tex
 
         private void EnsureDocument()
         {
-            if (inDocument) return;
+            if (inDocument || preambleReported) return;
             expander.Error("LaTeX Error: Missing \\begin{document}");
-            inDocument = true;
+            preambleReported = true;
         }
 
         // Starts a paragraph of its own for a heading or a note's text; Resume puts the outer state back.
@@ -2093,7 +2401,7 @@ namespace ArctisAurora.Core.Tex
         }
 
         // xcolor: a named colour with name!percent[!other] mixing, or an HTML, rgb, RGB or gray value; #RRGGBB.
-        private static string? ResolveColor(string model, string spec)
+        private string? ResolveColor(string model, string spec)
         {
             (int r, int g, int b)? rgb = model switch
             {
@@ -2108,10 +2416,10 @@ namespace ArctisAurora.Core.Tex
             return rgb is (int r, int g, int b) ? $"#{Math.Clamp(r, 0, 255):X2}{Math.Clamp(g, 0, 255):X2}{Math.Clamp(b, 0, 255):X2}" : null;
         }
 
-        private static (int r, int g, int b)? Named(string spec)
+        private (int r, int g, int b)? Named(string spec)
         {
             string[] parts = spec.Split('!');
-            if (!namedColors.TryGetValue(parts[0], out (int r, int g, int b) color)) return null;
+            if (!definedColors.TryGetValue(parts[0], out (int r, int g, int b) color) && !namedColors.TryGetValue(parts[0], out color)) return null;
             if (parts.Length == 1) return color;
             if (!float.TryParse(parts[1], NumberStyles.Float, CultureInfo.InvariantCulture, out float percent)) return null;
             (int r, int g, int b) other = (255, 255, 255);

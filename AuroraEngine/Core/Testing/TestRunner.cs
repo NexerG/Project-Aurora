@@ -118,6 +118,10 @@ namespace ArctisAurora.Core.Testing
                 string settings = Path.Combine(parent, "TestSettings");
                 if (Directory.Exists(settings)) Directory.Delete(settings, true);
                 SettingsRegistry.SetWriteRoot(settings);
+
+                string userData = Path.Combine(parent, "TestUserData");
+                if (Directory.Exists(userData)) Directory.Delete(userData, true);
+                Paths.RedirectUserData(userData);
             }
 
             Discover();

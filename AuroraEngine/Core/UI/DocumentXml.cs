@@ -146,6 +146,7 @@ namespace ArctisAurora.Core.UI
             if (align != null && Enum.TryParse(align.Value, true, out TextAlignment alignment))
                 block.alignment = alignment;
             block.firstIndent = (float?)element.Attribute("Indent") ?? 0f;
+            block.ruleWeight = (float?)element.Attribute("Weight");
             block.spaceBefore = (float?)element.Attribute("SpaceBefore");
             block.pageBreak = ReadPageBreak(element);
             block.pageStyle = (string?)element.Attribute("PageStyle");
@@ -162,6 +163,7 @@ namespace ArctisAurora.Core.UI
             XAttribute marker = element.Attribute("Marker");
             if (marker != null && Enum.TryParse(marker.Value, true, out ListMarker style))
                 block.listMarker = style;
+            block.listIndent = (float?)element.Attribute("ListIndent");
             block.listStart = (int?)element.Attribute("Start");
 
             foreach (XElement child in element.Elements())
@@ -414,6 +416,8 @@ namespace ArctisAurora.Core.UI
                 element.SetAttributeValue("Align", block.alignment.ToString());
             if (block.firstIndent != 0f)
                 element.SetAttributeValue("Indent", Format(block.firstIndent));
+            if (block.ruleWeight.HasValue)
+                element.SetAttributeValue("Weight", Format(block.ruleWeight.Value));
             if (block.spaceBefore.HasValue)
                 element.SetAttributeValue("SpaceBefore", Format(block.spaceBefore.Value));
             if (block.pageBreak != PageBreak.None)
@@ -436,6 +440,8 @@ namespace ArctisAurora.Core.UI
                 element.SetAttributeValue("Checked", "true");
             if (block.listMarker.HasValue)
                 element.SetAttributeValue("Marker", block.listMarker.Value.ToString());
+            if (block.listIndent.HasValue)
+                element.SetAttributeValue("ListIndent", Format(block.listIndent.Value));
             if (block.listStart.HasValue)
                 element.SetAttributeValue("Start", block.listStart.Value);
 

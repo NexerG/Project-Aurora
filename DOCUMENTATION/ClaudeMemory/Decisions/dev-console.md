@@ -1,7 +1,7 @@
 # Decision — console commands are the engine's own actions, reached from three sources and a Ctrl+` overlay
 
 **Date:** 2026-09-27
-**Scope:** `ArctisAurora.Core.Commands` — `CommandConsole`, `CommandPipe`; `ArctisAurora.Core.UI` — `ConsoleControl`;
+**Scope:** `ArctisAurora.Core.Commands` — `CommandConsole`, `CommandPipe`; `ArctisAurora.Core.UI` — `ConsoleControl`, `WorkspaceControl`;
 `Engine` (constructor, `Init`); `ArctisAurora.Tests` — `CommandTests`, `ConsoleTests`; each host's `InputMap.inputs.axml`
 
 ## What changed
@@ -15,6 +15,7 @@
 - Built-ins: `Help` (every command, `Wait` included), `Quit` (posts `Shutdown.Request`), `Wait <ms>` — parks the rest
   of the line until `Engine.totalTime` passes it on a later frame, asks `FrameScheduler.RequestFrameAt` for that
   frame, and a ticking `Pump` entity resumes it.
+- `Focus` (`Console` category, 2026-10-18; private static `WorkspaceControl.Focus`): gives the focused pane's editor the caret, so a headless run can fire actions that act only on a focused editor — `--exec "Wait 3000; Focus; Tex.ExportPdf; Quit"`. It reads `RibbonControl.Target(In(Engine.primary.ui.uiRoot)?.shown)`: `TexEditorControl` → `tex.source.FocusCaret()`, `DocumentEditorControl` → `FocusCaret()`, any other `Control` → `UIEngine.SetActiveControl`. Answers `ok`, or `error: no editor in the focused pane`.
 - `Arm()` from `Engine.Init` after `TestRunner.Arm`: builds the table; under `--test` nothing else starts. Otherwise:
   - the console window — a background thread reads stdin lines and hands them to `Engine.Post`;
   - `--exec "<line>"` — echoed, then parked on `Wait 0`, so it runs on frame 1, after the first layout;
@@ -34,6 +35,9 @@
 
 **Commands are the action registry, not a second one (user, 2026-09-27).**
 Every keybind and UI action is a command for free; the `Console` category only adds arguments and replies.
+
+**`Focus` targets the focused pane's editor, not a control by name (user, 2026-10-18).**
+Editors carry no names, so `Focus <name>` through `FindByName` would reach nothing that matters; `RibbonControl.Target` already answers "which editor is this window working in", the same one a click would focus.
 **Rejected:** a separate `[Command]` attribute — two names for one thing.
 
 **Three sources (user, 2026-09-27).**
@@ -82,6 +86,7 @@ arranges every child over its full box, and the last one paints over the tree an
 - The pipe serves one connection at a time — while a line waits, another `--send` times out as "no running".
 - The overlay's look and the Ctrl+` keypress are **NOT GUI-verified**.
 - AuroraEditor's keybind is not boot-verified; the host was not run.
+- `Focus` is covered by Thorium's `Tex.FocusCommand` and the headless resume export ([[latex-editor]] L9); no click-through of a real focus change.
 - UI actions that act on a menu's target (`Tab.Close`, …) do nothing useful from the console.
 
-Related: [[engine-testing]], [[context-menus]], [[frame-scheduler]], [[paths-from-exe-folder]]
+Related: [[latex-editor]], [[engine-testing]], [[context-menus]], [[frame-scheduler]], [[paths-from-exe-folder]]

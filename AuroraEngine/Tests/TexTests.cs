@@ -1488,5 +1488,228 @@ namespace ArctisAurora.Tests
             t.Show(new StackPanelControl());
         }
         #endregion
+
+        #region ---- lengths, parameters, packages ----
+        private static bool Near(float a, float b, float within = 0.02f) => MathF.Abs(a - b) <= within;
+
+        private static float Pt(int sp) => sp / 65536f;
+
+        [A_XSDActionDependency("Tex.Lengths", "Test")]
+        private static IEnumerator<int> Lengths(TestContext t)
+        {
+            string gap = Run(@"\newlength{\gap}\setlength{\gap}{3pt}\addtolength{\gap}{2pt}\the\gap%", out List<TexError> gapErrors).Replace("\\relax ", "");
+            t.Check(gap == "5.0pt", $"\\newlength, \\setlength, \\addtolength: {gap} {string.Join("; ", gapErrors.Select(e => e.message))}");
+            string indent = Lines(@"\setlength{\parindent}{4pt}\the\parindent");
+            t.Check(indent == "4.0pt", $"\\parindent is a length: {indent}");
+
+            t.Check(Typeset(@"\documentclass[11pt]{article}\begin{document}x\end{document}", out _).parIndent == 17f, "the class sets \\parindent: 17pt at 11pt");
+            TexTypesetter flush = Typeset(@"\documentclass{article}\setlength{\parindent}{0pt}\begin{document}One" + "\n\nTwo\\end{document}", out _);
+            t.Check(flush.parIndent == 0f, "\\setlength{\\parindent}{0pt} in the preamble");
+
+            TexTypesetter spaced = Typeset(@"\documentclass{article}\setlength{\parskip}{6pt}\begin{document}One" + "\n\nTwo\\end{document}", out _);
+            List<TexVGlue> glue = spaced.vlist.SkipWhile(n => n is not TexParagraph).OfType<TexVGlue>().ToList();
+            t.Check(glue.Any(g => Pt(g.glue.width) == 6f), $"\\parskip above the second paragraph: {string.Join(",", glue.Select(g => Pt(g.glue.width)))}");
+            yield break;
+        }
+
+        [A_XSDActionDependency("Tex.Parameters", "Test")]
+        private static IEnumerator<int> Parameters(TestContext t)
+        {
+            const string preamble = "\\documentclass{article}\n\\hyphenpenalty=10000\n\\exhyphenpenalty=10000\n\\tolerance=9999\n\\emergencystretch=3em\n";
+            TexTypesetter set = Typeset(preamble + "\\begin{document}Introduction\\end{document}", out List<TexError> errors);
+            t.Check(errors.Count == 0, $"TeX's parameters are registers: {string.Join("; ", errors.Select(e => e.message))}");
+            t.Check(!set.hyphenate && Typeset("x", out _).hyphenate, "\\hyphenpenalty=10000 turns hyphenation off; it is on by default");
+            t.Check(Lines(preamble + "\\begin{document}Body\\end{document}") == "Body", "assignments typeset nothing");
+
+            XElement lowered = TexLowering.Compile(preamble + "\\begin{document}Introduction to organisation\\end{document}", out _);
+            t.Check(!lowered.Descendants("Run").Any(r => ((string?)r.Attribute("Text"))?.Contains('\u00AD') == true), "no soft hyphens are lowered");
+            yield break;
+        }
+
+        [A_XSDActionDependency("Tex.DimExpr", "Test")]
+        private static IEnumerator<int> DimExpr(TestContext t)
+        {
+            t.Check(Run(@"\dimen0=\dimexpr 1pt+2pt*3\relax\the\dimen0%") == "7.0pt", "\\dimexpr: * before +");
+            t.Check(Run(@"\dimen0=\dimexpr (1pt+2pt)/2\relax\the\dimen0%") == "1.5pt", "\\dimexpr: parentheses and /");
+            t.Check(Run(@"\dimen0=\dimexpr\pagetotal+1pt\relax\the\dimen0%") == "1.0pt", "\\pagetotal reads as 0pt");
+
+            TexTypesetter fit = Typeset("\\documentclass{article}\\begin{document}x\n\\pdfpageheight=\\dimexpr\\pagetotal+0.8in+12pt\\relax\n\\end{document}", out _);
+            t.Check(fit.fitHeight is float extra && Near(extra, 20.32f + 12f * 25.4f / 72.27f, 0.05f) && fit.customHeight == null,
+                $"a \\pagetotal in \\pdfpageheight cuts the last page: {fit.fitHeight}");
+            TexTypesetter tall = Typeset("\\documentclass{article}\\pdfpageheight=100in\\begin{document}x\\end{document}", out _);
+            t.Check(tall.customHeight is float h && Near(h, 2540f, 0.1f) && tall.fitHeight == null, $"\\pdfpageheight sets the paper: {tall.customHeight}");
+            TexTypesetter geometry = Typeset("\\documentclass{article}\\usepackage[paperwidth=8.5in, paperheight=100in]{geometry}\\begin{document}x\\end{document}", out _);
+            t.Check(geometry.customWidth is float w && Near(w, 215.9f, 0.1f) && geometry.customHeight is float gh && Near(gh, 2540f, 0.1f),
+                "geometry's paperwidth and paperheight");
+
+            XElement page = TexLowering.Compile("\\documentclass{article}\\usepackage[paperheight=100in]{geometry}\\begin{document}x\n"
+                + "\\pdfpageheight=\\dimexpr\\pagetotal+1in\\relax\n\\end{document}", out _).Element("DocumentLayout")!.Element("Page")!;
+            t.Check((string?)page.Attribute("Size") == "Custom" && Near((float)page.Attribute("Height")!, 2540f, 0.1f)
+                && Near((float)page.Attribute("FitHeight")!, 25.4f, 0.05f), $"lowered as a custom, fitted page: {page}");
+            yield break;
+        }
+
+        [A_XSDActionDependency("Tex.Preamble", "Test")]
+        private static IEnumerator<int> Preamble(TestContext t)
+        {
+            string clean = Lines("\\documentclass{article}\n\\usepackage{xcolor,hyperref}\n\\definecolor{ink}{HTML}{112233}\n"
+                + "\\hypersetup{colorlinks=false, hidelinks}\n\\begin{document}{\\color{ink}Body}\\end{document}", out List<TexError> errors);
+            t.Check(clean == "Body" && errors.Count == 0, $"a preamble of commands typesets nothing: {clean} {string.Join("; ", errors.Select(e => e.message))}");
+
+            TexTypesetter colored = Typeset("\\documentclass{article}\\definecolor{ink}{HTML}{112233}\\begin{document}\\textcolor{ink}{x}\\end{document}", out _);
+            t.Check(Pars(colored).SelectMany(p => p.list).OfType<TexChar>().FirstOrDefault()?.style.color == "#112233", "\\definecolor names a colour");
+
+            string junk = Lines("\\documentclass{article}\nstray words\n\\begin{document}Body\\end{document}", out errors);
+            t.Check(junk == "Body", $"text in the preamble is dropped: {junk}");
+            t.Check(errors.Count(e => e.message.Contains("Missing \\begin{document}")) == 1, "and reported once");
+            t.Check(Lines("No class at all.") == "No class at all.", "a fragment without \\documentclass still typesets");
+            t.Check(Lines(@"\textbullet\space x \uline{under}") == "• x under", "\\space and \\uline");
+            yield break;
+        }
+
+        [A_XSDActionDependency("Tex.Enumitem", "Test")]
+        private static IEnumerator<int> Enumitem(TestContext t)
+        {
+            const string source = "\\documentclass{article}\\usepackage{enumitem}\n\\newlist{tight}{itemize}{1}\n"
+                + "\\setlist[tight]{label=\\raisebox{0.45ex}{\\rule{2.8pt}{2.8pt}}, leftmargin=12pt, itemsep=0pt, parsep=0pt, topsep=1pt}\n"
+                + "\\begin{document}\nText\n\\begin{tight}\n\\item A\n\\item B\n\\end{tight}\n\\begin{itemize}[label=$\\circ$]\n\\item C\n\\end{itemize}\n\\end{document}\n";
+            TexTypesetter typeset = Typeset(source, out List<TexError> errors);
+            t.Check(errors.Count == 0, $"clean: {string.Join("; ", errors.Select(e => e.message))}");
+            List<TexParagraph> pars = Pars(typeset);
+            t.Check(pars.Count == 4 && string.Join("/", pars.Select(Line)) == "Text/A/B/C", $"items: {string.Join("/", pars.Select(Line))}");
+            if (pars.Count != 4) yield break;
+            t.Check(pars[1].style.list == TexListKind.Itemize && pars[1].style.marker == "Square" && Pt(pars[1].style.leftMargin) == 12f,
+                "a \\newlist itemize with a \\rule label and its leftmargin");
+            t.Check(pars[3].style.marker == "Circle" && pars[3].style.leftMargin == 0, "an itemize's own [label=...]");
+
+            List<TexNode> v = typeset.vlist;
+            int a = v.IndexOf(pars[1]), b = v.IndexOf(pars[2]);
+            float between = v.Skip(a + 1).Take(b - a - 1).OfType<TexVGlue>().Sum(g => Pt(g.glue.width));
+            float above = v.Skip(v.IndexOf(pars[0]) + 1).Take(a - v.IndexOf(pars[0]) - 1).OfType<TexVGlue>().Max(g => Pt(g.glue.width));
+            t.Check(between == 0f && above == 1f, $"itemsep + parsep 0 between items ({between}), topsep 1pt above ({above})");
+
+            XElement[] blocks = TexLowering.Compile(source, out _).Elements("Block").ToArray();
+            t.Check(blocks.Length == 4 && (string?)blocks[1].Attribute("Marker") == "Square" && Near((float)blocks[1].Attribute("ListIndent")!, 12f * 96f / 72.27f)
+                && blocks[3].Attribute("ListIndent") == null, $"lowered marker and ListIndent: {string.Concat(blocks.Select(x => x.ToString(SaveOptions.DisableFormatting)))}");
+            yield break;
+        }
+
+        [A_XSDActionDependency("Tex.Titlesec", "Test")]
+        private static IEnumerator<int> Titlesec(TestContext t)
+        {
+            const string source = "\\documentclass[11pt]{article}\\usepackage{titlesec}\n"
+                + "\\titleformat{\\section}{\\large\\bfseries}{}{0pt}{}[\\vspace{-7pt}\\rule{\\textwidth}{1.5pt}]\n"
+                + "\\titlespacing*{\\section}{0pt}{8pt}{2pt}\n"
+                + "\\titleformat{\\subsection}{\\bfseries}{\\thesubsection}{1em}{}\n"
+                + "\\setlength{\\parindent}{0pt}\n"
+                + "\\begin{document}\n\\section*{WORK}\nText\n\\section{Two}\\subsection{Sub}\n\\end{document}\n";
+            TexTypesetter typeset = Typeset(source, out List<TexError> errors);
+            t.Check(errors.Count == 0, $"clean: {string.Join("; ", errors.Select(e => e.message))}");
+            List<TexParagraph> pars = Pars(typeset);
+            TexParagraph work = pars[0];
+            TexChar first = work.list.OfType<TexChar>().First();
+            t.Check(work.style.kind == TexParKind.Heading && first.style.font.bold && Pt(first.style.font.size) == 12f && Line(work) == "WORK",
+                $"the format sets the heading: {Line(work)} {Pt(first.style.font.size)}pt");
+
+            List<TexNode> v = typeset.vlist;
+            int at = v.IndexOf(work);
+            t.Check(v[at + 1] is TexVGlue { glue.width: var up } && Pt(up) == -7f, "the after-code's \\vspace follows the heading");
+            t.Check(v[at + 2] is TexParagraph rule && rule.list.OfType<TexRuleBox>().SingleOrDefault() is TexRuleBox box && Pt(box.height) == 1.5f && !rule.style.indent,
+                "then its \\rule, unindented");
+            t.Check(v[at + 3] is TexVGlue { glue.width: var down } && Pt(down) == 2f, "then \\titlespacing's after-skip");
+            t.Check(v.Take(at).OfType<TexVGlue>().LastOrDefault() is TexVGlue before && Pt(before.glue.width) == 8f, "and its before-skip above");
+            t.Check(pars.Any(p => Line(p) == "Two") && pars.Any(p => Line(p) == "1.1 Sub"),
+                $"an empty label shows no number; \\thesubsection is the full number: {string.Join(" / ", pars.Select(Line))}");
+
+            XElement[] blocks = TexLowering.Compile(source, out _).Elements("Block").ToArray();
+            XElement? ruled = blocks.FirstOrDefault(x => (string?)x.Attribute("StylingType") == "Rule");
+            t.Check(ruled != null && Near((float)ruled.Attribute("Weight")!, 1.5f * 96f / 72.27f) && Near((float)ruled.Attribute("SpaceBefore")!, -7f * 96f / 72.27f),
+                $"a paragraph of one \\rule lowers to a weighted Rule under a negative space: {ruled}");
+            yield break;
+        }
+
+        [A_XSDActionDependency("Tex.Lowering.Fill", "Test")]
+        private static IEnumerator<int> LoweringFill(TestContext t)
+        {
+            XElement document = TexLowering.Compile("\\documentclass{article}\\begin{document}\\noindent Left \\hfill Right\\end{document}", out _);
+            XElement block = document.Elements("Block").First();
+            XElement[] runs = block.Elements("Run").ToArray();
+            t.Check(runs.Length == 3 && (string?)runs[1].Attribute("Fill") == "true" && (string?)runs[2].Attribute("Text") == "Right",
+                $"\\hfill lowers to a fill run: {block.ToString(SaveOptions.DisableFormatting)}");
+
+            DocumentEditorControl editor = ShowDocument(t, document);
+            yield return 2;
+            if (View(editor, 0) is BlockControl shown && shown.Lines is { Count: 1 } lines)
+                t.Check(Near(lines[0].left + lines[0].width, shown.arrange.arranged.width - shown.padding.left - shown.padding.right, 1f),
+                    $"the line reaches the right edge: {lines[0].left + lines[0].width} of {shown.arrange.arranged.width}");
+            else t.Check(false, "one line");
+            t.Show(new StackPanelControl());
+        }
+
+        [A_XSDActionDependency("Tex.CenteredOverfull", "Test")]
+        private static IEnumerator<int> CenteredOverfull(TestContext t)
+        {
+            List<string> over = new List<string>();
+            for (int pt = 150; pt <= 300; pt += 3)
+            {
+                XElement document = TexLowering.Compile("\\documentclass{article}\\begin{document}\\begin{center}{\\small Start\\hspace{" + pt
+                    + "pt}Example \\,|\\, words here \\,|\\, github.com/NexerG \\,|\\, more words to wrap \\,|\\, end}\\end{center}\\end{document}", out _);
+                DocumentEditorControl editor = ShowDocument(t, document);
+                yield return 2;
+                if (View(editor, 0) is not BlockControl block) continue;
+                DrawRecorder recorder = new DrawRecorder();
+                UIEngine.recorder = recorder;
+                try { UIEngine.Collect(block, Control.rootDepth); }
+                finally { UIEngine.recorder = null; }
+                float right = block.arrange.arranged.Right - block.padding.right;
+                float ink = recorder.items.Where(g => g.kind == DrawKind.Glyph && g.character is not (' ' or ' ') && g.character < AtlasMetaData.AdvanceTableSize)
+                    .Select(g => g.x + g.font!.atlasMetaData.TableAdvance(g.character, g.face) * g.size).DefaultIfEmpty(0f).Max();
+                if (ink > right + 0.5f) over.Add($"{pt}pt: ink to {ink:0.0} > {right:0.0}");
+            }
+            t.Check(over.Count == 0, $"a centred line never runs past its room: {over.Count} overfull, {string.Join(" ;; ", over.Take(4))}");
+            t.Show(new StackPanelControl());
+        }
+
+        [A_XSDActionDependency("Tex.Pdf.Bullets", "Test")]
+        private static IEnumerator<int> PdfBullets(TestContext t)
+        {
+            XElement document = TexLowering.Compile("\\documentclass{article}\\usepackage{enumitem}\\begin{document}\n"
+                + "\\begin{itemize}\\item One\\end{itemize}\n\\begin{itemize}[label=\\rule{1pt}{1pt}]\\item Two\\end{itemize}\n\\end{document}\n", out _);
+            string path = Path.Combine(Path.GetTempPath(), $"aurora-bullets-{Guid.NewGuid():N}.pdf");
+            t.Check(PdfExport.Export(document, path, "bullets"), "exports");
+            string pdf = Encoding.Latin1.GetString(File.ReadAllBytes(path));
+            File.Delete(path);
+
+            StringBuilder content = new StringBuilder();
+            foreach (Match m in Regex.Matches(pdf, @"/FlateDecode[^>]*>>\nstream\n"))
+            {
+                int start = m.Index + m.Length;
+                int end = pdf.IndexOf("\nendstream", start, StringComparison.Ordinal);
+                using MemoryStream inflated = new MemoryStream();
+                using (System.IO.Compression.ZLibStream zlib = new System.IO.Compression.ZLibStream(
+                           new MemoryStream(Encoding.Latin1.GetBytes(pdf.Substring(start, end - start))), System.IO.Compression.CompressionMode.Decompress))
+                    zlib.CopyTo(inflated);
+                content.Append(Encoding.Latin1.GetString(inflated.ToArray()));
+            }
+            string drawn = content.ToString();
+            t.Check(Regex.Matches(drawn, @" c h f\n").Count == 1, "the itemize disc is a filled curve");
+            t.Check(Regex.Matches(drawn, @" l h f\n").Count == 1, "the \\rule label's square is a filled polygon");
+            yield break;
+        }
+
+        [A_XSDActionDependency("Tex.FitPage", "Test")]
+        private static IEnumerator<int> FitPage(TestContext t)
+        {
+            XElement document = TexLowering.Compile("\\documentclass{article}\\usepackage[paperheight=100in, top=1in]{geometry}\\pagestyle{empty}\n"
+                + "\\begin{document}\nOne line.\n\\pdfpageheight=\\dimexpr\\pagetotal+1in\\relax\n\\end{document}\n", out _);
+            DocumentEditorControl editor = ShowDocument(t, document);
+            yield return 2;
+            List<LayoutRect> pages = Content(editor).PageRects().ToList();
+            float px = 96f * Content(editor).zoom;
+            t.Check(pages.Count == 1 && pages[0].height > 1.1f * px && pages[0].height < 1.6f * px,
+                $"one page cut to \\pagetotal (one line below the 1in margin) plus 1in: {string.Join(",", pages.Select(p => p.height / px))} in");
+            t.Show(new StackPanelControl());
+        }
+        #endregion
     }
 }

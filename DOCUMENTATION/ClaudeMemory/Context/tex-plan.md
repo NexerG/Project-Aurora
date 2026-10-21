@@ -1,7 +1,7 @@
-# LaTeX editor (native) — agreed route, L1–L6, L7a–L7g and L8 landed
+# LaTeX editor (native) — agreed route, L1–L6, L7a–L7g, L8 and L9 landed
 
 **Agreed:** 2026-10-05 (user: native route, "as many packages as possible", L3 node list on the recommendation).
-**Built:** L1, which merged the file/source editor with the TeX expander (user). L2 (CFF + Latin Modern) landed 2026-10-05. L3 (typesetter + lowering) landed 2026-10-05. L4 (split view) landed 2026-10-06. L5 (floats, `tabular`, `\label`/`\ref`, BibTeX, note-table column spans) landed 2026-10-06. L6 (amsmath natively, shared with notes math M5) landed 2026-10-06. L7 was split into slices L7a–L7g (user-approved 2026-10-06) and L7a, L7b, L7c, L7d, L7e, L7f and L7g landed 2026-10-06. L8 (in-house PDF export) landed 2026-10-07.
+**Built:** L1, which merged the file/source editor with the TeX expander (user). L2 (CFF + Latin Modern) landed 2026-10-05. L3 (typesetter + lowering) landed 2026-10-05. L4 (split view) landed 2026-10-06. L5 (floats, `tabular`, `\label`/`\ref`, BibTeX, note-table column spans) landed 2026-10-06. L6 (amsmath natively, shared with notes math M5) landed 2026-10-06. L7 was split into slices L7a–L7g (user-approved 2026-10-06) and L7a, L7b, L7c, L7d, L7e, L7f and L7g landed 2026-10-06. L8 (in-house PDF export) landed 2026-10-07. L9 (a real-world resume `.tex`) landed 2026-10-18.
 **Decisions:** [../Decisions/latex-editor.md](../Decisions/latex-editor.md).
 **Checklist form:** the LaTeX item in `DOCUMENTATION/Work in Progress List.md`.
 
@@ -11,7 +11,7 @@ Each phase lands and is verified before the next starts; each one re-runs CLAUDE
 | # | Question | Taken | Rejected |
 |---|---|---|---|
 | Route | how TeX is run | native: Aurora's typesetting, C# primitives for document commands and package environments | full port of tex.web (TRIP-verified, XeTeX-compatible, real `latex.ltx` and `.sty`) — costs T3–T5, ~25k lines of WEB, before anything shows |
-| L-F1 | dependencies, packages | no NuGet, no external tools; `\usepackage` accepted, unknown packages logged and ignored; "as many as possible" starting amsmath, amssymb, graphicx, xcolor, hyperref (links), geometry, booktabs, enumitem, fancyhdr | — |
+| L-F1 | dependencies, packages | no NuGet, no external tools; `\usepackage` accepted, unknown packages logged and ignored; "as many as possible" starting amsmath, amssymb, graphicx, xcolor, hyperref (links), geometry, booktabs, enumitem, fancyhdr (L9 adds titlesec, ulem, mathptmx / times / tgtermes / newtxtext) | — |
 | L-F2 | macro level | level 2: real tokenizer + expander (catcodes, `\def` with parameter text, `\expandafter`, `\csname`, conditionals, registers, groups) | level 1: command table + template `\newcommand` — breaks on `\def\foo#1.#2`, `\expandafter`, `\newif`, `\makeatletter` |
 | L3 | interpreter output | TeX-like node list (chars, glue, kerns, penalties, boxes), lowered to `<Document>` | emitting straight to `<Document>` — closes `\hbox`/`\setbox`/`\wd`, `\vskip`, `\lastskip`/`\unskip`/`\lastbox` |
 | L-F3 | editor shape | Overleaf split view: source + read-only paged preview | — |
@@ -132,6 +132,14 @@ Cost accepted with the native route: support is bounded by what is reimplemented
 - A recorder (`UIEngine.recorder`) at the four draw points; a detached `DocumentControl` at zoom 4 with the new `print` palette; LM `.otf` sources now committed beside their atlases (supersedes L2-A)
 - Test-verified (`--test=LatinModern` 15/15 incl. `Tex.Pdf.Structure`, `Tex.Pdf.Text`; `--test=Tex` 46/46, `--test=TextInput` 91/91, `--test=Math` 18/18; full `--test` 221 passed, 4 failed as in L7g); a richer export looked at in Chrome's PDF viewer and read by xpdf `pdftotext`; **NOT GUI-verified**; not perf-measured
 - Left out: clickable `\href`, bookmarks, PDF/A, encryption, hinting, gradients and effects, wrapped pictures, opening the file after export, a keybind, export for ordinary notes
+- Details: [[latex-editor]]
+
+### L9 — a real-world resume `.tex` — DONE 2026-10-18
+- Typesets and exports to PDF close to pdfLaTeX: geometry with a custom paper, mathptmx, enumitem `\newlist`/`\setlist`, titlesec `\titleformat`/`\titlespacing`, `\hfill` dates, `\setlength`/`\dimexpr`, `\hyphenpenalty=10000`, `\pdfpageheight=\dimexpr\pagetotal+…`; forks L9-F1 to L9-F5 in `latex-editor`
+- Preamble text dropped with `Missing \begin{document}`; `\hfill` is a note-level fill run (`<Run Fill>`); per-item `<Block ListIndent>`; `<Block StylingType="Rule" Weight>`; `<Page FitHeight>`; TeX Gyre Termes for Times packages; bullet icons in the PDF; shrink applied to every Knuth-Plass line set over its room
+- Console `Focus` command added for headless export (`dev-console`)
+- Test- and golden-verified (full Thorium `--test` 363 passed, 1 failed — pre-existing Boot; golden `Tex.Resume.Page`); the user's resume exported headless and rendered; **NOT GUI-verified**
+- Left out: honouring `\tolerance`/`\pretolerance`/`\emergencystretch`/`\exhyphenpenalty`, inline `\rule` boxes, `\raisebox` raise, titlesec shapes beyond hang/block, enumitem keys beyond seven, clickable `\href`
 - Details: [[latex-editor]]
 
 ## Left out overall

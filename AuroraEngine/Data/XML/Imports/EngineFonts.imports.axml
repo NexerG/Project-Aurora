@@ -5,6 +5,11 @@
 	<Charset Name="Latin" Chars=" !&quot;#$%&amp;'()*+,-./0123456789:;&lt;=&gt;?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_`abcdefghijklmnopqrstuvwxyz{|}~ĄČĘĖĮŠŲŪŽąčęėįšųūž›€"/>
 	<Charset Name="Math" Chars=" !&quot;#$%&amp;'()*+,-./0123456789:;&lt;=&gt;?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_`abcdefghijklmnopqrstuvwxyz{|}~ΑΒΓΔΕΖΗΘΙΚΛΜΝΞΟΠΡΣΤΥΦΧΨΩαβγδεζηθικλμνξοπρςστυφχψωϑϕϖϱϵ⎛⎜⎝⎞⎟⎠⎡⎢⎣⎤⎥⎦⎧⎨⎩⎪⎫⎬⎭⎮←↑→↓↔↕ℂℕℙℚℝℤℏℓ℘ℑℜℵ±×÷·¬−∓∗∘∙√∝∞∠∣∥∧∨∩∪∫∬∭∮∴∵∼≃≅≈≠≡≤≥≪≫≺≻⊂⊃⊆⊇⊕⊖⊗⊘⊙⊢⊤⊥⋅⋆⋮⋯⋱∀∂∃∄∅∇∈∉∋∏∐∑⋀⋁⋂⋃…′″↦⇐⇑⇒⇓⇔⟵⟶⟷⟸⟹⟺⟼⟨⟩⌈⌉⌊⌋‖⌠⌡⎷ˆ˜˙¨¯´ˇ˘⃗"/>
 
+	<!-- language packs, joined by commas in an import's Charset -->
+	<Charset Name="LatinExtended" Chars="¡¢£¤¥¦§¨©ª«¬®¯°±²³´µ¶·¸¹º»¼½¾¿ÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖ×ØÙÚÛÜÝÞßàáâãäåæçèéêëìíîïðñòóôõö÷øùúûüýþÿĀāĂăĄąĆćĈĉĊċČčĎďĐđĒēĔĕĖėĘęĚěĜĝĞğĠġĢģĤĥĦħĨĩĪīĬĭĮįİıĲĳĴĵĶķĸĹĺĻļĽľĿŀŁłŃńŅņŇňŉŊŋŌōŎŏŐőŒœŔŕŖŗŘřŚśŜŝŞşŠšŢţŤťŦŧŨũŪūŬŭŮůŰűŲųŴŵŶŷŸŹźŻżŽžſ"/>
+	<Charset Name="Greek" Chars="ΆΈΉΊΌΎΏΐΑΒΓΔΕΖΗΘΙΚΛΜΝΞΟΠΡΣΤΥΦΧΨΩΪΫάέήίΰαβγδεζηθικλμνξοπρςστυφχψωϊϋόύώ"/>
+	<Charset Name="Cyrillic" Chars="ЀЁЂЃЄЅІЇЈЉЊЋЌЍЎЏАБВГДЕЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯабвгдежзийклмнопрстуфхцчшщъыьэюяѐёђѓєѕіїјљњћќѝўџҐґ"/>
+
 	<FontImport Source="arial.ttf" Charset="Latin" GlyphSize="64"/>
 	<FontImport Source="arialbd.ttf" Charset="Latin" GlyphSize="64"/>
 	<FontImport Source="Electrolize-Regular.ttf" Charset="Latin" GlyphSize="64"/>

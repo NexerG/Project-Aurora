@@ -32,11 +32,16 @@ namespace ArctisAurora.Core.Filing.Serialization
         [A_XSDElementProperty("BoldItalic", "AssetRegistry")]
         public string boldItalic { get; set; } = string.Empty;
 
+        // one charset name, or several separated by commas
         [A_XSDElementProperty("Charset", "AssetRegistry")]
         public string charset { get; set; } = string.Empty;
 
         [A_XSDElementProperty("GlyphSize", "AssetRegistry")]
         public int glyphSize { get; set; } = 64;
+
+        // bakes only the charset's characters the face maps
+        [A_XSDElementProperty("Covered", "AssetRegistry")]
+        public bool covered { get; set; }
     }
 
     [A_XSDType("IconImport", "AssetRegistry")]

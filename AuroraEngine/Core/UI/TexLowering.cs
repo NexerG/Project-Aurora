@@ -15,6 +15,11 @@ namespace ArctisAurora.Core.UI
         public const string RomanFont = "latin-modern";
         public const string MonoFont = "latin-modern-mono";
         public const string MathFont = "latin-modern-math";
+        public const string TermesFont = "tex-gyre-termes";
+
+        // the roman face of the document being lowered
+        [ThreadStatic] private static string? roman;
+        private static string Roman => roman ?? RomanFont;
 
         private const float Unity = 65536f;
         private const float PxPerPt = 96f / 72.27f;
@@ -27,7 +32,9 @@ namespace ArctisAurora.Core.UI
         // blockLines, when given, gets each block's source line; 0 = none. folder is where pictures and .bib files are found.
         public static XElement Compile(string source, out List<TexError> errors, List<int>? blockLines = null, string? folder = null)
         {
-            TexTypesetter typesetter = new TexTypesetter(source, new TexAtlasMetrics(), folder);
+            TexAtlasMetrics metrics = new TexAtlasMetrics();
+            TexTypesetter typesetter = new TexTypesetter(source, metrics, folder);
+            metrics.typesetter = typesetter;
             typesetter.Run();
             errors = typesetter.errors;
             return Lower(typesetter, blockLines);
@@ -36,10 +43,11 @@ namespace ArctisAurora.Core.UI
         public static XElement Lower(TexTypesetter typesetter, List<int>? blockLines = null)
         {
             XElement root = new XElement("Document");
+            roman = typesetter.times ? TermesFont : RomanFont;
             int normal = Px(typesetter.normalSize);
             Dictionary<int, int> headings = HeadingSizes(typesetter.vlist);
             root.Add(Layout(typesetter, normal, headings));
-            TexHyphenator hyphenator = TexHyphenator.English ?? NoPatterns;
+            TexHyphenator hyphenator = typesetter.hyphenate ? TexHyphenator.English ?? NoPatterns : NoPatterns;
             Hyphenate(typesetter.vlist, hyphenator, typesetter.hyphenation);
             foreach (TexFootnote note in typesetter.footnotes)
                 Hyphenate(note.vlist, hyphenator, typesetter.hyphenation);
@@ -93,7 +101,7 @@ namespace ArctisAurora.Core.UI
         // A block or table under the space and page break pending above it.
         private static void Place(XElement root, XElement element, Spacing spacing)
         {
-            if (spacing.pending > 0f) element.SetAttributeValue("SpaceBefore", Format(spacing.pending));
+            if (spacing.pending != 0f) element.SetAttributeValue("SpaceBefore", Format(spacing.pending));
             if (spacing.pageBreak != null) element.SetAttributeValue("PageBreak", spacing.pageBreak);
             spacing.pending = 0f;
             spacing.pageBreak = null;
@@ -128,6 +136,7 @@ namespace ArctisAurora.Core.UI
         private static XElement Layout(TexTypesetter typesetter, int normal, Dictionary<int, int> headings)
         {
             bool a4 = typesetter.paper == "a4";
+            bool custom = typesetter.customWidth != null || typesetter.customHeight != null;
             float side = (typesetter.paperWidth - TexTypesetter.textWidths[typesetter.sizeOption] * MmPerPt) / 2f;
             float top = (typesetter.paperHeight - TexTypesetter.TextHeight * MmPerPt) / 2f;
 
@@ -138,7 +147,9 @@ namespace ArctisAurora.Core.UI
                 new XAttribute("OptimalBreaks", "true"),
                 new XElement("Page",
                     new XAttribute("Mode", "Paged"),
-                    new XAttribute("Size", a4 ? "A4" : "Letter"),
+                    new XAttribute("Size", custom ? "Custom" : a4 ? "A4" : "Letter"),
+                    custom ? new XAttribute("Width", Format(typesetter.paperWidth)) : null,
+                    custom ? new XAttribute("Height", Format(typesetter.paperHeight)) : null,
                     new XAttribute("MarginTop", Format(typesetter.marginTop ?? top)),
                     new XAttribute("MarginBottom", Format(typesetter.marginBottom ?? top)),
                     new XAttribute("MarginLeft", Format(typesetter.marginLeft ?? side)),
@@ -148,12 +159,13 @@ namespace ArctisAurora.Core.UI
                     new XAttribute("FloatSep", Format(TexTypesetter.floatSeps[typesetter.sizeOption] * MmPerPt)),
                     new XAttribute("TextFloatSep", Format(TexTypesetter.TextFloatSep * MmPerPt)),
                     new XAttribute("InTextSep", Format(TexTypesetter.floatSeps[typesetter.sizeOption] * MmPerPt)),
+                    typesetter.fitHeight is float fit ? new XAttribute("FitHeight", Format(fit)) : null,
                     typesetter.pageStyles.Select(s => PageStyle(s.Key, s.Value))),
-                Style("Text", normal, RomanFont),
-                Style("Quote", normal, RomanFont),
+                Style("Text", normal, Roman),
+                Style("Quote", normal, Roman),
                 Style("Code", normal, MonoFont));
             foreach (KeyValuePair<int, int> heading in headings.OrderBy(h => h.Key))
-                layout.Add(Style("Heading" + heading.Key, heading.Value, RomanFont));
+                layout.Add(Style("Heading" + heading.Key, heading.Value, Roman));
             return layout;
         }
 
@@ -179,7 +191,7 @@ namespace ArctisAurora.Core.UI
                 if (written.Length == 0 || slot.Value.list.OfType<TexChar>().FirstOrDefault() is not TexChar first) continue;
 
                 XElement placed = new XElement("Slot", new XAttribute("Place", slot.Key), new XAttribute("Text", written),
-                    new XAttribute("FontName", first.style.font.family == TexFamily.Mono ? MonoFont : RomanFont),
+                    new XAttribute("FontName", first.style.font.family == TexFamily.Mono ? MonoFont : Roman),
                     new XAttribute("FontSize", Px(first.style.font.size)));
                 if (first.style.font.bold) placed.SetAttributeValue("Bold", "true");
                 if (first.style.font.italic) placed.SetAttributeValue("Italic", "true");
@@ -221,6 +233,14 @@ namespace ArctisAurora.Core.UI
                         {
                             bool display = pieces[k] is [TexMathNode { display: true }];
                             if (!display && !pieces[k].Any(n => n is not TexGlueNode and not TexKern and not TexPenalty and not TexLabelMark and not TexFloat)) continue;
+                            if (!display && pieces[k].OfType<TexRuleBox>().FirstOrDefault() is TexRuleBox rule
+                                && pieces[k].All(n => n is TexRuleBox or TexGlueNode or TexKern or TexPenalty or TexLabelMark))
+                            {
+                                Place(root, new XElement("Block", new XAttribute("StylingType", "Rule"),
+                                    new XAttribute("Weight", Format(rule.height / Unity * PxPerPt))), spacing);
+                                blockLines?.Add(p.line);
+                                continue;
+                            }
 
                             XElement block = Block(p, pieces[k], i == 0 && k == 0, normal, headings);
                             if (p.style.indent && i == 0 && k == 0) block.SetAttributeValue("Indent", Format(spacing.indent));
@@ -286,7 +306,7 @@ namespace ArctisAurora.Core.UI
         {
             XElement block = new XElement("Block");
             TexParStyle s = p.style;
-            string font = RomanFont;
+            string font = Roman;
             int size = normal;
             switch (s.kind)
             {
@@ -308,7 +328,8 @@ namespace ArctisAurora.Core.UI
             {
                 block.SetAttributeValue("List", "Bullet");
                 block.SetAttributeValue("Level", s.listDepth - 1);
-                block.SetAttributeValue("Marker", Marker(s.list, s.listKindDepth));
+                block.SetAttributeValue("Marker", s.marker ?? Marker(s.list, s.listKindDepth));
+                if (s.leftMargin > 0) block.SetAttributeValue("ListIndent", Format(s.leftMargin / Unity * PxPerPt));
                 if (s.list == TexListKind.Enumerate) block.SetAttributeValue("Start", s.itemNumber);
             }
 
@@ -553,7 +574,7 @@ namespace ArctisAurora.Core.UI
         {
             int px = Px(s.font.size);
             if (c == TextMeasurer.SoftHyphen) return 0f;
-            if (Font(s.font.family == TexFamily.Mono ? MonoFont : RomanFont) is not FontAsset font || c >= AtlasMetaData.AdvanceTableSize) return px * 0.5f;
+            if (Font(s.font.family == TexFamily.Mono ? MonoFont : Roman) is not FontAsset font || c >= AtlasMetaData.AdvanceTableSize) return px * 0.5f;
             return font.atlasMetaData.TableAdvance(c, Face(font.atlasMetaData, s.font)) * px;
         }
 
@@ -644,6 +665,14 @@ namespace ArctisAurora.Core.UI
                         case TexGlueNode { interword: true } g:
                             Put(unbreakable ? " " : " ", g.style);
                             break;
+                        case TexGlueNode { glue.stretchOrder: > 0, glue.stretch: > 0 } g:
+                            Flush();
+                            current = null;
+                            XElement fill = TextRun(" ", g.style, blockFont, blockSize);
+                            fill.SetAttributeValue("Fill", "true");
+                            block.Add(fill);
+                            flushed++;
+                            break;
                         case TexGlueNode g:
                             Spacer(g.glue.width, g.style);
                             break;
@@ -705,7 +734,7 @@ namespace ArctisAurora.Core.UI
             if (s.font.italic) run.SetAttributeValue("Italic", "true");
             if (s.underline) run.SetAttributeValue("Underline", "true");
             if (s.color != null) run.SetAttributeValue("ColorHex", s.color);
-            string font = s.font.family == TexFamily.Mono ? MonoFont : RomanFont;
+            string font = s.font.family == TexFamily.Mono ? MonoFont : Roman;
             if (font != blockFont) run.SetAttributeValue("FontName", font);
             int px = Px(s.font.size);
             if (px != blockSize) Size(run, px);
@@ -729,8 +758,8 @@ namespace ArctisAurora.Core.UI
         // Spaces at a block's ends dropped, as a line break drops them.
         private static void Trim(XElement block)
         {
-            XElement? first = block.Elements("Run").FirstOrDefault(r => r.Attribute("Text") != null);
-            XElement? last = block.Elements("Run").LastOrDefault(r => r.Attribute("Text") != null);
+            XElement? first = block.Elements("Run").FirstOrDefault(r => r.Attribute("Text") != null && r.Attribute("Fill") == null);
+            XElement? last = block.Elements("Run").LastOrDefault(r => r.Attribute("Text") != null && r.Attribute("Fill") == null);
             if (first != null && block.Elements("Run").First() == first) Cut(first, s => s.TrimStart(' '));
             if (last != null && block.Elements("Run").Last() == last) Cut(last, s => s.TrimEnd(' '));
         }
@@ -758,12 +787,16 @@ namespace ArctisAurora.Core.UI
     // em and ex from the baked Latin Modern atlases; cmr10's ratio where a face is missing.
     public sealed class TexAtlasMetrics : ITexFontMetrics
     {
+        // the document whose packages pick the roman face
+        public TexTypesetter? typesetter;
+
         public int Quad(TexFont font) => font.size;
 
         public int XHeight(TexFont font)
         {
             Dictionary<string, FontAsset> fonts = AssetRegistries.GetRegistryByValueType<string, FontAsset>(typeof(FontAsset));
-            if (!fonts.TryGetValue(font.family == TexFamily.Mono ? TexLowering.MonoFont : TexLowering.RomanFont, out FontAsset? asset))
+            string roman = typesetter?.times == true ? TexLowering.TermesFont : TexLowering.RomanFont;
+            if (!fonts.TryGetValue(font.family == TexFamily.Mono ? TexLowering.MonoFont : roman, out FontAsset? asset))
                 return (int)(font.size * 0.430554);
 
             AtlasMetaData atlas = asset.atlasMetaData;

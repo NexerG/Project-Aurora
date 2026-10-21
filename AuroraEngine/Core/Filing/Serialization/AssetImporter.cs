@@ -1,6 +1,7 @@
 using ArctisAurora.Core.Registry;
 using ArctisAurora.EngineWork;
 using System.Security.Cryptography;
+using System.Text;
 using System.Xml.Linq;
 using static ArctisAurora.Core.Filing.AuroraFont;
 using AuroraFont = ArctisAurora.Core.Filing.AuroraFont;
@@ -20,23 +21,61 @@ namespace ArctisAurora.Core.Filing.Serialization
             if (!Engine.isDebug) return true;
 
             List<ImportSet> sets = new List<ImportSet>();
+            List<string> fontRoots = new List<string>();
             foreach (string file in VirtualFileSystem.EnumerateAll("XML/Imports", "*.imports.axml"))
+            {
                 sets.Add(ParseImportSet(file));
+                fontRoots.Add(file.StartsWith(Paths.USER_DATA, StringComparison.OrdinalIgnoreCase) ? UserFonts : Paths.FONTS);
+            }
 
-            Dictionary<string, string> charsets = new Dictionary<string, string>();
-            foreach (ImportSet set in sets)
-                foreach (Charset charset in set.charsets)
-                    charsets[charset.name] = charset.chars;
-
-            foreach (ImportSet set in sets)
-                foreach (FontImport font in set.fonts)
-                    ImportFontIfStale(font, charsets);
+            Dictionary<string, string> charsets = Charsets(sets);
+            for (int i = 0; i < sets.Count; i++)
+                foreach (FontImport font in sets[i].fonts)
+                    ImportFontIfStale(font, charsets, fontRoots[i]);
 
             foreach (ImportSet set in sets)
                 foreach (IconImport icons in set.icons)
                     ImportIconsIfStale(icons);
 
             return true;
+        }
+
+        // where fonts imported at runtime are baked
+        internal static string UserFonts => Path.Combine(Paths.USER_DATA, "Fonts");
+
+        // Every declared charset across every mounted import set.
+        internal static Dictionary<string, string> Charsets() =>
+            Charsets(VirtualFileSystem.EnumerateAll("XML/Imports", "*.imports.axml").Select(ParseImportSet));
+
+        private static Dictionary<string, string> Charsets(IEnumerable<ImportSet> sets)
+        {
+            Dictionary<string, string> charsets = new Dictionary<string, string>();
+            foreach (ImportSet set in sets)
+                foreach (Charset charset in set.charsets)
+                    charsets[charset.name] = charset.chars;
+            return charsets;
+        }
+
+        // A comma-separated list of charset names as one string, in order, each character once; null when one is unknown.
+        private static string ResolveChars(string names, Dictionary<string, string> charsets)
+        {
+            StringBuilder chars = new StringBuilder();
+            HashSet<char> seen = new HashSet<char>();
+            foreach (string name in names.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+            {
+                if (!charsets.TryGetValue(name, out string set)) return null;
+                foreach (char c in set)
+                    if (seen.Add(c)) chars.Append(c);
+            }
+            return chars.ToString();
+        }
+
+        // The characters a face's cmap maps.
+        private static string Covered(string chars, string path, int face)
+        {
+            using BinaryReader reader = new BinaryReader(File.OpenRead(path));
+            AuroraFont.TableEntry cmap = FontCatalog.ReadTables(reader, face).First(t => t.name == "cmap");
+            return new string(chars.Where(c => GetGlyphIndex(c, reader, cmap) != 0).ToArray());
         }
 
         private static ImportSet ParseImportSet(string path)
@@ -66,9 +105,11 @@ namespace ArctisAurora.Core.Filing.Serialization
             return set;
         }
 
-        // Machine-wide fonts, the per-user font folder, then the repo's _Build/FontSources.
+        // An absolute path as given; else machine-wide fonts, the per-user font folder, then the repo's _Build/FontSources.
         internal static string ResolveSystemFont(string fileName)
         {
+            if (Path.IsPathRooted(fileName)) return File.Exists(fileName) ? fileName : null;
+
             string machine = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Fonts), fileName);
             if (File.Exists(machine)) return machine;
 
@@ -110,19 +151,22 @@ namespace ArctisAurora.Core.Filing.Serialization
             return null;
         }
 
-        private static void ImportFontIfStale(FontImport font, Dictionary<string, string> charsets)
+        // Bakes into outputRoot unless its stamp still matches; false when the font was skipped.
+        internal static bool ImportFontIfStale(FontImport font, Dictionary<string, string> charsets, string outputRoot)
         {
             string sourcePath = ResolveSystemFont(font.source);
             if (sourcePath == null)
             {
                 Log.Warn($"font import '{font.source}': no such font installed, skipped.");
-                return;
+                return false;
             }
-            if (!charsets.TryGetValue(font.charset, out string chars))
+            string chars = ResolveChars(font.charset, charsets);
+            if (chars == null)
             {
                 Log.Warn($"font import '{font.source}': unknown charset '{font.charset}', skipped.");
-                return;
+                return false;
             }
+            if (font.covered) chars = Covered(chars, sourcePath, font.face);
 
             string boldPath = ResolveFace(font, font.bold, boldSuffixes);
             string italicPath = ResolveFace(font, font.italic, italicSuffixes);
@@ -154,15 +198,16 @@ namespace ArctisAurora.Core.Filing.Serialization
                 charset = (string)found.Attribute("Charset") ?? string.Empty,
                 glyphSize = (int?)found.Attribute("GlyphSize") ?? 0,
                 importerVersion = (int?)found.Attribute("ImporterVersion") ?? 0
-            })) return;
+            })) return true;
 
             int faceCount = 1 + (boldPath == null ? 0 : 1) + (italicPath == null ? 0 : 1) + (boldItalicPath == null ? 0 : 1);
             Log.Info($"font import '{font.source}': baking {chars.Length} glyphs at {font.glyphSize}px across {faceCount} face(s)...");
-            ClearStamp(Paths.FONTS, baseName);
-            ImportFont(chars, baseName, sourcePath, font.face, boldPath, italicPath, boldItalicPath, font.glyphSize, Paths.FONTS);
+            ClearStamp(outputRoot, baseName);
+            ImportFont(chars, baseName, sourcePath, font.face, boldPath, italicPath, boldItalicPath, font.glyphSize, outputRoot);
             MathConstants math = MathConstants.Read(sourcePath, font.face);
-            math?.Save(Path.Combine(Paths.FONTS, baseName, baseName + ".math.axml"));
-            WriteStamp(Paths.FONTS, baseName, new XElement("FontImportStamp",
+            math?.Save(Path.Combine(outputRoot, baseName, baseName + ".math.axml"));
+            WriteStamp(outputRoot, baseName, new XElement("FontImportStamp",
+                new XAttribute("Family", FontCatalog.ReadFace(sourcePath, font.face)?.family ?? baseName),
                 new XAttribute("Source", wanted.source),
                 new XAttribute("Face", wanted.face),
                 new XAttribute("SourceHash", wanted.sourceHash),
@@ -172,6 +217,7 @@ namespace ArctisAurora.Core.Filing.Serialization
                 new XAttribute("Charset", wanted.charset),
                 new XAttribute("GlyphSize", wanted.glyphSize),
                 new XAttribute("ImporterVersion", wanted.importerVersion)));
+            return true;
         }
 
         private static void ImportIconsIfStale(IconImport icons)

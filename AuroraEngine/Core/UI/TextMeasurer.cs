@@ -68,6 +68,9 @@ namespace ArctisAurora.Core.UI
         public float spaceExtra;
         public int justifyEnd;
 
+        // what each fill character on the line advances
+        public float fillExtra;
+
         // the hyphen drawn after a line that breaks at a soft hyphen
         public float hyphen;
 
@@ -127,6 +130,7 @@ namespace ArctisAurora.Core.UI
             public bool math;
             public bool floating;
             public float space;
+            public bool fill;
 
             public int start;
             public int length;
@@ -136,7 +140,7 @@ namespace ArctisAurora.Core.UI
             public bool Matches(in TextMeasurer.Run run) =>
                 ReferenceEquals(text, run.text) && charStart == run.charStart && charCount == run.charCount
                 && ReferenceEquals(atlas, run.atlas) && face == run.face && fontSize == run.fontSize
-                && picture == run.picture && math == run.math && floating == run.floating && space == run.space;
+                && picture == run.picture && math == run.math && floating == run.floating && space == run.space && fill == run.fill;
         }
 
         // Empties the layout, keeping its lines for NextLine.
@@ -156,7 +160,7 @@ namespace ArctisAurora.Core.UI
             TextLine line = spare[^1];
             spare.RemoveAt(spare.Count - 1);
             line.segments.Clear();
-            line.width = line.ascent = line.descent = line.top = line.left = line.room = line.spaceExtra = line.hyphen = 0f;
+            line.width = line.ascent = line.descent = line.top = line.left = line.room = line.spaceExtra = line.hyphen = line.fillExtra = 0f;
             line.justifyEnd = 0;
             return line;
         }
@@ -199,6 +203,9 @@ namespace ArctisAurora.Core.UI
             // a spacer run: each character advances this far and draws nothing; 0 for text
             public readonly float space;
 
+            // a fill run: no width of its own, the line's slack once aligned
+            public readonly bool fill;
+
             public Run(string text, string fontName, AtlasMetaData atlas, int fontSize, FontStyle style = FontStyle.Regular)
             {
                 this.text = text;
@@ -213,7 +220,7 @@ namespace ArctisAurora.Core.UI
 
             public Run(string text, int charStart, int charCount, string fontName, AtlasMetaData atlas, int fontSize, FontStyle style,
                 bool picture = false, float imageWidth = 0f, float imageHeight = 0f, bool floating = false,
-                bool math = false, float depth = 0f, float space = 0f)
+                bool math = false, float depth = 0f, float space = 0f, bool fill = false)
             {
                 this.text = text;
                 this.fontName = fontName;
@@ -230,6 +237,7 @@ namespace ArctisAurora.Core.UI
                 this.math = math;
                 this.depth = depth;
                 this.space = space;
+                this.fill = fill;
             }
         }
 
@@ -238,6 +246,7 @@ namespace ArctisAurora.Core.UI
         private const byte Picture = 2;
         private const byte Tab = 4;
         private const byte Soft = 8;
+        private const byte Fill = 16;
 
         // a break that shows a hyphen only when a line ends at it
         public const char SoftHyphen = '­';
@@ -456,6 +465,7 @@ namespace ArctisAurora.Core.UI
             float[] width = new float[count + 1];
             float[] stretch = new float[count + 1];
             float[] shrink = new float[count + 1];
+            int[] fills = new int[count + 1];
             for (int i = 0; i < count; i++)
             {
                 if ((flags[i] & Tab) != 0) return false;
@@ -463,6 +473,7 @@ namespace ArctisAurora.Core.UI
                 width[i + 1] = width[i] + advances[i];
                 stretch[i + 1] = stretch[i] + glue * GlueStretch;
                 shrink[i + 1] = shrink[i] + glue * GlueShrink;
+                fills[i + 1] = fills[i] + ((flags[i] & Fill) != 0 ? 1 : 0);
             }
 
             List<Breakpoint> active = new List<Breakpoint> { new Breakpoint { position = -1, fitness = 2 } };
@@ -490,7 +501,8 @@ namespace ArctisAurora.Core.UI
                     float room = contentWidth - (from.line == 0 ? firstLineOffset : 0f);
                     float shortfall = room - (width[end + 1] - width[start] + hyphen);
                     float ratio;
-                    if (MathF.Abs(shortfall) < 0.01f || shortfall > 0f && last) ratio = 0f;
+                    bool filled = fills[end + 1] - fills[start] > (end == j && (flags[j] & Fill) != 0 ? 1 : 0);
+                    if (MathF.Abs(shortfall) < 0.01f || shortfall > 0f && (last || filled)) ratio = 0f;
                     else if (shortfall > 0f)
                     {
                         float give = stretch[end + 1] - stretch[start];
@@ -579,7 +591,7 @@ namespace ArctisAurora.Core.UI
                 BlockLayout.MeasuredRun slot = new BlockLayout.MeasuredRun
                 {
                     text = run.text, charStart = run.charStart, charCount = run.charCount, atlas = run.atlas, face = run.face,
-                    fontSize = run.fontSize, picture = run.picture, math = run.math, floating = run.floating, space = run.space, start = count
+                    fontSize = run.fontSize, picture = run.picture, math = run.math, floating = run.floating, space = run.space, fill = run.fill, start = count
                 };
 
                 if (!string.IsNullOrEmpty(run.text) && run.charCount > 0)
@@ -617,7 +629,7 @@ namespace ArctisAurora.Core.UI
                             {
                                 char c = run.text[i];
                                 advances[count] = MeasureAdvance(c, run);
-                                flags[count] = c == ' ' ? BreakAfter : c == '\t' ? (byte)(BreakAfter | Tab)
+                                flags[count] = run.fill ? (byte)(BreakAfter | Fill) : c == ' ' ? BreakAfter : c == '\t' ? (byte)(BreakAfter | Tab)
                                     : c == SoftHyphen ? (byte)(BreakAfter | Soft) : (byte)0;
                             }
                         }
@@ -709,7 +721,7 @@ namespace ArctisAurora.Core.UI
             if (run.picture) return run.floating ? 0f : run.imageWidth;
             if (run.math) return run.imageWidth;
             if (run.space != 0f) return run.space;
-            if (character == SoftHyphen) return 0f;
+            if (run.fill || character == SoftHyphen) return 0f;
             if (character < AtlasMetaData.AdvanceTableSize) return run.atlas.TableAdvance(character, run.face) * run.fontSize;
 
             Glyph glyph = run.atlas.GetGlyph(character) ?? run.atlas.GetGlyph(' ');

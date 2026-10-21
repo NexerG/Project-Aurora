@@ -41,10 +41,11 @@ namespace ArctisAurora.Core.UI
         public readonly string highlightHex;
         public readonly int? fontSize;
         public readonly bool? code;
+        public readonly string fontName;
 
         public StyleDelta(bool? bold = null, bool? italic = null, bool? strikethrough = null,
             string colorHex = null, int? fontSize = null, bool? underline = null, string highlightHex = null,
-            bool? code = null)
+            bool? code = null, string fontName = null)
         {
             this.bold = bold;
             this.italic = italic;
@@ -54,12 +55,14 @@ namespace ArctisAurora.Core.UI
             this.highlightHex = highlightHex;
             this.fontSize = fontSize;
             this.code = code;
+            this.fontName = fontName;
         }
 
         // Everything a span carries, as a delta that would give another span the same look.
         public static StyleDelta Of(StyleSpan span) => new StyleDelta(
             span.IsBold, span.IsItalic, span.strikethrough, span.colorHex ?? string.Empty,
-            span.fontSizeAuthored ? span.fontSize : null, span.underline, span.highlightHex ?? string.Empty);
+            span.fontSizeAuthored ? span.fontSize : null, span.underline, span.highlightHex ?? string.Empty,
+            fontName: span.fontName ?? string.Empty);
 
         public void Apply(ref StyleSpan span)
         {
@@ -72,6 +75,7 @@ namespace ArctisAurora.Core.UI
             if (underline.HasValue) span.underline = underline.Value;
             if (colorHex != null) span.colorHex = colorHex.Length == 0 ? null : colorHex;
             if (highlightHex != null) span.highlightHex = highlightHex.Length == 0 ? null : highlightHex;
+            if (fontName != null) span.fontName = fontName.Length == 0 ? null : fontName;
             if (fontSize.HasValue)
             {
                 span.fontSizeAuthored = true;
@@ -89,7 +93,7 @@ namespace ArctisAurora.Core.UI
         public StyleDelta With(StyleDelta over) => new StyleDelta(
             over.bold ?? bold, over.italic ?? italic, over.strikethrough ?? strikethrough,
             over.colorHex ?? colorHex, over.fontSize ?? fontSize, over.underline ?? underline,
-            over.highlightHex ?? highlightHex, over.code ?? code);
+            over.highlightHex ?? highlightHex, over.code ?? code, over.fontName ?? fontName);
 
         // Whether applying this would move anything on the span.
         public bool Changes(StyleSpan span) =>
@@ -100,7 +104,8 @@ namespace ArctisAurora.Core.UI
             || (colorHex != null && (colorHex.Length == 0 ? null : colorHex) != span.colorHex)
             || (highlightHex != null && (highlightHex.Length == 0 ? null : highlightHex) != span.highlightHex)
             || (fontSize.HasValue && fontSize != span.fontSize)
-            || (code.HasValue && code != (span.stylingType == TextStyleType.Code));
+            || (code.HasValue && code != (span.stylingType == TextStyleType.Code))
+            || (fontName != null && (fontName.Length == 0 ? null : fontName) != span.fontName);
     }
 
     // The style the next character will take: the span the caret sits in, with an armed change laid
@@ -114,9 +119,12 @@ namespace ArctisAurora.Core.UI
         public readonly string colorHex;
         public readonly string highlightHex;
         public readonly int fontSize;
+        public readonly string fontName;
 
         public CaretStyle(BlockControl block, StyleSpan span, StyleDelta armed)
         {
+            if (armed.fontName != null) span.fontName = armed.fontName.Length == 0 ? null : armed.fontName;
+            fontName = block.FontAt(span);
             bold = armed.bold ?? span.IsBold;
             italic = armed.italic ?? span.IsItalic;
             strikethrough = armed.strikethrough ?? span.strikethrough;
@@ -585,7 +593,7 @@ namespace ArctisAurora.Core.UI
         private Vector2 measuredPaper;
         private PageBands paginatedBands;
         private int pageCount;
-        private float pageHeight;
+        private float pageHeight, lastPageHeight;
 
         // A control above the first block on the first page, assigned by the editor.
         public Control? header
@@ -1251,6 +1259,7 @@ namespace ArctisAurora.Core.UI
                     listKind = at.listKind,
                     listLevel = at.listLevel,
                     listMarker = at.listMarker,
+                    listIndent = at.note.listIndent,
                     text = clean.ToString()
                 };
 
@@ -1281,6 +1290,7 @@ namespace ArctisAurora.Core.UI
                 listKind = destination.listKind,
                 listLevel = destination.listLevel,
                 listMarker = destination.listMarker,
+                listIndent = destination.note.listIndent,
                 isChecked = destination.isChecked,
                 text = last.text
             };
@@ -3785,13 +3795,16 @@ namespace ArctisAurora.Core.UI
             if (!paged)
             {
                 pageCount = 1;
-                pageHeight = MathF.Max(paper.Y, y + bottom);
+                pageHeight = lastPageHeight = MathF.Max(paper.Y, y + bottom);
                 return pageHeight;
             }
 
             pageCount = bands.PageOf(y - PageBands.tolerance) + 1;
             pageHeight = paper.Y;
-            return pageCount * paper.Y + (pageCount - 1) * PageGap * zoom;
+            lastPageHeight = page.fitHeight > 0f
+                ? Math.Clamp(y - (pageCount - 1) * bands.stride - top + Mm(page.fitHeight), top, paper.Y)
+                : paper.Y;
+            return (pageCount - 1) * (paper.Y + PageGap * zoom) + lastPageHeight;
         }
 
         // Each footnote's blocks, the first group to name an id, and their heights stacked.
@@ -4095,7 +4108,7 @@ namespace ArctisAurora.Core.UI
         {
             for (int i = 0; i < pages.Count; i++)
                 pages[i].Arrange(i < pageCount
-                    ? new LayoutRect(x, y + i * (pageHeight + PageGap * zoom), width, pageHeight)
+                    ? new LayoutRect(x, y + i * (pageHeight + PageGap * zoom), width, i == pageCount - 1 ? lastPageHeight : pageHeight)
                     : new LayoutRect(x, y, 0f, 0f));
         }
         #endregion

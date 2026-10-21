@@ -117,7 +117,7 @@ for each owned key
 if there was no block and a value was written, the block is a new YAML one
 
 ## Lists
-A list item is block state, not a block type: `listKind` (`None`, `Bullet`, `Task`), `listLevel`, `listMarker` and `isChecked` on `BlockControl`, written as `List`, `Level`, `Marker` and `Checked` on `<Block>`. `ApplyLayout` indents the text by `(level + 1) × ListIndent` and keeps one marker child in that indent. A split copies the kind, level and marker to the new block and leaves it unchecked, so Enter continues a list in the same marker.
+A list item is block state, not a block type: `listKind` (`None`, `Bullet`, `Task`), `listLevel`, `listMarker` and `isChecked` on `BlockControl`, written as `List`, `Level`, `Marker` and `Checked` on `<Block>`. `ApplyLayout` indents the text by `(level + 1) × ListIndent` and keeps one marker child in that indent. A split copies the kind, level and marker to the new block and leaves it unchecked, so Enter continues a list in the same marker. An item can carry its own indent: `listIndent` on the block, written as `ListIndent` in pixels on `<Block>`, replaces the layout's `ListIndent` for that item. A split, a slice, a plain-text paste and a move to another destination copy it, and LaTeX lowering writes it from a list's `leftmargin`.
 
 ### Markers
 Bullets and numbers are one system. A `Bullet` item shows a `ListMarker`: one of six shapes (filled or empty circle, triangle and square) or its number written as `1.`, `A.`, `a.`, `i.` or `I.`. A shape is an `IconControl` from the default icon set, centred in the indent; a number is a `LabelControl` at the block's own font size, right-aligned against the text. Tasks keep their checkbox.
@@ -249,7 +249,7 @@ if the block is an empty code line and the next block is not code
 	do not split
 
 ## Rules
-A horizontal rule is a block with the `Rule` styling and no text. It measures as one empty line and draws a single line across the column in the palette's line colour instead of glyphs. The caret can stand on it like on an empty paragraph, but nothing can be written into it.
+A horizontal rule is a block with the `Rule` styling and no text. It measures as one empty line and draws a single line across the column in the palette's line colour instead of glyphs. The caret can stand on it like on an empty paragraph, but nothing can be written into it. A rule may carry a thickness, `ruleWeight`, written as `Weight` in pixels on `<Block StylingType="Rule">`. It is then drawn that thick and stands with its bottom on the baseline of the block's text line, as a TeX rule box does inside a paragraph; without `Weight` the rule is the 1px line centred on the line. It is copied like `listIndent`, and LaTeX lowering writes it for a paragraph made only of rule boxes.
 
 #### Type Char, Paste, Drop, Split Block — on a rule
 split the rule at its start
@@ -287,6 +287,21 @@ for each line
 	add (`room` − (the line's width − `hang`)) × `factor` to the line's left
 
 Ctrl+L, Ctrl+E, Ctrl+R and Ctrl+J, or the four alignment buttons beside the styling menu, align every block the selection touches, or the caret's block, as one undo step. Alignment is written as `Align` on `<Block>` and only `.axml` notes have it: Markdown has no paragraph alignment, and wrapping a paragraph in HTML would stop Markdown readers formatting what is inside it.
+
+A run can be a fill, `<Run Fill="true">` (`StyleSpan.fill`): it has no width of its own, is a break point, and takes the slack of the line it sits on the way TeX's `\hfill` does. LaTeX lowering writes one for horizontal glue of fil order or higher, which is how a date lands at the right margin. Typing beside a fill goes into a text span, never into the fill. Knuth-Plass counts a short line that holds a fill, and does not break at it, as badness 0.
+
+#### Fill ()
+for each line
+	if the line holds a fill run
+		give the line's slack to its fills
+		skip justifying and aligning this line
+	the draw loop advances by the fill's share and records a space glyph, which the PDF export reads as a space
+
+Knuth-Plass chooses breaks that assume a space may shrink by a third. Every line it set over its room is shrunk when drawn, whatever its alignment, through `Spread (line, stretch)`; before, only justified lines that were not a paragraph's last were, and the others ran past the clip.
+
+#### Spread (line, stretch)
+if Knuth-Plass set the line over its room
+	shrink the line's spaces to fit   // centred, left, right, a paragraph's last line and a line before a display included
 
 #### Shift List Level (delta)
 for each list item the selection touches, in order

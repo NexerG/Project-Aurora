@@ -968,6 +968,9 @@ namespace ArctisAurora.Core.UI
         [A_XSDElementProperty("InTextSep", "UI", "Millimetres above and below a float set in the text.")]
         public float inTextSep { get; set; } = 4.22f;
 
+        [A_XSDElementProperty("FitHeight", "UI", "Cuts the last page to the height of its text below the top margin plus this many millimetres, as \\pdfpageheight=\\pagetotal+…; 0 keeps the paper's height.")]
+        public float fitHeight { get; set; }
+
         // Paper size in pixels, orientation applied.
         public Vector2 SizePx()
         {

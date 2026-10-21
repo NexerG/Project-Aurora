@@ -134,7 +134,7 @@ Why: [[ui-palettes]].
   or every keybind stays swallowed. Old `KeyCaptureControl`.
 - **HintControl** (no XML) · PanelControl — translucent wash; the tab view's drop preview. Old `HintControl`.
 - **IconControl** `<Icon>` · Control — one cell of an icon set's MTSDF atlas, by set and name
-  (private `Rebind`). XML `Set`, `Icon`. Old `IconControl`.
+  (private `Rebind`). XML `Set`, `Icon`. Old `IconControl`. `Emit` override records the icon's name and artwork box while `UIEngine.recorder` is set (list bullets in the PDF, `DrawRecorder.Icon`) [[latex-editor]].
 - **ImageControl** `<Image>` · Control — a picture file through `TextureAsset.ForFile` (mipmapped, cached per
   path); `kind = ImageControl`, white paint. `MeasureCore` is native size capped to the width, or `Width`/`Height`
   with the aspect filling the other. XML `Source` (absolute, or relative to the data mounts). No old counterpart.
@@ -161,6 +161,7 @@ Why: [[ui-palettes]].
   Both pass `_layout` as `MeasureBlock`'s `reuse`, so `Lines` is the same list and the same `TextLine`s after a
   remeasure [[large-note-measure-cost]], and a rewrap re-breaks `_layout`'s kept advances [[rewrap-advance-cache]].
   Holds `data` (a `TextRunData`); `text`, `spans` and `Length` forward to it; `Edited(before)` (protected) re-measures when an edit through `data` changed the string [[note-model]].
+  A fill run (`StyleSpan.fill`, XML `Run.Fill`) is zero-width: `Fill()` gives each line's slack to its fills (`Stretch`, `Stretched`, `FillAt`), such lines are not justified or aligned; `Align`/`Justify` go through private `Spread(line, stretch)`, which applies Knuth-Plass's shrink to every line it set over its room [[latex-editor]].
   XML `Text`, `FontSize`, `FontName`. **`MeasureCore`
   returns the last `desired` while the run is clean and its wrap width unchanged** — anything `BuildRuns` reads
   must invalidate layout, which is why `colorHex` does. Why: [[ui-engine-stack]] § landing 4, § landing 6c.
@@ -186,7 +187,7 @@ Why: [[ui-palettes]].
 - **BlockControl** (no XML) · TextRunControl — one block of a note: the paragraph's string with its runs as
   spans. `stylingType`, `listKind`/`listLevel`/`listMarker`/`isChecked`, resolved `shownMarker`/`listNumber`
   (`ShowMarker`, set by `DocumentControl.RenumberLists`), `ApplyLayout(DocumentLayout)` (copies `optimalBreaks`; list indent as
-  `padding.left`, marker sync and size), `MeasureCore` (wraps inside the indent), `ArrangeCore` (shape `IconControl`
+  `padding.left` — `note.listIndent` replaces the layout's ListIndent when set —, marker sync and size), `MeasureCore` (wraps inside the indent), `ArrangeCore` (shape `IconControl`
   centred in the indent, number `LabelControl` right-aligned, or `CheckBoxControl`), `AppendRun`, `Runs()` (both carry `Run.sheet`, the `Sheet` attribute of a sheet link). Also
   declares `ListMarker` and `ListMarkers` (`Format`, `ShapeIcon`, `IsNumbered`) [[list-markers]]. Region `text and spans`:
   `SplitAt`, `Snapshot`/`Restore` are block-level wrappers over `NoteBlock`'s (`SliceSnapshot`/`TakeKind` wrappers removed in N2); `InsertText`, `RemoveText`,
@@ -195,11 +196,11 @@ Why: [[ui-palettes]].
   `SetPicture`. `alignment`, `language` (code fence), `codeWrap` (a Code block wraps only with it; `Wraps`);
   the checkbox finds its editor through `Editor()`, any depth; `ApplyLayout` also sets `fontName` from the style
   scheme and insets a Code block both sides; `Emit` draws a Code block's `SubField` ground per line, or a `Rule`'s
-  `Line` stroke instead of text; `FontFor` gives a Code span the Code font [[markdown-blocks-and-alignment]].
+  `Line` stroke instead of text (`note.ruleWeight` makes it that thick, bottom on the text-line baseline); `FontFor` gives a Code span the Code font [[markdown-blocks-and-alignment]].
   Replaces `Block`/`ContentBlock` + `TextRun`. Holds `note` (`public readonly NoteBlock`; `note.run` is its `data`); ctors `BlockControl()` (own new `NoteBlock`) and `BlockControl(NoteBlock)`; the 16 block fields (`stylingType` … `listStart`) are properties forwarding to `note`; `AppendRun`, `SplitAt`, `Snapshot`, `Restore` wrap `note`'s and do the view work (font/paint onto a split tail, invalidate, restart an effect); `internal StartEffects()` restarts text effects on a freshly built view; `legacyInkHex` lives on `NoteBlock`; `PictureChar` stays here [[note-model]].
 - **Run** `<Run>` — a run as the file writes it; exists at load and save only. `Text`, `Bold`, `Italic`,
   `Strikethrough`, `Underline`, `ColorHex`, `HighlightHex`, `ControlColor`, `Gradient`, `FontName`, `FontSize`, `FontSizeAuthored`,
-  `StylingType`, `Image`, `Width`, `Height`.
+  `StylingType`, `Image`, `Width`, `Height`, `Fill`.
 - **DocumentControl** (no XML) · ContainerControl, `IGlyphPressTarget` — the content area. Regions `caret`
   (`SetCaret`, `CollapseSelection`, `GlyphPressed`/`OnPointerPress` → `PressAt`, `OnPointerTap`), `caret navigation` (`CaretPoint`,
   `CaretAtPoint`, `CaretOffText`, `AdjacentBlock`), `selection` (`SelectWord`, `SelectAll`,
@@ -251,7 +252,7 @@ Why: [[ui-palettes]].
 - **DocumentToolbarControl** `<DocumentToolbar>` · StackPanelControl — the format bar for whichever
   note holds the caret; resolves it per press through `TextInputActions.Editor()` and takes no active
   control. `OnTick` (opted in at construction) reflects bold/italic/underline/highlight/styling/alignment/colour/size;
-  order Style | B I U S | colour, highlight | px | align ×4 | bullets + marker chevron, numbered, task, outdent, indent (no page button — Page is a ribbon category); `public Func<DocumentEditorControl?>? target` overrides the editor it acts on; internal `StylingEntries`, `MarkerEntries`, `SizeEntries`, `PageEntry`, `ChangePage`, `CaptionFor`; the styling dropdown's "Horizontal line" entry calls `InsertRule`; hosted as Docs Format by `RibbonControl` ([[workspaces]]);
+  order Style | B I U S | colour, highlight | px | align ×4 | bullets + marker chevron, numbered, task, outdent, indent (no page button — Page is a ribbon category); `public Func<DocumentEditorControl?>? target` overrides the editor it acts on; internal `StylingEntries`, `MarkerEntries`, `SizeEntries`, `PageEntry`, `ChangePage`, `CaptionFor`; the styling dropdown's "Horizontal line" entry calls `InsertRule`; font caption button `OpenFonts` (internal static `FontList(editor)`, `PickFont`, `FontRow`, `FontHeader`, nested `FontRowButton` acting on press, [[font-picker]]); hosted as Docs Format by `RibbonControl` ([[workspaces]]);
   `OpenColors`/`OpenHighlights` drop presets plus a `Picker` (`ColorPickerControl` in a `ContextMenuContent`); nested `ToolButton` (acts on press) and
   `PxBox` (the one part that does take the focus; captures the range on its press). XML `HoverColorHex`,
   `PressColorHex`, `IdleInkColorHex`, `ActiveInkColorHex`, `SeparatorColorHex`, `FieldColorHex`. Old

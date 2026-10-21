@@ -49,6 +49,9 @@ namespace ArctisAurora.Core.UI
         // first-line indent, px
         public float firstIndent;
 
+        // a rule's weight in px, standing on its line's baseline; null is a 1 px rule centred on the line
+        public float? ruleWeight;
+
         // the page style its page takes, and the running-head marks it sets; null leaves a mark as it was
         public string? pageStyle;
         public string? markLeft;
@@ -65,8 +68,9 @@ namespace ArctisAurora.Core.UI
         public int listLevel;
         public bool isChecked;
 
-        // the item's own marker; null takes the layout's for its level
+        // the item's own marker, and its own indent per level in px; null takes the layout's
         public ListMarker? listMarker;
+        public float? listIndent;
 
         // the number this item restarts its list at; null counts on from the item above
         public int? listStart;
@@ -105,6 +109,7 @@ namespace ArctisAurora.Core.UI
                 mathDisplay = appended.image == null && appended.math != null && appended.display,
                 sheetRef = appended.image == null && appended.math == null ? appended.sheet : null,
                 spaceWidth = appended.image == null && appended.math == null && appended.sheet == null ? appended.space : 0f,
+                fill = appended.image == null && appended.math == null && appended.sheet == null && appended.fill,
                 note = appended.note
             });
 
@@ -120,6 +125,7 @@ namespace ArctisAurora.Core.UI
                 stylingType = stylingType,
                 alignment = alignment,
                 firstIndent = firstIndent,
+                ruleWeight = ruleWeight,
                 spaceBefore = spaceBefore,
                 insert = insert,
                 seal = seal,
@@ -127,7 +133,8 @@ namespace ArctisAurora.Core.UI
                 codeWrap = codeWrap,
                 listKind = listKind,
                 listLevel = listLevel,
-                listMarker = listMarker
+                listMarker = listMarker,
+                listIndent = listIndent
             };
 
             StyleSpan carried = run.StyleAt(offset);
@@ -158,6 +165,7 @@ namespace ArctisAurora.Core.UI
                 stylingType = stylingType,
                 alignment = alignment,
                 firstIndent = firstIndent,
+                ruleWeight = ruleWeight,
                 spaceBefore = spaceBefore,
                 pageBreak = pageBreak,
                 pageStyle = pageStyle,
@@ -170,6 +178,7 @@ namespace ArctisAurora.Core.UI
                 listKind = listKind,
                 listLevel = listLevel,
                 listMarker = listMarker,
+                listIndent = listIndent,
                 listStart = listStart,
                 isChecked = isChecked,
                 text = (run.text ?? string.Empty)[from..to]
@@ -210,6 +219,7 @@ namespace ArctisAurora.Core.UI
             stylingType = kind.stylingType;
             alignment = kind.alignment;
             firstIndent = kind.firstIndent;
+            ruleWeight = kind.ruleWeight;
             spaceBefore = kind.spaceBefore;
             pageBreak = kind.pageBreak;
             pageStyle = kind.pageStyle;
@@ -222,6 +232,7 @@ namespace ArctisAurora.Core.UI
             listKind = kind.listKind;
             listLevel = kind.listLevel;
             listMarker = kind.listMarker;
+            listIndent = kind.listIndent;
             listStart = kind.listStart;
             isChecked = kind.isChecked;
         }

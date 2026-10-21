@@ -24,6 +24,10 @@ namespace ArctisAurora.Core.Tex
         // first paragraph of an \item
         public bool item;
 
+        // an enumitem label's marker, and its leftmargin in sp; null and 0 leave the defaults
+        public string? marker;
+        public int leftMargin;
+
         // first line indented by \parindent
         public bool indent;
     }
@@ -55,6 +59,21 @@ namespace ArctisAurora.Core.Tex
         {
             this.glue = glue;
             this.interword = interword;
+            this.style = style;
+        }
+    }
+
+    // \rule: a filled box in the paragraph, sp
+    public sealed class TexRuleBox : TexNode
+    {
+        public readonly int width, height, raise;
+        public readonly TexStyle style;
+
+        public TexRuleBox(int width, int height, int raise, TexStyle style)
+        {
+            this.width = width;
+            this.height = height;
+            this.raise = raise;
             this.style = style;
         }
     }

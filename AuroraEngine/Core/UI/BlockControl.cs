@@ -174,6 +174,9 @@ namespace ArctisAurora.Core.UI
         [A_XSDElementProperty("Space", "UI", "Each character's advance in pixels: a fixed-width space that draws nothing; absent is ordinary text.")]
         public float space { get; set; }
 
+        [A_XSDElementProperty("Fill", "UI", "Stretches to take the line's slack, as TeX's \\hfill: the line is not justified or aligned past it; absent is ordinary text.")]
+        public bool fill { get; set; }
+
         [A_XSDElementProperty("Note", "UI", "The id of the footnote this run anchors; its page reserves room for it.")]
         public string? note { get; set; }
 
@@ -261,7 +264,7 @@ namespace ArctisAurora.Core.UI
             fontSize = layout.FontSizeFor(stylingType);
             fontName = layout.FontNameFor(stylingType) ?? "default";
 
-            listIndent = layout.listIndent;
+            listIndent = note.listIndent ?? layout.listIndent;
             optimalBreaks = layout.optimalBreaks;
             ApplyInset();
             SyncMarker();
@@ -332,6 +335,8 @@ namespace ArctisAurora.Core.UI
         protected override string FontFor(in StyleSpan span) =>
             span.fontName ?? (span.stylingType == TextStyleType.Inherit ? null : layout?.FontNameFor(span.stylingType)) ?? fontName;
 
+        internal string FontAt(in StyleSpan span) => FontFor(span);
+
         protected override TextAlignment Alignment => alignment;
 
         protected override bool OptimalBreaks => optimalBreaks;
@@ -350,8 +355,10 @@ namespace ArctisAurora.Core.UI
 
             if (stylingType == TextStyleType.Rule)
             {
-                float weight = MathF.Max(1f, ruleWeight * textZoom);
-                float y = Lines is { Count: > 0 } lines ? TextOrigin.Y + lines[0].top + (lines[0].height - weight) * 0.5f : a.y;
+                float weight = MathF.Max(1f, (note.ruleWeight ?? ruleWeight) * textZoom);
+                float y = Lines is not { Count: > 0 } lines ? a.y
+                    : note.ruleWeight != null ? TextOrigin.Y + lines[0].baseline - weight
+                    : TextOrigin.Y + lines[0].top + (lines[0].height - weight) * 0.5f;
                 WriteRect(UIEngine.Quads, a.x, y, a.width, weight, Palettes.Surface(palette ?? Palettes.Default, PaletteRole.Line),
                           alpha, z, clip, bounds);
                 return;

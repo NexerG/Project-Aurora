@@ -18,15 +18,26 @@
       <xs:enumeration value="Device" />
       <xs:enumeration value="Monitor" />
       <xs:enumeration value="WindowSetting" />
+      <xs:enumeration value="Tray" />
       <xs:enumeration value="VSync" />
       <xs:enumeration value="Validation" />
       <xs:enumeration value="Graphics" />
+      <xs:enumeration value="WeekDay" />
+      <xs:enumeration value="ClockFormat" />
+      <xs:enumeration value="DateOrder" />
+      <xs:enumeration value="WeekStart" />
+      <xs:enumeration value="TimeFormat" />
+      <xs:enumeration value="DateFormat" />
+      <xs:enumeration value="DateTime" />
       <xs:enumeration value="DocumentSettings" />
       <xs:enumeration value="SessionTab" />
       <xs:enumeration value="SessionPane" />
+      <xs:enumeration value="SessionWorkspace" />
       <xs:enumeration value="SessionWindow" />
       <xs:enumeration value="SessionScope" />
       <xs:enumeration value="Session" />
+      <xs:enumeration value="SheetGrow" />
+      <xs:enumeration value="Sheets" />
       <xs:enumeration value="DragGhost" />
       <xs:enumeration value="Palette" />
       <xs:enumeration value="Zoom" />
@@ -50,6 +61,7 @@
       <xs:enumeration value="ProfilingCapture" />
       <xs:enumeration value="Profiling" />
       <xs:enumeration value="WindowMode" />
+      <xs:enumeration value="CloseAction" />
     </xs:restriction>
   </xs:simpleType>
   <xs:simpleType name="Input">
@@ -94,6 +106,7 @@
       <xs:enumeration value="IconSetAsset" />
       <xs:enumeration value="TextureAsset" />
       <xs:enumeration value="UIDocumentAsset" />
+      <xs:enumeration value="MathConstants" />
       <xs:enumeration value="Charset" />
       <xs:enumeration value="FontImport" />
       <xs:enumeration value="IconImport" />
@@ -135,6 +148,7 @@
       <xs:enumeration value="GridList" />
       <xs:enumeration value="Icon" />
       <xs:enumeration value="Image" />
+      <xs:enumeration value="Inspector" />
       <xs:enumeration value="KeyCapture" />
       <xs:enumeration value="Label" />
       <xs:enumeration value="MenuButton" />
@@ -142,6 +156,9 @@
       <xs:enumeration value="WindowCorners" />
       <xs:enumeration value="Palette" />
       <xs:enumeration value="Panel" />
+      <xs:enumeration value="AttachmentKind" />
+      <xs:enumeration value="AttachmentKinds" />
+      <xs:enumeration value="Ribbon" />
       <xs:enumeration value="Document" />
       <xs:enumeration value="TextStyleType" />
       <xs:enumeration value="TextAlignment" />
@@ -151,6 +168,9 @@
       <xs:enumeration value="PageMode" />
       <xs:enumeration value="PageSize" />
       <xs:enumeration value="Page" />
+      <xs:enumeration value="SlotPlace" />
+      <xs:enumeration value="PageStyle" />
+      <xs:enumeration value="RunningSlot" />
       <xs:enumeration value="ScrollDirection" />
       <xs:enumeration value="Scrollable" />
       <xs:enumeration value="Slider" />
@@ -166,7 +186,13 @@
       <xs:enumeration value="TitleBar" />
       <xs:enumeration value="WindowFrame" />
       <xs:enumeration value="WindowRoot" />
+      <xs:enumeration value="WorkspaceBar" />
       <xs:enumeration value="Workspace" />
+      <xs:enumeration value="WorkspaceKind" />
+      <xs:enumeration value="WrapPanel" />
+      <xs:enumeration value="FileKind" />
+      <xs:enumeration value="FileType" />
+      <xs:enumeration value="FileTypes" />
       <xs:enumeration value="Orientation" />
     </xs:restriction>
   </xs:simpleType>
@@ -201,6 +227,10 @@
       <xs:enumeration value="TrackCold" />
       <xs:enumeration value="DirtyLayout" />
       <xs:enumeration value="FinishedTrack" />
+      <xs:enumeration value="TrackBinding" />
+      <xs:enumeration value="AwakeTrack" />
+      <xs:enumeration value="SignalLife" />
+      <xs:enumeration value="SlotFade" />
     </xs:restriction>
   </xs:simpleType>
   <xs:simpleType name="Systems">
@@ -236,6 +266,14 @@
       <xs:enumeration value="SamplerAsset" />
     </xs:restriction>
   </xs:simpleType>
+  <xs:simpleType name="Build">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="BuildSource" />
+      <xs:enumeration value="BuildPattern" />
+      <xs:enumeration value="BuildTarget" />
+      <xs:enumeration value="Build" />
+    </xs:restriction>
+  </xs:simpleType>
   <xs:simpleType name="Animation">
     <xs:restriction base="xs:string">
       <xs:enumeration value="ClipLoop" />
@@ -249,7 +287,7 @@
     </xs:restriction>
   </xs:simpleType>
   <xs:simpleType name="Uncategorized">
-    <xs:union memberTypes="types:Bootstrap types:Settings types:Input types:Shutdown types:AssetRegistry types:UI types:EntityRegistry types:DataPools types:Systems types:Test types:Context types:Rendering types:Animation">
+    <xs:union memberTypes="types:Bootstrap types:Settings types:Input types:Shutdown types:AssetRegistry types:UI types:EntityRegistry types:DataPools types:Systems types:Test types:Context types:Rendering types:Build types:Animation">
       <xs:simpleType>
         <xs:restriction base="xs:string">
           <xs:enumeration value="xs:string" />

@@ -4,5 +4,9 @@
 		  xsi:schemaLocation="http://arctisaurora/AuroraTestTypes ../../Schemas/TestTypeSchema.xsd" >
 	<Test Action="Fonts.MathFontBaked"/>
 	<Test Action="Fonts.CffCharstring"/>
-	<Test Action="Perf.AtlasBake"/>
+	<Test Action="Fonts.CatalogGroups"/>
+	<Test Action="Fonts.StyleDeltaFont"/>
+	<Test Action="Fonts.LanguagePackCovered" Timeout="60000"/>
+	<Test Action="Fonts.Previews" Timeout="60000"/>
+	<Test Action="Fonts.ImportFamily" Timeout="600000"/>	<Test Action="Perf.AtlasBake"/>
 </TestSuite>

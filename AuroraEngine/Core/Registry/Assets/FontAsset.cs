@@ -4,6 +4,7 @@ using ArctisAurora.Core.Generators;
 using ArctisAurora.Core.Registry;
 using ArctisAurora.EngineWork.Registry;
 using Silk.NET.Vulkan;
+using System.Xml.Linq;
 
 namespace ArctisAurora.Core.Registry.Assets
 {
@@ -20,6 +21,9 @@ namespace ArctisAurora.Core.Registry.Assets
 
         // the cooked folder under Data/Fonts
         public string folder = string.Empty;
+
+        // the name the font calls itself
+        public string family = string.Empty;
 
         public FontAsset() { }
 
@@ -42,6 +46,21 @@ namespace ArctisAurora.Core.Registry.Assets
 
             string math = Paths.Font(fontName, fontName + ".math.axml");
             if (DataFiles.Exists(math)) mathConstants = MathConstants.Load(math);
+
+            family = FamilyOf(fontName) ?? name;
+        }
+
+        // The stamp's family, else the installed source's own name.
+        private static string? FamilyOf(string folder)
+        {
+            string stamp = Paths.Font(folder, folder + ".import.axml");
+            if (!DataFiles.Exists(stamp)) return null;
+
+            XElement root = DataFiles.LoadXml(stamp);
+            if ((string?)root.Attribute("Family") is { Length: > 0 } family) return family;
+
+            string? source = AssetImporter.ResolveSystemFont((string?)root.Attribute("Source") ?? string.Empty);
+            return source == null ? null : FontCatalog.ReadFace(source, (int?)root.Attribute("Face") ?? 0)?.family;
         }
 
         /*public FontAsset LoadFont(string name)

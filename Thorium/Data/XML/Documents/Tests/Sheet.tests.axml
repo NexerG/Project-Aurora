@@ -26,6 +26,7 @@
 	<Test Action="Sheet.Csv"/>
 	<Test Action="Sheet.CsvLinks"/>
 	<Test Action="Sheet.FixedSize"/>
+	<Test Action="Sheet.FixedSizeChosen"/>
 	<Test Action="Sheet.GrowPopup"/>
 	<Test Action="Sheet.InsertShifts"/>
 	<Test Action="Sheet.WheelZoom"/></TestSuite>

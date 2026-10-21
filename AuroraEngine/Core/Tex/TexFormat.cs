@@ -11,6 +11,12 @@ namespace ArctisAurora.Core.Tex
             \newcounter{footnote}\newcounter{figure}[chapter]\newcounter{table}[chapter]\newcounter{equation}[chapter]%
             \dimendef\textwidth=250 \dimendef\linewidth=251 \dimendef\columnwidth=252 \dimendef\textheight=253 %
             \dimendef\paperwidth=254 \dimendef\paperheight=255 %
+            \countdef\hyphenpenalty=250 \countdef\exhyphenpenalty=251 \countdef\tolerance=252 \countdef\pretolerance=253 %
+            \hyphenpenalty=50 \exhyphenpenalty=50 \tolerance=200 \pretolerance=100 %
+            \dimendef\parindent=249 \dimendef\emergencystretch=248 \skipdef\parskip=250 %
+            \parindent=15pt \parskip=0pt plus1pt\relax
+            \def\space{ }\newcommand\uline[1]{{\@underline#1}}\newcommand\hypersetup[1]{}%
+            \def\raisebox#1{\@ifnextchar[\@rbopt\mbox}\def\@rbopt[#1]{\@ifnextchar[\@rbopt\mbox}%
             \def\figurename{Figure}\def\tablename{Table}\def\refname{References}\def\bibname{Bibliography}%
             \def\newblock{\hskip .11em plus .33em minus .07em\relax}%
             \newcommand\textbf[1]{{\bfseries#1}}\newcommand\textmd[1]{{\mdseries#1}}%

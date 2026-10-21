@@ -1518,6 +1518,45 @@ namespace Thorium.Tests
             File.Delete(path);
         }
 
+        [A_XSDActionDependency("Sheet.FixedSizeChosen", "Test")]
+        private static IEnumerator<int> FixedSizeChosen(TestContext t)
+        {
+            t.Show(new StackPanelControl());
+            (string name, int rows, int columns)? chosen = null;
+            bool cancelled = false;
+
+            NoteNameWindow.AskSheet(Engine.primary, "Sized", SheetPage.defaultSize, SheetPage.defaultSize,
+                (name, rows, columns) => chosen = (name, rows, columns), () => cancelled = true);
+            yield return 2;
+            TextBoxControl field = (TextBoxControl)UIEngine.activeControl!;
+            List<TextBoxControl> sizes = field.parent!.children.OfType<StackPanelControl>().First()
+                .children.OfType<TextBoxControl>().ToList();
+            t.Check(NoteNameWindow.isOpen && sizes.Count == 2 && sizes[0].text == "25" && sizes[1].text == "25", "the size starts at 25 x 25");
+
+            sizes[0].text = "8";
+            sizes[1].text = "3";
+            yield return t.Click(sizes[1]);
+            yield return t.Key(Keys.Enter);
+            t.Check(!NoteNameWindow.isOpen && chosen == ("Sized", 8, 3), "the chosen size is handed back");
+
+            chosen = null;
+            NoteNameWindow.AskSheet(Engine.primary, "Sized", SheetPage.defaultSize, SheetPage.defaultSize,
+                (name, rows, columns) => chosen = (name, rows, columns), () => cancelled = true);
+            yield return 2;
+            sizes[0].text = "0";
+            yield return t.Click(sizes[0]);
+            yield return t.Key(Keys.Enter);
+            t.Check(NoteNameWindow.isOpen && chosen == null, "a zero row count is refused");
+            yield return t.Click(sizes[0]);
+            yield return t.Key(Keys.Escape);
+            t.Check(!NoteNameWindow.isOpen && cancelled, "the prompt cancels");
+
+            NoteNameWindow.Ask(Engine.primary, "Note", _ => { }, null);
+            yield return 2;
+            t.Check(sizes[0].parent is Control row && row.hidden, "a note prompt shows no size");
+            yield return t.Key(Keys.Escape);
+        }
+
         [A_XSDActionDependency("Sheet.GrowPopup", "Test")]
         private static IEnumerator<int> GrowPopup(TestContext t)
         {

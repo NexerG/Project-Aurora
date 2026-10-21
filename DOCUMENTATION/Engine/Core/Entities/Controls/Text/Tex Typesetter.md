@@ -226,6 +226,32 @@ It never throws. Problems are collected in `errors` and the run recovers the way
 		the id is the footnote's sequence number, not the counter, so `\setcounter{footnote}` cannot make two share an id
 	the mark in the text is a math node with `note` set, which lowering writes as a run with `Note="id"`
 
+### Preamble and packages
+Everything before `\begin{document}` is the preamble. `\documentclass` points the vertical target at a private list that is thrown away, so text written there is dropped and `LaTeX Error: Missing \begin{document}` is reported once. A fragment with no `\documentclass` still typesets. `\documentclass` also sets `\parindent` to the class's 15, 17 or 18pt, and `\hyphenpenalty` of 10000 or more turns hyphenation off for the lowering.
+
+The length and parameter commands are expander primitives. `\newlength` takes the next skip register from 256, `\setlength` and `\addtolength` push an assignment and an `\advance`, and `\dimexpr` evaluates sums, products by integers and parentheses of lengths. `\parindent` is a dimen as in TeX, not a skip. `\pagetotal` always reads 0pt and says so, which `\pdfpageheight` uses as a signal.
+
+#### `\pdfpageheight`
+	if the value contains `\pagetotal`
+		`fitHeight` = the rest of the value   // the last page is cut to its content plus this
+	else
+		the value is the paper height
+
+#### `Section` with titlesec
+	start from normalfont at the normal size, then the `\titleformat` format tokens
+	an empty label shows no number
+	`\the<level>` in a label is replaced by the full number
+	run `@endhead`, then the after-code
+	`@endheadafter` adds the after-skip and keeps the next paragraph unindented
+
+#### `BeginList (kind, name, token)` with enumitem
+	settings = the settings for "", then for `kind`, then for `name`   // from `\setlist` and `\newlist`
+	apply the options in the square brackets over them
+	`Item`, `StartParagraph` and `EndEnvironment` use the label, `leftmargin`, `itemsep`, `parsep` and `topsep` they hold
+	a label's commands pick a marker: `\rule` and `\blacksquare` Square, `\textbullet` Disc, `\circ` Circle, `\arabic` Decimal, and so on   // anything else keeps the default marker
+
+`\setlist` with a number reads as every level. Only seven enumitem keys are read; the others are logged. Times packages (`mathptmx`, `times`, `tgtermes`, `newtxtext`) set `times`, and lowering then sets the text in TeX Gyre Termes.
+
 ### Run, the end of the document
 	typeset the body up to `\end{document}`
 		`\ref` and `\cite` leave a `TexRefNode` carrying their style
@@ -292,6 +318,12 @@ It never throws. Problems are collected in `errors` and the run recovers the way
 	TextStyles Text and Quote use `latin-modern`, Code uses `latin-modern-mono`, Heading levels take the size of the first heading of that level
 	1pt is 96/72.27 pixels
 	margins: article `\textwidth` is 345, 360 or 390pt for 10, 11 and 12pt, centred on the paper; vertical is (paper height − 550pt)/2
+	the roman face is TeX Gyre Termes when the typesetter loaded a Times package, else Latin Modern; ex follows it
+	horizontal glue of fil order or higher becomes a Run `Text=" " Fill="true"`, never trimmed
+	a paragraph piece of only rule boxes and glue becomes a `<Block StylingType="Rule" Weight>`; a rule box anywhere else draws nothing
+	list blocks take `Marker` and `ListIndent` from the paragraph's style
+	the page is `<Page Size="Custom" Width Height>` when the source set a paper, and carries `FitHeight` when set
+	a negative space above a block is written as a negative `SpaceBefore`   // `\vspace{-7pt}`
 
 ### Pages, footnotes and `PageRefs` in `TexLowering`
 	`Layout` writes `<Page Style FootnoteSkip>` and its `<PageStyle>` and `<Slot>` children
@@ -345,8 +377,10 @@ It never throws. Problems are collected in `errors` and the run recovers the way
 
 Not exported: clickable `\href` links, bookmarks, floating pictures, gradients and effects (flat colour). Math copies as a jumble of symbols, as pdfLaTeX output does.
 
+List bullets are exported. While recording, an icon control records its name and artwork box, and the writer draws the six default bullet shapes (disc, circle, square, outlined square, triangle, outlined triangle) as filled paths from a copy of their SVG geometry, with the outlines even-odd. Any other icon is skipped. If a bullet SVG changes, the writer's copy has to follow.
+
 ## Not supported yet
-`\suppressfloats`, `placeins` and `\FloatBarrier`, `afterpage`, `tabularx`, `tabular*`, `longtable`, `\multirow`, natbib, `\autoref`, `\nameref`, `\listoffigures`, `\listoftables`, subfigure, hanging indent in bibliography entries, clickable references, `\arrayrulecolor`, `\parindent` on left-aligned tables, `\numberwithin`, `subequations`, `\intertext`, `\shoveleft`, `\shoveright`, `\hdotsfor`, mathtools, `\hbox to`, `\setbox`, `\wd`, `\lastskip`, `\input`. There is no kerning. Vertical glue has no stretch or shrink, `\hfill` and other infinite glue vanish, `\partopsep` is not added, bibliography entries have no `\itemsep` between them, a quotation's `\listparindent` is not modelled, a `\cline` under part of a merged cell rules the whole cell, booktabs gaps do not interrupt vertical rules, a spacer never breaks a line, and display formulas inside table cells get no display skips. Hyphenation is US English only, so accented words are never hyphenated; an explicit hyphen in a word ("well-known") is not a break opportunity; `\lefthyphenmin`, `\righthyphenmin`, `\uchyph` and `\hyphenpenalty` are not read. The preview breaks a paragraph Knuth-Plass only where a break set exists at tolerance 200; the rest stay greedy. Small caps are set upright and Sans is set in Roman. The em dash and the en dash do not draw at 13 px in a note. A `\def` inside a tabular cell leaks into later cells. Two-sided page styles (`[LE,RO]` reads only the odd entry, `\cleardoublepage` is `\clearpage`), `\pagenumbering`, `\footnotemark`, `\footnotetext`, footnotes split across pages, `\footnotesep`, `\MakeUppercase` and `\renewcommand` of `\sectionmark` are not supported; a mid-document `\pagestyle` sets the whole document's style, and a `\label` inside display math or a table cell has no page site.
+`\suppressfloats`, `placeins` and `\FloatBarrier`, `afterpage`, `tabularx`, `tabular*`, `longtable`, `\multirow`, natbib, `\autoref`, `\nameref`, `\listoffigures`, `\listoftables`, subfigure, hanging indent in bibliography entries, clickable references, `\arrayrulecolor`, `\parindent` on left-aligned tables, `\numberwithin`, `subequations`, `\intertext`, `\shoveleft`, `\shoveright`, `\hdotsfor`, mathtools, `\hbox to`, `\setbox`, `\wd`, `\lastskip`, `\input`. There is no kerning. Vertical glue has no stretch or shrink, infinite glue vanishes except horizontal fil glue, which lowering turns into a fill run, `\tolerance`, `\pretolerance`, `\emergencystretch` and `\exhyphenpenalty` are registers that nothing reads, a `\rule` inside running text draws nothing, `\raisebox` ignores its raise, titlesec shapes other than hang and block are set as hang, `\partopsep` is not added, bibliography entries have no `\itemsep` between them, a quotation's `\listparindent` is not modelled, a `\cline` under part of a merged cell rules the whole cell, booktabs gaps do not interrupt vertical rules, a spacer never breaks a line, and display formulas inside table cells get no display skips. Hyphenation is US English only, so accented words are never hyphenated; an explicit hyphen in a word ("well-known") is not a break opportunity; `\lefthyphenmin`, `\righthyphenmin`, `\uchyph` and `\hyphenpenalty` are not read. The preview breaks a paragraph Knuth-Plass only where a break set exists at tolerance 200; the rest stay greedy. Small caps are set upright and Sans is set in Roman. The em dash and the en dash do not draw at 13 px in a note. A `\def` inside a tabular cell leaks into later cells. Two-sided page styles (`[LE,RO]` reads only the odd entry, `\cleardoublepage` is `\clearpage`), `\pagenumbering`, `\footnotemark`, `\footnotetext`, footnotes split across pages, `\footnotesep`, `\MakeUppercase` and `\renewcommand` of `\sectionmark` are not supported; a mid-document `\pagestyle` sets the whole document's style, and a `\label` inside display math or a table cell has no page site.
 
 ## Related
 - [[Tex Expander]] — the tokens this reads

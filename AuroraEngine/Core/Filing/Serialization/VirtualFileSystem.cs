@@ -51,6 +51,7 @@ namespace ArctisAurora.Core.Filing.Serialization
         public static void Mount(IDataMount mount) => _mounts.Add(mount);
         public static void MountFirst(IDataMount mount) => _mounts.Insert(0, mount);
         public static void ClearMounts() => _mounts.Clear();
+        public static void Replace(IDataMount mount, IDataMount with) => _mounts[_mounts.IndexOf(mount)] = with;
 
         public static bool TryResolveFile(string relativePath, out string fullPath)
         {

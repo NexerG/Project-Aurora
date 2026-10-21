@@ -8,7 +8,8 @@ namespace ArctisAurora.Core.UI
     {
         Glyph,
         Rect,
-        Image
+        Image,
+        Icon
     }
 
     // One draw call as an export sees it, in layout pixels.
@@ -25,7 +26,7 @@ namespace ArctisAurora.Core.UI
         // rect and image box
         public float x, y, width, height;
 
-        // image file and turn
+        // image file and turn; an icon's name
         public string? source;
         public Quaternion rotation;
 
@@ -57,6 +58,14 @@ namespace ArctisAurora.Core.UI
             {
                 kind = DrawKind.Image, source = source, rotation = rotation, clip = clip,
                 x = box.x + (box.width - size.X) * 0.5f, y = box.y + (box.height - size.Y) * 0.5f, width = size.X, height = size.Y
+            });
+
+        // An icon by name over its artwork box.
+        public void Icon(string name, LayoutRect box, uint paint, Vector4 clip) =>
+            items.Add(new DrawItem
+            {
+                kind = DrawKind.Icon, source = name, x = box.x, y = box.y, width = box.width, height = box.height,
+                color = Palettes.ColorOf(paint), clip = clip
             });
     }
 }

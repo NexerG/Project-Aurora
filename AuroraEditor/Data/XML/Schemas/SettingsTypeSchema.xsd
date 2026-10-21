@@ -5,7 +5,7 @@
   <xs:import schemaLocation="InputTypeSchema.xsd" namespace="http://arctisaurora/AuroraInputTypes" />
   <xs:import schemaLocation="UITypeSchema.xsd" namespace="http://arctisaurora/AuroraUITypes" />
   <xs:simpleType name="Settings">
-    <xs:union memberTypes="types:SettingScope types:LogLevel types:CaptureMode types:WindowMode" />
+    <xs:union memberTypes="types:WeekDay types:ClockFormat types:DateOrder types:SettingScope types:LogLevel types:CaptureMode types:WindowMode types:CloseAction" />
   </xs:simpleType>
   <xs:attributeGroup name="Bind.Attributes">
     <xs:attribute name="Action" type="xs:string" />
@@ -55,8 +55,13 @@
       <xs:element name="Device" type="types:Device" />
       <xs:element name="Monitor" type="types:Monitor" />
       <xs:element name="WindowSetting" type="types:WindowSetting" />
+      <xs:element name="Tray" type="types:Tray" />
       <xs:element name="VSync" type="types:VSync" />
       <xs:element name="Validation" type="types:Validation" />
+      <xs:element name="WeekStart" type="types:WeekStart" />
+      <xs:element name="TimeFormat" type="types:TimeFormat" />
+      <xs:element name="DateFormat" type="types:DateFormat" />
+      <xs:element name="SheetGrow" type="types:SheetGrow" />
       <xs:element name="DragGhost" type="types:DragGhost" />
       <xs:element name="Palette" type="types:Palette" />
       <xs:element name="Zoom" type="types:Zoom" />
@@ -99,11 +104,21 @@
     <xs:attribute name="Mode" type="types:WindowMode" />
     <xs:attribute name="Width" type="xs:unsignedInt" />
     <xs:attribute name="Height" type="xs:unsignedInt" />
+    <xs:attribute name="OnClose" type="types:CloseAction" />
   </xs:attributeGroup>
   <xs:element name="WindowSetting" type="types:WindowSetting" />
   <xs:complexType name="WindowSetting">
     <xs:sequence />
     <xs:attributeGroup ref="types:WindowSetting.Attributes" />
+  </xs:complexType>
+  <xs:attributeGroup name="Tray.Attributes">
+    <xs:attributeGroup ref="types:Setting.Attributes" />
+    <xs:attribute name="Enabled" type="xs:boolean" />
+  </xs:attributeGroup>
+  <xs:element name="Tray" type="types:Tray" />
+  <xs:complexType name="Tray">
+    <xs:sequence />
+    <xs:attributeGroup ref="types:Tray.Attributes" />
   </xs:complexType>
   <xs:attributeGroup name="VSync.Attributes">
     <xs:attributeGroup ref="types:Setting.Attributes" />
@@ -133,6 +148,69 @@
       <xs:group minOccurs="0" maxOccurs="unbounded" ref="types:Setting.Children" />
     </xs:sequence>
   </xs:complexType>
+  <xs:simpleType name="WeekDay">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="System" />
+      <xs:enumeration value="Monday" />
+      <xs:enumeration value="Tuesday" />
+      <xs:enumeration value="Wednesday" />
+      <xs:enumeration value="Thursday" />
+      <xs:enumeration value="Friday" />
+      <xs:enumeration value="Saturday" />
+      <xs:enumeration value="Sunday" />
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:simpleType name="ClockFormat">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="System" />
+      <xs:enumeration value="H24" />
+      <xs:enumeration value="H12" />
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:simpleType name="DateOrder">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="System" />
+      <xs:enumeration value="DayMonthYear" />
+      <xs:enumeration value="MonthDayYear" />
+      <xs:enumeration value="YearMonthDay" />
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:attributeGroup name="WeekStart.Attributes">
+    <xs:attributeGroup ref="types:Setting.Attributes" />
+    <xs:attribute name="Day" type="types:WeekDay" />
+  </xs:attributeGroup>
+  <xs:element name="WeekStart" type="types:WeekStart" />
+  <xs:complexType name="WeekStart">
+    <xs:sequence />
+    <xs:attributeGroup ref="types:WeekStart.Attributes" />
+  </xs:complexType>
+  <xs:attributeGroup name="TimeFormat.Attributes">
+    <xs:attributeGroup ref="types:Setting.Attributes" />
+    <xs:attribute name="Clock" type="types:ClockFormat" />
+  </xs:attributeGroup>
+  <xs:element name="TimeFormat" type="types:TimeFormat" />
+  <xs:complexType name="TimeFormat">
+    <xs:sequence />
+    <xs:attributeGroup ref="types:TimeFormat.Attributes" />
+  </xs:complexType>
+  <xs:attributeGroup name="DateFormat.Attributes">
+    <xs:attributeGroup ref="types:Setting.Attributes" />
+    <xs:attribute name="Order" type="types:DateOrder" />
+  </xs:attributeGroup>
+  <xs:element name="DateFormat" type="types:DateFormat" />
+  <xs:complexType name="DateFormat">
+    <xs:sequence />
+    <xs:attributeGroup ref="types:DateFormat.Attributes" />
+  </xs:complexType>
+  <xs:element name="DateTime" type="types:DateTime" />
+  <xs:complexType name="DateTime">
+    <xs:sequence>
+      <xs:group minOccurs="0" maxOccurs="unbounded" ref="types:Setting.Children" />
+    </xs:sequence>
+  </xs:complexType>
+  <xs:attributeGroup name="DocumentSettings.Attributes">
+    <xs:attribute name="StampModified" type="xs:boolean" />
+  </xs:attributeGroup>
   <xs:element name="DocumentSettings" type="types:DocumentSettings" />
   <xs:complexType name="DocumentSettings">
     <xs:sequence>
@@ -142,9 +220,20 @@
         </xs:annotation>
       </xs:element>
     </xs:sequence>
+    <xs:attributeGroup ref="types:DocumentSettings.Attributes" />
   </xs:complexType>
   <xs:attributeGroup name="SessionTab.Attributes">
     <xs:attribute name="Path" type="xs:string" />
+    <xs:attribute name="CaretBlock" type="xs:int" />
+    <xs:attribute name="CaretOffset" type="xs:int" />
+    <xs:attribute name="AnchorBlock" type="xs:int" />
+    <xs:attribute name="AnchorOffset" type="xs:int" />
+    <xs:attribute name="TopBlock" type="xs:int" />
+    <xs:attribute name="TopOffset" type="xs:int" />
+    <xs:attribute name="TopDelta" type="xs:float" />
+    <xs:attribute name="ScrollX" type="xs:float" />
+    <xs:attribute name="PropertiesOpen" type="xs:boolean" />
+    <xs:attribute name="AsXml" type="xs:boolean" />
   </xs:attributeGroup>
   <xs:element name="SessionTab" type="types:SessionTab" />
   <xs:complexType name="SessionTab">
@@ -169,6 +258,25 @@
     </xs:sequence>
     <xs:attributeGroup ref="types:SessionPane.Attributes" />
   </xs:complexType>
+  <xs:attributeGroup name="SessionWorkspace.Attributes">
+    <xs:attribute name="Title" type="xs:string" />
+    <xs:attribute name="Kind" type="UI:WorkspaceKind" />
+    <xs:attribute name="Shown" type="xs:boolean" />
+    <xs:attribute name="Ribbon" type="xs:string" />
+    <xs:attribute name="Inspector" type="xs:boolean" />
+  </xs:attributeGroup>
+  <xs:element name="SessionWorkspace" type="types:SessionWorkspace" />
+  <xs:group name="SessionPane.Children">
+    <xs:choice>
+      <xs:element name="SessionPane" type="types:SessionPane" />
+    </xs:choice>
+  </xs:group>
+  <xs:complexType name="SessionWorkspace">
+    <xs:sequence>
+      <xs:group minOccurs="0" maxOccurs="unbounded" ref="types:SessionPane.Children" />
+    </xs:sequence>
+    <xs:attributeGroup ref="types:SessionWorkspace.Attributes" />
+  </xs:complexType>
   <xs:attributeGroup name="SessionWindow.Attributes">
     <xs:attribute name="Document" type="xs:string" />
     <xs:attribute name="Primary" type="xs:boolean" />
@@ -177,16 +285,18 @@
     <xs:attribute name="Width" type="xs:int" />
     <xs:attribute name="Height" type="xs:int" />
     <xs:attribute name="Maximized" type="xs:boolean" />
+    <xs:attribute name="Pinned" type="xs:boolean" />
   </xs:attributeGroup>
   <xs:element name="SessionWindow" type="types:SessionWindow" />
-  <xs:group name="SessionPane.Children">
+  <xs:group name="ISessionWindowChild.Children">
     <xs:choice>
       <xs:element name="SessionPane" type="types:SessionPane" />
+      <xs:element name="SessionWorkspace" type="types:SessionWorkspace" />
     </xs:choice>
   </xs:group>
   <xs:complexType name="SessionWindow">
     <xs:sequence>
-      <xs:group minOccurs="0" maxOccurs="unbounded" ref="types:SessionPane.Children" />
+      <xs:group minOccurs="0" maxOccurs="unbounded" ref="types:ISessionWindowChild.Children" />
     </xs:sequence>
     <xs:attributeGroup ref="types:SessionWindow.Attributes" />
   </xs:complexType>
@@ -214,6 +324,21 @@
   <xs:complexType name="Session">
     <xs:sequence>
       <xs:group minOccurs="0" maxOccurs="unbounded" ref="types:SessionScope.Children" />
+    </xs:sequence>
+  </xs:complexType>
+  <xs:attributeGroup name="SheetGrow.Attributes">
+    <xs:attributeGroup ref="types:Setting.Attributes" />
+    <xs:attribute name="Step" type="xs:int" />
+  </xs:attributeGroup>
+  <xs:element name="SheetGrow" type="types:SheetGrow" />
+  <xs:complexType name="SheetGrow">
+    <xs:sequence />
+    <xs:attributeGroup ref="types:SheetGrow.Attributes" />
+  </xs:complexType>
+  <xs:element name="Sheets" type="types:Sheets" />
+  <xs:complexType name="Sheets">
+    <xs:sequence>
+      <xs:group minOccurs="0" maxOccurs="unbounded" ref="types:Setting.Children" />
     </xs:sequence>
   </xs:complexType>
   <xs:attributeGroup name="DragGhost.Attributes">
@@ -307,8 +432,10 @@
       <xs:element name="InputBindings" type="types:InputBindings" />
       <xs:element name="Input" type="types:Input" />
       <xs:element name="Graphics" type="types:Graphics" />
+      <xs:element name="DateTime" type="types:DateTime" />
       <xs:element name="DocumentSettings" type="types:DocumentSettings" />
       <xs:element name="Session" type="types:Session" />
+      <xs:element name="Sheets" type="types:Sheets" />
       <xs:element name="UI" type="types:UI" />
       <xs:element name="Threading" type="types:Threading" />
       <xs:element name="Logging" type="types:Logging" />
@@ -415,6 +542,13 @@
       <xs:enumeration value="Windowed" />
       <xs:enumeration value="Borderless" />
       <xs:enumeration value="Fullscreen" />
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:simpleType name="CloseAction">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="Ask" />
+      <xs:enumeration value="Tray" />
+      <xs:enumeration value="Quit" />
     </xs:restriction>
   </xs:simpleType>
 </xs:schema>

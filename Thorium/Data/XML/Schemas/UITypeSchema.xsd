@@ -68,6 +68,7 @@
     <xs:attribute name="Display" type="xs:boolean" />
     <xs:attribute name="Sheet" type="xs:string" />
     <xs:attribute name="Space" type="xs:float" />
+    <xs:attribute name="Fill" type="xs:boolean" />
     <xs:attribute name="Note" type="xs:string" />
   </xs:attributeGroup>
   <xs:element name="Run" type="types:Run" />
@@ -620,6 +621,7 @@
     <xs:attribute name="FloatSep" type="xs:float" />
     <xs:attribute name="TextFloatSep" type="xs:float" />
     <xs:attribute name="InTextSep" type="xs:float" />
+    <xs:attribute name="FitHeight" type="xs:float" />
   </xs:attributeGroup>
   <xs:element name="Page" type="types:Page" />
   <xs:complexType name="Page">

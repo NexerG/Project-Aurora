@@ -1,6 +1,7 @@
 using ArctisAurora.EngineWork;
 using ArctisAurora.EngineWork.Rendering;
 using Silk.NET.Vulkan;
+using System.Globalization;
 using System.Numerics;
 
 namespace ArctisAurora.Core.UI
@@ -18,20 +19,53 @@ namespace ArctisAurora.Core.UI
         private static Control? _restoreActive;
         private static TextBoxControl _field = null!;
         private static StackPanelControl _column = null!;
+        private static LabelControl _title = null!;
+
+        // sheet size row
+        private static StackPanelControl _sizeRow = null!;
+        private static TextBoxControl _rows = null!;
+        private static TextBoxControl _columns = null!;
 
         private static Action<string>? _onConfirm;
+        private static Action<string, int, int>? _onConfirmSized;
         private static Action? _onCancel;
 
         public static bool isOpen { get; private set; }
 
         // A prompt at a time. A second ask while one is up would strand the first one's callbacks.
-        public static unsafe void Ask(RenderWindow source, string suggestion, Action<string> onConfirm, Action? onCancel)
+        public static void Ask(RenderWindow source, string suggestion, Action<string> onConfirm, Action? onCancel)
         {
             if (isOpen || source == null) return;
 
             Build();
-            _source = source;
             _onConfirm = onConfirm;
+            ShowSizeRow(false);
+            Open(source, suggestion, onCancel);
+        }
+
+        // Asks for a sheet's name and its fixed page size.
+        public static void AskSheet(RenderWindow source, string suggestion, int rows, int columns, Action<string, int, int> onConfirm, Action? onCancel)
+        {
+            if (isOpen || source == null) return;
+
+            Build();
+            _onConfirmSized = onConfirm;
+            _rows.text = rows.ToString(CultureInfo.InvariantCulture);
+            _columns.text = columns.ToString(CultureInfo.InvariantCulture);
+            ShowSizeRow(true);
+            Open(source, suggestion, onCancel);
+        }
+
+        private static void ShowSizeRow(bool show)
+        {
+            _title.text = show ? "Name this sheet" : "Name this note";
+            if (show) _sizeRow.Show();
+            else _sizeRow.Hide();
+        }
+
+        private static unsafe void Open(RenderWindow source, string suggestion, Action? onCancel)
+        {
+            _source = source;
             _onCancel = onCancel;
 
             _field.text = suggestion ?? string.Empty;
@@ -64,10 +98,26 @@ namespace ArctisAurora.Core.UI
             string name = _field.text?.Trim();
             if (string.IsNullOrEmpty(name)) return;
 
+            if (_onConfirmSized != null)
+            {
+                int rows = Count(_rows, SheetFormula.maxRows);
+                int columns = Count(_columns, SheetFormula.maxColumns);
+                if (rows == 0 || columns == 0) return;
+
+                Action<string, int, int> sized = _onConfirmSized;
+                Hide();
+                sized(name, rows, columns);
+                return;
+            }
+
             Action<string>? confirm = _onConfirm;
             Hide();
             confirm?.Invoke(name);
         }
+
+        // A count in 1..max, or 0.
+        private static int Count(TextBoxControl box, int max) =>
+            int.TryParse(box.text?.Trim(), NumberStyles.None, CultureInfo.InvariantCulture, out int value) && value >= 1 && value <= max ? value : 0;
 
         private static void Cancel()
         {
@@ -85,6 +135,7 @@ namespace ArctisAurora.Core.UI
             _window.os.Hide();
             isOpen = false;
             _onConfirm = null;
+            _onConfirmSized = null;
             _onCancel = null;
 
             UIEngine.SetActiveControl(_restoreActive);
@@ -124,13 +175,14 @@ namespace ArctisAurora.Core.UI
                 Spacing = 10
             };
 
-            _column.AddChild(new LabelControl
+            _title = new LabelControl
             {
                 text = "Name this note",
                 fontSize = 15,
                 preferredHeight = 20,
                 horizontalPosition = 0f
-            });
+            };
+            _column.AddChild(_title);
 
             _field = new TextBoxControl
             {
@@ -143,6 +195,21 @@ namespace ArctisAurora.Core.UI
             _field.onCommit = _ => Confirm();
             _field.onCancel = Cancel;
             _column.AddChild(_field);
+
+            _sizeRow = new StackPanelControl
+            {
+                orientation = StackPanelControl.Orientation.Horizontal,
+                alpha = 0f,
+                horizontalAlignment = HorizontalAlignment.Stretch,
+                Spacing = 8
+            };
+            _rows = SizeBox();
+            _columns = SizeBox();
+            _sizeRow.AddChild(SizeCaption("Rows"));
+            _sizeRow.AddChild(_rows);
+            _sizeRow.AddChild(SizeCaption("Columns"));
+            _sizeRow.AddChild(_columns);
+            _column.AddChild(_sizeRow);
 
             StackPanelControl buttons = new StackPanelControl
             {
@@ -162,6 +229,29 @@ namespace ArctisAurora.Core.UI
             ground.AddChild(_column);
             return ground;
         }
+
+        private static TextBoxControl SizeBox()
+        {
+            TextBoxControl box = new TextBoxControl
+            {
+                preferredHeight = 26,
+                widthStar = 1f,
+                role = PaletteRole.SubField,
+                fontSize = 14
+            };
+            box.onCommit = _ => Confirm();
+            box.onCancel = Cancel;
+            return box;
+        }
+
+        private static LabelControl SizeCaption(string text) => new LabelControl
+        {
+            text = text,
+            fontSize = 14,
+            role = PaletteRole.MutedInk,
+            hitTestable = false,
+            verticalPosition = 0.5f
+        };
 
         private static ButtonControl Button(string caption, Action action)
         {

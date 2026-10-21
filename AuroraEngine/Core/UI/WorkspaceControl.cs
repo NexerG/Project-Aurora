@@ -219,6 +219,20 @@ namespace ArctisAurora.Core.UI
             return null;
         }
 
+        // Gives the primary window's focused pane's editor the caret, as a click into it would.
+        [A_XSDActionDependency("Focus", "Console")]
+        private static string Focus()
+        {
+            switch (RibbonControl.Target(In(Engine.primary.ui.uiRoot)?.shown))
+            {
+                case TexEditorControl tex: tex.source.FocusCaret(); break;
+                case DocumentEditorControl note: note.FocusCaret(); break;
+                case Control control: UIEngine.SetActiveControl(control); break;
+                default: return "error: no editor in the focused pane";
+            }
+            return "ok";
+        }
+
         #region ---- layout ----
         protected override Vector2 MeasureCore(Vector2 availableSize)
         {

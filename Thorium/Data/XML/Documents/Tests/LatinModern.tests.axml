@@ -17,4 +17,6 @@
 	<Test Action="Tex.SplitView.ClickToSource"/>
 	<Test Action="Tex.Pdf.Structure"/>
 	<Test Action="Tex.Pdf.Text"/>
+	<Test Action="Tex.FocusCommand"/>
+	<Test Action="Tex.Resume"/>
 </TestSuite>

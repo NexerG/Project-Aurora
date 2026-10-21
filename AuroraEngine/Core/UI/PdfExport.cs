@@ -200,6 +200,9 @@ namespace ArctisAurora.Core.UI
                             if (picture == 0) break;
                             s.Append($"q {Placement(item, page)} cm /Im{picture} Do Q\n");
                             break;
+                        case DrawKind.Icon:
+                            s.Append(IconPath(item, page));
+                            break;
                     }
                 }
 
@@ -316,6 +319,38 @@ namespace ArctisAurora.Core.UI
                 float cy = (page.Bottom - item.y - item.height * 0.5f) * ptPerPx;
                 float a = cos * w, b = sin * w, c = -sin * h, d = cos * h;
                 return $"{N(a)} {N(b)} {N(c)} {N(d)} {N(cx - 0.5f * (a + c))} {N(cy - 0.5f * (b + d))}";
+            }
+
+            // A bullet icon as a filled path, from the default set's bullet-*.svg geometry in its 24-unit box; null for any other icon.
+            private static string? IconPath(DrawItem item, LayoutRect page)
+            {
+                float u = item.width / 24f, v = item.height / 24f;
+                string P(float x, float y) => $"{X(item.x + x * u, page)} {Y(item.y + y * v, page)}";
+                string Polygon(params float[] p)
+                {
+                    StringBuilder path = new StringBuilder($"{P(p[0], p[1])} m ");
+                    for (int i = 2; i < p.Length; i += 2) path.Append($"{P(p[i], p[i + 1])} l ");
+                    return path.Append("h ").ToString();
+                }
+                string Circle(float r)
+                {
+                    float k = 0.5523f * r;
+                    return $"{P(12f + r, 12f)} m {P(12f + r, 12f + k)} {P(12f + k, 12f + r)} {P(12f, 12f + r)} c "
+                         + $"{P(12f - k, 12f + r)} {P(12f - r, 12f + k)} {P(12f - r, 12f)} c "
+                         + $"{P(12f - r, 12f - k)} {P(12f - k, 12f - r)} {P(12f, 12f - r)} c "
+                         + $"{P(12f + k, 12f - r)} {P(12f + r, 12f - k)} {P(12f + r, 12f)} c h ";
+                }
+
+                return item.source switch
+                {
+                    "bullet-disc" => Circle(10f) + "f\n",
+                    "bullet-circle" => Circle(10f) + Circle(6f) + "f*\n",
+                    "bullet-square" => Polygon(3f, 3f, 21f, 3f, 21f, 21f, 3f, 21f) + "f\n",
+                    "bullet-square-outline" => Polygon(3f, 3f, 21f, 3f, 21f, 21f, 3f, 21f) + Polygon(7.5f, 7.5f, 16.5f, 7.5f, 16.5f, 16.5f, 7.5f, 16.5f) + "f*\n",
+                    "bullet-triangle" => Polygon(12f, 2f, 22.4f, 20f, 1.6f, 20f) + "f\n",
+                    "bullet-triangle-outline" => Polygon(12f, 2f, 22.4f, 20f, 1.6f, 20f) + Polygon(12f, 9.5f, 16.2f, 16.5f, 7.8f, 16.5f) + "f*\n",
+                    _ => null
+                };
             }
 
             private static string X(float x, LayoutRect page) => N((x - page.x) * ptPerPx);

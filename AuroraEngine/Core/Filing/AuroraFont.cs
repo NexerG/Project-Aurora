@@ -273,7 +273,7 @@ namespace ArctisAurora.Core.Filing
             return faceGlyphs;
         }
 
-        private static ushort GetGlyphIndex(char character, BinaryReader reader, TableEntry cmap)
+        internal static ushort GetGlyphIndex(char character, BinaryReader reader, TableEntry cmap)
         {
             reader.BaseStream.Position = cmap.offset;
 

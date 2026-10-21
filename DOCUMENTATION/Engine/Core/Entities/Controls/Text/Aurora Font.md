@@ -77,6 +77,33 @@ Reads the `.ttf` from the **system fonts folder** (`Environment.SpecialFolder.Fo
 - Font source lookup — `AssetImporter.ResolveSystemFont` probes the machine font folder, the per-user font folder, then `<repo>/_Build/FontSources/` (gitignored). Fonts bake only in Debug; without the source the committed atlas is kept and a Warn is logged.
 - `GetClosestDistanceOfChannel` Â· `ClosestTOnBezier` (coarse sample + Newton refinement) Â· `ComputeWindingNumber` (ray-cast via quadratic roots) Â· `SolveCubic` / `SolveQuadratic`.
 
+## Font picker and runtime import
+
+The note format bar (`DocumentToolbarControl`) has a font button. Its list holds the imported fonts by family name, each drawn in its own font, and below "More fonts" every installed system family not yet imported, its name drawn in its own face. Picking an unimported family bakes it at runtime behind an "Importing <family>, please wait" window, then registers and applies it. CJK is not supported; it needs on-demand glyph paging and is recorded as missing.
+
+`FontCatalog` scans the OS font folders and groups faces into `InstalledFamily` records by OpenType name ID 1 (the legacy family), with bold and italic read from the OS/2 `fsSelection` bits. Name ID 1 holds at most Regular, Bold, Italic and Bold Italic, which is exactly the engine's four faces. The result is cached in `FontCatalog.catalog.axml` under the user data folder.
+
+`FontPreviews` draws each family's name in its own face from one shared atlas. The glyphs of every name are remapped to private-use codepoints U+E000–U+F8FF, so the ordinary text path draws them. A family whose face lacks a character of its own name gets no preview and is listed in the default font. The previews bake on a background task after boot, and the list shows "Finding installed fonts…" until they are registered.
+
+Runtime imports go to `Paths.USER_DATA` (`%LOCALAPPDATA%\Arktis\Data`), a per-user mount added last in every build, so it has the lowest priority. A font imported once is usable from every app, including shipped builds whose data is a read-only archive.
+
+```
+FontLibrary.Import(family, done)
+	if importing then return
+	if family is already imported then done(its asset), return
+	FontImportWindow.Show(family)
+	on a worker thread
+		AssetImporter.ImportFontIfStale(font, charsets, USER_DATA/Fonts)
+	post to main
+		if the bake failed then FontImportWindow.Fail(error), return
+		FontImportWindow.Hide()
+		write UserFonts.imports.axml and UserFonts.assets.axml
+		register the FontAsset and upload its texture
+		done(asset)
+```
+
+Language packs are charsets joined by commas in the `<Fonts><LanguagePacks Packs="Latin"/>` setting. Runtime-imported fonts bake only the characters their face maps (`Covered`). Changing the setting re-bakes the user fonts, and the new atlases load on the next start.
+
 ## Related
 - [[Glyph]] â€” the outline/metrics type produced here
 - [[Atlas Meta Data]] â€” the serialized atlas metadata

@@ -508,13 +508,23 @@ namespace Thorium.Editor.CustomControls
             Open(path);
         }
 
-        private void NewSheet(string folder, bool fixedSize) =>
-            NoteNameWindow.Ask(UIEngine.WindowOf(this), "Untitled", name => CreateSheet(folder, name, fixedSize), null);
+        private void NewSheet(string folder, bool fixedSize)
+        {
+            if (fixedSize)
+                NoteNameWindow.AskSheet(UIEngine.WindowOf(this), "Untitled", SheetPage.defaultSize, SheetPage.defaultSize,
+                    (name, rows, columns) => CreateSheet(folder, name, true, rows, columns), null);
+            else
+                NoteNameWindow.Ask(UIEngine.WindowOf(this), "Untitled",
+                    name => CreateSheet(folder, name, false, SheetPage.defaultSize, SheetPage.defaultSize), null);
+        }
 
-        private void CreateSheet(string folder, string name, bool fixedSize)
+        private void CreateSheet(string folder, string name, bool fixedSize, int rows, int columns)
         {
             string path = FreePath(folder, name, SheetDocument.extension);
-            SheetDocument.Blank(BaseName(path), fixedSize).Save(path);
+            SheetDocument sheet = SheetDocument.Blank(BaseName(path), fixedSize);
+            sheet.pages[0].rows = rows;
+            sheet.pages[0].columns = columns;
+            sheet.Save(path);
             SheetBook.Created();
 
             Expand(folder);

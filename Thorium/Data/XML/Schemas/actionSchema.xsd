@@ -18,6 +18,7 @@
           <xs:enumeration value="Tex.Preview" />
           <xs:enumeration value="Tex.Floats" />
           <xs:enumeration value="Tex.Booktabs" />
+          <xs:enumeration value="Tex.Resume" />
           <xs:enumeration value="Tex.Amsmath" />
           <xs:enumeration value="Tex.Hyphenation" />
           <xs:enumeration value="Tex.SplitView.Recompile" />
@@ -28,6 +29,7 @@
           <xs:enumeration value="Tex.FloatPage" />
           <xs:enumeration value="Tex.Pdf.Structure" />
           <xs:enumeration value="Tex.Pdf.Text" />
+          <xs:enumeration value="Tex.FocusCommand" />
           <xs:enumeration value="NoteModel.SaveIsStable" />
           <xs:enumeration value="NoteModel.LoadHeadless" />
           <xs:enumeration value="NoteModel.Changes" />
@@ -108,6 +110,7 @@
           <xs:enumeration value="Sheet.Csv" />
           <xs:enumeration value="Sheet.CsvLinks" />
           <xs:enumeration value="Sheet.FixedSize" />
+          <xs:enumeration value="Sheet.FixedSizeChosen" />
           <xs:enumeration value="Sheet.GrowPopup" />
           <xs:enumeration value="Sheet.WheelZoom" />
           <xs:enumeration value="Sheet.InsertShifts" />
@@ -197,6 +200,7 @@
           <xs:enumeration value="TextInput.TableResizeColumn" />
           <xs:enumeration value="TextInput.CodeColoursAndOverflow" />
           <xs:enumeration value="TextInput.TableColumnSpan" />
+          <xs:enumeration value="TextInput.FillRun" />
           <xs:enumeration value="TextInput.TableRules" />
           <xs:enumeration value="TextInput.PictureInline" />
           <xs:enumeration value="TextInput.PictureEditUndo" />
@@ -252,6 +256,11 @@
           <xs:enumeration value="FileTypes.ClaimOne" />
           <xs:enumeration value="FileTypes.ClaimAll" />
           <xs:enumeration value="FileTypes.LinuxFiles" />
+          <xs:enumeration value="Fonts.CatalogGroups" />
+          <xs:enumeration value="Fonts.StyleDeltaFont" />
+          <xs:enumeration value="Fonts.LanguagePackCovered" />
+          <xs:enumeration value="Fonts.Previews" />
+          <xs:enumeration value="Fonts.ImportFamily" />
           <xs:enumeration value="Fonts.MathFontBaked" />
           <xs:enumeration value="Fonts.CffCharstring" />
           <xs:enumeration value="Input.ClickFiresRelease" />
@@ -408,6 +417,16 @@
           <xs:enumeration value="Tex.Lowering.Float" />
           <xs:enumeration value="Tex.FloatPlacement" />
           <xs:enumeration value="Tex.RunningHeads" />
+          <xs:enumeration value="Tex.Lengths" />
+          <xs:enumeration value="Tex.Parameters" />
+          <xs:enumeration value="Tex.DimExpr" />
+          <xs:enumeration value="Tex.Preamble" />
+          <xs:enumeration value="Tex.Enumitem" />
+          <xs:enumeration value="Tex.Titlesec" />
+          <xs:enumeration value="Tex.Lowering.Fill" />
+          <xs:enumeration value="Tex.CenteredOverfull" />
+          <xs:enumeration value="Tex.Pdf.Bullets" />
+          <xs:enumeration value="Tex.FitPage" />
           <xs:enumeration value="Vault.LockRoundTrip" />
           <xs:enumeration value="Vault.WrongPassword" />
           <xs:enumeration value="Vault.ConvertResumes" />
@@ -630,6 +649,7 @@
           <xs:enumeration value="AssetRegistries.PreloadAssets" />
           <xs:enumeration value="AssetRegistries.PrepareAllAssets" />
           <xs:enumeration value="Effects.LoadEffects" />
+          <xs:enumeration value="Fonts.StartCatalog" />
           <xs:enumeration value="Gradients.LoadGradients" />
           <xs:enumeration value="Palettes.LoadPalettes" />
           <xs:enumeration value="PlannerAttachmentKinds.Load" />
@@ -669,6 +689,7 @@
           <xs:enumeration value="Renderer.RequestSwapchainRebuild" />
           <xs:enumeration value="Planner.Reformat" />
           <xs:enumeration value="Document.Rezoom" />
+          <xs:enumeration value="Fonts.Rebake" />
           <xs:enumeration value="UI.Rescale" />
         </xs:restriction>
       </xs:simpleType>
@@ -679,6 +700,7 @@
       <xs:simpleType>
         <xs:restriction base="xs:string">
           <xs:enumeration value="Palettes.Set" />
+          <xs:enumeration value="Focus" />
           <xs:enumeration value="Help" />
           <xs:enumeration value="Quit" />
         </xs:restriction>
