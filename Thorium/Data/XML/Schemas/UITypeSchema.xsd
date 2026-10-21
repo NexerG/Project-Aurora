@@ -801,6 +801,17 @@
     <xs:sequence />
     <xs:attributeGroup ref="types:StackPanel.Attributes" />
   </xs:complexType>
+  <xs:attributeGroup name="ToggleSwitch.Attributes">
+    <xs:attributeGroup ref="types:Button.Attributes" />
+    <xs:attribute name="LeftText" type="xs:string" />
+    <xs:attribute name="RightText" type="xs:string" />
+    <xs:attribute name="Right" type="xs:boolean" />
+  </xs:attributeGroup>
+  <xs:element name="ToggleSwitch" type="types:ToggleSwitch" />
+  <xs:complexType name="ToggleSwitch">
+    <xs:sequence />
+    <xs:attributeGroup ref="types:ToggleSwitch.Attributes" />
+  </xs:complexType>
   <xs:element name="WindowFrame" type="types:WindowFrame" />
   <xs:complexType name="WindowFrame">
     <xs:sequence />

@@ -238,6 +238,23 @@ namespace ArctisAurora.Core.UI
             {
                 Type domain = A_XSDDomainAttribute.DomainOf(member) ?? memberType;
 
+                string[] names = Enum.GetNames(domain);
+                if (names.Length == 2)
+                {
+                    ToggleSwitchControl toggle = new ToggleSwitchControl
+                    {
+                        leftText = Words(names[0]),
+                        rightText = Words(names[1]),
+                        right = current?.ToString() == names[1]
+                    };
+                    toggle.onChanged = right =>
+                    {
+                        XmlReflection.SetMember(member, setting, Enum.Parse(memberType, names[right ? 1 : 0]));
+                        RefreshApply();
+                    };
+                    return toggle;
+                }
+
                 DropdownControl dropdown = new DropdownControl
                 {
                     preferredWidth = editorWidth,
@@ -299,6 +316,18 @@ namespace ArctisAurora.Core.UI
                 RefreshApply();
             };
             return field;
+        }
+
+        // "LastVault" -> "Last vault".
+        private static string Words(string name)
+        {
+            System.Text.StringBuilder words = new System.Text.StringBuilder();
+            for (int i = 0; i < name.Length; i++)
+            {
+                if (i > 0 && char.IsUpper(name[i])) words.Append(' ').Append(char.ToLowerInvariant(name[i]));
+                else words.Append(name[i]);
+            }
+            return words.ToString();
         }
 
         // A locked bind is the build's, so it reads as text with nothing to press.

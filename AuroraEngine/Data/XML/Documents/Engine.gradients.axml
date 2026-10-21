@@ -31,4 +31,10 @@
 		<Stop Role="Accent" Alpha="0.6" Pos="1"/>
 	</Gradient>
 
+	<!-- ToggleSwitchControl: the track, top left to bottom right -->
+	<Gradient Name="toggle-track" Angle="30">
+		<Stop Role="Accent" Alpha="0.7" Pos="0"/>
+		<Stop Role="Accent" Pos="1"/>
+	</Gradient>
+
 </Gradients>

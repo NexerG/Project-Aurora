@@ -5,7 +5,7 @@
   <xs:import schemaLocation="InputTypeSchema.xsd" namespace="http://arctisaurora/AuroraInputTypes" />
   <xs:import schemaLocation="UITypeSchema.xsd" namespace="http://arctisaurora/AuroraUITypes" />
   <xs:simpleType name="Settings">
-    <xs:union memberTypes="types:WeekDay types:ClockFormat types:DateOrder types:SettingScope types:LogLevel types:CaptureMode types:WindowMode types:CloseAction" />
+    <xs:union memberTypes="types:StartupView types:WeekDay types:ClockFormat types:DateOrder types:SettingScope types:LogLevel types:CaptureMode types:WindowMode types:CloseAction" />
   </xs:simpleType>
   <xs:attributeGroup name="Vault.Attributes">
     <xs:attributeGroup ref="types:Setting.Attributes" />
@@ -16,10 +16,23 @@
     <xs:sequence />
     <xs:attributeGroup ref="types:Vault.Attributes" />
   </xs:complexType>
+  <xs:attributeGroup name="Startup.Attributes">
+    <xs:attributeGroup ref="types:Setting.Attributes" />
+    <xs:attribute name="AtLogin" type="xs:boolean" />
+    <xs:attribute name="Opens" type="types:StartupView" />
+    <xs:attribute name="Stickies" type="xs:boolean" />
+    <xs:attribute name="InTray" type="xs:boolean" />
+  </xs:attributeGroup>
+  <xs:element name="Startup" type="types:Startup" />
+  <xs:complexType name="Startup">
+    <xs:sequence />
+    <xs:attributeGroup ref="types:Startup.Attributes" />
+  </xs:complexType>
   <xs:element name="Thorium" type="types:Thorium" />
   <xs:group name="Setting.Children">
     <xs:choice>
       <xs:element name="Vault" type="types:Vault" />
+      <xs:element name="Startup" type="types:Startup" />
       <xs:element name="DoubleClick" type="types:DoubleClick" />
       <xs:element name="KeyRepeat" type="types:KeyRepeat" />
       <xs:element name="Device" type="types:Device" />
@@ -71,6 +84,12 @@
       <xs:group minOccurs="0" maxOccurs="unbounded" ref="types:KnownVault.Children" />
     </xs:sequence>
   </xs:complexType>
+  <xs:simpleType name="StartupView">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="LastVault" />
+      <xs:enumeration value="VaultBrowser" />
+    </xs:restriction>
+  </xs:simpleType>
   <xs:attributeGroup name="Bind.Attributes">
     <xs:attribute name="Action" type="xs:string" />
     <xs:attribute name="Trigger" type="Input:Keys" />

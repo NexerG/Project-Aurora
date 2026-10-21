@@ -69,7 +69,7 @@ any code. Part of the Thorium productivity suite (WIP list, Phase A). No decisio
 
 ## Background and notifications (C4)
 - Start at login: value under `HKCU\Software\Microsoft\Windows\CurrentVersion\Run`, written when the setting is
-  turned on; no admin.
+  turned on; no admin. **Landed 2026-10-21:** Thorium's `Startup` setting (AtLogin, Opens, Stickies, InTray); the value is `"<exe>" --login` and the options are read at launch — see [[start-at-login]].
 - Toasts: WinRT `ToastNotificationManager`; unpackaged apps register an AUMID under
   `HKCU\Software\Classes\AppUserModelId\<id>` (written by the app). Toast payload is XML. No Windows App SDK or
   Community Toolkit package.
@@ -84,7 +84,7 @@ any code. Part of the Thorium productivity suite (WIP list, Phase A). No decisio
 | C1 (superseded 2026-10-07 by planner P1/P2/PC) | model, `*.calendar.axml`, Day/Week/Month, now line, create/move/resize with undo, "New calendar" menu | `Calendar` suite (overlap packing, XML round-trip, undo); screenshot of the running app |
 | C2 (landed 2026-10-07 as the planner's C2) | attachments (kinds in XML, travel/prep, custom) and event links (B follows A) | tests: attachments and linked events follow a move/resize; screenshot |
 | C3 | iCalendar read/write, recurrence, time zones | tests on fixture `.ics`, including a DST switch |
-| C4 (tray, close-to-tray and single instance landed 2026-10-08 via `Background`) | start at login, toasts, reminders incl. "leave now" | manual: login start, toast fires and opens the event |
+| C4 (tray, close-to-tray and single instance landed 2026-10-08 via `Background`) | start at login (landed 2026-10-21), toasts, reminders incl. "leave now" | manual: login start, toast fires and opens the event |
 | C5 | CalDAV client + iCloud account, read-only | live test against the user's account (user signs in) |
 | C6 | Google OAuth via browser + Google CalDAV, read-only | same |
 | C7 | two-way sync: etags, 412 conflicts, offline edit queue | tests against a fake server; then live |

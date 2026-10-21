@@ -108,6 +108,7 @@ namespace ArctisAurora.EngineWork.Rendering
             _glfw.WindowHint(WindowHintBool.Resizable, true);
             _glfw.WindowHint(WindowHintBool.Decorated, false);
             _glfw.WindowHint(WindowHintBool.DoubleBuffer, true);
+            _glfw.WindowHint(WindowHintBool.Visible, !Background.startsHidden);
             handle = CreateForMode(SettingsRegistry.Get<GraphicsSettings>());
 
             if (handle == null)

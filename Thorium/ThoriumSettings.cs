@@ -10,10 +10,33 @@ namespace Thorium
         public string path { get; set; } = "Notes";
     }
 
+    [A_XSDType("Startup", "Settings")]
+    public class StartupSetting : Setting
+    {
+        [A_XSDType("StartupView", "Settings")]
+        public enum StartupView
+        {
+            LastVault, VaultBrowser
+        }
+
+        [A_XSDElementProperty("AtLogin", "Settings", "Thorium starts when you sign in to Windows.")]
+        public bool atLogin { get; set; } = false;
+
+        [A_XSDElementProperty("Opens", "Settings", "What a start at login opens: the vault used last, or the vault browser over it.")]
+        public StartupView opens { get; set; } = StartupView.LastVault;
+
+        [A_XSDElementProperty("Stickies", "Settings", "A start at login opens the stickies that are not in a vault.")]
+        public bool stickies { get; set; } = true;
+
+        [A_XSDElementProperty("InTray", "Settings", "A start at login keeps the main window and the vault's windows in the tray.")]
+        public bool inTray { get; set; } = false;
+    }
+
     [A_XSDType("Thorium", "Settings", AllowedChildren = typeof(Setting))]
     public class ThoriumSettings : SettingCategory
     {
         public readonly VaultSetting vault = new VaultSetting();
+        public readonly StartupSetting startup = new StartupSetting { onChanged = "Startup.Apply" };
     }
 
     [A_XSDType("KnownVault", "Settings")]

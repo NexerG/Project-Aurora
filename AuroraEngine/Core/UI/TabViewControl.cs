@@ -327,14 +327,8 @@ namespace ArctisAurora.Core.UI
 
                 RenderWindow source = UIEngine.WindowOf(this);
                 AGlfwWindow._glfw.GetWindowPos(source.os.handle, out int wx, out int wy);
-
-                into = Engine.OpenWindow($"sticky-{++_stickyWindows}",
-                    UIScaling.ToPixels(source, stickySize), UIScaling.ToPixels(source, stickySize),
-                    wx + (int)source.mousePos.X, wy + (int)source.mousePos.Y);
-                into.uiDocument = stickyDocument;
-                WindowRoot root = (WindowRoot)ParseXML(stickyDocument);
-                into.ui.uiRoot = root;
-                WorkspaceControl.In(root)?.LoadDefault();
+                OpenSticky(item, stickyDocument, wx + (int)source.mousePos.X, wy + (int)source.mousePos.Y, source.sessionScope);
+                return;
             }
 
             TabViewControl view = FirstTabView(into.ui.uiRoot);
@@ -342,6 +336,26 @@ namespace ArctisAurora.Core.UI
 
             item.SetParent(view);
             view.SetActive(item);
+        }
+
+        // A new sticky window from document at x, y holding item.
+        public static RenderWindow? OpenSticky(TabItemControl item, string document, int x, int y, string? sessionScope)
+        {
+            RenderWindow scaleFrom = Engine.primary;
+            RenderWindow into = Engine.OpenWindow($"sticky-{++_stickyWindows}",
+                UIScaling.ToPixels(scaleFrom, stickySize), UIScaling.ToPixels(scaleFrom, stickySize), x, y);
+            into.uiDocument = document;
+            into.sessionScope = sessionScope;
+            WindowRoot root = (WindowRoot)ParseXML(document);
+            into.ui.uiRoot = root;
+            WorkspaceControl.In(root)?.LoadDefault();
+
+            TabViewControl view = FirstTabView(into.ui.uiRoot);
+            if (view == null) return into;
+
+            item.SetParent(view);
+            view.SetActive(item);
+            return into;
         }
 
         private static TabViewControl FirstTabView(Control control)

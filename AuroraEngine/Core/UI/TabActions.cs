@@ -77,10 +77,11 @@ namespace ArctisAurora.Core.UI
             if (Tab() is not TabStripButtonControl next || string.IsNullOrEmpty(next.owner.stickyDocument)) return entries;
 
             entries.Add(new ContextMenuButton("New sticky", () => Pin(next, null)));
+            RenderWindow source = UIEngine.WindowOf(next.owner);
             foreach (RenderWindow window in Engine.windows.Values)
             {
                 if (window.closeRequested || window.uiDocument != next.owner.stickyDocument) continue;
-                if (UIEngine.WindowOf(next.owner) == window) continue;
+                if (source == window || source?.sessionScope != window.sessionScope) continue;
 
                 string caption = TabViewControl.TabViews(window.ui.uiRoot).FirstOrDefault()?.activeItem?.header ?? "Sticky";
                 entries.Add(new ContextMenuButton(caption, () => Pin(next, window)));

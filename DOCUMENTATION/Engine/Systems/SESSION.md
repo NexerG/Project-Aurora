@@ -32,6 +32,8 @@ It is a settings group and nothing more exotic. `SessionLayout` implements `ISet
 
 The record is partitioned by an opaque *scope* key the host sets. The engine groups by it and never asks what it means; [[Thorium]] sets it to the vault path, so a layout belongs to the vault it was arranged in, and a host that wants one session for the whole application leaves it empty.
 
+A host can also name a second, *free* partition (`SessionLayout.freeScope`). A window tagged with that scope (`RenderWindow.sessionScope`) is recorded under it instead of the current scope, always, even while recording is paused. Changing scope leaves tagged windows open, and `RestoreFree` reopens and tags the windows recorded there at launch. [[Thorium]] uses it for stickies made from the tray, which keep their note outside any vault and so survive a vault switch.
+
 ## Where a restored arrangement lands
 
 Nothing searches the control tree for somewhere to put the panes. A window that wants a session declares a [[Workspace]], and the workspace names two UI documents: `Default` is the arrangement built when the session has nothing to say about this window, and `Pane` is a single empty pane that a restored arrangement splits to rebuild itself.

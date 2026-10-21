@@ -145,6 +145,10 @@ namespace ArctisAurora.Core.UI
         // remembered separately; one application-wide session is the empty default.
         public static string scope = "";
 
+        // A partition kept apart from scope: its windows are tagged with it, stay open across a scope
+        // change and are recorded even while paused. Empty for none.
+        public static string freeScope = "";
+
         // How the host turns a saved path into a tab. The engine can build the editor but not what
         // the host binds to it, so restoring tabs needs this set.
         public static Func<string, bool, TabItemControl> tabFactory;
@@ -162,6 +166,18 @@ namespace ArctisAurora.Core.UI
         public static void Restore()
         {
             if (!Rebuild(true)) WorkspaceControl.In(Engine.primary.ui.uiRoot)?.LoadDefault();
+        }
+
+        // Reopens the windows recorded under freeScope.
+        public static void RestoreFree()
+        {
+            if (string.IsNullOrEmpty(freeScope)) return;
+            SessionScope recorded = SettingsRegistry.Get<SessionLayout>().Recorded(freeScope);
+            if (recorded == null) return;
+
+            foreach (SessionWindow record in recorded.windows)
+                if (!record.primary && OpenRecorded(record) is RenderWindow window) window.sessionScope = freeScope;
+            Log.Info($"restored {recorded.windows.Count} window(s) for '{freeScope}'");
         }
 
         // Records this scope, empties every workspace and rebuilds key's, the primary staying where it is.
@@ -219,7 +235,7 @@ namespace ArctisAurora.Core.UI
             foreach (RenderWindow window in Engine.windows.Values.ToList())
             {
                 if (window.closeRequested || WorkspaceControl.In(window.ui?.uiRoot) is not WorkspaceControl workspace) continue;
-                if (window != Engine.primary && kept != null && kept(window)) continue;
+                if (window != Engine.primary && (window.sessionScope != null || (kept != null && kept(window)))) continue;
 
                 if (window == Engine.primary)
                     foreach (Entity child in workspace.children.ToList()) child.Destroy();
@@ -227,9 +243,9 @@ namespace ArctisAurora.Core.UI
             }
         }
 
-        private static void OpenRecorded(SessionWindow record)
+        private static RenderWindow OpenRecorded(SessionWindow record)
         {
-            if (string.IsNullOrEmpty(record.document)) return;
+            if (string.IsNullOrEmpty(record.document)) return null;
 
             (int x, int y) = PositionFor(record);
             RenderWindow window = Engine.OpenWindow(restoredWindow + ++restoredCount,
@@ -241,6 +257,7 @@ namespace ArctisAurora.Core.UI
             Fill(WorkspaceControl.In(window.ui.uiRoot), record);
             if (record.maximized) window.os.Maximize();
             if (record.pinned) WindowActions.Pin(window, true);
+            return window;
         }
 
         // A window whose saved rect no longer lands on a screen goes back to the middle of the
@@ -390,17 +407,20 @@ namespace ArctisAurora.Core.UI
         [A_XSDActionDependency("Session.Capture", "Shutdown", "Records every open window's placement and panes")]
         public static bool Capture()
         {
-            if (!paused) SettingsRegistry.Get<SessionLayout>().Record();
+            SettingsRegistry.Get<SessionLayout>().Record();
             return true;
         }
 
         private void Record()
         {
             List<SessionWindow> captured = new List<SessionWindow>();
+            List<SessionWindow> free = new List<SessionWindow>();
 
             foreach (RenderWindow window in Engine.windows.Values)
             {
                 if (string.IsNullOrEmpty(window.uiDocument) || window.closeRequested) continue;
+                bool isFree = window.sessionScope != null && window.sessionScope == freeScope;
+                if (!isFree && paused) continue;
 
                 WorkspaceControl workspace = WorkspaceControl.In(window.ui.uiRoot);
                 if (workspace == null) continue;
@@ -430,9 +450,16 @@ namespace ArctisAurora.Core.UI
                         panes = PanesOf(page)
                     });
 
-                captured.Add(record);
+                (isFree ? free : captured).Add(record);
             }
 
+            if (!string.IsNullOrEmpty(freeScope))
+            {
+                ScopeFor(freeScope).windows = free;
+                Log.Info($"captured {free.Count} window(s) for '{freeScope}'");
+            }
+
+            if (paused) return;
             ScopeFor(scope).windows = captured;
             Log.Info($"captured {captured.Count} window(s) for '{scope}'");
         }

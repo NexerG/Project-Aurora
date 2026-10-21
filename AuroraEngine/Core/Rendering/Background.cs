@@ -40,8 +40,16 @@ namespace ArctisAurora.EngineWork.Rendering
         // set before Init by a host opened on one file: no tray, no single running copy
         public static bool standalone;
 
+        // set before Init by a host that may start in the tray; read once settings are loaded
+        public static Func<bool>? startHidden;
+
+        // host entries the tray menu lists between Open and Quit
+        public static readonly List<ContextMenuEntry> trayEntries = new List<ContextMenuEntry>();
+
         // Tray is enabled and the OS has one.
         public static bool canTray => OperatingSystem.IsWindows() && Tray();
+
+        public static bool startsHidden => startHidden?.Invoke() == true && canTray && !TestRunner.active;
 
         // When Tray is enabled: a tray icon; unless OnClose is Quit, one running copy per host. A second copy shows the first and exits.
         [A_XSDActionDependency("Background.Init", "Bootstrap", "When Tray is enabled, adds the tray icon and, unless OnClose is Quit, claims the single running copy")]
@@ -52,8 +60,9 @@ namespace ArctisAurora.EngineWork.Rendering
             string name = HostName();
             if (Settings().onClose != WindowSetting.CloseAction.Quit && !Claim(name))
             {
-                Log.Info($"{name} is already running — showing it");
-                SignalShow(name);
+                bool hidden = startsHidden;
+                Log.Info($"{name} is already running{(hidden ? "" : " — showing it")}");
+                if (!hidden) SignalShow(name);
                 Environment.Exit(0);
             }
 
@@ -204,10 +213,33 @@ namespace ArctisAurora.EngineWork.Rendering
 
         public static void Show()
         {
-            RenderWindow window = Engine.primary;
-            window.hidden = false;
-            window.os.Show();
-            window.Focus();
+            foreach (RenderWindow window in Engine.windows.Values)
+            {
+                if (!window.hidden || window.closeRequested) continue;
+                window.hidden = false;
+                window.os.Show();
+            }
+            Engine.primary.Focus();
+        }
+
+        public static void HideWindow(RenderWindow window)
+        {
+            window.hidden = true;
+            window.os.Hide();
+        }
+
+        // Runs the host with arguments at login, or no longer when arguments is null.
+        public static void SetLoginCommand(string? arguments)
+        {
+            if (!OperatingSystem.IsWindows()) return;
+
+            using Microsoft.Win32.RegistryKey? run = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Run", true);
+            if (run == null) return;
+
+            string name = HostName();
+            if (arguments == null) run.DeleteValue(name, false);
+            else run.SetValue(name, $"\"{Environment.ProcessPath}\" {arguments}");
+            Log.Info($"login command {(arguments == null ? "removed" : "set")} for {name}");
         }
 
         // Shows the main window, then starts the shutdown.
@@ -218,11 +250,11 @@ namespace ArctisAurora.EngineWork.Rendering
         }
 
         private static void OpenMenu(int x, int y) =>
-            ContextMenus.OpenAtScreen(new List<ContextMenuEntry>
-            {
+            ContextMenus.OpenAtScreen([
                 new ContextMenuButton($"Open {_name}", Show),
+                .. trayEntries,
                 new ContextMenuButton("Quit", Quit)
-            }, x, y, Engine.primary);
+            ], x, y, Engine.primary);
 
         // Dispatched on the main thread by GLFW's event polling.
         private static IntPtr Proc(IntPtr hwnd, uint message, IntPtr wParam, IntPtr lParam)

@@ -20,6 +20,7 @@ namespace Thorium
 
             string? file = args.Length > 0 && !args[0].StartsWith('-') && File.Exists(args[0]) ? Path.GetFullPath(args[0]) : null;
             Background.standalone = file != null;
+            if (file == null) Startup.Read(args);
             FileAssociations.enabled = true;
 
             engine.Init(false);
@@ -32,6 +33,7 @@ namespace Thorium
 
             // A layout belongs to the vault it was arranged in.
             SessionLayout.scope = KnownVaults.Resolve(SettingsRegistry.Get<ThoriumSettings>().vault.path);
+            SessionLayout.freeScope = Startup.freeScope;
             SessionLayout.tabFactory = VaultBrowserControl.BuildTab;
             NotePropertiesControl.openLink = VaultBrowserControl.OpenLink;
             SheetBook.findSheet = VaultBrowserControl.FindSheet;
@@ -58,12 +60,15 @@ namespace Thorium
             Engine.primary.uiDocument = "main";
             Engine.primary.ui.uiRoot = (WindowRoot)Control.ParseXML("main");
             if (!Background.canTray && Engine.primary.ui.uiRoot.FindByName("TrayButton") is ButtonControl tray) tray.enabled = false;
-            if (VaultLock.HasLock(SessionLayout.scope))
+            bool locked = VaultLock.HasLock(SessionLayout.scope);
+            if (locked)
             {
                 SessionLayout.paused = true;
                 Engine.Post(VaultBrowserControl.UnlockVault);
             }
             else SessionLayout.Restore();
+            SessionLayout.RestoreFree();
+            Startup.Place(locked);
 
             engine.Run();
         }

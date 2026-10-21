@@ -92,7 +92,9 @@ User choice, over an AppDomain.ProcessExit handler; neither runs on a crash.
 **Hide saves edited named notes and captures the session; unnamed notes wait for Quit's prompt.**
 The capture is in memory; the Commit phase's `Settings.SaveAll` persists it at quit or WM_ENDSESSION.
 
-Extends [[shutdown-sequence]] (§6 per-window close and §7 OS close now hide the primary when the tray is up) and the calendar plan's C4 (tray and single instance landed; start at login, toasts, reminders still open).
+Extends [[shutdown-sequence]] (§6 per-window close and §7 OS close now hide the primary when the tray is up) and the calendar plan's C4 (tray and single instance landed; start at login landed 2026-10-21; toasts, reminders still open).
+
+**Amended 2026-10-21:** stickies are now vault or free (a free sticky lives in the stickies folder and a separate `stickies` session partition) — see [[start-at-login]].
 
 ## Known gaps
 - NOT GUI-verified: tray icon appearance, left/right click on it, the engine tray menu actually taking focus (Windows may refuse foreground to a background process; `ContextMenus.Tick` would then close it next frame), X hiding the main window, the second launch bringing the window forward, sign-out saving, sticky look/resize/pin by hand, the "Pin to desktop" submenu listing existing stickies and adding a note into one.
@@ -102,12 +104,12 @@ Extends [[shutdown-sequence]] (§6 per-window close and §7 OS close now hide th
 - No re-add after Explorer restarts (TaskbarCreated not handled).
 - A submenu opened from the tray menu would be hosted relative to the hidden primary and may land in its hidden root (the tray menu has no submenus today).
 - `--profile` runs launched while the user's Thorium is running are swallowed by single instance (only `--test` is exempt).
-- Start at login, toasts, reminders not done (calendar C4 rest).
+- Toasts, reminders not done (calendar C4 rest). Start at login landed 2026-10-21 ([[start-at-login]]).
 - Close prompt: test-verified by `Background.ClosePrompt`; NOT GUI-verified: the prompt's look, the check line layout, "Don't ask again" persisting across a restart (that Commit + user file write path is untested), the Settings dropdown.
 - Single instance is not claimed when switching away from `Quit` mid-run (next launch).
 - If another `ConfirmWindow` prompt is already open, closing the main window does nothing (`ConfirmWindow` refuses a second ask).
 - New tray icons land in Windows 11's hidden-icons overflow until the user promotes them in Taskbar settings; no supported API promotes one.
-- Stickies belong to the vault's session scope: a vault switch closes them; switching back restores them.
+- Vault stickies belong to the vault's session scope: a vault switch closes them; switching back restores them. Free stickies (2026-10-21) survive vault switches.
 - A hidden window's caret blink still requests idle wake-ups.
 - No drag-a-tab-onto-another-window's-strip; adding to an existing sticky is through the submenu.
 - Per-sticky colours not done.

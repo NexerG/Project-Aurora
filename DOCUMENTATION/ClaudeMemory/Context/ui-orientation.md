@@ -120,6 +120,7 @@ Why: [[ui-palettes]].
 - **SliderControl** `<Slider>` · ContainerControl — `value` 0–1, a track and a thumb panel, neither
   hit-tested. Press jumps, drag follows (`Pick`); `onChanged(float)` fires on the gesture only, not on a
   `value` set. XML `Value`, `TrackHeight`, `ThumbWidth`, `TrackColorHex`, `ThumbColorHex`. No old counterpart.
+- **ToggleSwitchControl** `<ToggleSwitch>` · ButtonControl — left caption, pill track (role Chrome, gradient `toggle-track`) with a sliding white knob, right caption. XML `LeftText`, `RightText`, `Right` (bool); `onChanged(bool)`. Knob tweens `horizontalPosition` 0.18 s CubicInOut; chosen caption `Ink`, other `MutedInk`. `SettingsWindow.Editor` uses it for any two-name enum. [[start-at-login]]
 - **DropdownControl** `<Dropdown>` · ButtonControl — caption, `options`, `onPicked`, `selected`; a
   left release opens `options` as a menu under it through `ContextMenus.OpenFrom` (so a dropdown inside a popup leaves the popup open), no narrower than itself, captions centered. `options` is code-only. Old `DropdownControl`.
 - **ExpanderControl** `<Expander>` · ContainerControl — two `Line` rules and a round grip split in half; the first

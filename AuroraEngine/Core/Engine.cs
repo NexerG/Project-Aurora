@@ -140,6 +140,7 @@ namespace ArctisAurora.EngineWork
             RenderWindow window = new RenderWindow((uint)MathF.Ceiling(settings.window.width * scale),
                                                    (uint)MathF.Ceiling(settings.window.height * scale));
             primary = window;
+            window.hidden = Background.startsHidden;
             Publish(mainWindow, window);
 
             window.os.CreateWindow();
@@ -160,6 +161,9 @@ namespace ArctisAurora.EngineWork
             Publish(name, window);
             return window;
         }
+
+        // Top left of a width x height window centred in the primary monitor's work area.
+        public static (int x, int y) CenterOnPrimary(int width, int height) => AGlfwWindow.CenterOnPrimary(width, height);
 
         // A menu is clicked, so unlike the preview it wires input and is an ordinary window to every
         // walk that skips ghosts.

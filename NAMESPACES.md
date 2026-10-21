@@ -244,6 +244,7 @@ ArctisAurora.Core.UI -> AuroraEngine/Core/UI/TextMeasurer.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/TextRunControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/TextRunData.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/TitleBarControl.cs
+ArctisAurora.Core.UI -> AuroraEngine/Core/UI/ToggleSwitchControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/UIActions.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/UIData.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/UIEngine.cs
@@ -343,6 +344,7 @@ Carbon.Editor.CustomControls -> Carbon/Editor/CustomControls/SpanChartControl.cs
 Carbon.Editor.CustomControls -> Carbon/Editor/CustomControls/TestResultsControl.cs
 Carbon.Editor.CustomControls -> Carbon/Editor/CustomControls/TestRunListControl.cs
 Carbon.Editor.CustomControls -> Carbon/Editor/CustomControls/ZoneTableControl.cs
+Thorium -> Thorium/Startup.cs
 Thorium -> Thorium/Thorium.cs
 Thorium -> Thorium/ThoriumSettings.cs
 Thorium.Editor -> Thorium/Editor/Decorations.cs
@@ -357,6 +359,7 @@ Thorium.Tests -> Thorium/Tests/PlannerTests.cs
 Thorium.Tests -> Thorium/Tests/RibbonEntriesTests.cs
 Thorium.Tests -> Thorium/Tests/RibbonTests.cs
 Thorium.Tests -> Thorium/Tests/SheetTests.cs
+Thorium.Tests -> Thorium/Tests/StartupTests.cs
 Thorium.Tests -> Thorium/Tests/StickyTests.cs
 Thorium.Tests -> Thorium/Tests/TabToolsTests.cs
 Thorium.Tests -> Thorium/Tests/TextInputTests.cs

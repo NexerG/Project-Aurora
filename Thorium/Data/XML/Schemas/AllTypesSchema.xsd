@@ -4,9 +4,11 @@
   <xs:simpleType name="Settings">
     <xs:restriction base="xs:string">
       <xs:enumeration value="Vault" />
+      <xs:enumeration value="Startup" />
       <xs:enumeration value="Thorium" />
       <xs:enumeration value="KnownVault" />
       <xs:enumeration value="Vaults" />
+      <xs:enumeration value="StartupView" />
       <xs:enumeration value="Bind" />
       <xs:enumeration value="InputBindings" />
       <xs:enumeration value="DoubleClick" />
@@ -135,6 +137,7 @@
       <xs:enumeration value="PictureCollision" />
       <xs:enumeration value="TextRun" />
       <xs:enumeration value="TitleBar" />
+      <xs:enumeration value="ToggleSwitch" />
       <xs:enumeration value="WindowFrame" />
       <xs:enumeration value="WindowRoot" />
       <xs:enumeration value="WorkspaceBar" />

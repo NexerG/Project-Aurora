@@ -6,6 +6,20 @@
       <xs:enumeration value="View.SplitDown" />
     </xs:restriction>
   </xs:simpleType>
+  <xs:simpleType name="Settings">
+    <xs:union memberTypes="actions:Any">
+      <xs:simpleType>
+        <xs:restriction base="xs:string">
+          <xs:enumeration value="Startup.Apply" />
+          <xs:enumeration value="Renderer.RequestSwapchainRebuild" />
+          <xs:enumeration value="Planner.Reformat" />
+          <xs:enumeration value="Document.Rezoom" />
+          <xs:enumeration value="Fonts.Rebake" />
+          <xs:enumeration value="UI.Rescale" />
+        </xs:restriction>
+      </xs:simpleType>
+    </xs:union>
+  </xs:simpleType>
   <xs:simpleType name="Test">
     <xs:union memberTypes="actions:Any">
       <xs:simpleType>
@@ -114,6 +128,10 @@
           <xs:enumeration value="Sheet.GrowPopup" />
           <xs:enumeration value="Sheet.WheelZoom" />
           <xs:enumeration value="Sheet.InsertShifts" />
+          <xs:enumeration value="Startup.FreeStickyKeepsScope" />
+          <xs:enumeration value="Startup.TrayHidesVault" />
+          <xs:enumeration value="Startup.LoginWithoutStickies" />
+          <xs:enumeration value="Startup.ToggleSwitch" />
           <xs:enumeration value="Sticky.PinPinRestore" />
           <xs:enumeration value="TabTools.Mount" />
           <xs:enumeration value="TabTools.Bullets" />
@@ -678,19 +696,6 @@
           <xs:enumeration value="Files.Drain" />
           <xs:enumeration value="Logging.Flush" />
           <xs:enumeration value="Profiling.Flush" />
-        </xs:restriction>
-      </xs:simpleType>
-    </xs:union>
-  </xs:simpleType>
-  <xs:simpleType name="Settings">
-    <xs:union memberTypes="actions:Any">
-      <xs:simpleType>
-        <xs:restriction base="xs:string">
-          <xs:enumeration value="Renderer.RequestSwapchainRebuild" />
-          <xs:enumeration value="Planner.Reformat" />
-          <xs:enumeration value="Document.Rezoom" />
-          <xs:enumeration value="Fonts.Rebake" />
-          <xs:enumeration value="UI.Rescale" />
         </xs:restriction>
       </xs:simpleType>
     </xs:union>

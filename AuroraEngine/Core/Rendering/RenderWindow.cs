@@ -64,6 +64,9 @@ namespace ArctisAurora.EngineWork.Rendering
         // kept above every other window
         public bool pinned;
 
+        // the session partition this window is recorded in; null for SessionLayout.scope
+        public string? sessionScope;
+
         // hidden by the host and skipped by Draw until shown again
         public volatile bool hidden;
 
