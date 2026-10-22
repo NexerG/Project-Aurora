@@ -126,7 +126,7 @@ namespace ArctisAurora.Core.UI
                 return;
             }
 
-            if (from.Pages.Count() < 2 && UIEngine.WindowOf(from) == Engine.primary) return;
+            if (from.Pages.Count() < 2 && UIEngine.WindowOf(from) is RenderWindow home && (home == Engine.primary || home.anchor)) return;
 
             int left = from.children.IndexOf(page);
             from.RemoveChild(page);
@@ -145,7 +145,7 @@ namespace ArctisAurora.Core.UI
             if (children.Count == 0)
             {
                 RenderWindow window = UIEngine.WindowOf(this);
-                if (window != null && window != Engine.primary) Engine.CloseWindow(window);
+                if (window != null && window != Engine.primary && !window.anchor) Engine.CloseWindow(window);
                 return;
             }
 

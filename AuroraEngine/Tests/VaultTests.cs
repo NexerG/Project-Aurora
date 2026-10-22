@@ -56,6 +56,33 @@ namespace ArctisAurora.Tests
             Directory.Delete(vault, true);
         }
 
+        [A_XSDActionDependency("Vault.TwoOpen", "Test")]
+        private static IEnumerator<int> TwoOpen(TestContext t)
+        {
+            string a = MakeVault(out _);
+            string b = MakeVault(out _);
+            using (PasswordKey password = Password()) VaultLock.Create(a, password, VaultLock.NewRecovery());
+            for (int i = 0; i < convertTicks && VaultLock.isConverting; i++) yield return 1;
+            using (PasswordKey password = Password()) VaultLock.Create(b, password, VaultLock.NewRecovery());
+            for (int i = 0; i < convertTicks && VaultLock.isConverting; i++) yield return 1;
+
+            t.Check(VaultLock.IsOpen(a) && VaultLock.IsOpen(b), "opening a second vault keeps the first open");
+            byte[]? keyA = VaultLock.KeyFor(Path.Combine(a, "note.axml"));
+            byte[]? keyB = VaultLock.KeyFor(Path.Combine(b, "note.axml"));
+            t.Check(keyA != null && keyB != null && !keyA.AsSpan().SequenceEqual(keyB), "each file gets its own vault's key");
+            t.Check(DocumentXml.ToXml(RichTextDocument.Load(Path.Combine(a, "note.axml"))).ToString().Contains(noteMarker)
+                && DocumentXml.ToXml(RichTextDocument.Load(Path.Combine(b, "note.axml"))).ToString().Contains(noteMarker), "both vaults read");
+
+            VaultLock.Close(a);
+            t.Check(!VaultLock.IsOpen(a) && VaultLock.IsOpen(b), "closing one vault leaves the other open");
+            t.Check(Locked(() => RichTextDocument.Load(Path.Combine(a, "note.axml"))) && VaultLock.Refuses(Path.Combine(a, "note.axml")), "the closed one reads and writes nothing");
+            t.Check(VaultFiles.ReadText(Path.Combine(b, "page.md")).Contains(markdownMarker), "the open one still reads");
+
+            VaultLock.Close();
+            Directory.Delete(a, true);
+            Directory.Delete(b, true);
+        }
+
         [A_XSDActionDependency("Vault.WrongPassword", "Test")]
         private static IEnumerator<int> WrongPassword(TestContext t)
         {

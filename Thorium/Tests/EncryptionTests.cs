@@ -79,8 +79,8 @@ namespace Thorium.Tests
         {
             string folder = Path.Combine(Path.GetTempPath(), $"aurora-locked-sheets-{Guid.NewGuid():N}");
             Directory.CreateDirectory(folder);
-            Func<string, string?>? before = SheetBook.findSheet;
-            SheetBook.findSheet = file =>
+            Func<string?, string, string?>? before = SheetBook.findSheet;
+            SheetBook.findSheet = (_, file) =>
             {
                 if (file.EndsWith(SheetDocument.extension, StringComparison.OrdinalIgnoreCase)) file = file[..^SheetDocument.extension.Length];
                 string path = Path.Combine(folder, file + SheetDocument.extension);
@@ -117,7 +117,7 @@ namespace Thorium.Tests
             using (new FileStream(PathOf("Budget"), FileMode.Open, FileAccess.Read, FileShare.None))
             {
                 SheetBook.calc.RecalcAll();
-                t.Check(SheetBook.calc.Value(editor.document.pages[0], 0, 0).Display() == SheetFormula.locked && SheetBook.IsLocked("Budget"),
+                t.Check(SheetBook.calc.Value(editor.document.pages[0], 0, 0).Display() == SheetFormula.locked && SheetBook.IsLocked(null, "Budget"),
                     "a recalc answers from the locked-file check without opening the file");
             }
 

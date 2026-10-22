@@ -237,6 +237,8 @@
           <xs:enumeration value="TextInput.PictureRotateLayout" />
           <xs:enumeration value="TextInput.PictureRotate" />
           <xs:enumeration value="TextInput.PictureRotateDraws" />
+          <xs:enumeration value="VaultScope.CloseKeepsStickies" />
+          <xs:enumeration value="VaultScope.SheetInHomeVault" />
           <xs:enumeration value="Workspace.StandaloneFile" />
           <xs:enumeration value="Workspace.Switch" />
           <xs:enumeration value="Workspace.Menu" />
@@ -447,6 +449,7 @@
           <xs:enumeration value="Tex.Pdf.Bullets" />
           <xs:enumeration value="Tex.FitPage" />
           <xs:enumeration value="Vault.LockRoundTrip" />
+          <xs:enumeration value="Vault.TwoOpen" />
           <xs:enumeration value="Vault.WrongPassword" />
           <xs:enumeration value="Vault.ConvertResumes" />
           <xs:enumeration value="Vault.HelloSlot" />

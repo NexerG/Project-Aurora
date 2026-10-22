@@ -139,5 +139,7 @@ collapsing it onto `MenuScreen` is a separate change.
 - `VaultBrowserControl`'s `FindByName` walks still start at `Engine.primary.ui.uiRoot`; the switch
   inherits that multi-window bug unchanged.
 
+**2026-10-22:** several vaults open at once is planned and its data-level base (stage A) has landed, see [[multi-vault-workspace]]. "`ThoriumSettings.vault.path` is the one you are in" stops being true in stage B (superseded in [[multi-vault-plan]], not yet changed); this note still describes current behaviour.
+
 Related: [[vault-browser-and-shell]], [[file-browser-tree]], [[settings-registry]],
 [[window-chrome-and-label]], [[context-menu-invoker]]

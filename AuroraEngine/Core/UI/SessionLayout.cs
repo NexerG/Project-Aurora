@@ -156,6 +156,9 @@ namespace ArctisAurora.Core.UI
         // set while the scope's layout is not on screen yet, so a capture does not record the empty windows over it
         public static bool paused;
 
+        // records of a closed scope's windows, written beside the ones it left open
+        private static readonly Dictionary<string, List<SessionWindow>> closedWindows = new Dictionary<string, List<SessionWindow>>(StringComparer.OrdinalIgnoreCase);
+
         // secondary windows are renamed on restore, so a later tear-off cannot collide with one
         private const string restoredWindow = "session-";
         private static int restoredCount;
@@ -178,6 +181,54 @@ namespace ArctisAurora.Core.UI
             foreach (SessionWindow record in recorded.windows)
                 if (!record.primary && OpenRecorded(record) is RenderWindow window) window.sessionScope = freeScope;
             Log.Info($"restored {recorded.windows.Count} window(s) for '{freeScope}'");
+        }
+
+        // Opens what the last session left in key, every window tagged with it; after a Close, only what it closed.
+        // The main record fills into when given, else opens as an anchored window. False when nothing was recorded.
+        public static bool Open(string key, RenderWindow? into = null)
+        {
+            List<SessionWindow>? records = closedWindows.Remove(key, out List<SessionWindow>? closed)
+                ? closed
+                : SettingsRegistry.Get<SessionLayout>().Recorded(key)?.windows;
+            if (records == null || records.Count == 0) return false;
+
+            RenderWindow focus = null;
+            foreach (SessionWindow record in records)
+            {
+                if (record.primary && into != null)
+                {
+                    into.sessionScope = key;
+                    Fill(WorkspaceControl.In(into.ui.uiRoot), record);
+                    Place(into, record);
+                    focus = into;
+                    continue;
+                }
+
+                if (OpenRecorded(record) is not RenderWindow window) continue;
+                window.sessionScope = key;
+                if (!record.primary) continue;
+                window.anchor = true;
+                focus = window;
+            }
+
+            focus?.Focus();
+            Log.Info($"opened {records.Count} window(s) for '{key}'");
+            return true;
+        }
+
+        // Records key's windows and closes them but the kept ones; the primary is recorded and left to the host.
+        public static void Close(string key, Func<RenderWindow, bool> kept)
+        {
+            List<SessionWindow> closed = new List<SessionWindow>();
+            foreach (RenderWindow window in Engine.windows.Values.ToList())
+            {
+                if (window.closeRequested || !string.Equals(window.sessionScope, key, StringComparison.OrdinalIgnoreCase) || kept(window)) continue;
+
+                if (RecordOf(window) is SessionWindow record) closed.Add(record);
+                if (window != Engine.primary) Engine.CloseWindow(window);
+            }
+            closedWindows[key] = closed;
+            Log.Info($"closed {closed.Count} window(s) for '{key}'");
         }
 
         // Records this scope, empties every workspace and rebuilds key's, the primary staying where it is.
@@ -415,42 +466,20 @@ namespace ArctisAurora.Core.UI
         {
             List<SessionWindow> captured = new List<SessionWindow>();
             List<SessionWindow> free = new List<SessionWindow>();
+            Dictionary<string, List<SessionWindow>> scoped = new Dictionary<string, List<SessionWindow>>(StringComparer.OrdinalIgnoreCase);
+            foreach ((string key, List<SessionWindow> closed) in closedWindows)
+                scoped[key] = new List<SessionWindow>(closed);
 
             foreach (RenderWindow window in Engine.windows.Values)
             {
-                if (string.IsNullOrEmpty(window.uiDocument) || window.closeRequested) continue;
                 bool isFree = window.sessionScope != null && window.sessionScope == freeScope;
-                if (!isFree && paused) continue;
+                if (window.sessionScope == null && paused) continue;
+                if (RecordOf(window) is not SessionWindow record) continue;
 
-                WorkspaceControl workspace = WorkspaceControl.In(window.ui.uiRoot);
-                if (workspace == null) continue;
-
-                (int x, int y, int width, int height, bool maximized) = window.os.GetPlacement();
-
-                SessionWindow record = new SessionWindow
-                {
-                    document = window.uiDocument,
-                    primary = window == Engine.primary,
-                    x = x,
-                    y = y,
-                    width = width,
-                    height = height,
-                    maximized = maximized,
-                    pinned = window.pinned
-                };
-
-                foreach (WorkspacePageControl page in workspace.Pages)
-                    record.workspaces.Add(new SessionWorkspace
-                    {
-                        title = page.title,
-                        kind = page.kind,
-                        shown = ReferenceEquals(page, workspace.shown),
-                        ribbon = page.ribbonCategory,
-                        inspector = page.inspectorShown,
-                        panes = PanesOf(page)
-                    });
-
-                (isFree ? free : captured).Add(record);
+                if (isFree) free.Add(record);
+                else if (window.sessionScope == null) captured.Add(record);
+                else if (scoped.TryGetValue(window.sessionScope, out List<SessionWindow>? list)) list.Add(record);
+                else scoped[window.sessionScope] = [record];
             }
 
             if (!string.IsNullOrEmpty(freeScope))
@@ -459,9 +488,50 @@ namespace ArctisAurora.Core.UI
                 Log.Info($"captured {free.Count} window(s) for '{freeScope}'");
             }
 
+            foreach ((string key, List<SessionWindow> windows) in scoped)
+            {
+                ScopeFor(key).windows = windows;
+                Log.Info($"captured {windows.Count} window(s) for '{key}'");
+            }
+
             if (paused) return;
             ScopeFor(scope).windows = captured;
             Log.Info($"captured {captured.Count} window(s) for '{scope}'");
+        }
+
+        // A window's placement and workspaces; null for one that holds no session.
+        private static SessionWindow? RecordOf(RenderWindow window)
+        {
+            if (string.IsNullOrEmpty(window.uiDocument) || window.closeRequested) return null;
+
+            WorkspaceControl workspace = WorkspaceControl.In(window.ui.uiRoot);
+            if (workspace == null) return null;
+
+            (int x, int y, int width, int height, bool maximized) = window.os.GetPlacement();
+
+            SessionWindow record = new SessionWindow
+            {
+                document = window.uiDocument,
+                primary = window == Engine.primary || window.anchor,
+                x = x,
+                y = y,
+                width = width,
+                height = height,
+                maximized = maximized,
+                pinned = window.pinned
+            };
+
+            foreach (WorkspacePageControl page in workspace.Pages)
+                record.workspaces.Add(new SessionWorkspace
+                {
+                    title = page.title,
+                    kind = page.kind,
+                    shown = ReferenceEquals(page, workspace.shown),
+                    ribbon = page.ribbonCategory,
+                    inspector = page.inspectorShown,
+                    panes = PanesOf(page)
+                });
+            return record;
         }
 
         private static List<SessionPane> PanesOf(WorkspacePageControl page)

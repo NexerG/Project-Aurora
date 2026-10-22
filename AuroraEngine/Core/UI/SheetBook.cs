@@ -7,10 +7,10 @@ namespace ArctisAurora.Core.UI
     {
         public static readonly SheetCalc calc = new SheetCalc();
 
-        // vault lookups; set by the host
-        public static Func<string, string?>? findSheet;
-        public static Func<IEnumerable<string>>? vaultSheets;
-        public static Func<IEnumerable<string>>? vaultNotes;
+        // vault lookups from the file asking, null when unknown; set by the host
+        public static Func<string?, string, string?>? findSheet;
+        public static Func<string?, IEnumerable<string>>? vaultSheets;
+        public static Func<string?, IEnumerable<string>>? vaultNotes;
 
         // the document whose cells were written, or null when only values may have moved
         public static event Action<SheetDocument?>? changed;
@@ -44,10 +44,18 @@ namespace ArctisAurora.Core.UI
 
         public static SheetDocument? OwnerOf(SheetPage page) => owners.TryGetValue(page, out SheetDocument? document) ? document : null;
 
-        // A reference's file part, or null when nothing in the vault answers to it.
-        public static SheetDocument? Resolve(string file)
+        // The file a loaded document was read from; null for one with no file.
+        public static string? PathOf(SheetDocument? document)
         {
-            string? path = findSheet?.Invoke(file);
+            foreach ((string path, SheetDocument loaded) in documents)
+                if (ReferenceEquals(loaded, document)) return path;
+            return null;
+        }
+
+        // A reference's file part, or null when nothing in home's vault answers to it.
+        public static SheetDocument? Resolve(string? home, string file)
+        {
+            string? path = findSheet?.Invoke(home, file);
             if (path == null || !File.Exists(path)) return null;
             path = Path.GetFullPath(path);
             if (!documents.ContainsKey(path) && KnownLocked(path)) return null;
@@ -63,9 +71,9 @@ namespace ArctisAurora.Core.UI
         }
 
         // A reference's file that is encrypted and not loaded.
-        public static bool IsLocked(string file)
+        public static bool IsLocked(string? home, string file)
         {
-            string? path = findSheet?.Invoke(file);
+            string? path = findSheet?.Invoke(home, file);
             if (path == null) return false;
             path = Path.GetFullPath(path);
             if (documents.ContainsKey(path)) return false;
@@ -135,13 +143,13 @@ namespace ArctisAurora.Core.UI
 
             if (home != null)
             {
-                foreach (string file in vaultSheets?.Invoke() ?? Enumerable.Empty<string>())
+                foreach (string file in vaultSheets?.Invoke(home) ?? Enumerable.Empty<string>())
                 {
                     string path = Path.GetFullPath(file);
                     if (documents.ContainsKey(path) || !File.Exists(path)) continue;
                     RewriteOnDisk(path, other => RewritePages(other, RenameIn(other)));
                 }
-                SheetLinks.PageRenamed(home, oldName, newName, vaultNotes?.Invoke() ?? Enumerable.Empty<string>());
+                SheetLinks.PageRenamed(home, oldName, newName, vaultNotes?.Invoke(home) ?? Enumerable.Empty<string>());
             }
 
             calc.RecalcAll();
@@ -171,13 +179,13 @@ namespace ArctisAurora.Core.UI
 
             if (home != null)
             {
-                foreach (string file in vaultSheets?.Invoke() ?? Enumerable.Empty<string>())
+                foreach (string file in vaultSheets?.Invoke(home) ?? Enumerable.Empty<string>())
                 {
                     string path = Path.GetFullPath(file);
                     if (documents.ContainsKey(path) || !File.Exists(path)) continue;
                     RewriteOnDisk(path, other => RewriteFormulas(other, ShiftIn(other)));
                 }
-                SheetLinks.Shifted(home, shifted.name, column, at, count, vaultNotes?.Invoke() ?? Enumerable.Empty<string>());
+                SheetLinks.Shifted(home, shifted.name, column, at, count, vaultNotes?.Invoke(home) ?? Enumerable.Empty<string>());
             }
 
             calc.RecalcAll();

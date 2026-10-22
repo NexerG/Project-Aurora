@@ -62,10 +62,12 @@ User choice over the fixed colours from the reference image. Track paints role C
 - NOT checked: the registry write (AtLogin toggled in Settings), an actual sign-in launch, the tray menu's "New sticky" and tray click showing hidden windows by hand, Opens=VaultBrowser opening the vault browser, the toggle's look inside the real Settings window.
 - The Run value points at whichever exe last applied AtLogin; Debug and shipped builds share the settings folder. Not re-synced at boot.
 - Restored non-primary windows are hidden after they open, so InTray launches may flash them for a frame.
-- A tab torn off or split out of a free sticky lands in the vault's session (`TearOff` does not carry `sessionScope`).
+- ~~A tab torn off or split out of a free sticky lands in the vault's session (`TearOff` does not carry `sessionScope`).~~ Fixed for tear-offs 2026-10-22: the torn window copies `sessionScope` from its source window, see [[multi-vault-workspace]].
 - Tray "New sticky" has no name prompt; the note is named by timestamp.
 - No Linux/macOS login items; `SetLoginCommand` is a no-op there.
 - In the test fixture (black ground) a plain `Ink` label renders dimmer than `MutedInk`, so the toggle's chosen caption looks dimmer there; not investigated.
 - Pinned stickies scale from the primary window, not the source window (differs only across mixed-DPI monitors).
 
-Related: [[desktop-stickies]], [[session-restore]], [[tray-availability-gate]]
+**2026-10-22:** the free/vault sticky scopes are extended by [[multi-vault-workspace]] (several vaults open, closing a vault leaves its stickies); `Startup.Opens` is planned to be reused for every launch in stage B.
+
+Related: [[desktop-stickies]], [[session-restore]], [[tray-availability-gate]], [[multi-vault-workspace]]

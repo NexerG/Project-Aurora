@@ -132,6 +132,10 @@ This file holds **open work**. A landed entry moves to [[Changelog]]; one that s
 		- [ ] **Thorium palette parts NOT GUI-verified** — rename fields, confirm dialog, torn-off tab window, split pane, block split at Enter, "Default" swatch clearing, `#2C2B26` migration → `ui-palettes` § Known gaps
 		- [ ] **10 of Thorium's 11 canvas palettes NOT GUI-verified on screen** — dropdown and live switch verified on thorium-void 2026-09-18; the rest unchecked → `ui-palettes` § Thorium's palette set
 		- [ ] **palette resolution on a runtime `Role`/`Palette` change, a reparented control and the drag ghost is NOT GUI-verified** → `ui-palettes` § Known gaps
+- [ ] **multi-vault workspace (2026-10-22)** — several vaults open at once, an editor window each; stage A (data foundation: per-vault keys, home-vault sheet lookups, per-scope session open/close) landed, test-verified, NOT GUI-verified, no UI yet → `multi-vault-plan`, `multi-vault-workspace`
+	- [ ] **B: vault picker as a secondary window + vault editor windows + close rules** → `multi-vault-plan`
+	- [ ] **C: sticky single-colour palettes (colour in the note's frontmatter `palette`, hidden from Settings › UI) + stickies browser window** → `multi-vault-plan`
+	- [ ] **D: Windows taskbar jump list (Vaults and Stickies; `--vault`/`--sticky`/`--stickies`/`--new-sticky` over WM_COPYDATA; single instance with the tray)** → `multi-vault-plan`
 - [ ] **Thorium productivity suite (user, 2026-10-02)** — Thorium houses notes, sheets and a todo board
 	- [ ] **sheets** → `ClaudeMemory/Context/sheets-plan.md`
 		- [ ] **S2a formulas NOT GUI-verified (2026-10-03)** — typing `=…`, F2 on a formula, recalc on edit/undo, values on copy; test-verified only → `sheets`
@@ -178,7 +182,6 @@ This file holds **open work**. A landed entry moves to [[Changelog]]; one that s
 		- [ ] **engine: guard `UIEngine` pointer dispatch against controls destroyed mid-dispatch** — destroying or rebuilding controls in press / release / tap / drag end leaves stale layout state; the planner posts its rebuild (`RebuildSoon`) → `rebuild-inside-pointer-dispatch`
 	- [ ] **calendar (designed 2026-10-06, parked)** — engine side merged into the planner 2026-10-07 (PC + C2 in planner-plan); still parked: Google + iCloud over CalDAV (read-only first), iCalendar/recurrence, toasts + reminders (tray + single instance landed 2026-10-08, engine-wide as `Background`; start at login landed 2026-10-21); C3–C7 → `ClaudeMemory/Context/calendar-plan.md`
 		- [ ] **start at login GUI check (2026-10-21)** — landed, test-verified; by hand: AtLogin writes the Run value, a real sign-in launch, tray "New sticky", Opens=VaultBrowser, toggle look in Settings → start-at-login
-		- [ ] **tear-off from a free sticky keeps its scope (2026-10-21)** — `TearOff` does not carry `sessionScope`, so the torn tab lands in the vault's session
 		- [ ] **re-sync the Run value at boot (2026-10-21)** — it points at whichever exe last applied AtLogin; Debug and shipped builds share the settings folder
 	- [ ] **stickies + tray NOT GUI-verified (2026-10-08)** — landed, test-verified; by hand: tray icon and clicks, tray menu taking focus, X hiding the main window, second launch raising it, sign-out save, sticky look/resize/pin, "Pin to desktop" submenu → `desktop-stickies`
 		- [ ] tray icon is IDI_APPLICATION (Thorium has no .ico) and is not re-added after an Explorer restart (TaskbarCreated) → `desktop-stickies`

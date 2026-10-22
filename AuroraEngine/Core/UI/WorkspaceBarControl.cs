@@ -250,6 +250,7 @@ namespace ArctisAurora.Core.UI
                 UIScaling.ToPixels(source, tearOffWidth), UIScaling.ToPixels(source, tearOffHeight),
                 wx + (int)source.mousePos.X, wy + (int)source.mousePos.Y);
             torn.uiDocument = tearOffDocument;
+            torn.sessionScope = source.sessionScope;
             WindowRoot root = (WindowRoot)ParseXML(tearOffDocument);
             torn.ui.uiRoot = root;
             WorkspaceControl.In(root)?.Move(page, 0);

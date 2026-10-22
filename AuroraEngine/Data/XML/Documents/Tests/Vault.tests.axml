@@ -3,6 +3,7 @@
 		  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 		  xsi:schemaLocation="http://arctisaurora/AuroraTestTypes ../../Schemas/TestTypeSchema.xsd" >
 	<Test Action="Vault.LockRoundTrip" Timeout="30000"/>
+	<Test Action="Vault.TwoOpen" Timeout="30000"/>
 	<Test Action="Vault.WrongPassword"/>
 	<Test Action="Vault.ConvertResumes" Timeout="30000"/>
 	<Test Action="Vault.HelloSlot" Timeout="30000"/>

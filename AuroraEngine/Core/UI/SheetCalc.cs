@@ -30,7 +30,7 @@ namespace ArctisAurora.Core.UI
         internal SheetPage? PageNamed(SheetPage home, string? file, string name)
         {
             if (file != null && SheetBook.OwnerOf(home)?.isCsv == true) return null;
-            SheetDocument? document = file == null ? SheetBook.OwnerOf(home) : SheetBook.Resolve(file);
+            SheetDocument? document = file == null ? SheetBook.OwnerOf(home) : SheetBook.Resolve(SheetBook.PathOf(SheetBook.OwnerOf(home)), file);
             if (document == null) return null;
             foreach (SheetPage page in document.pages)
                 if (page.name.Equals(name, StringComparison.OrdinalIgnoreCase)) return page;

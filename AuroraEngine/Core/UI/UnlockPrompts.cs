@@ -40,7 +40,7 @@ namespace ArctisAurora.Core.UI
                 return;
             }
 
-            PasswordWindow.Ask(Engine.primary, $"{item.reason} {Path.GetFileName(item.path)}", false, error,
+            PasswordWindow.Ask(UIActions.Invoking(), $"{item.reason} {Path.GetFileName(item.path)}", false, error,
                 password => Task.Run(() => EncryptedFile.Unlock(item.path, password)).ContinueWith(task =>
                 {
                     PasswordKey? key = task.IsCompletedSuccessfully ? task.Result : null;

@@ -75,4 +75,6 @@ WebAuthn PRF means webauthn.dll, more interop and unclear platform-authenticator
 - E4 (sealing parts of sheets, by page) not started.
 - Not committed.
 
-Related: [[sheets]], [[vault-list-and-switching]], [[vault-browser-and-shell]]
+**2026-10-22:** `VaultLock` now holds one master key per open vault (`open`, copy-on-write array; `Close(vault)`, one conversion at a time across vaults); see [[multi-vault-workspace]].
+
+Related: [[sheets]], [[vault-list-and-switching]], [[vault-browser-and-shell]], [[multi-vault-workspace]]

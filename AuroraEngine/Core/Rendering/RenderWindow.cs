@@ -67,6 +67,9 @@ namespace ArctisAurora.EngineWork.Rendering
         // the session partition this window is recorded in; null for SessionLayout.scope
         public string? sessionScope;
 
+        // stays open when its last tab or workspace leaves, as the primary does
+        public bool anchor;
+
         // hidden by the host and skipped by Draw until shown again
         public volatile bool hidden;
 

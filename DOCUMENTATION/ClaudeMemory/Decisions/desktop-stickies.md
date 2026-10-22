@@ -114,4 +114,6 @@ Extends [[shutdown-sequence]] (§6 per-window close and §7 OS close now hide th
 - No drag-a-tab-onto-another-window's-strip; adding to an existing sticky is through the submenu.
 - Per-sticky colours not done.
 
-Related: [[tray-availability-gate]], [[shutdown-sequence]], [[tab-view-control]], [[context-menus]], [[session-restore]], [[note-model]], [[window-chrome-and-label]]
+**2026-10-22:** with several vaults open, closing a vault closes its editor window and tear-offs but leaves its stickies (`SessionLayout.Close` takes a predicate the host passes); see [[multi-vault-workspace]].
+
+Related: [[multi-vault-workspace]], [[tray-availability-gate]], [[shutdown-sequence]], [[tab-view-control]], [[context-menus]], [[session-restore]], [[note-model]], [[window-chrome-and-label]]

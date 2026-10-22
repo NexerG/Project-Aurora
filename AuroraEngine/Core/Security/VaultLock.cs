@@ -28,12 +28,12 @@ namespace ArctisAurora.Core.Security
         private const string base32 = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
         private const int recoverySize = 32;
 
-        // the open vault and its master key
-        private static string? root;
-        private static byte[]? master;
+        // the open vaults and their master keys, replaced whole on change
+        private static (string root, byte[] master)[] open = [];
 
-        // files still to convert, and which way
+        // files still to convert, which vault, and which way
         private static Queue<string>? converting;
+        private static string? convertingRoot;
         private static bool encrypting;
         private static int failed;
         private const double stepMs = 8.0;
@@ -44,15 +44,16 @@ namespace ArctisAurora.Core.Security
 
         public static bool HasLock(string vault) => File.Exists(LockPath(vault));
 
-        public static bool IsOpen(string vault) => master != null && root != null && Same(root, vault);
+        public static bool IsOpen(string vault) => MasterOf(vault) != null;
 
-        // The master key for a file in the open vault; null outside it or while none is open.
-        public static byte[]? KeyFor(string path) => master != null && Inside(path) ? master : null;
+        // The master key for a file in an open vault; null outside every open one.
+        public static byte[]? KeyFor(string path) => Containing(path)?.master;
 
-        // Whether a write to the path is sealed: inside the open vault, unless the vault is being decrypted.
-        public static bool Covers(string path) => master != null && !(converting != null && !encrypting) && Inside(path);
+        // Whether a write to the path is sealed: inside an open vault, unless that vault is being decrypted.
+        public static bool Covers(string path) =>
+            Containing(path) is (string root, _) &&!(converting != null && !encrypting && Same(convertingRoot!, root));
 
-        // A path inside an encrypted vault that is not the open one, where nothing may be written.
+        // A path inside an encrypted vault that is not open, where nothing may be written.
         public static bool Refuses(string path)
         {
             for (string? folder = Path.GetDirectoryName(Path.GetFullPath(path)); folder != null; folder = Path.GetDirectoryName(folder))
@@ -101,7 +102,7 @@ namespace ArctisAurora.Core.Security
             if (!IsOpen(vault)) return;
             XElement file = XElement.Load(LockPath(vault));
             file.Elements("Slot").Where(s => (string?)s.Attribute("Kind") == "Password").Remove();
-            file.Add(PasswordSlot(password, master!));
+            file.Add(PasswordSlot(password, MasterOf(vault)!));
             WriteLock(vault, file);
         }
 
@@ -126,7 +127,7 @@ namespace ArctisAurora.Core.Security
             file.Elements("Slot").Where(s => (string?)s.Attribute("Kind") == "WindowsHello").Remove();
             byte[] salt = RandomNumberGenerator.GetBytes(16);
             file.Add(new XElement("Slot", new XAttribute("Kind", "WindowsHello"), new XAttribute("Credential", credential), new XAttribute("Salt", Convert.ToBase64String(salt)),
-                Convert.ToBase64String(Cipher.Encrypt(HelloKey(signature, salt), master!, slotAssociated))));
+                Convert.ToBase64String(Cipher.Encrypt(HelloKey(signature, salt), MasterOf(vault)!, slotAssociated))));
             WriteLock(vault, file);
         }
 
@@ -225,42 +226,64 @@ namespace ArctisAurora.Core.Security
         // Holds the master key for the vault and finishes a conversion the lock file says was cut short.
         public static void Use(string vault, byte[] key)
         {
-            Close();
-            root = Path.GetFullPath(vault);
-            master = key;
+            Close(vault);
+            string root = Path.GetFullPath(vault);
+            open = [.. open, (root, key)];
 
             string? state = (string?)XElement.Load(LockPath(vault)).Attribute("State");
-            if (state == encryptingState) StartConversion(true);
-            else if (state == decryptingState) StartConversion(false);
+            if (state == encryptingState) StartConversion(root, true);
+            else if (state == decryptingState) StartConversion(root, false);
         }
 
         // Decrypts every file of the open vault, then drops its lock.
         public static void Remove(string vault)
         {
             if (!IsOpen(vault)) return;
-            SetState(decryptingState);
-            StartConversion(false);
+            string root = Path.GetFullPath(vault);
+            SetState(root, decryptingState);
+            StartConversion(root, false);
         }
 
-        // Zeroes the master key.
+        // Zeroes one vault's master key.
+        public static void Close(string vault)
+        {
+            if (converting != null && Same(convertingRoot!, vault)) converting = null;
+            foreach ((string root, byte[] master) in open)
+                if (Same(root, vault)) CryptographicOperations.ZeroMemory(master);
+            open = open.Where(entry => !Same(entry.root, vault)).ToArray();
+        }
+
+        // Zeroes every master key.
         public static void Close()
         {
-            if (master != null) CryptographicOperations.ZeroMemory(master);
-            master = null;
-            root = null;
+            foreach ((_, byte[] master) in open) CryptographicOperations.ZeroMemory(master);
+            open = [];
             converting = null;
         }
 
-        private static void SetState(string state)
+        private static byte[]? MasterOf(string vault)
         {
-            XElement file = XElement.Load(LockPath(root!));
-            file.SetAttributeValue("State", state);
-            WriteLock(root!, file);
+            foreach ((string root, byte[] master) in open)
+                if (Same(root, vault)) return master;
+            return null;
         }
 
-        private static bool Inside(string path)
+        private static (string root, byte[] master)? Containing(string path)
         {
-            if (root == null) return false;
+            foreach ((string root, byte[] master) entry in open)
+                if (Inside(entry.root, path)) return entry;
+            return null;
+        }
+
+        private static void SetState(string root, string state)
+        {
+            XElement file = XElement.Load(LockPath(root));
+            file.SetAttributeValue("State", state);
+            WriteLock(root, file);
+        }
+
+        private static bool Inside(string root, string path)
+        {
             string full = Path.GetFullPath(path);
             string prefix = Path.TrimEndingDirectorySeparator(root) + Path.DirectorySeparatorChar;
             return full.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)
@@ -273,18 +296,25 @@ namespace ArctisAurora.Core.Security
 
         #region ---- conversion ----
         // Every file of the open vault, a slice per main tick, each swapped in whole so an interrupted run resumes.
-        private static void StartConversion(bool encrypt)
+        private static void StartConversion(string root, bool encrypt)
         {
+            if (converting != null && !Same(convertingRoot!, root))
+            {
+                Log.Warn($"'{root}' waits for '{convertingRoot}' to finish converting; the next unlock converts it.");
+                return;
+            }
+
             FileWriteQueue.Drain();
             encrypting = encrypt;
             failed = 0;
-            converting = new Queue<string>(Directory.EnumerateFiles(root!, "*", SearchOption.AllDirectories).Where(Inside));
+            convertingRoot = root;
+            converting = new Queue<string>(Directory.EnumerateFiles(root, "*", SearchOption.AllDirectories).Where(path => Inside(root, path)));
             Engine.Post(Step);
         }
 
         private static void Step()
         {
-            if (converting == null || master == null) return;
+            if (converting == null || MasterOf(convertingRoot!) is not byte[] master) return;
 
             Stopwatch clock = Stopwatch.StartNew();
             while (converting.Count > 0 && clock.Elapsed.TotalMilliseconds < stepMs)
@@ -292,7 +322,7 @@ namespace ArctisAurora.Core.Security
                 string path = converting.Dequeue();
                 try
                 {
-                    ConvertFile(path);
+                    ConvertFile(path, master);
                 }
                 catch (Exception e)
                 {
@@ -309,23 +339,24 @@ namespace ArctisAurora.Core.Security
             Finish();
         }
 
-        private static void ConvertFile(string path)
+        private static void ConvertFile(string path, byte[] master)
         {
             if (!File.Exists(path) || path.EndsWith(".tmp", StringComparison.OrdinalIgnoreCase)) return;
 
             byte[] bytes = File.ReadAllBytes(path);
             if (encrypting)
             {
-                if (!EncryptedFile.IsEnvelope(bytes)) EncryptedFile.WriteVault(path, master!, bytes);
+                if (!EncryptedFile.IsEnvelope(bytes)) EncryptedFile.WriteVault(path, master, bytes);
                 return;
             }
-            if (EncryptedFile.IsVaultEnvelope(bytes) && EncryptedFile.TryReadVault(bytes, master!, out byte[] plain))
+            if (EncryptedFile.IsVaultEnvelope(bytes) && EncryptedFile.TryReadVault(bytes, master, out byte[] plain))
                 EncryptedFile.WriteWhole(path, plain);
         }
 
         private static void Finish()
         {
             converting = null;
+            string vault = convertingRoot!;
             if (failed > 0)
             {
                 Log.Warn($"{failed} file(s) were not converted; the next unlock tries them again.");
@@ -334,17 +365,16 @@ namespace ArctisAurora.Core.Security
 
             if (encrypting)
             {
-                SetState(locked);
-                Log.Info($"vault '{root}' is encrypted.");
+                SetState(vault, locked);
+                Log.Info($"vault '{vault}' is encrypted.");
                 return;
             }
 
-            string vault = root!;
             if (HelloOf(vault) is (string credential, _)) _ = WindowsHello.Delete(credential);
             File.Delete(LockPath(vault));
             string folder = Path.Combine(vault, folderName);
             if (Directory.Exists(folder) && !Directory.EnumerateFileSystemEntries(folder).Any()) Directory.Delete(folder);
-            Close();
+            Close(vault);
             Log.Info($"vault '{vault}' is no longer encrypted.");
         }
         #endregion

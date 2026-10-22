@@ -69,14 +69,14 @@ namespace ArctisAurora.Core.UI
         }
 
         #region ---- layout ----
-        // Lays a link out in the run's font; zoom scales a range's columns and rows.
-        public static SheetBox Layout(string reference, in TextMeasurer.Run run, LineMetrics line, float zoom)
+        // Lays a link out in the run's font; zoom scales a range's columns and rows. home is the note holding it.
+        public static SheetBox Layout(string? home, string reference, in TextMeasurer.Run run, LineMetrics line, float zoom)
         {
             SheetBox box = new SheetBox();
             if (!Parse(reference, out string file, out string pageName, out int top, out int left, out int bottom, out int right)
-                || PageOf(file, pageName) is not SheetPage page)
+                || PageOf(home, file, pageName) is not SheetPage page)
             {
-                Inline(box, Missing(file), true, run);
+                Inline(box, Missing(home, file), true, run);
                 return box;
             }
 
@@ -150,12 +150,12 @@ namespace ArctisAurora.Core.UI
             return advance;
         }
 
-        private static string Missing(string? file) =>
-            !string.IsNullOrEmpty(file) && SheetBook.IsLocked(file) ? SheetFormula.locked : SheetFormula.reference;
+        private static string Missing(string? home, string? file) =>
+            !string.IsNullOrEmpty(file) && SheetBook.IsLocked(home, file) ? SheetFormula.locked : SheetFormula.reference;
 
-        private static SheetPage? PageOf(string file, string name)
+        private static SheetPage? PageOf(string? home, string file, string name)
         {
-            SheetDocument? document = SheetBook.Resolve(file);
+            SheetDocument? document = SheetBook.Resolve(home, file);
             if (document == null) return null;
             foreach (SheetPage page in document.pages)
                 if (page.name.Equals(name, StringComparison.OrdinalIgnoreCase)) return page;
@@ -163,11 +163,11 @@ namespace ArctisAurora.Core.UI
         }
 
         // The link's values as plain text: one value, or rows of tab-separated values.
-        public static string Plain(string reference)
+        public static string Plain(string? home, string reference)
         {
             if (!Parse(reference, out string file, out string pageName, out int top, out int left, out int bottom, out int right)
-                || PageOf(file, pageName) is not SheetPage page)
-                return Missing(file);
+                || PageOf(home, file, pageName) is not SheetPage page)
+                return Missing(home, file);
 
             StringBuilder text = new StringBuilder();
             for (int r = top; r <= bottom; r++)
@@ -187,13 +187,13 @@ namespace ArctisAurora.Core.UI
         public static bool HasMathLinks(string? source) => source != null && source.Contains(@"\sheet{", StringComparison.Ordinal);
 
         // A formula with each \sheet{…} replaced by the cell's value as TeX.
-        public static string ExpandMath(string source) => mathLink.Replace(source, match => MathValue(match.Groups[1].Value));
+        public static string ExpandMath(string? home, string source) => mathLink.Replace(source, match => MathValue(home, match.Groups[1].Value));
 
-        private static string MathValue(string reference)
+        private static string MathValue(string? home, string reference)
         {
             if (!Parse(reference, out string file, out string pageName, out int top, out int left, out int bottom, out int right)
-                || PageOf(file, pageName) is not SheetPage page)
-                return @"\text{" + Missing(file) + "}";
+                || PageOf(home, file, pageName) is not SheetPage page)
+                return @"\text{" + Missing(home, file) + "}";
             if (top != bottom || left != right) return @"\text{" + SheetFormula.value + "}";
 
             SheetValue value = SheetBook.calc.Value(page, top, left);

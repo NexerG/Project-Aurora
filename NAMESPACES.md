@@ -363,5 +363,6 @@ Thorium.Tests -> Thorium/Tests/StartupTests.cs
 Thorium.Tests -> Thorium/Tests/StickyTests.cs
 Thorium.Tests -> Thorium/Tests/TabToolsTests.cs
 Thorium.Tests -> Thorium/Tests/TextInputTests.cs
+Thorium.Tests -> Thorium/Tests/VaultScopeTests.cs
 Thorium.Tests -> Thorium/Tests/WorkspaceTests.cs
 Thorium.Tests -> Thorium/Tests/XmlTests.cs

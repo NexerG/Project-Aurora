@@ -307,6 +307,7 @@ namespace ArctisAurora.Core.UI
                 UIScaling.ToPixels(source, tearOffWidth), UIScaling.ToPixels(source, tearOffHeight),
                 wx + (int)source.mousePos.X, wy + (int)source.mousePos.Y);
             torn.uiDocument = tearOffDocument;
+            torn.sessionScope = source.sessionScope;
             WindowRoot root = (WindowRoot)ParseXML(tearOffDocument);
             torn.ui.uiRoot = root;
             WorkspaceControl.In(root)?.LoadDefault();
@@ -495,7 +496,7 @@ namespace ArctisAurora.Core.UI
             }
 
             RenderWindow window = UIEngine.WindowOf(this);
-            if (window == null || window == Engine.primary) return;
+            if (window == null || window == Engine.primary || window.anchor) return;
 
             Engine.CloseWindow(window);
         }

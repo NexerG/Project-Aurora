@@ -218,6 +218,24 @@ Change Scope (key)
     return false
 ```
 
+A single scope can also be closed and opened on its own, which is what several vaults open at once need. `Close` records the scope's windows and closes all but the ones the host asks to keep; the primary is recorded but never closed, because what to do with it is the host's decision. The records of the windows it closed are held in memory and written beside the kept windows on every capture, so a scope whose stickies outlive its editor keeps its editor layout, and `Open` after a `Close` reopens only what was closed. Every window is recorded under its own `sessionScope` partition, and a window with no `sessionScope` goes to `scope` as before. A window flagged `anchor` stays open when its last tab leaves, as the primary does, and the `Primary` flag in a record means the primary or an anchored window.
+
+```
+Close (key, kept)
+	record the scope's windows
+	for each window of the scope
+		if the window is the primary, skip it
+		if kept(window), skip it
+		hold its record in closedWindows
+		close it
+
+Open (key, into)
+	for each recorded window tagged with key
+		if the scope was closed, skip a window that Close did not close
+		if the record is the Primary and into is given, rebuild it in into
+		otherwise open a window for it, anchored if it is the Primary
+```
+
 Restored windows are named from a running counter rather than their place in the record. A closed window lingers in the window list until its GPU side is torn down, and a new window under the same name would push it out of the list before it was ever destroyed.
 
 ## Known holes

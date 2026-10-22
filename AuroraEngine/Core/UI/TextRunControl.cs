@@ -339,7 +339,7 @@ namespace ArctisAurora.Core.UI
                 {
                     int size = Zoomed(spanSize);
                     TextMeasurer.Run plain = new TextMeasurer.Run(s, start, count, spanFont, font.atlasMetaData, size, spans[i].style);
-                    SheetBox box = SheetLinks.Layout(spans[i].sheetRef, plain, metrics.GetLineMetrics(spanFont), textZoom);
+                    SheetBox box = SheetLinks.Layout(NotePath(), spans[i].sheetRef, plain, metrics.GetLineMetrics(spanFont), textZoom);
                     float w = box.range && float.IsFinite(wrapWidth) && wrapWidth < float.MaxValue ? wrapWidth : box.width;
                     _runs.Add(new TextMeasurer.Run(s, start, count, spanFont, font.atlasMetaData, size, spans[i].style, false,
                         w, box.height, false, true));
@@ -387,9 +387,9 @@ namespace ArctisAurora.Core.UI
         }
 
         // A span's formula laid out in em; an error box when there is no math font.
-        private static MathBox MathBoxFor(in StyleSpan span, FontAsset font)
+        private MathBox MathBoxFor(in StyleSpan span, FontAsset font)
         {
-            string source = SheetLinks.HasMathLinks(span.mathSource) ? SheetLinks.ExpandMath(span.mathSource) : span.mathSource;
+            string source = SheetLinks.HasMathLinks(span.mathSource) ? SheetLinks.ExpandMath(NotePath(), span.mathSource) : span.mathSource;
             if (mathBoxes.TryGetValue((source, span.mathDisplay, font), out MathBox cached)) return cached;
 
             MathBox box = font.mathConstants == null
@@ -402,12 +402,20 @@ namespace ArctisAurora.Core.UI
         // A width-aware display laid out at the line width, em; kept while the next build asks for the same width.
         private MathBox FittedBox(in StyleSpan span, FontAsset font, float lineWidth)
         {
-            string source = SheetLinks.HasMathLinks(span.mathSource) ? SheetLinks.ExpandMath(span.mathSource) : span.mathSource;
+            string source = SheetLinks.HasMathLinks(span.mathSource) ? SheetLinks.ExpandMath(NotePath(), span.mathSource) : span.mathSource;
             (string, FontAsset, float) key = (source, font, lineWidth);
             if (!_fittedBefore.TryGetValue(key, out MathBox? box) && !_fitted.TryGetValue(key, out box))
                 box = MathLayout.Layout(MathParser.Parse(source), true, font.atlasMetaData, font.mathConstants!, lineWidth);
             _fitted[key] = box;
             return box;
+        }
+
+        // The file of the note this run is drawn in; null outside one.
+        private string? NotePath()
+        {
+            for (Entity? current = parent; current != null; current = current.parent)
+                if (current is DocumentControl document) return document.session?.path;
+            return null;
         }
 
         // A formula's left edge inside its run's advance: centred, kept a quad clear of its tag.

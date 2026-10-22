@@ -165,6 +165,9 @@ namespace ArctisAurora.EngineWork
         // Top left of a width x height window centred in the primary monitor's work area.
         public static (int x, int y) CenterOnPrimary(int width, int height) => AGlfwWindow.CenterOnPrimary(width, height);
 
+        // The OS title of a window, as the taskbar and Alt+Tab show it.
+        public static void SetTitle(RenderWindow window, string title) => window.os.SetTitle(title);
+
         // A menu is clicked, so unlike the preview it wires input and is an ordinary window to every
         // walk that skips ghosts.
         public static RenderWindow OpenMenuWindow(string name, uint width, uint height, bool withChrome = false)

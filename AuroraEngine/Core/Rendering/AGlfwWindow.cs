@@ -345,6 +345,8 @@ namespace ArctisAurora.EngineWork.Rendering
 
         internal void SetFloating(bool floating) => _glfw.SetWindowAttrib(handle, WindowAttributeSetter.Floating, floating);
 
+        internal void SetTitle(string title) => _glfw.SetWindowTitle(handle, title);
+
         internal void DestroyWindow()
         {
             _glfw.DestroyWindow(handle);

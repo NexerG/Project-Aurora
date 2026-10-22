@@ -182,12 +182,13 @@ namespace ArctisAurora.Core.UI
             public SheetPage? Target(SheetCalc calc, SheetPage home) => page == null ? home : calc.PageNamed(home, file, page);
 
             // The error for a target that did not resolve.
-            public SheetValue Missing() => SheetValue.Error(file != null && SheetBook.IsLocked(file) ? locked : reference);
+            public SheetValue Missing(SheetPage home) =>
+                SheetValue.Error(file != null && SheetBook.IsLocked(SheetBook.PathOf(SheetBook.OwnerOf(home)), file) ? locked : reference);
 
             public override SheetValue Evaluate(SheetCalc calc, SheetPage home)
             {
                 SheetPage? target = Target(calc, home);
-                if (target == null) return Missing();
+                if (target == null) return Missing(home);
                 if (IsRange) return SheetValue.Error(value);
                 return calc.Read(target, top, left);
             }
@@ -359,7 +360,7 @@ namespace ArctisAurora.Core.UI
                     if (argument is Reference cells)
                     {
                         SheetPage? target = cells.Target(calc, home);
-                        if (target == null) return cells.Missing();
+                        if (target == null) return cells.Missing(home);
                         for (int r = cells.top; r <= cells.bottom; r++)
                             for (int c = cells.left; c <= cells.right; c++)
                             {

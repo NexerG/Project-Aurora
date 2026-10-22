@@ -61,7 +61,7 @@ namespace Thorium.Editor.CustomControls
 
         #region ---- workspace filter ----
         private void OnWorkspaceChanged(WorkspaceControl workspace)
-        {            Control? root = Engine.primary?.ui?.uiRoot;
+        {            Control? root = UIEngine.WindowOf(this)?.ui?.uiRoot;
             if (root == null || !ReferenceEquals(workspace, WorkspaceControl.In(root))) return;
 
             Control top = this;
@@ -115,16 +115,17 @@ namespace Thorium.Editor.CustomControls
 
         private void OnActiveTabChanged(TabViewControl view)
         {
-            TabViewControl focused = FocusedTabs();
-            if (focused == null ? UIEngine.WindowOf(view) == Engine.primary : ReferenceEquals(view, focused))
+            RenderWindow? window = UIEngine.WindowOf(this);
+            TabViewControl focused = window == null ? null : FocusedTabs(window);
+            if (focused == null ? window != null && UIEngine.WindowOf(view) == window : ReferenceEquals(view, focused))
                 SetCurrent(view.activeItem?.name);
         }
 
-        private void FollowFocusedTab() => SetCurrent(FocusedTabs()?.activeItem?.name);
+        private void FollowFocusedTab() =>
+            SetCurrent(UIEngine.WindowOf(this) is RenderWindow window ? FocusedTabs(window)?.activeItem?.name : null);
         #endregion
 
-        protected override string RootPath =>
-            KnownVaults.Resolve(SettingsRegistry.Get<ThoriumSettings>().vault.path);
+        protected override string RootPath => VaultOfWindow(UIEngine.WindowOf(this));
 
         protected override bool AcceptsFolder(FileObject folder) => !folder.name.StartsWith('.');
 
@@ -352,7 +353,44 @@ namespace Thorium.Editor.CustomControls
         }
 
         #region ---- vault lock ----
-        private static string CurrentVault() => KnownVaults.Resolve(SettingsRegistry.Get<ThoriumSettings>().vault.path);
+        private static string CurrentVault() => VaultOfWindow(UIActions.Invoking());
+
+        // The vault a window shows; a window with no vault scope falls back to the vault setting.
+        private static string VaultOfWindow(RenderWindow? window) =>
+            window?.sessionScope is string scope && scope != Startup.freeScope
+                ? KnownVaults.Resolve(scope)
+                : KnownVaults.Resolve(SettingsRegistry.Get<ThoriumSettings>().vault.path);
+
+        // The known vault holding a file, deepest first; a file in none falls back to the vault setting.
+        private static string VaultOf(string? home)
+        {
+            if (home != null)
+            {
+                string full = Path.GetFullPath(home);
+                string? best = null;
+                foreach (KnownVault known in SettingsRegistry.Get<KnownVaults>().vaults)
+                {
+                    string prefix = Path.TrimEndingDirectorySeparator(known.path) + Path.DirectorySeparatorChar;
+                    if (full.StartsWith(prefix, StringComparison.OrdinalIgnoreCase) && (best == null || known.path.Length > best.Length))
+                        best = known.path;
+                }
+                if (best != null) return best;
+            }
+            return KnownVaults.Resolve(SettingsRegistry.Get<ThoriumSettings>().vault.path);
+        }
+
+        // The window holding the browser of the vault the given window belongs to.
+        private static RenderWindow VaultWindow(RenderWindow? from)
+        {
+            if (from?.ui?.uiRoot?.FindByName(browserName) is VaultBrowserControl) return from;
+            if (from?.sessionScope != null)
+                foreach (RenderWindow window in Engine.windows.Values)
+                    if (!window.closeRequested && window.sessionScope == from.sessionScope && window.ui?.uiRoot?.FindByName(browserName) is VaultBrowserControl)
+                        return window;
+            return Engine.primary;
+        }
+
+        private static RenderWindow Home() => VaultWindow(UIActions.Invoking());
 
         [A_XSDActionDependency("Vault.Unlock", "UI", "Asks for the password or recovery key of the locked vault and opens it")]
         public static void UnlockVault()
@@ -372,7 +410,7 @@ namespace Thorium.Editor.CustomControls
 
         // Asks for a locked vault's password or recovery key, again after a wrong one; opened takes its master key.
         internal static void AskVaultKey(string vault, string title, string? error, Action<byte[]> opened) =>
-            PasswordWindow.Ask(Engine.primary, $"{title}: password or recovery key", false, error,
+            PasswordWindow.Ask(Home(), $"{title}: password or recovery key", false, error,
                 secret => Task.Run(() => VaultLock.Open(vault, secret)).ContinueWith(task =>
                 {
                     byte[]? master = task.IsCompletedSuccessfully ? task.Result : null;
@@ -422,7 +460,8 @@ namespace Thorium.Editor.CustomControls
             string vault = CurrentVault();
             if (VaultLock.HasLock(vault)) return;
 
-            PasswordWindow.Ask(Engine.primary, "Lock vault", true, null, password =>
+            RenderWindow home = Home();
+            PasswordWindow.Ask(home, "Lock vault", true, null, password =>
                 Task.Run(() => PasswordKey.Create(password)).ContinueWith(task => Engine.Post(() =>
                 {
                     PasswordKey key = task.Result;
@@ -433,7 +472,7 @@ namespace Thorium.Editor.CustomControls
                         CryptographicOperations.ZeroMemory(recovery);
                     }
 
-                    RecoveryKeyWindow.Show(Engine.primary, VaultLock.FormatRecovery(recovery), () =>
+                    RecoveryKeyWindow.Show(home, VaultLock.FormatRecovery(recovery), () =>
                     {
                         VaultLock.Create(vault, key, recovery);
                         Forget();
@@ -448,7 +487,7 @@ namespace Thorium.Editor.CustomControls
             string vault = CurrentVault();
             if (!VaultLock.IsOpen(vault)) return;
 
-            PasswordWindow.Ask(Engine.primary, "New vault password", true, null, password =>
+            PasswordWindow.Ask(Home(), "New vault password", true, null, password =>
                 Task.Run(() => PasswordKey.Create(password)).ContinueWith(task => Engine.Post(() =>
                 {
                     using PasswordKey key = task.Result;
@@ -487,7 +526,7 @@ namespace Thorium.Editor.CustomControls
         }
 
         private static VaultBrowserControl Browser() =>
-            Engine.primary.ui.uiRoot?.FindByName(browserName) as VaultBrowserControl;
+            Home().ui.uiRoot?.FindByName(browserName) as VaultBrowserControl;
 
         private void NewNote(string folder, string extension = ".md") =>
             NoteNameWindow.Ask(UIEngine.WindowOf(this), "Untitled", name => CreateNote(folder, name, extension), null);
@@ -566,8 +605,8 @@ namespace Thorium.Editor.CustomControls
             WriteName(path, BaseName(path));
             if (replace)
             {
-                SheetBook.Renamed(csv, path, VaultSheets());
-                SheetLinks.Renamed(csv, path, VaultNotes());
+                SheetBook.Renamed(csv, path, VaultSheets(path));
+                SheetLinks.Renamed(csv, path, VaultNotes(path));
                 DeleteFile(csv);
             }
             SheetBook.Created();
@@ -628,22 +667,23 @@ namespace Thorium.Editor.CustomControls
 
             if (SheetDocument.IsSheet(target) || SheetCsv.IsCsv(target))
             {
-                SheetBook.Renamed(path, target, VaultSheets());
-                SheetLinks.Renamed(path, target, VaultNotes());
+                SheetBook.Renamed(path, target, VaultSheets(target));
+                SheetLinks.Renamed(path, target, VaultNotes(target));
             }
             if (PlannerDocument.IsPlanner(target)) PlannerBook.Renamed(Path.GetFullPath(path), target);
 
-            VaultBrowserControl? browser = Engine.primary.ui.uiRoot.FindByName(browserName) as VaultBrowserControl;
+            VaultBrowserControl? browser = Browser();
             browser?.Rebuild();
             browser?.FollowFocusedTab();
         }
 
         // Focuses the note wherever it is on screen, and only opens a tab when it is not. A note open
         // in a hidden workspace gets a second view in the shown one.
-        private static void Open(string notePath) => Open(notePath, ShownKind() == WorkspaceKind.Xml && IsXml(notePath));
+        private static void Open(string notePath) => Open(notePath, ShownKind(Home()) == WorkspaceKind.Xml && IsXml(notePath));
 
         private static void Open(string notePath, bool asXml)
         {
+            RenderWindow home = Home();
             foreach ((TabItemControl already, TabViewControl owner) in TabViewControl.FindOpenDocuments(notePath))
             {
                 if (!Shown(owner) || TabViewControl.FileEditorOf(already) is XmlEditorControl != asXml) continue;
@@ -654,11 +694,11 @@ namespace Thorium.Editor.CustomControls
 
             TabViewControl? pending = pendingPane;
             pendingPane = null;
-            TabViewControl tabs = (pending?.parent != null ? pending : null) ?? FocusedTabs() ?? ShownTabs();
+            TabViewControl tabs = (pending?.parent != null ? pending : null) ?? FocusedTabs(home) ?? ShownTabs(home);
             if (tabs == null) return;
 
             TabItemControl tab = BuildTab(notePath, asXml);
-            if (ShownKind() == WorkspaceKind.Calendar && TabViewControl.FileEditorOf(tab) is PlannerEditorControl planner)
+            if (ShownKind(home) == WorkspaceKind.Calendar && TabViewControl.FileEditorOf(tab) is PlannerEditorControl planner)
                 planner.ShowView(PlannerView.Calendar);
             tabs.AddChild(tab);
             tabs.SetActive(tab);
@@ -695,12 +735,12 @@ namespace Thorium.Editor.CustomControls
         }
 
         // A sheet reference's file part: the first sheet whose name, or path ending, matches it.
-        public static string? FindSheet(string file)
+        public static string? FindSheet(string? home, string file)
         {
             string name = file.Trim().Replace('\\', '/');
             if (SheetCsv.IsCsv(name))
             {
-                string root = KnownVaults.Resolve(SettingsRegistry.Get<ThoriumSettings>().vault.path);
+                string root = VaultOf(home);
                 if (!Directory.Exists(root)) return null;
                 foreach (string path in Directory.EnumerateFiles(root, "*" + SheetCsv.extension, System.IO.SearchOption.AllDirectories))
                     if (path.Replace('\\', '/').EndsWith("/" + name, StringComparison.OrdinalIgnoreCase)) return path;
@@ -709,7 +749,7 @@ namespace Thorium.Editor.CustomControls
             if (name.EndsWith(SheetDocument.extension, StringComparison.OrdinalIgnoreCase))
                 name = name[..^SheetDocument.extension.Length];
 
-            foreach (string path in VaultSheets())
+            foreach (string path in VaultSheets(home))
             {
                 string stem = path.Replace('\\', '/')[..^SheetDocument.extension.Length];
                 if (stem.EndsWith("/" + name, StringComparison.OrdinalIgnoreCase)) return path;
@@ -717,18 +757,18 @@ namespace Thorium.Editor.CustomControls
             return null;
         }
 
-        internal static IEnumerable<string> VaultSheets()
+        internal static IEnumerable<string> VaultSheets(string? home)
         {
-            string root = KnownVaults.Resolve(SettingsRegistry.Get<ThoriumSettings>().vault.path);
+            string root = VaultOf(home);
             return Directory.Exists(root)
                 ? Directory.EnumerateFiles(root, "*" + SheetDocument.extension, System.IO.SearchOption.AllDirectories)
                 : Enumerable.Empty<string>();
         }
 
         // Notes that can hold a sheet link: .md and .axml, sheets and planners left out.
-        internal static IEnumerable<string> VaultNotes()
+        internal static IEnumerable<string> VaultNotes(string? home)
         {
-            string root = KnownVaults.Resolve(SettingsRegistry.Get<ThoriumSettings>().vault.path);
+            string root = VaultOf(home);
             if (!Directory.Exists(root)) return Enumerable.Empty<string>();
             return Directory.EnumerateFiles(root, "*.md", System.IO.SearchOption.AllDirectories)
                 .Concat(Directory.EnumerateFiles(root, "*.axml", System.IO.SearchOption.AllDirectories)
@@ -798,20 +838,20 @@ namespace Thorium.Editor.CustomControls
 
         // The split pane last clicked in, so a note opens where the work is. Only this window counts —
         // the browser has no business opening notes in one that was torn off.
-        private static TabViewControl FocusedTabs()
+        private static TabViewControl FocusedTabs(RenderWindow window)
         {
             TabViewControl view = Context.Get<TabViewControl>(tabsContext);
-            return view != null && UIEngine.WindowOf(view) == Engine.primary && Shown(view) ? view : null;
+            return view != null && UIEngine.WindowOf(view) == window && Shown(view) ? view : null;
         }
 
-        // The first pane of the primary's shown workspace.
-        private static TabViewControl? ShownTabs() =>
-            WorkspaceControl.In(Engine.primary.ui.uiRoot)?.shown is WorkspacePageControl page
+        // The first pane of the window's shown workspace.
+        private static TabViewControl? ShownTabs(RenderWindow window) =>
+            WorkspaceControl.In(window.ui.uiRoot)?.shown is WorkspacePageControl page
                 ? TabViewControl.TabViews(page).FirstOrDefault()
                 : null;
 
-        private static WorkspaceKind ShownKind() =>
-            WorkspaceControl.In(Engine.primary.ui.uiRoot)?.shown?.kind ?? WorkspaceKind.General;
+        private static WorkspaceKind ShownKind(RenderWindow window) =>
+            WorkspaceControl.In(window.ui.uiRoot)?.shown?.kind ?? WorkspaceKind.General;
 
         // Whether a view is in the workspace on screen in its window.
         private static bool Shown(TabViewControl view) =>

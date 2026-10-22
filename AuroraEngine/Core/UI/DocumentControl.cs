@@ -991,7 +991,7 @@ namespace ArctisAurora.Core.UI
             if (!OrderedSelection(out DocumentAddress from, out DocumentAddress to)) return false;
 
             DocumentFragment fragment = document.CaptureFragment(from, to);
-            string text =string.Join(Environment.NewLine, fragment.blocks.Select(PlainText)).Replace(TextMeasurer.SoftHyphen.ToString(), string.Empty);
+            string text =string.Join(Environment.NewLine, fragment.blocks.Select(block => PlainText(block, session?.path))).Replace(TextMeasurer.SoftHyphen.ToString(), string.Empty);
 
             copiedText = text;
             copiedFragment = fragment;
@@ -1000,7 +1000,7 @@ namespace ArctisAurora.Core.UI
         }
 
         // A snapshot's text with each formula written as its TeX source.
-        private static string PlainText(BlockSnapshot block)
+        private static string PlainText(BlockSnapshot block, string? home)
         {
             StringBuilder plain = new StringBuilder(block.text.Length);
             int start = 0;
@@ -1013,7 +1013,7 @@ namespace ArctisAurora.Core.UI
                     plain.Append(fence).Append(span.mathSource).Append(fence);
                 }
                 else if (span.IsSheet && count > 0)
-                    plain.Append(SheetLinks.Plain(span.sheetRef));
+                    plain.Append(SheetLinks.Plain(home, span.sheetRef));
                 else if (span.spaceWidth != 0f)
                     plain.Append(' ', count);
                 else

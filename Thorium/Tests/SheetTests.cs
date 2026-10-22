@@ -437,7 +437,7 @@ namespace Thorium.Tests
         private static IEnumerator<int> CrossFile(TestContext t)
         {
             string folder = TempFolder();
-            Func<string, string?>? before = SheetBook.findSheet;
+            Func<string?, string, string?>?before = SheetBook.findSheet;
             SheetBook.findSheet = FolderResolver(folder);
 
             SheetDocument budget = SheetDocument.Blank("Budget");
@@ -501,7 +501,7 @@ namespace Thorium.Tests
         private static IEnumerator<int> RenameRewrites(TestContext t)
         {
             string folder = TempFolder();
-            Func<string, string?>? before = SheetBook.findSheet;
+            Func<string?, string, string?>?before = SheetBook.findSheet;
             SheetBook.findSheet = FolderResolver(folder);
             string PathOf(string name) => Path.Combine(folder, name + SheetDocument.extension);
 
@@ -553,7 +553,7 @@ namespace Thorium.Tests
         private static IEnumerator<int> PasteLinks(TestContext t)
         {
             string folder = TempFolder();
-            Func<string, string?>? before = SheetBook.findSheet;
+            Func<string?, string, string?>?before = SheetBook.findSheet;
             SheetBook.findSheet = FolderResolver(folder);
             string PathOf(string name) => Path.Combine(folder, name + SheetDocument.extension);
 
@@ -652,7 +652,7 @@ namespace Thorium.Tests
         private static IEnumerator<int> NoteLinks(TestContext t)
         {
             string folder = TempFolder();
-            Func<string, string?>? before = SheetBook.findSheet;
+            Func<string?, string, string?>?before = SheetBook.findSheet;
             SheetBook.findSheet = FolderResolver(folder);
             string budgetPath = BudgetSheet(folder);
 
@@ -675,9 +675,9 @@ namespace Thorium.Tests
             t.Check(narrow > 0f, $"an inline cell takes its value's width: {narrow}");
             BlockControl rangeBlock = p.First(block => block.spans.Any(span => span.IsSheet && span.sheetRef.Contains(':')));
             t.Check(rangeBlock.arrangedRect.height >= 48f, $"a range is as tall as its rows: {rangeBlock.arrangedRect.height}");
-            t.Check(SheetLinks.Plain("Budget.sheet.axml#Data!A1:B2") == "10\t20" + Environment.NewLine + "text\t" + SheetFormula.div0,
-                $"a range reads the sheet's values: {SheetLinks.Plain("Budget.sheet.axml#Data!A1:B2")}");
-            t.Check(SheetLinks.Plain("Gone.sheet.axml#Data!A1") == SheetFormula.reference, "a missing sheet is #REF!");
+            t.Check(SheetLinks.Plain(null, "Budget.sheet.axml#Data!A1:B2") == "10\t20" + Environment.NewLine + "text\t" + SheetFormula.div0,
+                $"a range reads the sheet's values: {SheetLinks.Plain(null, "Budget.sheet.axml#Data!A1:B2")}");
+            t.Check(SheetLinks.Plain(null, "Gone.sheet.axml#Data!A1") == SheetFormula.reference, "a missing sheet is #REF!");
             yield return t.Golden("Links", note);
 
             sheet.Select(0, 0, false);
@@ -697,7 +697,7 @@ namespace Thorium.Tests
         private static IEnumerator<int> NotePasteLinks(TestContext t)
         {
             string folder = TempFolder();
-            Func<string, string?>? before = SheetBook.findSheet;
+            Func<string?, string, string?>?before = SheetBook.findSheet;
             SheetBook.findSheet = FolderResolver(folder);
             string budgetPath = BudgetSheet(folder);
 
@@ -772,7 +772,7 @@ namespace Thorium.Tests
         private static IEnumerator<int> NoteRenameRewrites(TestContext t)
         {
             string folder = TempFolder();
-            Func<string, string?>? before = SheetBook.findSheet;
+            Func<string?, string, string?>?before = SheetBook.findSheet;
             SheetBook.findSheet = FolderResolver(folder);
             string budgetPath = BudgetSheet(folder);
             string moneyPath = Path.Combine(folder, "Money" + SheetDocument.extension);
@@ -818,7 +818,7 @@ namespace Thorium.Tests
             BlockControl open = NoteBlocks(note)[0];
             t.Check(open.spans.Any(span => span.sheetRef == "Money.sheet.axml#Data!A1"), "an open note's link follows the rename");
             t.Check(!note.session.isDirty, "and the open note stays unedited");
-            t.Check(SheetLinks.Plain("Money.sheet.axml#Data!A1") == "10", "the renamed link still reads");
+            t.Check(SheetLinks.Plain(null, "Money.sheet.axml#Data!A1") == "10", "the renamed link still reads");
 
             SessionLayout.scope = scope;
             t.Show(new StackPanelControl());
@@ -831,15 +831,15 @@ namespace Thorium.Tests
         private static IEnumerator<int> MathLinks(TestContext t)
         {
             string folder = TempFolder();
-            Func<string, string?>? before = SheetBook.findSheet;
+            Func<string?, string, string?>?before = SheetBook.findSheet;
             SheetBook.findSheet = FolderResolver(folder);
             string budgetPath = BudgetSheet(folder);
             string moneyPath = Path.Combine(folder, "Money" + SheetDocument.extension);
 
-            t.Check(SheetLinks.ExpandMath(@"a = \sheet{Budget.sheet.axml#Data!B1}") == "a = {20}", "a number reads in as itself");
-            t.Check(SheetLinks.ExpandMath(@"\sheet{Budget.sheet.axml#Data!A2}") == @"\text{text}", "text reads in as \\text");
-            t.Check(SheetLinks.ExpandMath(@"\sheet{Budget.sheet.axml#Data!A1:B2}") == @"\text{" + SheetFormula.value + "}", "a range is #VALUE!");
-            t.Check(SheetLinks.ExpandMath(@"\sheet{Gone.sheet.axml#Data!A1}") == @"\text{" + SheetFormula.reference + "}", "a missing sheet is #REF!");
+            t.Check(SheetLinks.ExpandMath(null, @"a = \sheet{Budget.sheet.axml#Data!B1}") == "a = {20}", "a number reads in as itself");
+            t.Check(SheetLinks.ExpandMath(null, @"\sheet{Budget.sheet.axml#Data!A2}") == @"\text{text}", "text reads in as \\text");
+            t.Check(SheetLinks.ExpandMath(null, @"\sheet{Budget.sheet.axml#Data!A1:B2}") == @"\text{" + SheetFormula.value + "}", "a range is #VALUE!");
+            t.Check(SheetLinks.ExpandMath(null, @"\sheet{Gone.sheet.axml#Data!A1}") == @"\text{" + SheetFormula.reference + "}", "a missing sheet is #REF!");
 
             string notePath = Path.Combine(folder, "Math.md");
             File.WriteAllText(notePath, "x $a = \\sheet{Budget.sheet.axml#Data!B1}$ y\n\n$\\sheet{Gone.sheet.axml#Data!A1}$ end\n");
@@ -917,7 +917,7 @@ namespace Thorium.Tests
                 "an open note's formula follows the rename");
             t.Check(File.ReadAllText(xmlPath) == "<Document><Block><Run Math=\"a&#xA;\\sheet{Money.sheet.axml#Data!A1} &lt; b\" Display=\"true\"/></Block></Document>\n",
                 $"a .axml note's formula is rewritten and nothing else: {File.ReadAllText(xmlPath)}");
-            t.Check(SheetLinks.ExpandMath(@"\sheet{Money.sheet.axml#Data!B1}") == "{2000}", "the renamed reference still reads");
+            t.Check(SheetLinks.ExpandMath(null, @"\sheet{Money.sheet.axml#Data!B1}") == "{2000}", "the renamed reference still reads");
 
             SessionLayout.scope = scope;
             t.Show(new StackPanelControl());
@@ -949,7 +949,7 @@ namespace Thorium.Tests
                 && badFills.pages[0].Format(2, 0).fill == "FFF3A3", "a fill that is not six hex digits is dropped");
 
             string folder = TempFolder();
-            Func<string, string?>? before = SheetBook.findSheet;
+            Func<string?, string, string?>?before = SheetBook.findSheet;
             SheetBook.findSheet = FolderResolver(folder);
             SheetDocument fmt = SheetDocument.Blank("Fmt");
             fmt.pages[0].name = "Data";
@@ -1004,7 +1004,7 @@ namespace Thorium.Tests
             editor.Select(0, 0, false);
             editor.Copy();
             t.Check(ClipboardText.Get() == "1234.5", $"a formatted number copies as the number: {ClipboardText.Get()}");
-            t.Check(SheetLinks.ExpandMath(@"\sheet{Fmt.sheet.axml#Data!A1}") == "{1234.5}", "note math reads the number unformatted");
+            t.Check(SheetLinks.ExpandMath(null, @"\sheet{Fmt.sheet.axml#Data!A1}") == "{1234.5}", "note math reads the number unformatted");
 
             editor.Clear();
             t.Check(page.Shown(0, 0) == null && page.Format(0, 0).number == "€#,##0.00", "Delete empties the cell and keeps its format");
@@ -1033,7 +1033,7 @@ namespace Thorium.Tests
         private static IEnumerator<int> Resize(TestContext t)
         {
             string folder = TempFolder();
-            Func<string, string?>? before = SheetBook.findSheet;
+            Func<string?, string, string?>?before = SheetBook.findSheet;
             SheetBook.findSheet = FolderResolver(folder);
             string budgetPath = BudgetSheet(folder);
 
@@ -1098,12 +1098,12 @@ namespace Thorium.Tests
         private static IEnumerator<int> Pages(TestContext t)
         {
             string folder = TempFolder();
-            Func<string, string?>? findBefore = SheetBook.findSheet;
-            Func<IEnumerable<string>>? sheetsBefore = SheetBook.vaultSheets;
-            Func<IEnumerable<string>>? notesBefore = SheetBook.vaultNotes;
+            Func<string?, string, string?>?findBefore = SheetBook.findSheet;
+            Func<string?, IEnumerable<string>>?sheetsBefore = SheetBook.vaultSheets;
+            Func<string?, IEnumerable<string>>?notesBefore = SheetBook.vaultNotes;
             SheetBook.findSheet = FolderResolver(folder);
-            SheetBook.vaultSheets = () => Directory.EnumerateFiles(folder, "*" + SheetDocument.extension);
-            SheetBook.vaultNotes = () => Directory.EnumerateFiles(folder, "*.md");
+            SheetBook.vaultSheets = _ =>Directory.EnumerateFiles(folder, "*" + SheetDocument.extension);
+            SheetBook.vaultNotes = _ =>Directory.EnumerateFiles(folder, "*.md");
             string PathOf(string name) => Path.Combine(folder, name + SheetDocument.extension);
 
             SheetDocument budget = SheetDocument.Blank("Budget");
@@ -1342,9 +1342,9 @@ namespace Thorium.Tests
         private static IEnumerator<int> CsvLinks(TestContext t)
         {
             string folder = TempFolder();
-            Func<string, string?>? findBefore = SheetBook.findSheet;
-            Func<string, string?> sheets = FolderResolver(folder);
-            SheetBook.findSheet = file => SheetCsv.IsCsv(file) ? (File.Exists(Path.Combine(folder, file)) ? Path.Combine(folder, file) : null) : sheets(file);
+            Func<string?, string, string?>?findBefore = SheetBook.findSheet;
+            Func<string?, string, string?> sheets = FolderResolver(folder);
+            SheetBook.findSheet = (_, file) => SheetCsv.IsCsv(file) ? (File.Exists(Path.Combine(folder, file)) ? Path.Combine(folder, file) : null) : sheets(null, file);
             string SheetPath(string name) => Path.Combine(folder, name + SheetDocument.extension);
 
             string dataPath = Path.Combine(folder, "data.csv");
@@ -1387,8 +1387,8 @@ namespace Thorium.Tests
                 "a sheet formula reads a CSV, formulas inside it included");
             t.Check(SheetBook.calc.Value(page, 0, 2).Display() == "999", "data.csv and data.sheet.axml resolve separately");
             t.Check(SheetBook.calc.Value(csvPage, 1, 2).Display() == SheetFormula.reference, "a CSV reaches no other file");
-            t.Check(SheetLinks.IsLink("data.csv#data!B2") && SheetLinks.Plain("data.csv#data!B2") == "100", "a note link reads a CSV cell");
-            t.Check(SheetLinks.ExpandMath(@"\sheet{data.csv#data!B3}") == "{200}", "note math reads a CSV cell");
+            t.Check(SheetLinks.IsLink("data.csv#data!B2") && SheetLinks.Plain(null, "data.csv#data!B2") == "100", "a note link reads a CSV cell");
+            t.Check(SheetLinks.ExpandMath(null, @"\sheet{data.csv#data!B3}") == "{200}", "note math reads a CSV cell");
 
             csv.Select(1, 1, false);
             csv.Copy();
@@ -1647,12 +1647,12 @@ namespace Thorium.Tests
         private static IEnumerator<int> InsertShifts(TestContext t)
         {
             string folder = TempFolder();
-            Func<string, string?>? findBefore = SheetBook.findSheet;
-            Func<IEnumerable<string>>? sheetsBefore = SheetBook.vaultSheets;
-            Func<IEnumerable<string>>? notesBefore = SheetBook.vaultNotes;
+            Func<string?, string, string?>?findBefore = SheetBook.findSheet;
+            Func<string?, IEnumerable<string>>?sheetsBefore = SheetBook.vaultSheets;
+            Func<string?, IEnumerable<string>>?notesBefore = SheetBook.vaultNotes;
             SheetBook.findSheet = FolderResolver(folder);
-            SheetBook.vaultSheets = () => Directory.EnumerateFiles(folder, "*" + SheetDocument.extension);
-            SheetBook.vaultNotes = () => Directory.EnumerateFiles(folder, "*.md");
+            SheetBook.vaultSheets = _ =>Directory.EnumerateFiles(folder, "*" + SheetDocument.extension);
+            SheetBook.vaultNotes = _ =>Directory.EnumerateFiles(folder, "*.md");
             string PathOf(string name) => Path.Combine(folder, name + SheetDocument.extension);
 
             SheetDocument budget = SheetDocument.Blank("Budget", true);
@@ -1753,7 +1753,7 @@ namespace Thorium.Tests
             return folder;
         }
 
-        private static Func<string, string?> FolderResolver(string folder) => file =>
+        private static Func<string?, string, string?> FolderResolver(string folder) => (_, file) =>
         {
             if (file.EndsWith(SheetDocument.extension, StringComparison.OrdinalIgnoreCase)) file = file[..^SheetDocument.extension.Length];
             string path = Path.Combine(folder, file + SheetDocument.extension);

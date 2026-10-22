@@ -85,7 +85,7 @@ namespace ArctisAurora.Core.UI
         {
             Control? root = ContextMenus.target;
             while (root?.parent is Control up) root = up;
-            return WorkspaceControl.In(root ?? Engine.primary.ui.uiRoot) ?? WorkspaceControl.In(Engine.primary.ui.uiRoot);
+            return WorkspaceControl.In(root ?? UIActions.Invoking().ui.uiRoot) ?? WorkspaceControl.In(Engine.primary.ui.uiRoot);
         }
     }
 }
