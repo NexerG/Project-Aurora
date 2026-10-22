@@ -347,6 +347,14 @@
     </xs:sequence>
     <xs:attributeGroup ref="types:SessionWorkspace.Attributes" />
   </xs:complexType>
+  <xs:attributeGroup name="SessionRoot.Attributes">
+    <xs:attribute name="Path" type="xs:string" />
+  </xs:attributeGroup>
+  <xs:element name="SessionRoot" type="types:SessionRoot" />
+  <xs:complexType name="SessionRoot">
+    <xs:sequence />
+    <xs:attributeGroup ref="types:SessionRoot.Attributes" />
+  </xs:complexType>
   <xs:attributeGroup name="SessionWindow.Attributes">
     <xs:attribute name="Document" type="xs:string" />
     <xs:attribute name="Primary" type="xs:boolean" />
@@ -362,6 +370,7 @@
     <xs:choice>
       <xs:element name="SessionPane" type="types:SessionPane" />
       <xs:element name="SessionWorkspace" type="types:SessionWorkspace" />
+      <xs:element name="SessionRoot" type="types:SessionRoot" />
     </xs:choice>
   </xs:group>
   <xs:complexType name="SessionWindow">

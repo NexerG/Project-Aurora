@@ -12,4 +12,6 @@
 	<ContextButton Text="Change vault password..." Action="Vault.ChangePassword"/>
 	<ContextButton Text="Use Windows Hello for this vault..." Action="Vault.EnableHello"/>
 	<ContextButton Text="Remove vault lock..." Action="Vault.RemoveLock"/>
+	<ContextLine/>
+	<ContextButton Text="Close vault" Action="Vault.Close"/>
 </ContextMenu>

@@ -1,9 +1,9 @@
 ﻿using ArctisAurora.Core.Filing;
 using ArctisAurora.Core.Registry;
-using ArctisAurora.Core.Security;
 using ArctisAurora.Core.UI;
 using ArctisAurora.EngineWork;
 using ArctisAurora.EngineWork.Rendering;
+using Thorium.Editor;
 using Thorium.Editor.CustomControls;
 
 namespace Thorium
@@ -31,9 +31,10 @@ namespace Thorium
             known.Prune();
             known.Remember(SettingsRegistry.Get<ThoriumSettings>().vault.path);
 
-            // A layout belongs to the vault it was arranged in.
-            SessionLayout.scope = KnownVaults.Resolve(SettingsRegistry.Get<ThoriumSettings>().vault.path);
+            // One layout for every editor window; stickies apart.
+            SessionLayout.scope = VaultWindows.workspaceScope;
             SessionLayout.freeScope = Startup.freeScope;
+            bool migrated = VaultWindows.Migrate();
             SessionLayout.tabFactory = VaultBrowserControl.BuildTab;
             NotePropertiesControl.openLink = VaultBrowserControl.OpenLink;
             SheetBook.findSheet = VaultBrowserControl.FindSheet;
@@ -59,16 +60,14 @@ namespace Thorium
 
             Engine.primary.uiDocument = "main";
             Engine.primary.ui.uiRoot = (WindowRoot)Control.ParseXML("main");
-            if (!Background.canTray && Engine.primary.ui.uiRoot.FindByName("TrayButton") is ButtonControl tray) tray.enabled = false;
-            bool locked = VaultLock.HasLock(SessionLayout.scope);
-            if (locked)
-            {
-                SessionLayout.paused = true;
-                Engine.Post(VaultBrowserControl.UnlockVault);
-            }
-            else SessionLayout.Restore();
+            Background.open = VaultWindows.TrayOpen;
+            bool picker = SettingsRegistry.Get<ThoriumSettings>().startup.opens == StartupSetting.StartupView.VaultBrowser && Background.primaryStartsHidden;
+            if (picker) VaultWindows.StartEmpty();
+            else VaultWindows.Restore(migrated);
             SessionLayout.RestoreFree();
+            bool locked = VaultWindows.AnyLocked();
             Startup.Place(locked);
+            if (locked) VaultWindows.UnlockAtLaunch();
 
             engine.Run();
         }

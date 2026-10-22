@@ -350,6 +350,8 @@ Thorium -> Thorium/ThoriumSettings.cs
 Thorium.Editor -> Thorium/Editor/Decorations.cs
 Thorium.Editor -> Thorium/Editor/StatusBarActions.cs
 Thorium.Editor -> Thorium/Editor/VaultsWindow.cs
+Thorium.Editor -> Thorium/Editor/VaultWindows.cs
+Thorium.Editor.CustomControls -> Thorium/Editor/CustomControls/ClosedVaultControl.cs
 Thorium.Editor.CustomControls -> Thorium/Editor/CustomControls/VaultBrowserControl.cs
 Thorium.Tests -> Thorium/Tests/EncryptionTests.cs
 Thorium.Tests -> Thorium/Tests/LatinModernTests.cs
@@ -364,5 +366,6 @@ Thorium.Tests -> Thorium/Tests/StickyTests.cs
 Thorium.Tests -> Thorium/Tests/TabToolsTests.cs
 Thorium.Tests -> Thorium/Tests/TextInputTests.cs
 Thorium.Tests -> Thorium/Tests/VaultScopeTests.cs
+Thorium.Tests -> Thorium/Tests/VaultWindowsTests.cs
 Thorium.Tests -> Thorium/Tests/WorkspaceTests.cs
 Thorium.Tests -> Thorium/Tests/XmlTests.cs

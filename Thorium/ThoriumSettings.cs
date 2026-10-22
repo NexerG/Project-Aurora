@@ -22,7 +22,7 @@ namespace Thorium
         [A_XSDElementProperty("AtLogin", "Settings", "Thorium starts when you sign in to Windows.")]
         public bool atLogin { get; set; } = false;
 
-        [A_XSDElementProperty("Opens", "Settings", "What a start at login opens: the vault used last, or the vault browser over it.")]
+        [A_XSDElementProperty("Opens", "Settings", "What Thorium opens: the vaults open when it last closed, or the vault browser.")]
         public StartupView opens { get; set; } = StartupView.LastVault;
 
         [A_XSDElementProperty("Stickies", "Settings", "A start at login opens the stickies that are not in a vault.")]

@@ -2,7 +2,6 @@ using ArctisAurora.Core.Registry;
 using ArctisAurora.Core.UI;
 using ArctisAurora.EngineWork;
 using ArctisAurora.EngineWork.Rendering;
-using Thorium.Editor;
 using Thorium.Editor.CustomControls;
 using static Thorium.StartupSetting;
 
@@ -36,10 +35,11 @@ namespace Thorium
             login = args.Contains(loginFlag);
             tray = args.Contains(trayFlag);
             Background.startHidden = () => tray || (login && Settings().inTray);
+            Background.hidePrimary = () => Settings().opens == StartupView.VaultBrowser;
             Background.trayEntries.Add(new ContextMenuButton("New sticky", NewSticky));
         }
 
-        // Hides what this launch keeps in the tray and opens the vault browser when asked; a locked vault shows its prompt.
+        // Hides what this launch keeps in the tray; a locked vault shows its prompt.
         internal static void Place(bool locked)
         {
             if (!login && !tray) return;
@@ -56,9 +56,6 @@ namespace Thorium
                 if (window.closeRequested || string.IsNullOrEmpty(window.uiDocument) || window.hidden) continue;
                 if (window.sessionScope == freeScope ? hideFree : hideVault) Background.HideWindow(window);
             }
-
-            if (login && !hideVault && settings.opens == StartupView.VaultBrowser)
-                Engine.Post(() => VaultsWindow.Open(Engine.primary));
         }
 
         // A new empty note in the stickies folder, in a sticky of its own in the middle of the screen.

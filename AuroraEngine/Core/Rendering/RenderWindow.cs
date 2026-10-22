@@ -70,6 +70,12 @@ namespace ArctisAurora.EngineWork.Rendering
         // stays open when its last tab or workspace leaves, as the primary does
         public bool anchor;
 
+        // host-owned close of this window, in place of the default one
+        public Action<RenderWindow>? onClose;
+
+        // folders the window's browser lists, recorded with its session
+        public List<string> roots = new List<string>();
+
         // hidden by the host and skipped by Draw until shown again
         public volatile bool hidden;
 

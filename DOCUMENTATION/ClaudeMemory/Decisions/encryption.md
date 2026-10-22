@@ -66,7 +66,8 @@ WebAuthn PRF means webauthn.dll, more interop and unclear platform-authenticator
 - Pictures in a sealed run are stored by absolute path; picture files are only encrypted by a vault lock, not by a seal or a per-file password.
 - An outside write reloading a note re-locks its unlocked seals.
 - Encrypted files always open in the normal editor, never as XML; renaming one doesn't update its stored display name.
-- An unlocked sheet stays decrypted in `SheetBook` memory until a vault switch.
+- An unlocked sheet stays decrypted in `SheetBook` memory until a vault is settled (2026-10-22: `SheetBook.Clear()` then clears every vault's loaded sheets; they reload lazily).
+- 2026-10-22 ([[multi-vault-workspace]] stage B): a vault's key is dropped (`VaultLock.Close(vault)`) when no editor window lists the vault; stickies hold no key, so a sticky's link to an encrypted vault's note becomes a closed-vault placeholder until the vault is open in some window.
 - Crash journals (`%LOCALAPPDATA%\Arktis\Journal`) can hold plaintext from segment writes made before a vault was locked, until those notes close.
 - A file that fails to convert stays plaintext until the next unlock retries it.
 - Changing the vault password doesn't ask for the old one (the vault is already open).

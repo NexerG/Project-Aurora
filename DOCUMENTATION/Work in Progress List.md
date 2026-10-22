@@ -132,9 +132,12 @@ This file holds **open work**. A landed entry moves to [[Changelog]]; one that s
 		- [ ] **Thorium palette parts NOT GUI-verified** — rename fields, confirm dialog, torn-off tab window, split pane, block split at Enter, "Default" swatch clearing, `#2C2B26` migration → `ui-palettes` § Known gaps
 		- [ ] **10 of Thorium's 11 canvas palettes NOT GUI-verified on screen** — dropdown and live switch verified on thorium-void 2026-09-18; the rest unchecked → `ui-palettes` § Thorium's palette set
 		- [ ] **palette resolution on a runtime `Role`/`Palette` change, a reparented control and the drag ghost is NOT GUI-verified** → `ui-palettes` § Known gaps
-- [ ] **multi-vault workspace (2026-10-22)** — several vaults open at once, an editor window each; stage A (data foundation: per-vault keys, home-vault sheet lookups, per-scope session open/close) landed, test-verified, NOT GUI-verified, no UI yet → `multi-vault-plan`, `multi-vault-workspace`
-	- [ ] **B: vault picker as a secondary window + vault editor windows + close rules** → `multi-vault-plan`
-	- [ ] **C: sticky single-colour palettes (colour in the note's frontmatter `palette`, hidden from Settings › UI) + stickies browser window** → `multi-vault-plan`
+- [ ] **multi-vault workspace (2026-10-22)** — several vaults open at once, stickies global; stages A and B landed (B redesigned), test-verified, NOT GUI-verified → `multi-vault-plan`, `multi-vault-workspace`
+	- [ ] **B follow-up: GUI-verify** the picker's two buttons, per-vault headers, Close vault, title, tray Open, Close/Tray/Cancel with several windows, picker-first launch, locked-vault prompts → `multi-vault-workspace`
+	- [ ] **B follow-up: untested edges** — closing the primary while another editor window is open (empty + hide) has no test; `Background.Quit` shows a hidden emptied primary briefly; a vaultless recorded primary may flash on restore → `multi-vault-workspace`
+	- [ ] **B follow-up: picker-first launch** (Opens=VaultBrowser) does not restore the layout, so the next quit records only what was opened → `multi-vault-workspace`
+	- [ ] **B follow-up: loose ends** — new-window button uses the "maximize" icon as a stand-in; `SheetBook.Clear()` on settling an encrypted vault clears every vault's sheets; old per-vault session partitions stay in UserSettings → `multi-vault-workspace`
+	- [ ] **C: re-plan sticky palettes + stickies browser on the global-sticky model** (palette in the note's frontmatter `palette`, hidden from Settings › UI) → `multi-vault-plan`
 	- [ ] **D: Windows taskbar jump list (Vaults and Stickies; `--vault`/`--sticky`/`--stickies`/`--new-sticky` over WM_COPYDATA; single instance with the tray)** → `multi-vault-plan`
 - [ ] **Thorium productivity suite (user, 2026-10-02)** — Thorium houses notes, sheets and a todo board
 	- [ ] **sheets** → `ClaudeMemory/Context/sheets-plan.md`

@@ -61,14 +61,13 @@ namespace Thorium.Tests
 
             SessionLayout.ChangeScope("sticky-b");
             yield return 3;
-            t.Check(Sticky() == null, "another scope closes the sticky");
+            RenderWindow? kept = Sticky();
+            TabViewControl? keptView = kept != null ? TabViewControl.TabViews(kept.ui.uiRoot).FirstOrDefault() : null;
+            t.Check(kept != null && kept.sessionScope == SessionLayout.freeScope && kept.pinned, "the sticky is global: another scope keeps it, still pinned");
+            t.Check(keptView?.activeItem != null && TabViewControl.FileEditorOf(keptView.activeItem)?.path == path,
+                "with the note in it");
             SessionLayout.ChangeScope("sticky-a");
             yield return 3;
-            RenderWindow? back = Sticky();
-            TabViewControl? backView = back != null ? TabViewControl.TabViews(back.ui.uiRoot).FirstOrDefault() : null;
-            t.Check(back != null && back.pinned, "coming back reopens the sticky, still pinned");
-            t.Check(backView?.activeItem != null && TabViewControl.FileEditorOf(backView.activeItem)?.path == path,
-                "with the note in it");
 
             SessionLayout.scope = before;
             foreach (RenderWindow window in Engine.windows.Values.ToList())

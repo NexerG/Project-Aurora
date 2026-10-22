@@ -416,6 +416,7 @@ Why: [[ui-palettes]].
 - **FileRowControl** `<FileRow>` · ButtonControl — one file or folder row. Old `FileRowControl`.
 - **PasswordWindow** (static `Ask`) — modal password prompt: `Ask(source, title, twice, error, onConfirm, onCancel, alternative)`; masked `TextBoxControl`s, no remember checkbox. See [[encryption]].
 - **RecoveryKeyWindow** (static `Show`) — shows a new vault recovery key once. See [[encryption]].
+- **ClosedVaultControl** (Thorium, `PanelControl`, `IFileEditor`) — placeholder tab "<vault> is closed/locked" for a sticky's link to a vault no window lists, with an "Open vault" button (`VaultWindows.OpenSomewhere`); `Reopen()` swaps the real editor in. Built by `VaultBrowserControl.BuildClosedTab`. See [[multi-vault-workspace]].
 - **LockedFileControl** · IFileEditor — placeholder tab for a password-encrypted file: masked field, "Remember password for this session" checkbox, Unlock. `UnlockPrompts.Ask` queues prompts for cross-file rewrites.
 - **SealedControl** — the `[ENCRYPTED]` button standing in for a locked `NoteSealed` node in `DocumentControl`; click unlocks through `DocumentEditorControl.UnlockSeal`.
 
@@ -463,6 +464,7 @@ Why: [[ui-palettes]].
 
 - `Thorium.Editor.CustomControls.VaultBrowserControl` — new stack, `FileTreeControl`: the vault as a
   tree, renames on disk. Region `workspace filter`: `filtered` (shown workspace kind), `OnWorkspaceChanged`, `Shows(kind, path)`, `FilterName` (label `VaultFilter`); `Open` goes to `ShownTabs()`. [[workspaces]] XML: `IsXml`, `Shows`/`FilterName` handle `Xml`, `RowContextMenu` (`vault-note-xml`, `vault-as-note`, `vault-as-sheet`, `vault-as-planner`), `Notes.OpenAsXml`, `Notes.OpenNormally`, `Open(path, asXml)` (reuses only a tab of the same kind), `BuildTab(path, asXml)`/`BuildXmlTab`, `NewNote(folder, extension)`. [[xml-editor]]
+- Sidebar (stage B, 2026-10-22): `UI.ui.axml` holds `<StackPanel Name="Browsers">` instead of one `<VaultBrowser>`; `VaultWindows.AddBrowser` adds a group per vault (header label with the `vault` context menu + a `VaultBrowserControl` whose public `vault` is its root); `VaultBrowserControl.Browsers(window)` lists them.
 - `Carbon.Editor.CustomControls.FrameStripControl` `<FrameStrip>` · ContainerControl — frame bars per
   thread, peak per bar; `OnPointerPress` maps the point to a bar, `onFrameSelected`.
 - `…SessionListControl` `<SessionList>` · ScrollableControl — capture session folders; `Load`,

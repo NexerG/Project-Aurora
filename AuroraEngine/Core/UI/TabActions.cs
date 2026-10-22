@@ -81,7 +81,7 @@ namespace ArctisAurora.Core.UI
             foreach (RenderWindow window in Engine.windows.Values)
             {
                 if (window.closeRequested || window.uiDocument != next.owner.stickyDocument) continue;
-                if (source == window || source?.sessionScope != window.sessionScope) continue;
+                if (source == window) continue;
 
                 string caption = TabViewControl.TabViews(window.ui.uiRoot).FirstOrDefault()?.activeItem?.header ?? "Sticky";
                 entries.Add(new ContextMenuButton(caption, () => Pin(next, window)));

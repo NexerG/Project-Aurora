@@ -21,13 +21,13 @@
 - `RenderWindow.sessionScope` (string?, null = recorded under `SessionLayout.scope`).
 - `SessionLayout`: `freeScope` (empty = none); `RestoreFree()` reopens windows recorded under `freeScope` and tags them; `Record` (via `Capture`) writes windows whose `sessionScope == freeScope` to the free partition (always, also while `paused`) and the rest to `scope` (skipped while paused); `ClearWorkspaces` (from `ChangeScope` and `Reset`) keeps any non-primary window with a `sessionScope`; private `OpenRecorded` returns the window.
 - `TabViewControl.OpenSticky(item, document, x, y, sessionScope)`; `PinToSticky(item, null)` calls it and passes the source window's `sessionScope`. Sticky size now scales from `Engine.primary`.
-- `TabActions.StickyEntries` lists only stickies whose `sessionScope` equals the tab's window's.
+- RETRACTED 2026-10-22 (stage B: stickies are global): `TabActions.StickyEntries` lists only stickies whose `sessionScope` equals the tab's window's. It no longer filters by scope.
 - `ToggleSwitchControl` (`<ToggleSwitch LeftText RightText Right>`) and `SettingsWindow.Editor`: an enum with exactly two names gets a toggle instead of a `DropdownControl`; helper `Words(string)` splits PascalCase. No existing settings enum has two values, so no other row changed.
 - Data: gradient `toggle-track` in `Engine.gradients.axml`; suite `Startup.tests.axml` / `StartupTests`.
 
 ## Why these choices
 
-**The note's file decides whether a sticky is free or belongs to a vault.**
+**RETRACTED 2026-10-22 (user, [[multi-vault-workspace]] stage B): stickies are one global system, a vault file shows in one only as a link; `Startup.Place` no longer posts `VaultsWindow.Open` on login; `StartupSetting.opens` now applies to every launch. Original reasoning follows.** **The note's file decides whether a sticky is free or belongs to a vault.**
 User chose this over a per-sticky "keep on desktop" switch (B): a desktop sticky could then show a note of a closed or locked vault, and its links would resolve against whatever vault is open. Also rejected: every sticky global (C), which has the same problems for every sticky and stops a vault's notes being contained in it. Cost of the chosen rule: one sticky cannot mix both kinds, and "Pin to desktop" lists only same-kind stickies.
 
 **Startup options are four fields, not one enum.**

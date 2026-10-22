@@ -47,7 +47,7 @@
 				<StackPanel Orientation="Horizontal" Height="24" Padding="0,10,0,10" EdgeThickness="0,0,1,0" EdgeRole="Line">
 					<Label Name="VaultFilter" Text="All files" FontSize="12" Height="24" VerticalPos="0.5" Role="MutedInk"/>
 				</StackPanel>
-				<VaultBrowser Name="Browser" HeightStar="1" Padding="8,0,8,0"/>
+				<StackPanel Name="Browsers" Orientation="Vertical" HeightStar="1"/>
 			</StackPanel>
 			<Splitter Width="3"/>
 			<StackPanel Orientation="Vertical" WidthStar="1">

@@ -140,7 +140,7 @@ namespace ArctisAurora.EngineWork
             RenderWindow window = new RenderWindow((uint)MathF.Ceiling(settings.window.width * scale),
                                                    (uint)MathF.Ceiling(settings.window.height * scale));
             primary = window;
-            window.hidden = Background.startsHidden;
+            window.hidden = Background.primaryStartsHidden;
             Publish(mainWindow, window);
 
             window.os.CreateWindow();

@@ -93,6 +93,13 @@ namespace ArctisAurora.Core.UI
         public List<SessionPane> panes = new List<SessionPane>();
     }
 
+    [A_XSDType("SessionRoot", "Settings")]
+    public class SessionRoot : ISessionWindowChild
+    {
+        [A_XSDElementProperty("Path", "Settings", "Folder the window's browser listed.")]
+        public string path { get; set; } = "";
+    }
+
     [A_XSDType("SessionWindow", "Settings", AllowedChildren = typeof(ISessionWindowChild))]
     public class SessionWindow
     {
@@ -111,6 +118,9 @@ namespace ArctisAurora.Core.UI
 
         [A_XSDElementProperty("Pinned", "Settings", "True while the window is kept above every other window.")]
         public bool pinned { get; set; }
+
+        [A_XSDElementProperty("SessionRoot", "Settings")]
+        public List<SessionRoot> roots = new List<SessionRoot>();
 
         [A_XSDElementProperty("SessionWorkspace", "Settings")]
         public List<SessionWorkspace> workspaces = new List<SessionWorkspace>();
@@ -156,9 +166,6 @@ namespace ArctisAurora.Core.UI
         // set while the scope's layout is not on screen yet, so a capture does not record the empty windows over it
         public static bool paused;
 
-        // records of a closed scope's windows, written beside the ones it left open
-        private static readonly Dictionary<string, List<SessionWindow>> closedWindows = new Dictionary<string, List<SessionWindow>>(StringComparer.OrdinalIgnoreCase);
-
         // secondary windows are renamed on restore, so a later tear-off cannot collide with one
         private const string restoredWindow = "session-";
         private static int restoredCount;
@@ -181,54 +188,6 @@ namespace ArctisAurora.Core.UI
             foreach (SessionWindow record in recorded.windows)
                 if (!record.primary && OpenRecorded(record) is RenderWindow window) window.sessionScope = freeScope;
             Log.Info($"restored {recorded.windows.Count} window(s) for '{freeScope}'");
-        }
-
-        // Opens what the last session left in key, every window tagged with it; after a Close, only what it closed.
-        // The main record fills into when given, else opens as an anchored window. False when nothing was recorded.
-        public static bool Open(string key, RenderWindow? into = null)
-        {
-            List<SessionWindow>? records = closedWindows.Remove(key, out List<SessionWindow>? closed)
-                ? closed
-                : SettingsRegistry.Get<SessionLayout>().Recorded(key)?.windows;
-            if (records == null || records.Count == 0) return false;
-
-            RenderWindow focus = null;
-            foreach (SessionWindow record in records)
-            {
-                if (record.primary && into != null)
-                {
-                    into.sessionScope = key;
-                    Fill(WorkspaceControl.In(into.ui.uiRoot), record);
-                    Place(into, record);
-                    focus = into;
-                    continue;
-                }
-
-                if (OpenRecorded(record) is not RenderWindow window) continue;
-                window.sessionScope = key;
-                if (!record.primary) continue;
-                window.anchor = true;
-                focus = window;
-            }
-
-            focus?.Focus();
-            Log.Info($"opened {records.Count} window(s) for '{key}'");
-            return true;
-        }
-
-        // Records key's windows and closes them but the kept ones; the primary is recorded and left to the host.
-        public static void Close(string key, Func<RenderWindow, bool> kept)
-        {
-            List<SessionWindow> closed = new List<SessionWindow>();
-            foreach (RenderWindow window in Engine.windows.Values.ToList())
-            {
-                if (window.closeRequested || !string.Equals(window.sessionScope, key, StringComparison.OrdinalIgnoreCase) || kept(window)) continue;
-
-                if (RecordOf(window) is SessionWindow record) closed.Add(record);
-                if (window != Engine.primary) Engine.CloseWindow(window);
-            }
-            closedWindows[key] = closed;
-            Log.Info($"closed {closed.Count} window(s) for '{key}'");
         }
 
         // Records this scope, empties every workspace and rebuilds key's, the primary staying where it is.
@@ -266,6 +225,7 @@ namespace ArctisAurora.Core.UI
             {
                 if (record.primary)
                 {
+                    Engine.primary.roots = record.roots.Select(r => r.path).ToList();
                     Fill(primary, record);
                     if (placePrimary) Place(Engine.primary, record);
                     continue;
@@ -303,6 +263,7 @@ namespace ArctisAurora.Core.UI
                 (uint)record.width, (uint)record.height, x, y);
 
             window.uiDocument = record.document;
+            window.roots = record.roots.Select(r => r.path).ToList();
             window.ui.uiRoot = (WindowRoot)Control.ParseXML(record.document);
 
             Fill(WorkspaceControl.In(window.ui.uiRoot), record);
@@ -467,8 +428,6 @@ namespace ArctisAurora.Core.UI
             List<SessionWindow> captured = new List<SessionWindow>();
             List<SessionWindow> free = new List<SessionWindow>();
             Dictionary<string, List<SessionWindow>> scoped = new Dictionary<string, List<SessionWindow>>(StringComparer.OrdinalIgnoreCase);
-            foreach ((string key, List<SessionWindow> closed) in closedWindows)
-                scoped[key] = new List<SessionWindow>(closed);
 
             foreach (RenderWindow window in Engine.windows.Values)
             {
@@ -512,13 +471,14 @@ namespace ArctisAurora.Core.UI
             SessionWindow record = new SessionWindow
             {
                 document = window.uiDocument,
-                primary = window == Engine.primary || window.anchor,
+                primary = window == Engine.primary,
                 x = x,
                 y = y,
                 width = width,
                 height = height,
                 maximized = maximized,
-                pinned = window.pinned
+                pinned = window.pinned,
+                roots = window.roots.Select(path => new SessionRoot { path = path }).ToList()
             };
 
             foreach (WorkspacePageControl page in workspace.Pages)

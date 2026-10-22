@@ -6,7 +6,6 @@ using ArctisAurora.Core.UI;
 using ArctisAurora.EngineWork;
 using ArctisAurora.EngineWork.Registry;
 using ArctisAurora.EngineWork.Rendering;
-using Thorium.Editor.CustomControls;
 
 namespace Thorium.Editor
 {
@@ -20,15 +19,16 @@ namespace Thorium.Editor
         private const uint windowWidth = 520;
         private const uint windowHeight = 400;
 
-        // control name in UI.ui.axml
-        private const string browserName = "Browser";
-
         // layout
         private const int rowHeight = 44;
         private const int nameHeight = 18;
         private const int pathHeight = 14;
+        private const int newWindowWidth = 44;
 
         private static StackPanelControl _rows = null!;
+
+        // the window a row click opens its vault in
+        private static RenderWindow _source = null!;
 
         // One screen at a time; a second ask raises the one already up and returns no root.
         public static void Open(RenderWindow source)
@@ -36,6 +36,7 @@ namespace Thorium.Editor
             WindowRoot root = MenuScreen.Open(windowName, document, windowWidth, windowHeight, source);
             if (root == null) return;
 
+            _source = source;
             _rows = (StackPanelControl)root.FindByName("Rows");
             Fill();
         }
@@ -47,18 +48,16 @@ namespace Thorium.Editor
         public static void Add()
         {
             RenderWindow source = Engine.windows.GetValueOrDefault(windowName) ?? Engine.primary;
-            FolderPicker.Pick(source, Current(), picked =>
+            FolderPicker.Pick(source, KnownVaults.Resolve(SettingsRegistry.Get<ThoriumSettings>().vault.path), picked =>
             {
                 if (picked == null) return;
 
                 SettingsRegistry.Get<KnownVaults>().Remember(picked);
-                Switch(picked);
+                Choose(picked, false);
             });
         }
 
         #region ---- rows ----
-        private static string Current() => KnownVaults.Resolve(SettingsRegistry.Get<ThoriumSettings>().vault.path);
-
         // Pruning happens here rather than on a timer — the list is only ever looked at from this
         // screen, and a vault that was moved should not be offered once it is on screen.
         private static void Fill()
@@ -105,48 +104,49 @@ namespace Thorium.Editor
             ButtonControl row = new ButtonControl
             {
                 preferredHeight = rowHeight,
-                horizontalAlignment = HorizontalAlignment.Stretch,
+                widthStar = 1,
                 padding = new Thickness(0, 0, 0, 10),
                 role = PaletteRole.Chrome,
                 cornerRadius = new CornerRadii(4)
             };
             row.AddChild(content);
 
-            // Posted, so the tree this click is still bubbling through is not torn down under it.
-            row.RegisterOnRelease(_ => { Engine.Post(() => Switch(path)); return true; });
+            ButtonControl newWindow = new ButtonControl
+            {
+                preferredWidth = newWindowWidth,
+                preferredHeight = rowHeight,
+                role = PaletteRole.Chrome,
+                cornerRadius = new CornerRadii(4)
+            };
+            newWindow.AddChild(new IconControl { setName = "default", iconName = "maximize", preferredWidth = 14, preferredHeight = 14, hitTestable = false });
 
-            return row;
+            // Posted, so the tree this click is still bubbling through is not torn down under it.
+            row.RegisterOnRelease(_ => { Engine.Post(() => Choose(path, false)); return true; });
+            newWindow.RegisterOnRelease(_ => { Engine.Post(() => Choose(path, true)); return true; });
+
+            StackPanelControl line = new StackPanelControl
+            {
+                orientation = StackPanelControl.Orientation.Horizontal,
+                alpha = 0f,
+                preferredHeight = rowHeight,
+                horizontalAlignment = HorizontalAlignment.Stretch,
+                Spacing = 6
+            };
+            line.AddChild(row);
+            line.AddChild(newWindow);
+            return line;
         }
         #endregion
 
-        #region ---- switching ----
-        // The vault is the setting, so switching writes it and everything downstream re-reads it.
-        private static void Switch(string path)
+        #region ---- opening ----
+        // Opens the vault in the window the screen was opened over, or in a window of its own.
+        private static void Choose(string path, bool newWindow)
         {
             if (Engine.windows.TryGetValue(windowName, out RenderWindow window)) Engine.CloseWindow(window);
-            if (KnownVaults.SamePath(path, Current())) return;
 
-            string vault = KnownVaults.Resolve(path);
-            if (VaultLock.HasLock(vault))
-                VaultBrowserControl.AskVaultKey(vault, "Open vault", null, master => NoteActions.SettleAll(() => Enter(path, master)));
-            else NoteActions.SettleAll(() => Enter(path, null));
-        }
-
-        // Writes the vault and swaps the session to it; an encrypted one opens with its master key.
-        private static void Enter(string path, byte[]? master)
-        {
-            SettingsRegistry.Get<ThoriumSettings>().vault.path = path;
-            SheetBook.Clear();
-            FileKeys.Clear();
-            VaultLock.Close();
-            if (master != null) VaultLock.Use(KnownVaults.Resolve(path), master);
-            bool restored = SessionLayout.ChangeScope(KnownVaults.Resolve(path));
-            SessionLayout.paused = false;
-            SettingsRegistry.Commit();
-
-            VaultBrowserControl browser = Engine.primary.ui.uiRoot.FindByName(browserName) as VaultBrowserControl;
-            browser?.Rebuild();
-            if (!restored) VaultBrowserControl.OpenFirstNote();
+            RenderWindow source = _source != null && !_source.closeRequested && _source.uiDocument == "main" ? _source : Engine.primary;
+            if (newWindow) VaultWindows.OpenInNewWindow(path);
+            else VaultWindows.OpenHere(source, path);
         }
         #endregion
     }

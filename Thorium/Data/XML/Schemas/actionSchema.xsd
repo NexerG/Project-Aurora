@@ -237,8 +237,11 @@
           <xs:enumeration value="TextInput.PictureRotateLayout" />
           <xs:enumeration value="TextInput.PictureRotate" />
           <xs:enumeration value="TextInput.PictureRotateDraws" />
-          <xs:enumeration value="VaultScope.CloseKeepsStickies" />
           <xs:enumeration value="VaultScope.SheetInHomeVault" />
+          <xs:enumeration value="VaultWindows.TwoInOneWindow" />
+          <xs:enumeration value="VaultWindows.KeyFollowsWindows" />
+          <xs:enumeration value="VaultWindows.RootsRecorded" />
+          <xs:enumeration value="VaultWindows.Migrate" />
           <xs:enumeration value="Workspace.StandaloneFile" />
           <xs:enumeration value="Workspace.Switch" />
           <xs:enumeration value="Workspace.Menu" />
@@ -594,6 +597,7 @@
           <xs:enumeration value="Status.TogglePending" />
           <xs:enumeration value="Vaults.Open" />
           <xs:enumeration value="Vaults.Add" />
+          <xs:enumeration value="Vault.Close" />
           <xs:enumeration value="Notes.New" />
           <xs:enumeration value="Notes.NewHere" />
           <xs:enumeration value="Sheets.New" />

@@ -328,7 +328,8 @@ namespace ArctisAurora.Core.UI
 
                 RenderWindow source = UIEngine.WindowOf(this);
                 AGlfwWindow._glfw.GetWindowPos(source.os.handle, out int wx, out int wy);
-                OpenSticky(item, stickyDocument, wx + (int)source.mousePos.X, wy + (int)source.mousePos.Y, source.sessionScope);
+                OpenSticky(item, stickyDocument, wx + (int)source.mousePos.X, wy + (int)source.mousePos.Y,
+                    string.IsNullOrEmpty(SessionLayout.freeScope) ? source.sessionScope : SessionLayout.freeScope);
                 return;
             }
 

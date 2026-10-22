@@ -118,7 +118,7 @@ a page wider than the view scrolls sideways.
 separate values. Line anchoring made that six outs, so the editor reads and writes the settings record directly.
 Both live in `ArctisAurora.Core.UI`.
 
-**Switching vaults swaps the whole session** (user, 2026-10-01: torn-off windows close, and the new vault's
+**2026-10-22 amendment: Thorium no longer switches vaults; `scope` is the single partition `workspace` and each window record lists its vaults (`SessionRoot`) — see [[multi-vault-workspace]]. `ChangeScope` stays in the engine but Thorium does not call it.** **Switching vaults swaps the whole session** (user, 2026-10-01: torn-off windows close, and the new vault's
 come back as they were). In order:
 1. `VaultsWindow.Switch` → `NoteActions.SettleAll`: every window in turn, one naming prompt at a time, then the
    edited notes saved. Cancelling a prompt abandons the switch.

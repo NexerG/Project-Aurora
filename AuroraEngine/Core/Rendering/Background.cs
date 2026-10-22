@@ -43,13 +43,21 @@ namespace ArctisAurora.EngineWork.Rendering
         // set before Init by a host that may start in the tray; read once settings are loaded
         public static Func<bool>? startHidden;
 
+        // set before Init by a host whose main window starts hidden with no tray involved
+        public static Func<bool>? hidePrimary;
+
         // host entries the tray menu lists between Open and Quit
         public static readonly List<ContextMenuEntry> trayEntries = new List<ContextMenuEntry>();
+
+        // host replacement for Show on the tray's Open, a tray click and a second copy's signal
+        public static Action? open;
 
         // Tray is enabled and the OS has one.
         public static bool canTray => OperatingSystem.IsWindows() && Tray();
 
         public static bool startsHidden => startHidden?.Invoke() == true && canTray && !TestRunner.active;
+
+        public static bool primaryStartsHidden => startsHidden || (hidePrimary?.Invoke() == true && !TestRunner.active);
 
         // When Tray is enabled: a tray icon; unless OnClose is Quit, one running copy per host. A second copy shows the first and exits.
         [A_XSDActionDependency("Background.Init", "Bootstrap", "When Tray is enabled, adds the tray icon and, unless OnClose is Quit, claims the single running copy")]
@@ -167,9 +175,10 @@ namespace ArctisAurora.EngineWork.Rendering
             return handle;
         }
 
-        // The main window's close: quits without a tray; otherwise asks, hides to the tray, or quits, as OnClose says.
-        public static void Close()
+        // The last window's close: quits without a tray; otherwise asks, hides it to the tray, or quits, as OnClose says.
+        public static void Close(RenderWindow? window = null)
         {
+            window ??= Engine.primary;
             if (!Tray())
             {
                 Shutdown.Request();
@@ -178,19 +187,19 @@ namespace ArctisAurora.EngineWork.Rendering
 
             switch (Settings().onClose)
             {
-                case WindowSetting.CloseAction.Tray: if (canTray) Hide(); else Ask(); break;
+                case WindowSetting.CloseAction.Tray: if (canTray) Hide(window); else Ask(window); break;
                 case WindowSetting.CloseAction.Quit: Shutdown.Request(); break;
-                default: Ask(); break;
+                default: Ask(window); break;
             }
         }
 
-        private static void Ask() =>
-            ConfirmWindow.Ask(Engine.primary, $"Close {HostName()} or minimize it to the tray?", "Don't ask again",
+        private static void Ask(RenderWindow window) =>
+            ConfirmWindow.Ask(window, $"Close {HostName()} or minimize it to the tray?", "Don't ask again",
                 ("Cancel", _ => { }),
-                ("Minimize", canTray ? remember => Answer(WindowSetting.CloseAction.Tray, remember) : null),
-                ("Close", remember => Answer(WindowSetting.CloseAction.Quit, remember)));
+                ("Minimize", canTray ? remember => Answer(window, WindowSetting.CloseAction.Tray, remember) : null),
+                ("Close", remember => Answer(window, WindowSetting.CloseAction.Quit, remember)));
 
-        private static void Answer(WindowSetting.CloseAction action, bool remember)
+        private static void Answer(RenderWindow window, WindowSetting.CloseAction action, bool remember)
         {
             if (remember)
             {
@@ -198,17 +207,18 @@ namespace ArctisAurora.EngineWork.Rendering
                 SettingsRegistry.Commit();
             }
 
-            if (action == WindowSetting.CloseAction.Tray) Hide();
+            if (action == WindowSetting.CloseAction.Tray) Hide(window);
             else Shutdown.Request();
         }
 
-        // Saves edited notes and the layout, then hides the main window.
-        public static void Hide()
+        // Saves edited notes and the layout, then hides the window, the main one by default.
+        public static void Hide(RenderWindow? window = null)
         {
+            window ??= Engine.primary;
             NoteActions.SaveEdited();
             SessionLayout.Capture();
-            Engine.primary.hidden = true;
-            Engine.primary.os.Hide();
+            window.hidden = true;
+            window.os.Hide();
         }
 
         public static void Show()
@@ -222,10 +232,22 @@ namespace ArctisAurora.EngineWork.Rendering
             Engine.primary.Focus();
         }
 
+        private static void Open()
+        {
+            if (open != null) open();
+            else Show();
+        }
+
         public static void HideWindow(RenderWindow window)
         {
             window.hidden = true;
             window.os.Hide();
+        }
+
+        public static void ShowWindow(RenderWindow window)
+        {
+            window.hidden = false;
+            window.os.Show();
         }
 
         // Runs the host with arguments at login, or no longer when arguments is null.
@@ -251,7 +273,7 @@ namespace ArctisAurora.EngineWork.Rendering
 
         private static void OpenMenu(int x, int y) =>
             ContextMenus.OpenAtScreen([
-                new ContextMenuButton($"Open {_name}", Show),
+                new ContextMenuButton($"Open {_name}", Open),
                 .. trayEntries,
                 new ContextMenuButton("Quit", Quit)
             ], x, y, Engine.primary);
@@ -262,14 +284,14 @@ namespace ArctisAurora.EngineWork.Rendering
             if (message == trayMessage)
             {
                 uint mouse = (uint)lParam & 0xFFFF;
-                if (mouse == WM_LBUTTONUP) Engine.Post(Show);
+                if (mouse == WM_LBUTTONUP) Engine.Post(Open);
                 else if (mouse == WM_RBUTTONUP && GetCursorPos(out CursorPoint at)) Engine.Post(() => OpenMenu(at.x, at.y));
                 return IntPtr.Zero;
             }
 
             if (message == showMessage)
             {
-                Engine.Post(Show);
+                Engine.Post(Open);
                 return IntPtr.Zero;
             }
 

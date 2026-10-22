@@ -27,7 +27,7 @@ namespace ArctisAurora.Core.UI
         [A_XSDActionDependency("Window.MinimizeToTray", "UI", "Hides the main window to the tray")]
         public static void MinimizeToTray()
         {
-            if (Background.canTray) Background.Hide();
+            if (Background.canTray) Background.Hide(Acting() ?? Engine.primary);
         }
 
         [A_XSDActionDependency("Window.MaximizeRestore", "UI","Maximizes the window, or restores it when it already is")]
@@ -79,6 +79,12 @@ namespace ArctisAurora.Core.UI
 
         internal static void Close(RenderWindow window)
         {
+            if (window.onClose != null)
+            {
+                window.onClose(window);
+                return;
+            }
+
             if (window == Engine.primary)
             {
                 Background.Close();

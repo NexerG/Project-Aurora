@@ -30,7 +30,7 @@ The system that remembers what was on screen when the application last closed, a
 
 It is a settings group and nothing more exotic. `SessionLayout` implements `ISettingsGroup`, so [[SETTINGS]] discovers it by type scan, fills it from `UserSettings.settings.axml` and writes it back, and the session needs no file, no parser and no writer of its own. What makes it work is that the record is one recursive type rather than a class hierarchy — a pane that holds panes is a split, a pane that holds tabs is a leaf — and the settings reader dispatches on element name, so the whole tree persists through machinery that already existed.
 
-The record is partitioned by an opaque *scope* key the host sets. The engine groups by it and never asks what it means; [[Thorium]] sets it to the vault path, so a layout belongs to the vault it was arranged in, and a host that wants one session for the whole application leaves it empty.
+The record is partitioned by an opaque *scope* key the host sets. The engine groups by it and never asks what it means; [[Thorium]] sets it to the single partition `workspace`, so one global layout holds every window and each window's record lists the vaults it shows (`SessionRoot`), and a host that wants one session for the whole application leaves it empty.
 
 A host can also name a second, *free* partition (`SessionLayout.freeScope`). A window tagged with that scope (`RenderWindow.sessionScope`) is recorded under it instead of the current scope, always, even while recording is paused. Changing scope leaves tagged windows open, and `RestoreFree` reopens and tags the windows recorded there at launch. [[Thorium]] uses it for stickies made from the tray, which keep their note outside any vault and so survive a vault switch.
 
@@ -47,8 +47,9 @@ The consequence worth knowing: the panes and tabs an application authors are its
 | Element | Holds | Means |
 | --- | --- | --- |
 | `Session` | `SessionScope` list | every partition that has been recorded |
-| `SessionScope` | `Key`, `SessionWindow` list | one host-defined partition — a vault, in Thorium |
-| `SessionWindow` | `Document`, `Primary`, `X`, `Y`, `Width`, `Height`, `Maximized`, `Pinned`, one `SessionPane` | one OS window, its restore rect, whether it is kept above other windows, and its arrangement; a sticky note restores as one because its `Document` is the sticky window |
+| `SessionScope` | `Key`, `SessionWindow` list | one host-defined partition — `workspace` in Thorium, plus the free stickies partition |
+| `SessionRoot` | `Path` | one folder a window's browser lists; a vault, in Thorium |
+| `SessionWindow` | `Document`, `Primary`, `SessionRoot` list (`roots`), `X`, `Y`, `Width`, `Height`, `Maximized`, `Pinned`, one `SessionPane` | one OS window, its restore rect, whether it is kept above other windows, and its arrangement; a sticky note restores as one because its `Document` is the sticky window |
 | `SessionPane` | `Orientation`, `Size`, `Active`, `SessionTab` list, `SessionPane` list | a split when it holds panes, a leaf when it holds tabs |
 | `SessionTab` | `Path`, `CaretBlock`, `CaretOffset`, `AnchorBlock`, `AnchorOffset`, `TopBlock`, `TopOffset`, `TopDelta`, `ScrollX`, `PropertiesOpen` | one note that was open, and where the reader was in it |
 
@@ -218,23 +219,7 @@ Change Scope (key)
     return false
 ```
 
-A single scope can also be closed and opened on its own, which is what several vaults open at once need. `Close` records the scope's windows and closes all but the ones the host asks to keep; the primary is recorded but never closed, because what to do with it is the host's decision. The records of the windows it closed are held in memory and written beside the kept windows on every capture, so a scope whose stickies outlive its editor keeps its editor layout, and `Open` after a `Close` reopens only what was closed. Every window is recorded under its own `sessionScope` partition, and a window with no `sessionScope` goes to `scope` as before. A window flagged `anchor` stays open when its last tab leaves, as the primary does, and the `Primary` flag in a record means the primary or an anchored window.
-
-```
-Close (key, kept)
-	record the scope's windows
-	for each window of the scope
-		if the window is the primary, skip it
-		if kept(window), skip it
-		hold its record in closedWindows
-		close it
-
-Open (key, into)
-	for each recorded window tagged with key
-		if the scope was closed, skip a window that Close did not close
-		if the record is the Primary and into is given, rebuild it in into
-		otherwise open a window for it, anchored if it is the Primary
-```
+Several vaults open at once no longer swap the session at all. Thorium keeps one global layout under `workspace`, and every window records the folders it shows in `RenderWindow.roots` (written by `RecordOf`, set again before `Fill` when a record is reopened or rebuilt). The per-scope `Open` and `Close` that an earlier stage added, and the `closedWindows` they kept, were removed; `scope` and `ChangeScope` stay for the other hosts. A window flagged `anchor` stays open when its last tab leaves, as the primary does, and the `Primary` flag in a record is back to meaning only the primary window. Which vault is open is the host's rule: a vault is open while some window lists it in `roots`.
 
 Restored windows are named from a running counter rather than their place in the record. A closed window lingers in the window list until its GPU side is torn down, and a new window under the same name would push it out of the list before it was ever destroyed.
 
