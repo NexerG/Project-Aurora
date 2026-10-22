@@ -411,6 +411,14 @@ namespace ArctisAurora.Core.UI
                 if (content.ToggleList(ListKind.Task, null)) MarkDirty();
         }
 
+        public void ToggleSortedTasks()
+        {
+            if (!Writable) return;
+
+            using (BeginStep("Sorted task list"))
+                if (content.ToggleList(ListKind.SortedTask, null)) MarkDirty();
+        }
+
         public void InsertRule()
         {
             if (!Writable) return;
@@ -431,7 +439,8 @@ namespace ArctisAurora.Core.UI
             if (index < 0 || !Writable) return;
 
             using (BeginStep("Check"))
-                content.SetBlockList(index, b => b.isChecked = value);
+                if (block.listKind == ListKind.SortedTask) content.SetCheckedSorted(index, value);
+                else content.SetBlockList(index, b => b.isChecked = value);
             MarkDirty();
         }
 

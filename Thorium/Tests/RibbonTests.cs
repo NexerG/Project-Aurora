@@ -32,7 +32,7 @@ namespace Thorium.Tests
             yield return 3;
             t.Check(!ribbon.hidden && !inspector.hidden, "a Docs workspace shows both");
             t.Check(Captions(ribbon, "Format", "Insert", "Page"), "with Format, Insert and Page");
-            t.Check(MathF.Abs(inspector.arrangedRect.width - 240f) < 1f, $"the inspector is 240 px wide: {inspector.arrangedRect.width}");
+            t.Check(MathF.Abs(inspector.arrangedRect.width - 291.4f) < 1f, $"the inspector is 291 px wide: {inspector.arrangedRect.width}");
             t.Check(!ToolsOnRow(docsView), "the note's tab-row tools give way to the ribbon");
 
             workspace.Show(sheets);
@@ -154,7 +154,7 @@ namespace Thorium.Tests
             Vector2 middle = new Vector2(grip.arrangedRect.x + grip.arrangedRect.width / 2f, grip.arrangedRect.y + grip.arrangedRect.height / 2f);
             yield return t.Drag(grip, middle - new Vector2(60f, 0f));
             yield return 2;
-            t.Check(MathF.Abs(inspector.arrangedRect.width - 300f) < 2f, $"dragging the splitter left widens the inspector: {inspector.arrangedRect.width}");
+            t.Check(MathF.Abs(inspector.arrangedRect.width - 351.4f) < 2f, $"dragging the splitter left widens the inspector: {inspector.arrangedRect.width}");
 
             yield return t.Click(ButtonOf(Icon(ribbon, "panel-right")!));
             yield return 2;

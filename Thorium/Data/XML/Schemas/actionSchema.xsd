@@ -171,6 +171,7 @@
           <xs:enumeration value="TextInput.RuleEditing" />
           <xs:enumeration value="TextInput.MarkdownBlocksRoundTrip" />
           <xs:enumeration value="TextInput.MarkdownFences" />
+          <xs:enumeration value="TextInput.SortedChecklist" />
           <xs:enumeration value="TextInput.CodeBlockTab" />
           <xs:enumeration value="TextInput.MarkdownFancyLists" />
           <xs:enumeration value="TextInput.ListStartNumbers" />

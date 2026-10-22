@@ -2873,7 +2873,7 @@ namespace ArctisAurora.Core.UI
 
                 int level = block.listLevel;
                 if (counters.Count > level + 1) counters.RemoveRange(level + 1, counters.Count - level - 1);
-                if (block.listKind == ListKind.Task)
+                if (block.listKind is ListKind.Task or ListKind.SortedTask)
                 {
                     if (counters.Count > level) counters.RemoveRange(level, counters.Count - level);
                     continue;
@@ -2950,6 +2950,104 @@ namespace ArctisAurora.Core.UI
             List<BlockSnapshot> before = SnapshotBlocks(index, index);
             document.ChangeBlocks(index, index, change);
             undo?.Push(new BlockStateEdit(document, index, before, SnapshotBlocks(index, index)));
+        }
+
+        // Ticks a sorted checklist item and moves it to the top of the ticked items, or untick to the
+        // bottom of the unticked ones; its sub-items move with it.
+        internal void SetCheckedSorted(int index, bool value)
+        {
+            List<BlockControl> blocks = Blocks();
+            if (index < 0 || index >= blocks.Count) return;
+
+            List<(int start, int count)> groups = SortedGroups(blocks, index);
+            int moved = groups.FindIndex(g => g.start == index);
+            List<int> order = new List<int>();
+            int at = value ? 0 : -1;
+            for (int g = 0; g < groups.Count; g++)
+            {
+                if (g == moved) continue;
+                bool ticked = blocks[groups[g].start].isChecked;
+                if (value && !ticked) at = order.Count + 1;
+                if (!value && ticked && at < 0) at = order.Count;
+                order.Add(g);
+            }
+            order.Insert(at < 0 ? order.Count : at, moved);
+
+            int first = groups[0].start;
+            ReorderGroups(groups, order, fresh => fresh[index - first].isChecked = value);
+        }
+
+        // Puts every sorted checklist starting in the range in order, unticked items above ticked ones.
+        internal void SortChecklists(int first, int last)
+        {
+            int deepest = 0;
+            List<BlockControl> blocks = Blocks();
+            for (int b = first; b <= last && b < blocks.Count; b++)
+                deepest = Math.Max(deepest, blocks[b].listLevel);
+
+            for (int level = deepest; level >= 0; level--)
+                for (int b = first; b <= last && b < blocks.Count; b++)
+                {
+                    if (blocks[b].listKind != ListKind.SortedTask || blocks[b].listLevel != level) continue;
+
+                    List<(int start, int count)> groups = SortedGroups(blocks, b);
+                    if (groups[0].start != b) continue;
+
+                    List<int> order = new List<int>();
+                    for (int g = 0; g < groups.Count; g++)
+                        if (!blocks[groups[g].start].isChecked) order.Add(g);
+                    for (int g = 0; g < groups.Count; g++)
+                        if (blocks[groups[g].start].isChecked) order.Add(g);
+                    ReorderGroups(groups, order, null);
+                }
+        }
+
+        // The sorted checklist a block sits in, as one group per item at its level, sub-items included.
+        private static List<(int start, int count)> SortedGroups(List<BlockControl> blocks, int index)
+        {
+            BlockControl item = blocks[index];
+            int level = item.listLevel;
+            bool InRun(BlockControl b) => b.parent == item.parent && b.listKind != ListKind.None
+                && (b.listLevel > level || b.listLevel == level && b.listKind == ListKind.SortedTask);
+
+            int first = index;
+            while (first > 0 && InRun(blocks[first - 1])) first--;
+            while (blocks[first].listLevel > level) first++;
+            int last = index;
+            while (last + 1 < blocks.Count && InRun(blocks[last + 1])) last++;
+
+            List<(int start, int count)> groups = new List<(int start, int count)>();
+            for (int b = first; b <= last; b++)
+                if (blocks[b].listLevel == level) groups.Add((b, 1));
+                else groups[^1] = (groups[^1].start, groups[^1].count + 1);
+            return groups;
+        }
+
+        // Rewrites a run's groups in a new order as one undoable record; the caret stays on its item.
+        private void ReorderGroups(List<(int start, int count)> groups, List<int> order, Action<List<BlockSnapshot>>? change)
+        {
+            int first = groups[0].start;
+            int last = groups[^1].start + groups[^1].count - 1;
+            List<BlockSnapshot> before = SnapshotBlocks(first, last);
+            List<BlockSnapshot> fresh = SnapshotBlocks(first, last);
+            change?.Invoke(fresh);
+
+            List<BlockSnapshot> after = new List<BlockSnapshot>();
+            List<int> source = new List<int>();
+            foreach (int g in order)
+                for (int b = groups[g].start; b < groups[g].start + groups[g].count; b++)
+                {
+                    after.Add(fresh[b - first]);
+                    source.Add(b);
+                }
+            if (change == null && source.SequenceEqual(Enumerable.Range(first, source.Count))) return;
+
+            int caretAt = caretBlock == null ? -1 : Blocks().IndexOf(caretBlock);
+            document.RestoreBlocks(first, after);
+            undo?.Push(new BlockStateEdit(document, first, before, after));
+
+            int caretTo = source.IndexOf(caretAt);
+            if (caretTo >= 0 && first + caretTo != caretAt) SetCaret(Blocks()[first + caretTo], caretOffset);
         }
         #endregion
 
@@ -3043,6 +3141,7 @@ namespace ArctisAurora.Core.UI
                 b.listMarker = already ? null : marker;
             });
             undo?.Push(new BlockStateEdit(document, first, before, SnapshotBlocks(first, last)));
+            if (!already && kind == ListKind.SortedTask) SortChecklists(first, last);
             return true;
         }
 

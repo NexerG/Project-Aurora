@@ -656,7 +656,7 @@ namespace ArctisAurora.Core.UI
             }
 
             if (counters.Count > level + 1) counters.RemoveRange(level + 1, counters.Count - level - 1);
-            if (list == "Task")
+            if (list == "Task" || list == "SortedTask")
             {
                 if (counters.Count > level) counters.RemoveRange(level, counters.Count - level);
                 return 0;
@@ -674,10 +674,10 @@ namespace ArctisAurora.Core.UI
             string content = WriteInline(runs);
             string? list = (string?)block.Attribute("List");
 
-            if (list == "Bullet" || list == "Task")
+            if (list == "Bullet" || list == "Task" || list == "SortedTask")
             {
                 string indent = new string('\t', (int?)block.Attribute("Level") ?? 0);
-                if (list == "Task")
+                if (list == "Task" || list == "SortedTask")
                     return indent + ((bool?)block.Attribute("Checked") == true ? "- [x] " : "- [ ] ") + content;
 
                 string? marker = (string?)block.Attribute("Marker");

@@ -293,7 +293,7 @@ namespace ArctisAurora.Core.UI
             bool numbered = block?.listKind == ListKind.Bullet && ListMarkers.IsNumbered(block.listMarker ?? ListMarker.Disc);
             Reflect(bulletsInk, block?.listKind == ListKind.Bullet && !numbered, ref shownBullets);
             Reflect(numbersInk, numbered, ref shownNumbers);
-            Reflect(tasksInk, block?.listKind == ListKind.Task, ref shownTasks);
+            Reflect(tasksInk, block?.listKind is ListKind.Task or ListKind.SortedTask, ref shownTasks);
 
             string? color = source.HasValue ? source.Value.colorHex : idleInkHex;
             PaletteRole ink = source.HasValue ? PaletteRole.Ink : PaletteRole.MutedInk;

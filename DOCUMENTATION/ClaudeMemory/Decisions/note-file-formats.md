@@ -24,7 +24,7 @@ Supersedes the "Note format: engine XML (not markdown, not JSON)" line in
   file name becomes `Name`, so a `.md`/`.txt` note never asks to be named.
 - Vault: `Accepts` asks `FileTypes`; new notes are `.md`; duplicate and rename keep the source
   extension (`FreePath(folder, name, extension)`); `WriteName` only touches `.axml`.
-- Lists: `BlockControl` gained `listKind` (`None`/`Bullet`/`Task`), `listLevel`, `isChecked`, carried
+- Lists: `BlockControl` gained `listKind` (`None`/`Bullet`/`Task`/`SortedTask`), `listLevel`, `isChecked`, carried
   by `SplitAt` (kind + level, unchecked), `SliceSnapshot`/`Restore`, and the `Block` attributes
   `List`/`Level`/`Checked`. `ApplyLayout` sets `padding.left = (level + 1) × DocumentLayout.listIndent`
   (24) and syncs a marker child: an Ink 6×6 dot, or a `CheckBoxControl` whose `onChanged` calls

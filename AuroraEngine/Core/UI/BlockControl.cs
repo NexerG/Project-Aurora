@@ -11,7 +11,8 @@ namespace ArctisAurora.Core.UI
     {
         None,
         Bullet,
-        Task
+        Task,
+        SortedTask
     }
 
     // What a list item shows in its indent: a shape, or its number written some way.
@@ -406,7 +407,7 @@ namespace ArctisAurora.Core.UI
             bool numbered = ListMarkers.IsNumbered(shownMarker);
             bool fits = listKind switch
             {
-                ListKind.Task => marker is CheckBoxControl,
+                ListKind.Task or ListKind.SortedTask => marker is CheckBoxControl,
                 ListKind.Bullet => numbered
                     ? marker is LabelControl
                     : marker is IconControl icon && icon.iconName == ListMarkers.ShapeIcon(shownMarker),
@@ -418,7 +419,7 @@ namespace ArctisAurora.Core.UI
                 marker?.Destroy();
                 marker = listKind switch
                 {
-                    ListKind.Task => new CheckBoxControl
+                    ListKind.Task or ListKind.SortedTask => new CheckBoxControl
                     {
                         role = PaletteRole.SubField,
                         onChanged = value => Editor()?.SetChecked(this, value)

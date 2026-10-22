@@ -965,6 +965,61 @@ namespace Thorium.Tests
             yield return 0;
         }
 
+        [A_XSDActionDependency("TextInput.SortedChecklist", "Test")]
+        private static IEnumerator<int> SortedChecklist(TestContext t)
+        {
+            static XElement Task(string kind, string text, bool ticked, int level = 0)
+            {
+                XElement item = Block(text);
+                item.SetAttributeValue("List", kind);
+                if (level > 0) item.SetAttributeValue("Level", level);
+                if (ticked) item.SetAttributeValue("Checked", "true");
+                return item;
+            }
+
+            DocumentEditorControl editor = ShowFixture(t, DocumentXml.Parse(new XElement("Document",
+                Task("SortedTask", "a", false), Task("SortedTask", "b", false), Task("SortedTask", "c", false, 1),
+                Task("SortedTask", "d", true), Block("after"))));
+            DocumentControl content = Content(editor);
+            List<BlockControl> p = Paragraphs(editor);
+            string Order() => string.Join(",", p.Select(b => b.text + (b.isChecked ? "+" : "")));
+            yield return 2;
+
+            content.SetCaret(p[0], 1);
+            editor.SetChecked(p[0], true);
+            t.Check(Order() == "b,c,a+,d+,after", $"ticking moves the item to the top of the ticked ones: {Order()}");
+            t.Check(content.caretBlock == p[2] && content.caretOffset == 1, "the caret moves with its item");
+
+            editor.SetChecked(p[3], false);
+            t.Check(Order() == "b,c,d,a+,after", $"unticking moves it to the bottom of the unticked ones, past sub-items: {Order()}");
+
+            editor.Undo();
+            t.Check(Order() == "b,c,a+,d+,after", $"undo puts the untick and the move back in one step: {Order()}");
+            editor.Undo();
+            t.Check(Order() == "a,b,c,d+,after", $"and again: {Order()}");
+            editor.Redo();
+            t.Check(Order() == "b,c,a+,d+,after", $"redo moves it again: {Order()}");
+
+            XElement xml = DocumentXml.ToXml(editor.session.document);
+            t.Check(xml.Descendants().Count(b => b.Name.LocalName == "Block" && (string?)b.Attribute("List") == "SortedTask") == 4, "the note saves the list as SortedTask");
+            string md = MarkdownFormat.Write(xml);
+            t.Check(md.Contains("- [ ] b\n\t- [ ] c\n- [x] a\n- [x] d\n"), $"Markdown writes it as a plain task list: {md.Replace('\n', '|')}");
+
+            editor = ShowFixture(t, DocumentXml.Parse(new XElement("Document",
+                Task("Task", "x", true), Task("Task", "y", false), Task("Task", "z", true))));
+            content = Content(editor);
+            p = Paragraphs(editor);
+            yield return 2;
+
+            content.SetCaret(p[0], 0);
+            content.SetCaret(p[2], 1, true);
+            editor.ToggleSortedTasks();
+            t.Check(Order() == "y,x+,z+" && p.All(b => b.listKind == ListKind.SortedTask), $"converting sorts unticked above ticked: {Order()}");
+            editor.Undo();
+            t.Check(Order() == "x+,y,z+" && p.All(b => b.listKind == ListKind.Task), $"one undo takes the conversion and the sort back: {Order()}");
+            t.Show(new StackPanelControl());
+        }
+
         [A_XSDActionDependency("TextInput.CodeBlockTab", "Test")]
         private static IEnumerator<int> CodeBlockTab(TestContext t)
         {

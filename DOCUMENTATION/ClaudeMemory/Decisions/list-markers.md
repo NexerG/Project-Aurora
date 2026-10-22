@@ -9,7 +9,7 @@
 `TextInputActions` (`List.*`), `DocumentXml`, `MarkdownFormat`; `Thorium/…/Menus/Note.menu.axml`
 
 ## What changed
-- `ListKind` stays `None | Bullet | Task`. **`Bullet` means "a list item with a marker"**; the marker is
+- `ListKind` is `None | Bullet | Task | SortedTask` (the last added later, see [[sorted-checklist]]). **`Bullet` means "a list item with a marker"**; the marker is
   `ListMarker`: `Disc Circle Triangle TriangleOutline Square SquareOutline Decimal UpperAlpha LowerAlpha LowerRoman UpperRoman`
 - A block's `listMarker` is its own choice, null = the layout's `MarkerFor(level)`. `DocumentLayout.listLevels` is a
   `<ListLevel Marker>` per level, cycling past the last, inherited from `DocumentSettings` (default: one `Disc`)

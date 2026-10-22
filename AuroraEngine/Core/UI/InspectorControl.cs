@@ -21,12 +21,12 @@ namespace ArctisAurora.Core.UI
         // Paragraph parts
         private readonly LabelControl styleCaption;
         private readonly IconControl alignLeft, alignCenter, alignRight, alignJustify;
-        private readonly LabelControl listNone, listBullets, listNumbers, listTasks;
+        private readonly LabelControl listNone, listBullets, listNumbers, listTasks, listSortedTasks;
         private TextStyleType? shownStyle;
         private bool? shownLeft, shownCenter, shownRight, shownJustify;
         private ListShape? shownList;
 
-        private enum ListShape { None, Bullets, Numbers, Tasks }
+        private enum ListShape { None, Bullets, Numbers, Tasks, SortedTasks }
 
         // Page parts
         private readonly LabelControl paged, pageless, sizeCaption, portrait, landscape;
@@ -81,6 +81,7 @@ namespace ArctisAurora.Core.UI
             TabToolsControl moreShapes = Tools();
             listNumbers = moreShapes.Text("Numbers", _ => Note(editor => SetList(editor, ListShape.Numbers)));
             listTasks = moreShapes.Text("Tasks", _ => Note(editor => SetList(editor, ListShape.Tasks)));
+            listSortedTasks = moreShapes.Text("Sorted tasks", _ => Note(editor => SetList(editor, ListShape.SortedTasks)));
             StackPanelControl list = new StackPanelControl { alpha = 0f, Spacing = 2f };
             list.AddChild(shapes);
             list.AddChild(moreShapes);
@@ -281,6 +282,7 @@ namespace ArctisAurora.Core.UI
                 RibbonControl.LightCaption(listBullets, list == ListShape.Bullets);
                 RibbonControl.LightCaption(listNumbers, list == ListShape.Numbers);
                 RibbonControl.LightCaption(listTasks, list == ListShape.Tasks);
+                RibbonControl.LightCaption(listSortedTasks, list == ListShape.SortedTasks);
             }
 
             PageLayout? page = editor?.Page;
@@ -308,6 +310,7 @@ namespace ArctisAurora.Core.UI
             return block?.listKind switch
             {
                 ListKind.Task => ListShape.Tasks,
+                ListKind.SortedTask => ListShape.SortedTasks,
                 ListKind.Bullet => ListMarkers.IsNumbered(block.listMarker ?? ListMarker.Disc) ? ListShape.Numbers : ListShape.Bullets,
                 _ => ListShape.None
             };
@@ -323,8 +326,10 @@ namespace ArctisAurora.Core.UI
             else if (wanted == ListShape.Bullets) editor.ToggleBullets();
             else if (wanted == ListShape.Numbers) editor.ToggleNumbers();
             else if (wanted == ListShape.Tasks) editor.ToggleTasks();
+            else if (wanted == ListShape.SortedTasks) editor.ToggleSortedTasks();
             else if (current == ListShape.Numbers) editor.ToggleNumbers();
             else if (current == ListShape.Bullets) editor.ToggleBullets();
+            else if (current == ListShape.SortedTasks) editor.ToggleSortedTasks();
             else editor.ToggleTasks();
         }
 
