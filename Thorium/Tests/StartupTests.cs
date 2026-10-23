@@ -4,6 +4,7 @@ using ArctisAurora.Core.Testing;
 using ArctisAurora.Core.UI;
 using ArctisAurora.EngineWork;
 using ArctisAurora.EngineWork.Rendering;
+using System.Numerics;
 
 namespace Thorium.Tests
 {
@@ -100,18 +101,64 @@ namespace Thorium.Tests
         private static IEnumerator<int> ToggleSwitch(TestContext t)
         {
             bool? picked = null;
-            ToggleSwitchControl toggle = new ToggleSwitchControl { leftText = "Last vault", rightText = "Vault browser" };
-            toggle.onChanged = right => picked = right;
+            ToggleSwitchControl toggle = new ToggleSwitchControl { onText = "Yes", offText = "Script" };
+            toggle.onChanged = on => picked = on;
             StackPanelControl host = new StackPanelControl { padding = new Thickness(12f) };
             host.AddChild(toggle);
             t.Show(host);
             yield return 2;
-            yield return t.Golden("Left", toggle);
+            LabelControl[] captions = toggle.children.OfType<LabelControl>().ToArray();
+            t.Check(captions.Count(c => !c.hidden) == 1 && captions.Single(c => !c.hidden).text == "Script", "off shows only the off caption");
+            yield return t.Golden("Off", toggle);
 
             yield return t.Click(toggle);
             yield return 20;
-            t.Check(toggle.right && picked == true, "a click picks the right option and reports it");
-            yield return t.Golden("Right", toggle);
+            t.Check(toggle.on && picked == true, "a click turns the switch on and reports it");
+            t.Check(((Control)toggle.children[0].children[0]).alpha > 0.99f, "the accent layer has faded in");            t.Check(captions.Count(c => !c.hidden) == 1 && captions.Single(c => !c.hidden).text == "Yes", "on shows only the on caption");
+            yield return t.Golden("On", toggle);
+
+            t.Show(new StackPanelControl());
+        }
+
+        [A_XSDActionDependency("Startup.Switch", "Test")]
+        private static IEnumerator<int> Switch(TestContext t)
+        {
+            int? picked = null;
+            SwitchControl choice = new SwitchControl { optionList = "Axml, Markdown, Plain text" };
+            choice.onChanged = index => picked = index;
+            StackPanelControl host = new StackPanelControl { padding = new Thickness(12f) };
+            host.AddChild(choice);
+            t.Show(host);
+            yield return 2;
+            t.Check(choice.options.Count == 3 && choice.selected == 0, "Options splits into three captions, the first chosen");
+            yield return t.Golden("First", choice);
+
+            LayoutRect last = choice.children.OfType<LabelControl>().Last().arrangedRect;
+            yield return t.Click(choice, new Vector2(last.x + last.width * 0.5f, last.y + last.height * 0.5f));
+            yield return 20;
+            t.Check(choice.selected == 2 && picked == 2, "a click on the last caption picks it and reports its index");
+            yield return t.Golden("Last", choice);
+
+            picked = null;
+            yield return t.Click(choice, new Vector2(last.x + last.width * 0.5f, last.y + last.height * 0.5f));
+            yield return 2;
+            t.Check(picked == null, "clicking the chosen option reports nothing");
+
+            SwitchControl rows = new SwitchControl { optionList = "None, Bullets, Numbers, Tasks, Sorted", columns = 3 };
+            rows.onChanged = index => picked = index;
+            StackPanelControl rowsHost = new StackPanelControl { padding = new Thickness(12f) };
+            rowsHost.AddChild(rows);
+            t.Show(rowsHost);
+            yield return 2;
+            PanelControl[] tracks = rows.children.OfType<PanelControl>().Take(2).ToArray();
+            t.Check(tracks.Length == 2 && tracks[1].arrangedRect.y > tracks[0].arrangedRect.y
+                && tracks[0].arrangedRect.width == tracks[1].arrangedRect.width, "Columns 3 lays five options out as two pills of one width");
+
+            LayoutRect sorted = rows.children.OfType<LabelControl>().Last().arrangedRect;
+            yield return t.Click(rows, new Vector2(sorted.x + sorted.width * 0.5f, sorted.y + sorted.height * 0.5f));
+            yield return 20;
+            t.Check(rows.selected == 4 && picked == 4, "a click on the second row picks its option");
+            yield return t.Golden("Rows", rows);
 
             t.Show(new StackPanelControl());
         }

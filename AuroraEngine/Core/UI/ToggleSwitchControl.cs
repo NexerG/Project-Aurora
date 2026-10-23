@@ -5,24 +5,25 @@ using System.Numerics;
 
 namespace ArctisAurora.Core.UI
 {
-    // Two options with a knob that slides to the chosen one.
+    // On or off: a pill with a sliding knob and the current state's caption opposite it.
     [A_XSDType("ToggleSwitch", "UI")]
     public class ToggleSwitchControl : ButtonControl
     {
         // geometry
         private const int captionSize = 13;
-        private const float trackWidth = 40f;
-        private const float trackHeight = 20f;
+        private const float trackHeight = 24f;
         private const float knobInset = 3f;
-        private const float gap = 8f;
+        private const float captionPadding = 10f;
         private const float slideSeconds = 0.18f;
-
-        private readonly LabelControl leftLabel = new LabelControl { fontSize = captionSize, hitTestable = false };
-        private readonly LabelControl rightLabel = new LabelControl { fontSize = captionSize, hitTestable = false };
 
         private readonly PanelControl track = new PanelControl
         {
-            gradient = "toggle-track",
+            cornerRadius = new CornerRadii(trackHeight * 0.5f),
+            hitTestable = false
+        };
+
+        private readonly PanelControl lit = new PanelControl
+        {
             cornerRadius = new CornerRadii(trackHeight * 0.5f),
             hitTestable = false
         };
@@ -33,45 +34,54 @@ namespace ArctisAurora.Core.UI
             hitTestable = false
         };
 
+        private readonly LabelControl onLabel = new LabelControl { fontSize = captionSize, hitTestable = false };
+        private readonly LabelControl offLabel = new LabelControl { fontSize = captionSize, hitTestable = false };
+
         public Action<bool>? onChanged;
 
-        [A_XSDElementProperty("LeftText", "UI", "Caption of the option on the left.")]
-        public string leftText
+        [A_XSDElementProperty("OnText", "UI", "Caption shown while the switch is on.")]
+        public string onText
         {
-            get => leftLabel.text;
-            set => leftLabel.text = value;
+            get => onLabel.text;
+            set => onLabel.text = value;
         }
 
-        [A_XSDElementProperty("RightText", "UI", "Caption of the option on the right.")]
-        public string rightText
+        [A_XSDElementProperty("OffText", "UI", "Caption shown while the switch is off.")]
+        public string offText
         {
-            get => rightLabel.text;
-            set => rightLabel.text = value;
+            get => offLabel.text;
+            set => offLabel.text = value;
         }
 
-        [A_XSDElementProperty("Right", "UI", "Whether the right option is the chosen one.")]
-        public bool right
+        [A_XSDElementProperty("On", "UI", "Whether the switch is on.")]
+        public bool on
         {
-            get => _right;
+            get => _on;
             set
             {
-                _right = value;
+                _on = value;
                 knob.horizontalPosition = value ? 1f : 0f;
+                lit.alpha = value ? 1f : 0f;
                 Light();
             }
         }
-        private bool _right;
+        private bool _on;
 
         public ToggleSwitchControl()
         {
             alpha = 0f;
             track.PaintOr(null, PaletteRole.Chrome);
+            lit.PaintOr(null, PaletteRole.Accent);
+            lit.alpha = 0f;
+            track.AddChild(lit);
             knob.PaintOr("#FFFFFF", PaletteRole.Ink);
+            onLabel.PaintOr("#FFFFFF", PaletteRole.Ink);
+            offLabel.PaintOr(null, PaletteRole.MutedInk);
             knob.horizontalPosition = 0f;
-            AddChild(leftLabel);
             AddChild(track);
+            AddChild(onLabel);
+            AddChild(offLabel);
             AddChild(knob);
-            AddChild(rightLabel);
             Light();
         }
 
@@ -85,12 +95,11 @@ namespace ArctisAurora.Core.UI
 
         protected override Vector2 MeasureCore(Vector2 availableSize)
         {
-            Vector2 l = leftLabel.Measure(availableSize);
-            Vector2 r = rightLabel.Measure(availableSize);
-            track.Measure(availableSize);
+            float caption = MathF.Max(onLabel.Measure(availableSize).X, offLabel.Measure(availableSize).X);
+            track.Measure(new Vector2(TrackWidth(caption), trackHeight));
 
-            float w = preferredWidth > 0 ? preferredWidth : l.X + gap + trackWidth + gap + r.X + padding.totalHorizontal;
-            float h = preferredHeight > 0 ? preferredHeight : MathF.Max(trackHeight, MathF.Max(l.Y, r.Y)) + padding.totalVertical;
+            float w = preferredWidth > 0 ? preferredWidth : TrackWidth(caption) + padding.totalHorizontal;
+            float h = preferredHeight > 0 ? preferredHeight : trackHeight + padding.totalVertical;
 
             arrange.desired = new Vector2(w, h);
             SetFlag(ArrangeFlags.MeasureDirty, false);
@@ -103,20 +112,20 @@ namespace ArctisAurora.Core.UI
             LayoutRect inner = finalRect.Shrink(padding);
             float middle = inner.y + inner.height * 0.5f;
 
-            Vector2 l = leftLabel.DesiredSize;
-            leftLabel.Arrange(new LayoutRect(inner.x, middle - l.Y * 0.5f, l.X, l.Y));
-
-            float trackX = inner.x + l.X + gap;
-            track.Arrange(new LayoutRect(trackX, middle - trackHeight * 0.5f, trackWidth, trackHeight));
+            float caption = MathF.Max(onLabel.DesiredSize.X, offLabel.DesiredSize.X);
+            float trackWidth = TrackWidth(caption);
+            track.Arrange(new LayoutRect(inner.x, middle - trackHeight * 0.5f, trackWidth, trackHeight));
 
             float knobSize = trackHeight - 2f * knobInset;
             float travel = trackWidth - 2f * knobInset - knobSize;
             knob.Measure(new Vector2(knobSize, knobSize));
-            knob.Arrange(new LayoutRect(trackX + knobInset + travel * knob.horizontalPosition,
+            knob.Arrange(new LayoutRect(inner.x + knobInset + travel * knob.horizontalPosition,
                 middle - knobSize * 0.5f, knobSize, knobSize));
 
-            Vector2 r = rightLabel.DesiredSize;
-            rightLabel.Arrange(new LayoutRect(trackX + trackWidth + gap, middle - r.Y * 0.5f, r.X, r.Y));
+            LabelControl shown = _on ? onLabel : offLabel;
+            Vector2 c = shown.DesiredSize;
+            float side = _on ? inner.x : inner.x + knobInset + knobSize;
+            shown.Arrange(new LayoutRect(side + captionPadding + (caption - c.X) * 0.5f, middle - c.Y * 0.5f, c.X, c.Y));
             SetFlag(ArrangeFlags.ArrangeDirty, false);
         }
 
@@ -125,18 +134,22 @@ namespace ArctisAurora.Core.UI
             base.OnPointerRelease(e);
             if (e.button != PointerEvent.leftButton || !enabled) return true;
 
-            _right = !_right;
-            Animations.Tween(knob, "horizontalPosition", new Vector4(_right ? 1f : 0f, 0f, 0f, 0f), slideSeconds, Curve.Ease(EaseKind.CubicInOut));
+            _on = !_on;
+            Animations.Tween(knob, "horizontalPosition", new Vector4(_on ? 1f : 0f, 0f, 0f, 0f), slideSeconds, Curve.Ease(EaseKind.CubicInOut));
+            Animations.Tween(lit, "alpha", new Vector4(_on ? 1f : 0f, 0f, 0f, 0f), slideSeconds, Curve.Ease(EaseKind.CubicInOut));
             Light();
-            onChanged?.Invoke(right);
+            onChanged?.Invoke(_on);
             return true;
         }
 
-        // The chosen side's caption in Ink, the other muted.
+        private float TrackWidth(float caption) => knobInset + (trackHeight - 2f * knobInset) + 2f * captionPadding + caption;
+
+        // Only the current state's caption shown.
         private void Light()
         {
-            leftLabel.role = right ? PaletteRole.MutedInk : PaletteRole.Ink;
-            rightLabel.role = right ? PaletteRole.Ink : PaletteRole.MutedInk;
+            if (_on) { offLabel.Hide(); onLabel.Show(); }
+            else { onLabel.Hide(); offLabel.Show(); }
+            InvalidateArrange();
         }
     }
 }

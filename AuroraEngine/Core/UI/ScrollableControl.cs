@@ -23,6 +23,9 @@ namespace ArctisAurora.Core.UI
         [A_XSDElementProperty("Overscroll", "UI", "Extra scroll past the end, as a fraction of viewport height.")]
         public float overscroll = 0f;
 
+        // asks for its content's height instead of the offer, so it never scrolls vertically itself
+        public bool fitContent;
+
         // thumb palette
         [A_XSDElementProperty("ThumbColorHex", "UI", "Ground of a scroll thumb at rest.")]
         public string? thumbColorHex
@@ -133,6 +136,7 @@ namespace ArctisAurora.Core.UI
             }
             else contentSize = Vector2.Zero;
 
+            if (fitContent) h = contentSize.Y + a.padding.totalVertical;
             arrange.desired = new Vector2(w, h);
             SetFlag(ArrangeFlags.MeasureDirty, false);
             return arrange.desired;

@@ -239,20 +239,19 @@ namespace ArctisAurora.Core.UI
                 Type domain = A_XSDDomainAttribute.DomainOf(member) ?? memberType;
 
                 string[] names = Enum.GetNames(domain);
-                if (names.Length == 2)
+                if (names.Length >= 2 && names.Length <= 4)
                 {
-                    ToggleSwitchControl toggle = new ToggleSwitchControl
+                    SwitchControl choice = new SwitchControl
                     {
-                        leftText = Words(names[0]),
-                        rightText = Words(names[1]),
-                        right = current?.ToString() == names[1]
+                        options = names.Select(Words).ToArray(),
+                        selected = Array.IndexOf(names, current?.ToString())
                     };
-                    toggle.onChanged = right =>
+                    choice.onChanged = index =>
                     {
-                        XmlReflection.SetMember(member, setting, Enum.Parse(memberType, names[right ? 1 : 0]));
+                        XmlReflection.SetMember(member, setting, Enum.Parse(memberType, names[index]));
                         RefreshApply();
                     };
-                    return toggle;
+                    return choice;
                 }
 
                 DropdownControl dropdown = new DropdownControl

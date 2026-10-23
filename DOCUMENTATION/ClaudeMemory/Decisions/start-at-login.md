@@ -12,7 +12,7 @@
   - locked vault: shows the hidden primary (unlock prompt).
   - no tray: hides nothing.
   - else: hides vault windows (primary + windows with no `sessionScope`) when `tray || inTray`; hides free stickies when Stickies is off; on `--login` with Opens=VaultBrowser and the vault shown, posts `VaultsWindow.Open(Engine.primary)`.
-- `Startup.NewSticky()` writes `Sticky yyyy-MM-dd HHmmss.md` (empty note) to `StickiesFolder` (`%APPDATA%\Arktis\Thorium\Stickies`), opens it with `TabViewControl.OpenSticky` centred on the primary monitor (`Engine.CenterOnPrimary`), scope `freeScope = "stickies"`.
+- `Startup.NewSticky()` writes `Sticky yyyy-MM-dd HHmmss` + `ThoriumSettings.newNotes.Extension` (empty note; `.md` before 2026-10-23) to `StickiesFolder` (`%APPDATA%\Arktis\Thorium\Stickies`), opens it with `TabViewControl.OpenSticky` centred on the primary monitor (`Engine.CenterOnPrimary`), scope `freeScope = "stickies"`.
 - `Thorium.Main`: `Startup.Read(args)` when not standalone; `SessionLayout.freeScope = Startup.freeScope`; after Restore (or the locked-vault path) always `SessionLayout.RestoreFree()` then `Startup.Place(locked)`.
 - `Background`: `startHidden` (`Func<bool>?`, set by the host before Init, evaluated after settings load), `startsHidden` = `startHidden() && canTray && !TestRunner.active`, `trayEntries` (between "Open <host>" and "Quit"), `HideWindow(RenderWindow)`, `SetLoginCommand(string?)`.
 - `SetLoginCommand` writes/deletes value `<host name>` = `"<Environment.ProcessPath>" <arguments>` under `HKCU\Software\Microsoft\Windows\CurrentVersion\Run` via `Microsoft.Win32.Registry` (no NuGet); Windows only, no-op elsewhere.
@@ -22,8 +22,8 @@
 - `SessionLayout`: `freeScope` (empty = none); `RestoreFree()` reopens windows recorded under `freeScope` and tags them; `Record` (via `Capture`) writes windows whose `sessionScope == freeScope` to the free partition (always, also while `paused`) and the rest to `scope` (skipped while paused); `ClearWorkspaces` (from `ChangeScope` and `Reset`) keeps any non-primary window with a `sessionScope`; private `OpenRecorded` returns the window.
 - `TabViewControl.OpenSticky(item, document, x, y, sessionScope)`; `PinToSticky(item, null)` calls it and passes the source window's `sessionScope`. Sticky size now scales from `Engine.primary`.
 - RETRACTED 2026-10-22 (stage B: stickies are global): `TabActions.StickyEntries` lists only stickies whose `sessionScope` equals the tab's window's. It no longer filters by scope.
-- `ToggleSwitchControl` (`<ToggleSwitch LeftText RightText Right>`) and `SettingsWindow.Editor`: an enum with exactly two names gets a toggle instead of a `DropdownControl`; helper `Words(string)` splits PascalCase. No existing settings enum has two values, so no other row changed.
-- Data: gradient `toggle-track` in `Engine.gradients.axml`; suite `Startup.tests.axml` / `StartupTests`.
+- RETRACTED 2026-10-23 ([[switch-controls]]): `ToggleSwitchControl` was rebuilt as an on/off pill (`OnText`, `OffText`, `On`) and `SettingsWindow.Editor` gives enums of 2-4 names a `SwitchControl`, so the Opens row is a switch, not this toggle. Original follows. `ToggleSwitchControl` (`<ToggleSwitch LeftText RightText Right>`) and `SettingsWindow.Editor`: an enum with exactly two names gets a toggle instead of a `DropdownControl`; helper `Words(string)` splits PascalCase. No existing settings enum has two values, so no other row changed.
+- RETRACTED 2026-10-23: gradient `toggle-track` is removed from `Engine.gradients.axml`; goldens `Startup.ToggleSwitch.Left`/`Right` are deleted. Data: gradient `toggle-track` in `Engine.gradients.axml`; suite `Startup.tests.axml` / `StartupTests`.
 
 ## Why these choices
 
@@ -53,7 +53,7 @@ Free stickies the setting hides are still opened (hidden), so a quit does not wi
 **`Background.startHidden` is a `Func`, not a bool.**
 InTray is only readable after settings load inside bootstrap, which is after `Main` has called `engine.Init`.
 
-**Toggle colours follow the palette (Accent gradient).**
+**RETRACTED 2026-10-23 ([[switch-controls]]): neither control uses a gradient any more; colours are palette roles, see that note. Original reasoning follows.** **Toggle colours follow the palette (Accent gradient).**
 User choice over the fixed colours from the reference image. Track paints role Chrome with gradient `toggle-track` (Angle 30, Accent alpha 0.7 -> Accent); knob fixed #FFFFFF; chosen caption `Ink`, other `MutedInk`; knob slides by `Animations.Tween(knob, "horizontalPosition", ...)` 0.18 s CubicInOut.
 
 ## Known gaps

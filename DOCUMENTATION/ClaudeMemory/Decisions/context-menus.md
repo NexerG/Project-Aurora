@@ -8,6 +8,7 @@
 2026-09-12 (landing 6b3): `MenuButtonControl`, `DropdownControl`, `TabViewControl.tabContextMenu`,
 `Core.UI.TabActions`, `ViewActions`, `UIActions.Invoking`
 2026-10-07 (planner P2): `ContextMenus.OpenFrom`, `RegisterSource`, `ContextMenuSubmenu.source`, `DropdownControl`
+2026-10-23: `ContextMenus.RegisterCondition`, `ContextMenuEntry.when`, `DocumentEditorControl` (static ctor)
 
 Designed fresh from the user's spec (2026-09-11) — the old stack's `ContextMenus` was deliberately not read or
 ported. It stays for the old stack until 6d deletes it.
@@ -154,6 +155,21 @@ Submenu panels always have an opener row, so no new field on `ContextMenuControl
 Rejected: a registered list the planner keeps updated — stale when two open planners have different categories. Rejected: the chart building its whole right-click menu in code — loses the XML menu.
 
 **NOT GUI-verified:** the Settings window and note-properties dropdowns after the `OpenFrom` switch (they should be unchanged). Test-verified: engine Input suite `Input.DropdownInsidePopup`, `Input.SourceSubmenu` (`bash _Build/test.sh Input` → 6 passed).
+
+## Entries shown only while a condition holds — 2026-10-23
+
+- `ContextMenuEntry.when` — `[A_XSDElementProperty("When", "UI", …)]` on the abstract base, so any entry takes `When="name"`; `UITypeSchema.xsd` regenerated.
+- `ContextMenus.RegisterCondition(string name, Func<Control, bool> shown)` + private `_conditions` and `Shown(entry, on)`. `Collect` filters each menu's entries against the control the menu opens on (a menu left empty adds no group line); `EntriesOf` filters a submenu's authored entries against `target`. Unknown condition → one `Log.Once().Warn` per call site, entry shows.
+- `DocumentEditorControl`'s static ctor registers four, each on the caret of the nearest editor at or above the control: `table-cell` (caret block's parent is a cell of a `TableControl`), `outside-table` (caret block is a direct child of the `DocumentControl` — where `InsertTable` works), `picture-selected` (`SelectedPicture`), `formula-selected` (`SelectedMath`).
+- Thorium `Note.menu.axml`: Edit formula `formula-selected`, Insert table `outside-table`, Table submenu `table-cell`, Wrap text and Collision `picture-selected`.
+- A right-click press already moves the caret (`TextRunControl.OnPointerPress` passes every button; `PicturePressed` selects a picture or formula on any button), so the caret is where the click landed when the menu collects.
+
+**Hide, not grey out (user: a note with no table should not offer cell commands).**
+Different from the skipped `EnabledWhen`: those rows were harmless no-ops; these are whole groups that do not apply to what was clicked. Rejected: a `Source` builder for the Table submenu — the "Table" row would still show.
+
+**Separators are not collapsed.** No combination of the note menu's conditions leaves two lines together or a line at an end; a menu where one could needs collapsing added to `Collect`.
+
+**NOT GUI-verified:** a real right-click in Thorium. Test-verified: `TextInput.NoteMenuFollowsCaret` (`bash _Build/test.sh TextInput` → 99 passed; the one failure is the baseline Boot sampler error).
 
 ## Known gaps
 - No flipping or clamping to the monitor — a windowed menu near a screen edge goes off-screen.

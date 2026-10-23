@@ -132,6 +132,7 @@
           <xs:enumeration value="Startup.TrayHidesVault" />
           <xs:enumeration value="Startup.LoginWithoutStickies" />
           <xs:enumeration value="Startup.ToggleSwitch" />
+          <xs:enumeration value="Startup.Switch" />
           <xs:enumeration value="Sticky.PinPinRestore" />
           <xs:enumeration value="TabTools.Mount" />
           <xs:enumeration value="TabTools.Bullets" />
@@ -216,6 +217,7 @@
           <xs:enumeration value="TextInput.TableRowsAndColumns" />
           <xs:enumeration value="TextInput.TableTabAddsRow" />
           <xs:enumeration value="TextInput.TableListInCell" />
+          <xs:enumeration value="TextInput.NoteMenuFollowsCaret" />
           <xs:enumeration value="TextInput.TableResizeColumn" />
           <xs:enumeration value="TextInput.CodeColoursAndOverflow" />
           <xs:enumeration value="TextInput.TableColumnSpan" />

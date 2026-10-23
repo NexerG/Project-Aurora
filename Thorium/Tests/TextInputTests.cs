@@ -1017,6 +1017,33 @@ namespace Thorium.Tests
             t.Check(Order() == "y,x+,z+" && p.All(b => b.listKind == ListKind.SortedTask), $"converting sorts unticked above ticked: {Order()}");
             editor.Undo();
             t.Check(Order() == "x+,y,z+" && p.All(b => b.listKind == ListKind.Task), $"one undo takes the conversion and the sort back: {Order()}");
+
+            SortedTasksSetting sorted = SettingsRegistry.Get<UISettings>().sortedTasks;
+            SortedTasksSetting.CheckedEnd endBefore = sorted.checkedEnd;
+            sorted.checkedEnd = SortedTasksSetting.CheckedEnd.Top;
+
+            editor = ShowFixture(t, DocumentXml.Parse(new XElement("Document",
+                Task("SortedTask", "a", true), Task("SortedTask", "b", false), Task("SortedTask", "c", false, 1),
+                Task("SortedTask", "d", false))));
+            p = Paragraphs(editor);
+            yield return 2;
+
+            editor.SetChecked(p[3], true);
+            t.Check(Order() == "a+,d+,b,c", $"with ticked on top, ticking moves the item to the bottom of the ticked ones: {Order()}");
+            editor.SetChecked(p[0], false);
+            t.Check(Order() == "d+,a,b,c", $"and unticking moves it to the top of the unticked ones: {Order()}");
+
+            editor = ShowFixture(t, DocumentXml.Parse(new XElement("Document",
+                Task("Task", "x", true), Task("Task", "y", false), Task("Task", "z", true))));
+            content = Content(editor);
+            p = Paragraphs(editor);
+            yield return 2;
+
+            content.SetCaret(p[0], 0);
+            content.SetCaret(p[2], 1, true);
+            editor.ToggleSortedTasks();
+            t.Check(Order() == "x+,z+,y", $"with ticked on top, converting sorts ticked above unticked: {Order()}");
+            sorted.checkedEnd = endBefore;
             t.Show(new StackPanelControl());
         }
 
@@ -2190,6 +2217,48 @@ namespace Thorium.Tests
             yield return t.Click(box);
             t.Check(second.isChecked, "the checkbox in a cell ticks its item");
             t.Show(new StackPanelControl());
+        }
+
+        [A_XSDActionDependency("TextInput.NoteMenuFollowsCaret", "Test")]
+        private static IEnumerator<int> NoteMenuFollowsCaret(TestContext t)
+        {
+            string dir = PictureFolder();
+            string png = PicturePng(Path.Combine(dir, "small.png"), 50, 40);
+            XElement table = new XElement("Table", new XElement("Column", new XAttribute("Width", 120f)),
+                new XElement("Row", new XElement("Cell", Block("cell"))));
+            DocumentEditorControl editor = ShowFixture(t, DocumentXml.Parse(new XElement("Document",
+                Block("text"), table, new XElement("Block", MathRunX("x^2")), new XElement("Block", RunX("a"), PictureRun(png)))));
+            editor.contextMenu = "note";
+            yield return 2;
+
+            DocumentControl content = Content(editor);
+            List<BlockControl> p = Paragraphs(editor);
+            List<string> Captions() => ContextMenus.Collect(editor)
+                .Select(e => e switch { ContextMenuButton b => b.text, ContextMenuSubmenu s => s.text, _ => "" }).ToList();
+
+            List<string> menu = Captions();
+            t.Check(menu.Contains("Insert table") && !menu.Contains("Table") && !menu.Contains("Edit formula")
+                && !menu.Contains("Wrap text") && !menu.Contains("Collision"), $"in a paragraph: {string.Join(", ", menu)}");
+
+            content.SetCaret(Cell((TableControl)Views(content)[1], 0), 0);
+            yield return 1;
+            menu = Captions();
+            t.Check(menu.Contains("Table") && !menu.Contains("Insert table"), $"in a cell: {string.Join(", ", menu)}");
+
+            content.SetCaret(p[1], 0);
+            content.SetCaret(p[1], 1, true);
+            yield return 1;
+            menu = Captions();
+            t.Check(menu.Contains("Edit formula") && !menu.Contains("Wrap text"), $"formula selected: {string.Join(", ", menu)}");
+
+            content.SetCaret(p[2], 1);
+            content.SetCaret(p[2], 2, true);
+            yield return 1;
+            menu = Captions();
+            t.Check(menu.Contains("Wrap text") && menu.Contains("Collision") && !menu.Contains("Edit formula"),
+                $"picture selected: {string.Join(", ", menu)}");
+
+            Directory.Delete(dir, true);
         }
 
         [A_XSDActionDependency("TextInput.TableResizeColumn", "Test")]

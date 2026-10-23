@@ -215,6 +215,7 @@ This file holds **open work**. A landed entry moves to [[Changelog]]; one that s
 - [ ] **CJK font support missing (2026-10-21)** — tens of thousands of glyphs don't fit one atlas; needs on-demand glyph paging, a separate system; no CJK language pack → font-picker
 - [ ] **language pack change needs a restart (2026-10-21)** — `Fonts.Rebake` re-bakes user fonts but the new atlases load next start (reloading a live `FontAsset` leaks its texture slot, leaves measure caches stale) → font-picker
 - [ ] **GUI-verify the font picker (2026-10-21)** — toolbar button click, list scroll, wait window over a real window, applying a font by mouse, Settings LanguagePacks re-bake; Linux and macOS unchecked → font-picker
+- [ ] **title-bar "Thorium" menu closes without acting (2026-10-23)** — user: pressing the "Thorium" title text "just closes the context menu instead of doing something"; which press (the text or an entry) is unclear; not reproduced, cause unknown
 
 ---
 # PHASE B — ECS rework + renderer/settings foundation (~Jul–Sep 2026)

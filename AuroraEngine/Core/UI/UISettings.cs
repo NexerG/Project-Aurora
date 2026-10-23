@@ -30,6 +30,19 @@ namespace ArctisAurora.Core.UI
         public float percent { get; set; } = 100f;
     }
 
+    [A_XSDType("SortedTasks", "Settings")]
+    public class SortedTasksSetting : Setting
+    {
+        [A_XSDType("CheckedEnd", "Settings")]
+        public enum CheckedEnd
+        {
+            Bottom, Top
+        }
+
+        [A_XSDElementProperty("Checked", "Settings", "Which end of a sorted checklist ticked items move to.")]
+        public CheckedEnd checkedEnd { get; set; } = CheckedEnd.Bottom;
+    }
+
     [A_XSDType("UI", "Settings", AllowedChildren = typeof(Setting))]
     public class UISettings : SettingCategory
     {
@@ -37,5 +50,6 @@ namespace ArctisAurora.Core.UI
         public readonly PaletteSetting palette = new PaletteSetting();
         public readonly ZoomSetting zoom = new ZoomSetting { onChanged = "UI.Rescale" };
         public readonly DocumentZoomSetting documentZoom = new DocumentZoomSetting { onChanged = "Document.Rezoom" };
+        public readonly SortedTasksSetting sortedTasks = new SortedTasksSetting();
     }
 }

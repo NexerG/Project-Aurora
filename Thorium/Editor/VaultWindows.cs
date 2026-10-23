@@ -1,5 +1,6 @@
 using ArctisAurora.Core.Diagnostics;
 using ArctisAurora.Core.ECS.EngineEntity;
+using ArctisAurora.Core.Filing;
 using ArctisAurora.Core.Registry;
 using ArctisAurora.Core.Security;
 using ArctisAurora.Core.UI;
@@ -283,17 +284,35 @@ namespace Thorium.Editor
                 orientation = StackPanelControl.Orientation.Horizontal,
                 preferredHeight = headerHeight,
                 padding = new Thickness(0, 10, 0, 10),
-                alpha = 0f,
                 contextMenu = vaultMenu,
                 stopsContextMenu = true
             };
-            header.AddChild(new LabelControl { text = NameOf(vault), fontSize = 12, preferredHeight = headerHeight, verticalPosition = 0.5f });
+            header.PaintOr(null, PaletteRole.Chrome);
+            header.AddChild(new PanelControl
+            {
+                preferredWidth = 3,
+                preferredHeight = 12,
+                margin = new Thickness(0, 7, 0, 0),
+                verticalAlignment = VerticalAlignment.Center,
+                role = PaletteRole.Accent,
+                hitTestable = false
+            });
+            header.AddChild(new LabelControl
+            {
+                text = NameOf(vault),
+                fontSize = 12,
+                preferredHeight = headerHeight,
+                verticalPosition = 0.5f,
+                role = PaletteRole.Ink,
+                style = FontStyle.Bold
+            });
 
-            VaultBrowserControl browser = new VaultBrowserControl { vault = vault, heightStar = 1, padding = new Thickness(8, 0, 8, 0) };
-            StackPanelControl group = new StackPanelControl { orientation = StackPanelControl.Orientation.Vertical, alpha = 0f, heightStar = 1 };
+            VaultBrowserControl browser = new VaultBrowserControl { vault = vault, fitContent = true, stopsContextMenu = true, padding = new Thickness(8, 0, 8, 0) };
+            StackPanelControl group = new StackPanelControl { orientation = StackPanelControl.Orientation.Vertical, alpha = 0f };
             group.AddChild(header);
             group.AddChild(browser);
             browsers.AddChild(group);
+            Divide(browsers);
             browser.Rebuild();
             browsers.InvalidateLayout();
         }
@@ -302,6 +321,18 @@ namespace Thorium.Editor
         {
             foreach (VaultBrowserControl browser in VaultBrowserControl.Browsers(window).ToList())
                 if (KnownVaults.SamePath(browser.vault, vault)) (browser.parent as Control)?.Destroy();
+            if (window.ui.uiRoot?.FindByName(browsersName) is StackPanelControl browsers) Divide(browsers);
+        }
+
+        // A rule above every vault group but the first.
+        private static void Divide(StackPanelControl browsers)
+        {
+            for (int i = 0; i < browsers.children.Count; i++)
+                if (browsers.children[i].children.FirstOrDefault() is Control header)
+                {
+                    header.edgeThickness = i == 0 ? Thickness.Zero : new Thickness(1, 0, 0, 0);
+                    header.edgeRole = PaletteRole.Line;
+                }
         }
 
         private static void RemoveBrowsers(RenderWindow window)

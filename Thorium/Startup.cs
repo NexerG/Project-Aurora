@@ -62,7 +62,7 @@ namespace Thorium
         internal static void NewSticky()
         {
             Directory.CreateDirectory(StickiesFolder);
-            string path = Path.Combine(StickiesFolder, $"Sticky {DateTime.Now:yyyy-MM-dd HHmmss}.md");
+            string path = Path.Combine(StickiesFolder, $"Sticky {DateTime.Now:yyyy-MM-dd HHmmss}{SettingsRegistry.Get<ThoriumSettings>().newNotes.Extension}");
 
             NoteBlock block = new NoteBlock();
             block.AppendRun(new Run());

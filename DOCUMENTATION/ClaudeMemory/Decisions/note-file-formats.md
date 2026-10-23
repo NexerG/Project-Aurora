@@ -22,7 +22,9 @@ Supersedes the "Note format: engine XML (not markdown, not JSON)" line in
   is `ToXml` + the `schemaLocation` stamp + write, and stays `.axml`-only.
 - The formats never touch controls: `Read(text, name) → XElement`, `Write(XElement) → string`. The
   file name becomes `Name`, so a `.md`/`.txt` note never asks to be named.
-- Vault: `Accepts` asks `FileTypes`; new notes are `.md`; duplicate and rename keep the source
+- Vault: `Accepts` asks `FileTypes`; new notes and stickies take `ThoriumSettings.newNotes.Extension`
+  (`NewNotesSetting`, `<Thorium><NewNotes Format="Axml|Markdown|PlainText"/>`, default `Axml` since
+  2026-10-23 — was `.md`, which lost what Markdown cannot hold, e.g. `SortedTask`; the XML workspace's + stays `.axml`); duplicate and rename keep the source
   extension (`FreePath(folder, name, extension)`); `WriteName` only touches `.axml`.
 - Lists: `BlockControl` gained `listKind` (`None`/`Bullet`/`Task`/`SortedTask`), `listLevel`, `isChecked`, carried
   by `SplitAt` (kind + level, unchecked), `SliceSnapshot`/`Restore`, and the `Block` attributes

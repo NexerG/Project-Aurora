@@ -5,10 +5,12 @@
     <xs:restriction base="xs:string">
       <xs:enumeration value="Vault" />
       <xs:enumeration value="Startup" />
+      <xs:enumeration value="NewNotes" />
       <xs:enumeration value="Thorium" />
       <xs:enumeration value="KnownVault" />
       <xs:enumeration value="Vaults" />
       <xs:enumeration value="StartupView" />
+      <xs:enumeration value="NoteFormat" />
       <xs:enumeration value="Bind" />
       <xs:enumeration value="InputBindings" />
       <xs:enumeration value="DoubleClick" />
@@ -44,6 +46,7 @@
       <xs:enumeration value="Palette" />
       <xs:enumeration value="Zoom" />
       <xs:enumeration value="DocumentZoom" />
+      <xs:enumeration value="SortedTasks" />
       <xs:enumeration value="UI" />
       <xs:enumeration value="Threads" />
       <xs:enumeration value="FrameCap" />
@@ -64,6 +67,7 @@
       <xs:enumeration value="Profiling" />
       <xs:enumeration value="WindowMode" />
       <xs:enumeration value="CloseAction" />
+      <xs:enumeration value="CheckedEnd" />
     </xs:restriction>
   </xs:simpleType>
   <xs:simpleType name="UI">
@@ -131,6 +135,7 @@
       <xs:enumeration value="Splitter" />
       <xs:enumeration value="SplitView" />
       <xs:enumeration value="StackPanel" />
+      <xs:enumeration value="Switch" />
       <xs:enumeration value="TabItem" />
       <xs:enumeration value="TabView" />
       <xs:enumeration value="TextBox" />

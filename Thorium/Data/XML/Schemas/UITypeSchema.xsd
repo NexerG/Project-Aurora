@@ -119,7 +119,11 @@
       <xs:group minOccurs="0" maxOccurs="unbounded" ref="types:ContextMenuEntry.Children" />
     </xs:sequence>
   </xs:complexType>
+  <xs:attributeGroup name="ContextEntry.Attributes">
+    <xs:attribute name="When" type="xs:string" />
+  </xs:attributeGroup>
   <xs:attributeGroup name="ContextButton.Attributes">
+    <xs:attributeGroup ref="types:ContextEntry.Attributes" />
     <xs:attribute name="Text" type="xs:string" />
     <xs:attribute name="Action" type="actions:UI" />
   </xs:attributeGroup>
@@ -131,8 +135,10 @@
   <xs:element name="ContextLine" type="types:ContextLine" />
   <xs:complexType name="ContextLine">
     <xs:sequence />
+    <xs:attributeGroup ref="types:ContextEntry.Attributes" />
   </xs:complexType>
   <xs:attributeGroup name="ContextSubmenu.Attributes">
+    <xs:attributeGroup ref="types:ContextEntry.Attributes" />
     <xs:attribute name="Text" type="xs:string" />
     <xs:attribute name="Source" type="xs:string" />
   </xs:attributeGroup>
@@ -729,6 +735,17 @@
     <xs:sequence />
     <xs:attributeGroup ref="types:StackPanel.Attributes" />
   </xs:complexType>
+  <xs:attributeGroup name="Switch.Attributes">
+    <xs:attributeGroup ref="types:Button.Attributes" />
+    <xs:attribute name="Options" type="xs:string" />
+    <xs:attribute name="Columns" type="xs:int" />
+    <xs:attribute name="Selected" type="xs:int" />
+  </xs:attributeGroup>
+  <xs:element name="Switch" type="types:Switch" />
+  <xs:complexType name="Switch">
+    <xs:sequence />
+    <xs:attributeGroup ref="types:Switch.Attributes" />
+  </xs:complexType>
   <xs:attributeGroup name="TabItem.Attributes">
     <xs:attributeGroup ref="EntityRegistry:Control.Attributes" />
     <xs:attribute name="Header" type="xs:string" />
@@ -803,9 +820,9 @@
   </xs:complexType>
   <xs:attributeGroup name="ToggleSwitch.Attributes">
     <xs:attributeGroup ref="types:Button.Attributes" />
-    <xs:attribute name="LeftText" type="xs:string" />
-    <xs:attribute name="RightText" type="xs:string" />
-    <xs:attribute name="Right" type="xs:boolean" />
+    <xs:attribute name="OnText" type="xs:string" />
+    <xs:attribute name="OffText" type="xs:string" />
+    <xs:attribute name="On" type="xs:boolean" />
   </xs:attributeGroup>
   <xs:element name="ToggleSwitch" type="types:ToggleSwitch" />
   <xs:complexType name="ToggleSwitch">

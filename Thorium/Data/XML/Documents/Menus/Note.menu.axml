@@ -8,10 +8,10 @@
 	<ContextLine/>
 	<ContextButton Text="Insert formula" Action="Math.Insert"/>
 	<ContextButton Text="Insert display formula" Action="Math.InsertDisplay"/>
-	<ContextButton Text="Edit formula" Action="Math.Edit"/>
+	<ContextButton Text="Edit formula" Action="Math.Edit" When="formula-selected"/>
 	<ContextLine/>
-	<ContextButton Text="Insert table" Action="Table.Insert"/>
-	<ContextSubmenu Text="Table">
+	<ContextButton Text="Insert table" Action="Table.Insert" When="outside-table"/>
+	<ContextSubmenu Text="Table" When="table-cell">
 		<ContextButton Text="Insert row above" Action="Table.RowAbove"/>
 		<ContextButton Text="Insert row below" Action="Table.RowBelow"/>
 		<ContextButton Text="Insert column left" Action="Table.ColumnLeft"/>
@@ -41,7 +41,7 @@
 		<ContextLine/>
 		<ContextButton Text="Continue numbering" Action="List.ContinueNumbering"/>
 	</ContextSubmenu>
-	<ContextSubmenu Text="Wrap text">
+	<ContextSubmenu Text="Wrap text" When="picture-selected">
 		<ContextButton Text="In line with text" Action="Picture.WrapInline"/>
 		<ContextButton Text="Square" Action="Picture.WrapSquare"/>
 		<ContextButton Text="Tight" Action="Picture.WrapTight"/>
@@ -49,7 +49,7 @@
 		<ContextButton Text="Behind text" Action="Picture.WrapBehind"/>
 		<ContextButton Text="In front of text" Action="Picture.WrapInFront"/>
 	</ContextSubmenu>
-	<ContextSubmenu Text="Collision">
+	<ContextSubmenu Text="Collision" When="picture-selected">
 		<ContextButton Text="Bounding box" Action="Picture.CollideBox"/>
 		<ContextButton Text="Picture shape" Action="Picture.CollideShape"/>
 	</ContextSubmenu>

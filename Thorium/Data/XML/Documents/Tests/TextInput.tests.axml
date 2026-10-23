@@ -43,6 +43,7 @@
 	<Test Action="TextInput.TableRowsAndColumns"/>
 	<Test Action="TextInput.TableTabAddsRow"/>
 	<Test Action="TextInput.TableListInCell"/>
+	<Test Action="TextInput.NoteMenuFollowsCaret"/>
 	<Test Action="TextInput.TableResizeColumn"/>
 	<Test Action="TextInput.TableColumnSpan"/>
 	<Test Action="TextInput.TableRules"/>

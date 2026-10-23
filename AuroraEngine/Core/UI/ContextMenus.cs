@@ -24,6 +24,9 @@ namespace ArctisAurora.Core.UI
         // submenu entry builders by name, called each time their submenu opens
         private static readonly Dictionary<string, Func<List<ContextMenuEntry>>> _sources = new Dictionary<string, Func<List<ContextMenuEntry>>>();
 
+        // entry conditions by name, asked each time a menu holding them opens
+        private static readonly Dictionary<string, Func<Control, bool>> _conditions = new Dictionary<string, Func<Control, bool>>();
+
         // open panels, index = depth
         private static readonly List<ContextMenuControl> _open = new List<ContextMenuControl>();
         private static RenderWindow? _origin;
@@ -41,10 +44,23 @@ namespace ArctisAurora.Core.UI
         // Makes a builder nameable by a submenu's Source="…".
         public static void RegisterSource(string name, Func<List<ContextMenuEntry>> build) => _sources[name] = build;
 
-        // A submenu's entries: built by its source when it names one, else the authored ones.
+        // Makes a check nameable by an entry's When="…".
+        public static void RegisterCondition(string name, Func<Control, bool> shown) => _conditions[name] = shown;
+
+        // Whether an entry shows on a control; one naming an unknown condition shows.
+        private static bool Shown(ContextMenuEntry entry, Control on)
+        {
+            if (entry.when == null) return true;
+            if (_conditions.TryGetValue(entry.when, out Func<Control, bool>? shown)) return shown(on);
+
+            Log.Once().Warn($"no context menu condition named '{entry.when}'");
+            return true;
+        }
+
+        // A submenu's entries: built by its source when it names one, else the authored ones that show.
         private static List<ContextMenuEntry> EntriesOf(ContextMenuSubmenu submenu)
         {
-            if (submenu.source == null) return submenu.entries;
+            if (submenu.source == null) return submenu.entries.FindAll(e => Shown(e, target!));
             if (_sources.TryGetValue(submenu.source, out Func<List<ContextMenuEntry>>? build)) return build();
 
             Log.Once().Warn($"no context menu source named '{submenu.source}'");
@@ -76,10 +92,11 @@ namespace ArctisAurora.Core.UI
             for (Control? c = control; c != null; c = c.parent as Control)
             {
                 ContextMenu? menu = c.contextMenu == null ? null : Get(c.contextMenu);
-                if (menu != null && menu.entries.Count > 0)
+                List<ContextMenuEntry>? shown = menu?.entries.FindAll(e => Shown(e, control));
+                if (shown != null && shown.Count > 0)
                 {
                     if (entries.Count > 0) entries.Add(groupLine);
-                    entries.AddRange(menu.entries);
+                    entries.AddRange(shown);
                 }
                 if (c.stopsContextMenu) break;
             }

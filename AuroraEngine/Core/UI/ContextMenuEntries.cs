@@ -10,7 +10,11 @@ namespace ArctisAurora.Core.UI
     }
 
     [A_XSDType("ContextEntry", "UI", isAbstract: true)]
-    public abstract class ContextMenuEntry { }
+    public abstract class ContextMenuEntry
+    {
+        [A_XSDElementProperty("When", "UI", "A condition registered with ContextMenus.RegisterCondition; the entry shows only while it holds for the control the menu opened on.")]
+        public string? when;
+    }
 
     [A_XSDType("ContextButton", "UI")]
     public class ContextMenuButton : ContextMenuEntry

@@ -362,6 +362,7 @@ namespace Thorium.Editor.CustomControls
             for (Control? c = ContextMenus.target; c != null; c = c.parent as Control)
             {
                 if (c is VaultBrowserControl browser) return browser.vault;
+                if (c.contextMenu == vaultMenu && BrowsersIn(c).LastOrDefault() is VaultBrowserControl lowest) return lowest.vault;
                 if (c.parent is StackPanelControl group && group.children.OfType<VaultBrowserControl>().FirstOrDefault() is VaultBrowserControl beside)
                     return beside.vault;
             }
@@ -539,8 +540,9 @@ namespace Thorium.Editor.CustomControls
             return browsers.FirstOrDefault(browser => KnownVaults.SamePath(browser.vault, vault)) ?? browsers.FirstOrDefault();
         }
 
-        private void NewNote(string folder, string extension = ".md") =>
-            NoteNameWindow.Ask(UIEngine.WindowOf(this), "Untitled", name => CreateNote(folder, name, extension), null);
+        private void NewNote(string folder, string? extension = null) =>
+            NoteNameWindow.Ask(UIEngine.WindowOf(this), "Untitled",
+                name => CreateNote(folder, name, extension ?? SettingsRegistry.Get<ThoriumSettings>().newNotes.Extension), null);
 
         // A note needs a block holding a run before it can be typed into — the editor places its
         // caret on a run and builds neither.

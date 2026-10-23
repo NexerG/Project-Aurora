@@ -229,6 +229,7 @@ ArctisAurora.Core.UI -> AuroraEngine/Core/UI/SliderControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/SplitterControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/SplitViewControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/StackPanelControl.cs
+ArctisAurora.Core.UI -> AuroraEngine/Core/UI/SwitchControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/SyntaxTokenizer.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/TabActions.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/TabItemControl.cs

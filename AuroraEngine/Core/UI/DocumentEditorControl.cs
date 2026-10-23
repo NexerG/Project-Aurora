@@ -48,6 +48,22 @@ namespace ArctisAurora.Core.UI
         private bool scrollToCaretPending;
         private SessionTab? pendingView;
 
+        // Context menu conditions on the caret of the editor at or above a control.
+        static DocumentEditorControl()
+        {
+            ContextMenus.RegisterCondition("table-cell", c => ContentOf(c)?.caretBlock?.parent is StackPanelControl { parent: TableControl });
+            ContextMenus.RegisterCondition("outside-table", c => ContentOf(c) is DocumentControl d && d.caretBlock?.parent == d);
+            ContextMenus.RegisterCondition("picture-selected", c => ContentOf(c)?.SelectedPicture(out _, out _) == true);
+            ContextMenus.RegisterCondition("formula-selected", c => ContentOf(c)?.SelectedMath(out _, out _) == true);
+        }
+
+        private static DocumentControl? ContentOf(Control control)
+        {
+            for (Control? c = control; c != null; c = c.parent as Control)
+                if (c is DocumentEditorControl editor) return editor.content;
+            return null;
+        }
+
         public DocumentEditorControl()
         {
             scrollDirection = ScrollDirection.Both;

@@ -21,7 +21,7 @@ namespace ArctisAurora.Core.UI
         // Paragraph parts
         private readonly LabelControl styleCaption;
         private readonly IconControl alignLeft, alignCenter, alignRight, alignJustify;
-        private readonly LabelControl listNone, listBullets, listNumbers, listTasks, listSortedTasks;
+        private readonly SwitchControl listShape;
         private TextStyleType? shownStyle;
         private bool? shownLeft, shownCenter, shownRight, shownJustify;
         private ListShape? shownList;
@@ -75,17 +75,14 @@ namespace ArctisAurora.Core.UI
             alignJustify = align.Icon("align-justify", _ => Note(editor => editor.SetAlignment(TextAlignment.Justify)));
             paragraph.AddChild(Row("Align", align));
 
-            TabToolsControl shapes = Tools();
-            listNone = shapes.Text("None", _ => Note(editor => SetList(editor, ListShape.None)));
-            listBullets = shapes.Text("Bullets", _ => Note(editor => SetList(editor, ListShape.Bullets)));
-            TabToolsControl moreShapes = Tools();
-            listNumbers = moreShapes.Text("Numbers", _ => Note(editor => SetList(editor, ListShape.Numbers)));
-            listTasks = moreShapes.Text("Tasks", _ => Note(editor => SetList(editor, ListShape.Tasks)));
-            listSortedTasks = moreShapes.Text("Sorted tasks", _ => Note(editor => SetList(editor, ListShape.SortedTasks)));
-            StackPanelControl list = new StackPanelControl { alpha = 0f, Spacing = 2f };
-            list.AddChild(shapes);
-            list.AddChild(moreShapes);
-            paragraph.AddChild(Row("List", list));
+            listShape = new SwitchControl { options = new[] { "None", "Bullets", "Numbers", "Tasks", "Sorted" }, columns = 3 };
+            listShape.onChanged = index =>
+            {
+                Note(editor => SetList(editor, (ListShape)index));
+                shownList = null;
+            };
+            paragraph.AddChild(Caption("List", PaletteRole.MutedInk));
+            paragraph.AddChild(listShape);
 
             docs.AddChild(Header("Page", out _));
             StackPanelControl page = Section();
@@ -278,11 +275,7 @@ namespace ArctisAurora.Core.UI
             if (shownList != list)
             {
                 shownList = list;
-                RibbonControl.LightCaption(listNone, list == ListShape.None);
-                RibbonControl.LightCaption(listBullets, list == ListShape.Bullets);
-                RibbonControl.LightCaption(listNumbers, list == ListShape.Numbers);
-                RibbonControl.LightCaption(listTasks, list == ListShape.Tasks);
-                RibbonControl.LightCaption(listSortedTasks, list == ListShape.SortedTasks);
+                if (listShape.selected != (int)list) listShape.selected = (int)list;
             }
 
             PageLayout? page = editor?.Page;

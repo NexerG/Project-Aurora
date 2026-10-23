@@ -6,4 +6,5 @@
 	<Test Action="Startup.TrayHidesVault"/>
 	<Test Action="Startup.LoginWithoutStickies"/>
 	<Test Action="Startup.ToggleSwitch"/>
+	<Test Action="Startup.Switch"/>
 </TestSuite>

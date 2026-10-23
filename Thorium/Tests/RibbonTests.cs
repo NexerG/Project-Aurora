@@ -32,7 +32,7 @@ namespace Thorium.Tests
             yield return 3;
             t.Check(!ribbon.hidden && !inspector.hidden, "a Docs workspace shows both");
             t.Check(Captions(ribbon, "Format", "Insert", "Page"), "with Format, Insert and Page");
-            t.Check(MathF.Abs(inspector.arrangedRect.width - 291.4f) < 1f, $"the inspector is 291 px wide: {inspector.arrangedRect.width}");
+            t.Check(MathF.Abs(inspector.arrangedRect.width - 240f) < 1f, $"the inspector is 240 px wide: {inspector.arrangedRect.width}");
             t.Check(!ToolsOnRow(docsView), "the note's tab-row tools give way to the ribbon");
 
             workspace.Show(sheets);
@@ -138,6 +138,21 @@ namespace Thorium.Tests
             yield return 2;
             yield return t.Golden("Panel", inspector);
 
+            SwitchControl list = Find<SwitchControl>(inspector).First();
+            float column = inspector.arrangedRect.x + inspector.arrangedRect.width;
+            t.Check(list.arrangedRect.x + list.arrangedRect.width <= column,
+                $"the List switch fits the column: {list.arrangedRect.x + list.arrangedRect.width} of {column}");
+            DocumentControl content = editor.children.OfType<DocumentControl>().First();
+            content.SetCaret(content.children.OfType<BlockControl>().First(), 0);
+            yield return 2;
+            LayoutRect tasks = list.children.OfType<LabelControl>().ElementAt(3).arrangedRect;
+            yield return t.Click(list, new Vector2(tasks.x + tasks.width / 2f, tasks.y + tasks.height / 2f));
+            yield return 20;
+            t.Check(editor.CaretBlock?.listKind == ListKind.Task && list.selected == 3, "picking Tasks on the List switch makes a task list");
+            editor.Undo();
+            yield return 2;
+            t.Check(editor.CaretBlock?.listKind != ListKind.Task && list.selected == 0, "undo turns the paragraph back and the switch follows");
+
             TextBoxControl top = Find<TextBoxControl>(inspector).First();
             top.text = "30";
             top.onCommit!("30");
@@ -154,7 +169,7 @@ namespace Thorium.Tests
             Vector2 middle = new Vector2(grip.arrangedRect.x + grip.arrangedRect.width / 2f, grip.arrangedRect.y + grip.arrangedRect.height / 2f);
             yield return t.Drag(grip, middle - new Vector2(60f, 0f));
             yield return 2;
-            t.Check(MathF.Abs(inspector.arrangedRect.width - 351.4f) < 2f, $"dragging the splitter left widens the inspector: {inspector.arrangedRect.width}");
+            t.Check(MathF.Abs(inspector.arrangedRect.width - 300f) < 2f, $"dragging the splitter left widens the inspector: {inspector.arrangedRect.width}");
 
             yield return t.Click(ButtonOf(Icon(ribbon, "panel-right")!));
             yield return 2;

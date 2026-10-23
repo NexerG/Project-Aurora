@@ -33,6 +33,10 @@ slice 3: `TestContext` input helpers, `UI.WindowRoot.ToWindowSpace`, `AGlfwWindo
   (`<TestRun Host Build Started>` → `<Test Suite Name Result Ticks>` → `<Failure Message File Line>`),
   `Environment.ExitCode` = failed count, then `Shutdown.Request`.
 - `Engine.WireInput` returns early under `--test`: no window gets OS mouse or keyboard callbacks.
+- Windows never reach the screen under `--test` (2026-10-23): `AGlfwWindow.Cloak` sets `DWMWA_CLOAK` on every window at
+  creation and shows the visible ones with `SW_SHOWNOACTIVATE`; `Show` also uses `SW_SHOWNOACTIVATE`, `Focus` is a no-op.
+  The GLFW `Visible` attribute stays true and the swapchain still presents, so `Background.HideShow` and goldens hold.
+  Not checked: whether a cloaked window keeps a taskbar button. Linux unchanged (xvfb).
 - Test clock: `MainSystem.Input` sets `Engine.deltaTime` from `fixedStep`, `AnimationSystem.Advance` its `dt`, when
   `fixedStep > 0`.
 - `LogSpool.errorCount` — `Interlocked` count of `Error`/`Fatal` records in `Write`, which the handler path and

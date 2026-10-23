@@ -108,7 +108,7 @@ namespace ArctisAurora.EngineWork.Rendering
             _glfw.WindowHint(WindowHintBool.Resizable, true);
             _glfw.WindowHint(WindowHintBool.Decorated, false);
             _glfw.WindowHint(WindowHintBool.DoubleBuffer, true);
-            _glfw.WindowHint(WindowHintBool.Visible, !Background.primaryStartsHidden);
+            _glfw.WindowHint(WindowHintBool.Visible, !Background.primaryStartsHidden && !TestRunner.active);
             handle = CreateForMode(SettingsRegistry.Get<GraphicsSettings>());
 
             if (handle == null)
@@ -122,6 +122,7 @@ namespace ArctisAurora.EngineWork.Rendering
             SetResizeCallback(WindwoResizeCallback);
             SetCloseCallback(WindowCloseCallback);
             TrackContentScale();
+            if (TestRunner.active) Cloak(true);
         }
 
         // A window opened after boot: plain windowed at the size it was constructed with, wherever it
@@ -133,6 +134,7 @@ namespace ArctisAurora.EngineWork.Rendering
             _glfw.WindowHint(WindowHintBool.Resizable, true);
             _glfw.WindowHint(WindowHintBool.Decorated, false);
             _glfw.WindowHint(WindowHintBool.DoubleBuffer, true);
+            _glfw.WindowHint(WindowHintBool.Visible, !TestRunner.active);
             handle = _glfw.CreateWindow((int)windowSize.Width, (int)windowSize.Height, title, null, null);
 
             if (handle == null)
@@ -142,6 +144,7 @@ namespace ArctisAurora.EngineWork.Rendering
             AllowSnapping();
             SetAppIcon();
             _glfw.SetWindowPos(handle, x, y);
+            if (TestRunner.active) Cloak(true);
             UpdateWindowSize(ref windowSize);
             SetResizeCallback(WindwoResizeCallback);
             SetCloseCallback(WindowCloseCallback);
@@ -167,6 +170,7 @@ namespace ArctisAurora.EngineWork.Rendering
                 throw new Exception("Failed to create the drag preview window");
 
             RoundCorners();
+            if (TestRunner.active) Cloak(false);
             UpdateWindowSize(ref windowSize);
             ReadContentScale();
         }
@@ -190,6 +194,7 @@ namespace ArctisAurora.EngineWork.Rendering
                 throw new Exception("Failed to create the context menu window");
 
             RoundCorners();
+            if (TestRunner.active) Cloak(false);
             if (withChrome)
             {
                 AllowSnapping();
@@ -237,6 +242,26 @@ namespace ArctisAurora.EngineWork.Rendering
 
         [DllImport("dwmapi.dll")]
         private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attribute, ref int value, int size);
+
+        // Under --test: drawn and presented, never seen on screen, shown without activating.
+        private void Cloak(bool show)
+        {
+            if (!OperatingSystem.IsWindows())
+            {
+                if (show) _glfw.ShowWindow(handle);
+                return;
+            }
+            int cloaked = 1;
+            DwmSetWindowAttribute(Hwnd, cloak, ref cloaked, sizeof(int));
+            if (show) ShowWindow(Hwnd, showNoActivate);
+        }
+
+        // DWMWA_CLOAK, SW_SHOWNOACTIVATE
+        private const int cloak = 13;
+        private const int showNoActivate = 4;
+
+        [DllImport("user32.dll")]
+        private static extern bool ShowWindow(IntPtr hwnd, int command);
 
         // The shell arranges nothing that is WS_POPUP, which is what GLFW makes every undecorated
         // window — so snap is bought by taking an ordinary framed window and deleting the frame's
@@ -305,7 +330,11 @@ namespace ArctisAurora.EngineWork.Rendering
         // The OS window behind the GLFW one, for the Win32 calls that need an owner.
         internal IntPtr Hwnd => new GlfwNativeWindow(_glfw, handle).Win32!.Value.Hwnd;
 
-        internal void Focus() => _glfw.FocusWindow(handle);
+        internal void Focus()
+        {
+            if (TestRunner.active) return;
+            _glfw.FocusWindow(handle);
+        }
 
         // Raises without activating.
         internal void Raise()
@@ -339,7 +368,11 @@ namespace ArctisAurora.EngineWork.Rendering
 
         internal void SetOpacity(float opacity) => _glfw.SetWindowOpacity(handle, opacity);
 
-        internal void Show() => _glfw.ShowWindow(handle);
+        internal void Show()
+        {
+            if (TestRunner.active && OperatingSystem.IsWindows()) ShowWindow(Hwnd, showNoActivate);
+            else _glfw.ShowWindow(handle);
+        }
 
         internal void Hide() => _glfw.HideWindow(handle);
 

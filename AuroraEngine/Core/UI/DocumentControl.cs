@@ -2,6 +2,7 @@ using ArctisAurora.Core.Diagnostics;
 using ArctisAurora.Core.ECS.EngineEntity;
 using ArctisAurora.Core.Editing;
 using ArctisAurora.Core.Filing;
+using ArctisAurora.Core.Registry;
 using ArctisAurora.Core.Registry.Assets;
 using ArctisAurora.EngineWork;
 using Silk.NET.GLFW;
@@ -2952,23 +2953,25 @@ namespace ArctisAurora.Core.UI
             undo?.Push(new BlockStateEdit(document, index, before, SnapshotBlocks(index, index)));
         }
 
-        // Ticks a sorted checklist item and moves it to the top of the ticked items, or untick to the
-        // bottom of the unticked ones; its sub-items move with it.
+        // Ticks or unticks a sorted checklist item and moves it, with its sub-items, to where the
+        // ticked and unticked items meet.
         internal void SetCheckedSorted(int index, bool value)
         {
             List<BlockControl> blocks = Blocks();
             if (index < 0 || index >= blocks.Count) return;
 
+            bool top = SettingsRegistry.Get<UISettings>().sortedTasks.checkedEnd == SortedTasksSetting.CheckedEnd.Top;
+            bool toLate = value != top;
             List<(int start, int count)> groups = SortedGroups(blocks, index);
             int moved = groups.FindIndex(g => g.start == index);
             List<int> order = new List<int>();
-            int at = value ? 0 : -1;
+            int at = toLate ? 0 : -1;
             for (int g = 0; g < groups.Count; g++)
             {
                 if (g == moved) continue;
-                bool ticked = blocks[groups[g].start].isChecked;
-                if (value && !ticked) at = order.Count + 1;
-                if (!value && ticked && at < 0) at = order.Count;
+                bool late = blocks[groups[g].start].isChecked != top;
+                if (toLate && !late) at = order.Count + 1;
+                if (!toLate && late && at < 0) at = order.Count;
                 order.Add(g);
             }
             order.Insert(at < 0 ? order.Count : at, moved);
@@ -2977,9 +2980,10 @@ namespace ArctisAurora.Core.UI
             ReorderGroups(groups, order, fresh => fresh[index - first].isChecked = value);
         }
 
-        // Puts every sorted checklist starting in the range in order, unticked items above ticked ones.
+        // Puts every sorted checklist starting in the range in order, ticked items at the set end.
         internal void SortChecklists(int first, int last)
         {
+            bool top = SettingsRegistry.Get<UISettings>().sortedTasks.checkedEnd == SortedTasksSetting.CheckedEnd.Top;
             int deepest = 0;
             List<BlockControl> blocks = Blocks();
             for (int b = first; b <= last && b < blocks.Count; b++)
@@ -2995,9 +2999,9 @@ namespace ArctisAurora.Core.UI
 
                     List<int> order = new List<int>();
                     for (int g = 0; g < groups.Count; g++)
-                        if (!blocks[groups[g].start].isChecked) order.Add(g);
+                        if (blocks[groups[g].start].isChecked == top) order.Add(g);
                     for (int g = 0; g < groups.Count; g++)
-                        if (blocks[groups[g].start].isChecked) order.Add(g);
+                        if (blocks[groups[g].start].isChecked != top) order.Add(g);
                     ReorderGroups(groups, order, null);
                 }
         }

@@ -32,11 +32,32 @@ namespace Thorium
         public bool inTray { get; set; } = false;
     }
 
+    [A_XSDType("NewNotes", "Settings")]
+    public class NewNotesSetting : Setting
+    {
+        [A_XSDType("NoteFormat", "Settings")]
+        public enum NoteFormat
+        {
+            Axml, Markdown, PlainText
+        }
+
+        [A_XSDElementProperty("Format", "Settings", "File format of new notes and stickies.")]
+        public NoteFormat format { get; set; } = NoteFormat.Axml;
+
+        public string Extension => format switch
+        {
+            NoteFormat.Markdown => ".md",
+            NoteFormat.PlainText => ".txt",
+            _ => ".axml"
+        };
+    }
+
     [A_XSDType("Thorium", "Settings", AllowedChildren = typeof(Setting))]
     public class ThoriumSettings : SettingCategory
     {
         public readonly VaultSetting vault = new VaultSetting();
         public readonly StartupSetting startup = new StartupSetting { onChanged = "Startup.Apply" };
+        public readonly NewNotesSetting newNotes = new NewNotesSetting();
     }
 
     [A_XSDType("KnownVault", "Settings")]
