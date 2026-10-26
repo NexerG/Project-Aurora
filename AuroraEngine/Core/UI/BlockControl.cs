@@ -1,3 +1,4 @@
+using ArctisAurora.Core.Animation;
 using ArctisAurora.Core.ECS.EngineEntity;
 using ArctisAurora.Core.Registry;
 using ArctisAurora.Core.Filing;
@@ -245,6 +246,22 @@ namespace ArctisAurora.Core.UI
         private const float bulletSize = 6f;
         private const float numberGap = 6f;
 
+        // slide from where the content was drawn before a reorder
+        internal float? slideFrom;
+        private float slideDistance;
+
+        // 1 at the old spot, 0 at its own
+        [A_Animatable(typeof(ArrangeData), nameof(ArrangeData.reveal), LayoutChange.Arrange)]
+        public float reveal
+        {
+            get => arrange.reveal;
+            set
+            {
+                arrange.reveal = value;
+                InvalidateArrange();
+            }
+        }
+
         // code block and rule geometry
         private const float codeInset = 10f;
         private const float ruleWeight = 1f;
@@ -378,6 +395,13 @@ namespace ArctisAurora.Core.UI
         // Places the marker in the indent, centred on the first line.
         protected override void ArrangeCore(LayoutRect finalRect)
         {
+            if (slideFrom is float from)
+            {
+                slideDistance = from - finalRect.y;
+                slideFrom = null;
+            }
+            finalRect.y += slideDistance * reveal;
+
             base.ArrangeCore(finalRect);
             if (marker == null || Lines == null || Lines.Count == 0) return;
 

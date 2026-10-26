@@ -128,6 +128,11 @@ namespace Thorium.Tests
         private static IEnumerator<int> InspectorDocs(TestContext t)
         {
             string note = TempFile(".axml");
+            File.WriteAllText(note, "<Document><Block><Run Text=\"ribbon text\"/></Block>"
+                + "<Block List=\"SortedTask\"><Run Text=\"b\"/></Block>"
+                + "<Block List=\"SortedTask\" Level=\"1\"><Run Text=\"e\"/></Block>"
+                + "<Block List=\"SortedTask\" Level=\"1\" Checked=\"true\"><Run Text=\"c\"/></Block>"
+                + "<Block List=\"SortedTask\" Checked=\"true\"><Run Text=\"a\"/></Block></Document>\n");
             (RibbonControl ribbon, WorkspaceControl workspace, InspectorControl inspector) = ShowShell(t);
             WorkspacePageControl docs = workspace.AddPage("Docs", WorkspaceKind.Docs);
             workspace.LoadPane(docs).AddChild(SessionLayout.tabFactory(note, false));
@@ -152,6 +157,31 @@ namespace Thorium.Tests
             editor.Undo();
             yield return 2;
             t.Check(editor.CaretBlock?.listKind != ListKind.Task && list.selected == 0, "undo turns the paragraph back and the switch follows");
+
+            SortedTasksSetting sorted = SettingsRegistry.Get<UISettings>().sortedTasks;
+            SortedTasksSetting.CheckedEnd endBefore = sorted.checkedEnd;
+            sorted.checkedEnd = SortedTasksSetting.CheckedEnd.Bottom;
+            SettingsRegistry.Apply();
+            List<BlockControl> blocks = content.children.OfType<BlockControl>().ToList();
+            string Order() => string.Join(",", blocks.Skip(1).Select(b => b.text + (b.isChecked ? "+" : "")));
+            yield return 2;
+            t.Check(Find<SwitchControl>(inspector).Count() == 1, "the Checked row is hidden outside a sorted list");
+
+            content.SetCaret(blocks[1], 0);
+            yield return 2;
+            SwitchControl? checkedEnd = Find<SwitchControl>(inspector).ElementAtOrDefault(1);
+            t.Check(checkedEnd?.selected == 0, "in a sorted list the Checked row shows the setting's end");
+            if (checkedEnd == null) yield break;
+            LayoutRect topOption = checkedEnd.children.OfType<LabelControl>().ElementAt(1).arrangedRect;
+            yield return t.Click(checkedEnd, new Vector2(topOption.x + topOption.width / 2f, topOption.y + topOption.height / 2f));
+            yield return 20;
+            t.Check(sorted.checkedEnd == SortedTasksSetting.CheckedEnd.Top && Order() == "a+,b,c+,e",
+                $"picking Top sets the setting and re-sorts the list, sub-items included: {Order()}");
+            editor.Undo();
+            yield return 2;
+            t.Check(Order() == "b,e,c+,a+", $"one undo puts the order back: {Order()}");
+            sorted.checkedEnd = endBefore;
+            SettingsRegistry.Apply();
 
             TextBoxControl top = Find<TextBoxControl>(inspector).First();
             top.text = "30";

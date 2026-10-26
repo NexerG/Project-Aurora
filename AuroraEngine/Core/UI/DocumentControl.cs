@@ -1,3 +1,4 @@
+using ArctisAurora.Core.Animation;
 using ArctisAurora.Core.Diagnostics;
 using ArctisAurora.Core.ECS.EngineEntity;
 using ArctisAurora.Core.Editing;
@@ -117,6 +118,7 @@ namespace ArctisAurora.Core.UI
         public readonly bool italic;
         public readonly bool strikethrough;
         public readonly bool underline;
+        public readonly bool code;
         public readonly string colorHex;
         public readonly string highlightHex;
         public readonly int fontSize;
@@ -130,6 +132,7 @@ namespace ArctisAurora.Core.UI
             italic = armed.italic ?? span.IsItalic;
             strikethrough = armed.strikethrough ?? span.strikethrough;
             underline = armed.underline ?? span.underline;
+            code = armed.code ?? span.stylingType == TextStyleType.Code;
             colorHex = armed.colorHex == null ? span.colorHex : armed.colorHex.Length == 0 ? null : armed.colorHex;
             highlightHex = armed.highlightHex == null ? span.highlightHex : armed.highlightHex.Length == 0 ? null : armed.highlightHex;
             fontSize = armed.fontSize ?? (span.fontSize > 0 ? span.fontSize : block.fontSize);
@@ -565,11 +568,15 @@ namespace ArctisAurora.Core.UI
         // page format, assigned by the editor before the first measure
         public PageLayout page = new PageLayout();
 
+        // paper as wide as the viewport, no sheet and no inset; assigned by the editor before the first measure
+        public bool fitWidth;
+
         // refuses picture drags, assigned by the editor
         public bool readOnly;
 
         // app-wide space between pages, and the page number's type size
         private static float PageGap => DocumentLayout.Defaults.Page.gap;
+        private float Inset => fitWidth ? 0f : PageGap * zoom;
         private const float pageNumberSize = 12f;
 
         // document zoom, assigned by the editor; 1 is 100%
@@ -595,6 +602,10 @@ namespace ArctisAurora.Core.UI
         private PageBands paginatedBands;
         private int pageCount;
         private float pageHeight, lastPageHeight;
+
+        // a sorted checklist reorder's slide, and the flow blocks still sliding
+        private const float slideSeconds = 0.25f;
+        private readonly List<BlockControl> sliding = new List<BlockControl>();
 
         // A control above the first block on the first page, assigned by the editor.
         public Control? header
@@ -2080,7 +2091,7 @@ namespace ArctisAurora.Core.UI
             float width = block.PictureSizeAt(index).X / zoom;
             StyleSpan picture = moveStored;
             picture.imageX = Math.Clamp(MathF.Round(moveStored.imageX + (point.X - moveGrab.X) / zoom),
-                -marginLeft, MathF.Max(-marginLeft, page.SizePx().X - marginLeft - width));
+                -marginLeft, MathF.Max(-marginLeft, (fitWidth ? measuredPaper.X / zoom : page.SizePx().X) - marginLeft - width));
             picture.imageY = MathF.Round(moveStored.imageY + (point.Y - moveGrab.Y) / zoom);
             document.SetPicture(moveAt, picture);
         }
@@ -2425,7 +2436,7 @@ namespace ArctisAurora.Core.UI
         // Replaces the selection with a live link to the copied cells; false where a plain paste should run.
         internal bool PasteLink(string text)
         {
-            string? reference = SheetEditorControl.CopiedReference(text);
+            string? reference = SheetEditorControl.CopiedReference(text, session?.path);
             if (reference == null || caretBlock == null || readOnly || plainText
                 || caretBlock.stylingType is TextStyleType.Code or TextStyleType.Rule) return false;
 
@@ -2980,9 +2991,20 @@ namespace ArctisAurora.Core.UI
             ReorderGroups(groups, order, fresh => fresh[index - first].isChecked = value);
         }
 
-        // Puts every sorted checklist starting in the range in order, ticked items at the set end.
-        internal void SortChecklists(int first, int last)
+        // Re-sorts the sorted checklist a block sits in, nested ones included; true when anything moved.
+        internal bool SortChecklistAt(int index)
         {
+            List<BlockControl> blocks = Blocks();
+            if (index < 0 || index >= blocks.Count || blocks[index].listKind != ListKind.SortedTask) return false;
+
+            List<(int start, int count)> groups = SortedGroups(blocks, index);
+            return SortChecklists(groups[0].start, groups[^1].start + groups[^1].count - 1);
+        }
+
+        // Puts every sorted checklist starting in the range in order, ticked items at the set end.
+        internal bool SortChecklists(int first, int last)
+        {
+            bool moved = false;
             bool top = SettingsRegistry.Get<UISettings>().sortedTasks.checkedEnd == SortedTasksSetting.CheckedEnd.Top;
             int deepest = 0;
             List<BlockControl> blocks = Blocks();
@@ -3002,8 +3024,9 @@ namespace ArctisAurora.Core.UI
                         if (blocks[groups[g].start].isChecked == top) order.Add(g);
                     for (int g = 0; g < groups.Count; g++)
                         if (blocks[groups[g].start].isChecked != top) order.Add(g);
-                    ReorderGroups(groups, order, null);
+                    moved |= ReorderGroups(groups, order, null);
                 }
+            return moved;
         }
 
         // The sorted checklist a block sits in, as one group per item at its level, sub-items included.
@@ -3028,7 +3051,7 @@ namespace ArctisAurora.Core.UI
         }
 
         // Rewrites a run's groups in a new order as one undoable record; the caret stays on its item.
-        private void ReorderGroups(List<(int start, int count)> groups, List<int> order, Action<List<BlockSnapshot>>? change)
+        private bool ReorderGroups(List<(int start, int count)> groups, List<int> order, Action<List<BlockSnapshot>>? change)
         {
             int first = groups[0].start;
             int last = groups[^1].start + groups[^1].count - 1;
@@ -3044,14 +3067,29 @@ namespace ArctisAurora.Core.UI
                     after.Add(fresh[b - first]);
                     source.Add(b);
                 }
-            if (change == null && source.SequenceEqual(Enumerable.Range(first, source.Count))) return;
+            if (change == null && source.SequenceEqual(Enumerable.Range(first, source.Count))) return false;
 
-            int caretAt = caretBlock == null ? -1 : Blocks().IndexOf(caretBlock);
+            List<BlockControl> blocks = Blocks();
+            int caretAt = caretBlock == null ? -1 : blocks.IndexOf(caretBlock);
+            List<float> drawnAt = source.Select(b => blocks[b].arrangedRect.y).ToList();
             document.RestoreBlocks(first, after);
             undo?.Push(new BlockStateEdit(document, first, before, after));
 
+            blocks = Blocks();
+            for (int k = 0; k < source.Count; k++)
+            {
+                if (source[k] == first + k) continue;
+                BlockControl block = blocks[first + k];
+                block.slideFrom = drawnAt[k];
+                block.reveal = 1f;
+                if (block.parent == this && !sliding.Contains(block)) sliding.Add(block);
+                Animations.Tween(block, nameof(BlockControl.reveal), Vector4.Zero, slideSeconds, Curve.Ease(EaseKind.CubicOut),
+                    () => sliding.Remove(block));
+            }
+
             int caretTo = source.IndexOf(caretAt);
-            if (caretTo >= 0 && first + caretTo != caretAt) SetCaret(Blocks()[first + caretTo], caretOffset);
+            if (caretTo >= 0 && first + caretTo != caretAt) SetCaret(blocks[first + caretTo], caretOffset);
+            return true;
         }
         #endregion
 
@@ -3391,7 +3429,7 @@ namespace ArctisAurora.Core.UI
                     ShowNodes();
                     break;
                 case NoteChangeKind.Page:
-                    page = document.layout.Page;
+                    if (!fitWidth) page = document.layout.Page;
                     InvalidateLayout();
                     break;
                 case NoteChangeKind.Layout:
@@ -4020,7 +4058,12 @@ namespace ArctisAurora.Core.UI
                     edgeRole = PaletteRole.Line,
                     edgeThickness = new Thickness(1f)
                 };
-                sheet.PaintOr(null, PaletteRole.Surface);
+                if (fitWidth)
+                {
+                    sheet.edgeThickness = new Thickness(0f);
+                    sheet.alpha = 0f;
+                }
+                else sheet.PaintOr(null, PaletteRole.Surface);
                 sheet.AddChild(new PageMargins());
                 sheet.parent = this;
                 children.Insert(pages.Count, sheet);
@@ -4221,7 +4264,7 @@ namespace ArctisAurora.Core.UI
         {
             if (listsDirty) RenumberLists();
 
-            Vector2 paper = page.SizePx() * zoom;
+            Vector2 paper = fitWidth && float.IsFinite(availableSize.X) ? new Vector2(availableSize.X, page.SizePx().Y * zoom) : page.SizePx() * zoom;
             if (isMeasureDirty || paper != measuredPaper || LayoutEngine.NoSkip)
             {
                 measuredPaper = paper;
@@ -4280,7 +4323,7 @@ namespace ArctisAurora.Core.UI
 
                 EnsurePages();
                 NumberPages();
-                float inset = PageGap * zoom;
+                float inset = Inset;
                 arrange.desired = new Vector2(contentWidth + 2f * inset, height + 2f * inset);
             }
 
@@ -4299,8 +4342,8 @@ namespace ArctisAurora.Core.UI
             WriteArranged(finalRect);
 
             LayoutRect inner = finalRect.Shrink(arrange.padding);
-            Vector2 paper = page.SizePx() * zoom;
-            float inset = PageGap * zoom;
+            Vector2 paper = fitWidth ? measuredPaper : page.SizePx() * zoom;
+            float inset = Inset;
             float x = inner.x + MathF.Max(inset, (inner.width - contentWidth) * 0.5f);
             float top = inner.y + inset;
             float textX = x + Mm(page.marginLeft);
@@ -4365,7 +4408,7 @@ namespace ArctisAurora.Core.UI
         internal override int CollectChildren(float z)
         {
             LayoutRect clip = arrange.clip;
-            float top = arrange.arranged.Shrink(arrange.padding).y + PageGap * zoom;
+            float top = arrange.arranged.Shrink(arrange.padding).y + Inset;
             float from = clip.y - top;
             float to = clip.Bottom - top;
             int walked = 0;
@@ -4389,8 +4432,14 @@ namespace ArctisAurora.Core.UI
                 if (blockTops[mid] + blockHeights[mid] <= from) low = mid + 1;
                 else high = mid;
             }
-            for (int i = low; i < blockControls.Count && blockTops[i] < to; i++)
-                walked += UIEngine.Collect(blockControls[i], z);
+            int end = low;
+            for (; end < blockControls.Count && blockTops[end] < to; end++)
+                walked += UIEngine.Collect(blockControls[end], z);
+            foreach (BlockControl block in sliding)
+            {
+                int i = blockControls.IndexOf(block);
+                if (i >= 0 && (i < low || i >= end)) walked += UIEngine.Collect(block, z);
+            }
             for (int i = 0; i < insertControls.Count; i++)
                 if (insertTops[i] < to && insertTops[i] + insertHeights[i] > from) walked += UIEngine.Collect(insertControls[i], z);
 

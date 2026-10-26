@@ -35,6 +35,9 @@ namespace ArctisAurora.Core.UI
         // runs once when the open menu closes, whoever closes it
         private static Action? _onClosed;
 
+        // the control whose menu the current press closed
+        private static Control? _closedOn;
+
         private static readonly ContextMenuLine groupLine = new ContextMenuLine();
 
         #region ---- menus ----
@@ -270,6 +273,7 @@ namespace ArctisAurora.Core.UI
         // A press anywhere but on an open panel closes the menu; inside one, it closes a list opened from it.
         internal static void DismissUnlessInside(Control? pressed)
         {
+            _closedOn = null;
             if (_open.Count == 0) return;
 
             for (Control? c = pressed; c != null; c = c.parent as Control)
@@ -279,7 +283,16 @@ namespace ArctisAurora.Core.UI
                     if (_open.Count > deeper && _open[deeper].opener == null) CloseFrom(deeper);
                     return;
                 }
+            _closedOn = target;
             Close();
+        }
+
+        // Whether the current press just closed a menu opened on this control; answers true once.
+        public static bool ClosedOn(Control on)
+        {
+            if (!ReferenceEquals(on, _closedOn)) return false;
+            _closedOn = null;
+            return true;
         }
 
         // The shallowest panel at or above this one that was opened from inside another; 0 when none was.

@@ -648,9 +648,12 @@ namespace ArctisAurora.Core.UI
             editor.FocusCaret();
         }
 
-        private static void Drop(ToolButton owner, List<ContextMenuEntry> entries) =>
+        private static void Drop(ToolButton owner, List<ContextMenuEntry> entries)
+        {
+            if (ContextMenus.ClosedOn(owner)) return;
             ContextMenus.Open(entries, owner,
                 new Vector2(owner.arrangedRect.x, owner.arrangedRect.Bottom));
+        }
 
         internal static string CaptionFor(TextStyleType type)
         {

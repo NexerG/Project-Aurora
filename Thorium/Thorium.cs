@@ -40,6 +40,14 @@ namespace Thorium
             SheetBook.findSheet = VaultBrowserControl.FindSheet;
             SheetBook.vaultSheets = VaultBrowserControl.VaultSheets;
             SheetBook.vaultNotes = VaultBrowserControl.VaultNotes;
+            SheetBook.vaultMissing = VaultBrowserControl.VaultMissing;
+            SheetBook.vaultPart = VaultBrowserControl.VaultPart;
+            SheetBook.referencingVaults = VaultBrowserControl.ReferencingVaults;
+            SheetBook.filePrefix = VaultBrowserControl.FilePrefix;
+            LinkIndex.findNote = VaultBrowserControl.FindNote;
+            LinkIndex.cacheFolder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Arktis", "Thorium", "Links");
+            LinkIndex.indexOf = VaultBrowserControl.IndexOf;
+            LinkIndex.openFile = VaultBrowserControl.Open;
             TabViewControl.newPressed += VaultBrowserControl.NewInPane;
             // prepare level
 

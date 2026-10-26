@@ -79,8 +79,11 @@ namespace ArctisAurora.Core.UI
             ink.PaintOr(null, on ? PaletteRole.Accent : PaletteRole.MutedInk);
         }
 
-        public static void Drop(Control owner, List<ContextMenuEntry> entries) =>
+        public static void Drop(Control owner, List<ContextMenuEntry> entries)
+        {
+            if (ContextMenus.ClosedOn(owner)) return;
             ContextMenus.Open(entries, owner, new Vector2(owner.arrangedRect.x, owner.arrangedRect.Bottom));
+        }
 
         private static TabToolButton Button(Action<TabToolButton> press)
         {

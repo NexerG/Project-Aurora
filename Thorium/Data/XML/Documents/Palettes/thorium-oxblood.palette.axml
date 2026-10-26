@@ -7,5 +7,6 @@
 		 Accent="#E0384E" Danger="#C42B1E"
 		 DarkInk="#211114" LightInk="#EFE0E0"
 		 Keyword="#F0647A" String="#E3B47A" Number="#D98FB0" Comment="#8A6E70"
+		 Doc="#5B9BE0" Sheet="#6DB84A" Planner="#E0A042"
 		 Step="0.04" Muted="0.38"
 		 RowRadius="3"/>

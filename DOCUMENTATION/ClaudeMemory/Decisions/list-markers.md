@@ -16,6 +16,8 @@
 - `RenumberLists` (run at the top of `MeasureCore` when `listsDirty`) counts per level: a plain block clears all
   counters, a task clears its level and deeper, a container change starts afresh, **a marker change at a level starts
   a new count there**. It hands each item `ShowMarker(marker, number)`
+- `Text.CycleList` (Ctrl+8) steps the caret's list: None → Bullet(shape) → Bullet(numbered) → Task → SortedTask →
+  None, one existing toggle call (one undo step) per press; reads `CaretBlock`, so a mixed selection follows the caret's
 - `ListsChanged()` is called from `InsertBlockAfter`, `RemoveBlock`, `SetBlockList`, `ShiftListLevel`,
   `RestoreBlocks`, `SetListMarker` and the editor's `SetLayout`
 - Markers: shapes are `IconControl`s (`bullet-*.svg` in the default set), numbers a `LabelControl` right-aligned in

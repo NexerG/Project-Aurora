@@ -61,6 +61,10 @@ A run of blocks in a note can be sealed under its own password. Locked, it is on
 
 Locking a vault creates a random master key and wraps it once per way of opening: password (Argon2id), recovery key (HKDF over its 256 random bits, shown as 13 groups of four base32 characters) and Windows Hello (HKDF over an RSA signature of a fixed string). The slots live in the vault's `.aurora` folder. Changing the password therefore re-encrypts nothing. Converting the files runs on the main thread in 8 ms slices so it serialises with saves, swaps each file in whole, and records its state in the lock file so an interrupted run resumes. `VaultLock` holds one master key per open vault, so several vaults can be open at once: each file is read and written with the key of the vault that contains it, and closing one vault zeroes only its key. Only one vault converts at a time; a second request is skipped and resumes on that vault's next unlock. Any write into an encrypted vault that is not open throws instead of landing in plaintext. File and folder names stay plaintext, and exports such as PDF and CSV stay plain on purpose.
 
+## Vault id
+
+Every vault carries an id in `.aurora/Vault.manifest.axml`, a committed file that also lists the vaults it depends on by id and alias. `VaultManifest.IdOf` creates the manifest the first time it is asked, and a vault that is already locked adopts the id from its lock file; a vault locked later still gets a separate id from `VaultLock.Create`, which names only its Windows Hello credential. A manifest that cannot be read is logged and left untouched. The per-user known-vault list records each vault's id so a folder can be found again by id. Vault-wide scans skip dot-folders, so the lock and manifest files are never read as notes.
+
 ## Post-quantum
 
 The symmetric parts stay secure against Grover's algorithm. The Windows Hello slot is RSA-2048 and is not post-quantum, because TPM 2.0 and Hello have no post-quantum keys. Replication key exchange should later be an ML-KEM-768 hybrid with X25519 or ECDH, over TLS 1.3.

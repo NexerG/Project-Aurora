@@ -61,6 +61,7 @@ namespace ArctisAurora.Core.UI
         public const string parse = "#ERROR!";
         public const string num = "#NUM!";
         public const string locked = "#LOCKED!";
+        public const string vault = "#VAULT!";
 
         // grid bounds
         public const int maxRows = 1048576;
@@ -98,6 +99,14 @@ namespace ArctisAurora.Core.UI
                 result = result[..start] + Prefix(to.file, to.page) + result[end..];
             }
             return result;
+        }
+
+        // The other files the formula reads, by their file part; none when it doesn't parse.
+        public static List<string> FileParts(string raw)
+        {
+            List<(int start, int end, string? file, string page)> prefixes = new List<(int, int, string?, string)>();
+            if (new Parser(raw, 1, prefixes).Formula() == null) return new List<string>();
+            return prefixes.Where(p => p.file != null).Select(p => p.file!).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
         }
 
         // The formula with each address on a page onPage answers for (file part, page; both null on the formula's own page)

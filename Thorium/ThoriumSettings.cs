@@ -1,5 +1,6 @@
 using ArctisAurora.Core.Filing.Serialization;
 using ArctisAurora.Core.Registry;
+using Thorium.Editor;
 
 namespace Thorium
 {
@@ -65,6 +66,9 @@ namespace Thorium
     {
         [A_XSDElementProperty("Path", "Settings", "Absolute folder of a vault that has been opened.")]
         public string path { get; set; } = "";
+
+        [A_XSDElementProperty("Id", "Settings", "The vault's id from its manifest, which links in other vaults name it by.")]
+        public string id { get; set; } = "";
     }
 
     // Every vault that has been opened, so the browser has something to list. Not a SettingCategory:
@@ -88,10 +92,15 @@ namespace Thorium
         public void Remember(string path)
         {
             string full = Resolve(path);
-            if (string.IsNullOrEmpty(full) || vaults.Any(v => SamePath(v.path, full))) return;
+            if (string.IsNullOrEmpty(full)) return;
 
-            vaults.Add(new KnownVault { path = full });
+            KnownVault? known = vaults.FirstOrDefault(v => SamePath(v.path, full));
+            if (known == null) vaults.Add(known = new KnownVault { path = full });
+            if (known.id.Length == 0) known.id = VaultManifest.IdOf(full);
         }
+
+        // The folder of a vault on this machine by its manifest id.
+        public string? PathOf(string id) => id.Length == 0 ? null : vaults.FirstOrDefault(v => v.id == id)?.path;
 
         // A vault that was moved or deleted stops being one.
         public void Prune() => vaults.RemoveAll(v => !Directory.Exists(v.path));

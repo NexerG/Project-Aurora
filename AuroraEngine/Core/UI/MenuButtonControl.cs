@@ -13,7 +13,7 @@ namespace ArctisAurora.Core.UI
         public override bool OnPointerPress(PointerEvent e)
         {
             base.OnPointerPress(e);
-            if (e.button != PointerEvent.leftButton || contextMenu == null) return true;
+            if (e.button != PointerEvent.leftButton || contextMenu == null || ContextMenus.ClosedOn(this)) return true;
 
             ContextMenu? menu = ContextMenus.Get(contextMenu);
             if (menu != null)

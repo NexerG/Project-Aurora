@@ -70,7 +70,7 @@ namespace ArctisAurora.Core.UI
             if (Tab() is TabStripButtonControl next) Pin(next, null);
         }
 
-        // "Pin to desktop": a new sticky, then every open sticky of this view's kind.
+        // "Add to sticky note": a new sticky, then every open sticky of this view's kind.
         internal static List<ContextMenuEntry> StickyEntries()
         {
             List<ContextMenuEntry> entries = new List<ContextMenuEntry>();

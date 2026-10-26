@@ -6,6 +6,7 @@
 	<FileType Suffix=".axml" Kind="Note" Description="Aurora note" Register="true" Mime="application/x-aurora+xml"/>
 	<FileType Suffix=".sheet.axml" Kind="Sheet" Description="Aurora sheet"/>
 	<FileType Suffix=".planner.axml" Kind="Planner" Description="Aurora planner"/>
+	<FileType Suffix=".graph.axml" Kind="Graph" Description="Aurora graph"/>
 	<FileType Suffix=".xml" Kind="Xml" Description="XML document" Register="true" Mime="application/xml"/>
 	<FileType Suffix=".md" Kind="Markdown" Description="Markdown document" Register="true" Mime="text/markdown"/>
 	<FileType Suffix=".txt" Kind="PlainText" Description="Text document" Register="true" Mime="text/plain"/>

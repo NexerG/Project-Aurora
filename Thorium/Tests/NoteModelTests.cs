@@ -6,6 +6,7 @@ using ArctisAurora.Core.Testing;
 using ArctisAurora.Core.UI;
 using ArctisAurora.EngineWork;
 using System.Xml.Linq;
+using Thorium.Editor.CustomControls;
 
 namespace Thorium.Tests
 {
@@ -289,7 +290,7 @@ namespace Thorium.Tests
             string notes = Path.GetFullPath(Paths.Doc("../../Notes"));
             List<(string name, RichTextDocument document)> sources = !Directory.Exists(notes) ? new() : Directory
                 .EnumerateFiles(notes, "*.axml", SearchOption.AllDirectories)
-                .Where(file => !SheetDocument.IsSheet(file) && !PlannerDocument.IsPlanner(file))
+                .Where(file => !SheetDocument.IsSheet(file) && !PlannerDocument.IsPlanner(file) && !VaultBrowserControl.InDotFolder(notes, file))
                 .Select(file => (Path.GetRelativePath(notes, file), DocumentXml.Load(file)))
                 .ToList();
             sources.Add(("everything.axml", DocumentXml.Parse(Everything)));

@@ -45,6 +45,9 @@ namespace ArctisAurora.Core.UI
         [A_XSDElementProperty("StickyDocument", "UI", "UI document a tab pinned to the desktop opens in.")]
         public string stickyDocument = "";
 
+        [A_XSDElementProperty("Bare", "UI", "Pane holds plain text views: no tab-row tools, pageless full-width editors.")]
+        public bool bare;
+
         // menu each tab in the strip names
         [A_XSDElementProperty("TabContextMenu", "UI", "Menu a tab in the strip offers on right click.")]
         public string tabContextMenu = "tab";
@@ -320,16 +323,13 @@ namespace ArctisAurora.Core.UI
         }
 
         // Puts a tab into a sticky window: the one given, or a new one built from stickyDocument at the pointer.
-        internal unsafe void PinToSticky(TabItemControl item, RenderWindow? into)
+        internal void PinToSticky(TabItemControl item, RenderWindow? into)
         {
             if (into == null)
             {
                 if (string.IsNullOrEmpty(stickyDocument)) return;
 
-                RenderWindow source = UIEngine.WindowOf(this);
-                AGlfwWindow._glfw.GetWindowPos(source.os.handle, out int wx, out int wy);
-                OpenSticky(item, stickyDocument, wx + (int)source.mousePos.X, wy + (int)source.mousePos.Y,
-                    string.IsNullOrEmpty(SessionLayout.freeScope) ? source.sessionScope : SessionLayout.freeScope);
+                OpenStickyAtPointer(item, stickyDocument, UIEngine.WindowOf(this));
                 return;
             }
 
@@ -338,6 +338,14 @@ namespace ArctisAurora.Core.UI
 
             item.SetParent(view);
             view.SetActive(item);
+        }
+
+        // A new sticky window from document at source's pointer holding item.
+        public static unsafe RenderWindow? OpenStickyAtPointer(TabItemControl item, string document, RenderWindow source)
+        {
+            AGlfwWindow._glfw.GetWindowPos(source.os.handle, out int wx, out int wy);
+            return OpenSticky(item, document, wx + (int)source.mousePos.X, wy + (int)source.mousePos.Y,
+                string.IsNullOrEmpty(SessionLayout.freeScope) ? source.sessionScope : SessionLayout.freeScope);
         }
 
         // A new sticky window from document at x, y holding item.
@@ -388,7 +396,8 @@ namespace ArctisAurora.Core.UI
         internal void SyncTools()
         {
             IFileEditor? editor = activeItem != null ? FileEditorOf(activeItem) : null;
-            Control? wanted = RibbonControl.Covers(this, editor) ? null : editor?.tools;
+            if (editor is DocumentEditorControl document) document.bare = bare;
+            Control? wanted = bare || RibbonControl.Covers(this, editor) ? null : editor?.tools;
             if (ReferenceEquals(wanted, tools) && (wanted == null || ReferenceEquals(wanted.parent, this))) return;
 
             if (tools != null && ReferenceEquals(tools.parent, this)) base.RemoveChild(tools);

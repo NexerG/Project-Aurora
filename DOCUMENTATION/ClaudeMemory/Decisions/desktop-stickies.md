@@ -13,7 +13,7 @@ Stickies:
 - `RenderWindow`: `bool pinned`; `volatile bool hidden` (`Renderer.Draw` returns early on it, as for a minimized 0-area window). `AGlfwWindow`: `SetFloating(bool)` (GLFW Floating attribute); `static WorkAreaAt(x, y)` -> work area of the monitor whose full bounds hold the point (full bounds, because a tray click is on the taskbar outside the work area), primary's otherwise.
 - `SessionLayout`: `SessionWindow.Pinned`; `Record` writes `window.pinned`; `OpenRecorded` applies it via `WindowActions.Pin`. A sticky restores as a sticky because its record's Document is `sticky-window`.
 - `ContextMenus.OpenAtScreen(List<ContextMenuEntry>, int x, int y, RenderWindow scaleFrom)` — always its own menu window, sized by `scaleFrom`, clamped into `WorkAreaAt`, flipped above the point when it would cross the bottom, focused. `Open`/`Host` unchanged.
-- Data: `StickyWindow.ui.axml` (asset `sticky-window` in `ThoriumAssets.assets.axml`): WindowRoot 300x300 -> WindowFrame -> 22-unit TitleBar (accent bar, spacer, pin Button with Label `Name="pin"` Text `^`, close Button `Window.Close`) -> `Workspace Default="tab-pane" Pane="tab-pane"`. `StickyDocument="sticky-window"` on the EditableTabs in Thorium's `TabPane.ui.axml` and `Workspace.ui.axml`. `Tab.menu.axml` gains `<ContextSubmenu Text="Pin to desktop" Source="tab-stickies"/>`.
+- Data: `StickyWindow.ui.axml` (asset `sticky-window` in `ThoriumAssets.assets.axml`): WindowRoot 300x300 -> WindowFrame -> 22-unit TitleBar (accent bar, spacer, pin Button with Label `Name="pin"` Text `^`, close Button `Window.Close`) -> `Workspace Default="tab-pane" Pane="tab-pane"`. `StickyDocument="sticky-window"` on the EditableTabs in Thorium's `TabPane.ui.axml` and `Workspace.ui.axml`. `Tab.menu.axml` gains `<ContextSubmenu Text="Add to sticky note" Source="tab-stickies"/>`.
 
 Background mode (`ArctisAurora.EngineWork.Rendering.Background`, static, Win32 P/Invoke):
 - `GraphicsSettings.WindowSetting.onClose` (XML `OnClose`, nested enum `WindowSetting.CloseAction { Ask, Tray, Quit }`, `[A_XSDType("CloseAction", "Settings")]`), default `Quit`; replaces the bool `CloseToTray`. Thorium ships `OnClose="Ask"` in `Graphics.settings.axml`. Shows in the Settings window as a dropdown (enum member).
@@ -37,7 +37,7 @@ Tear-off, N3 multi-view, session window records and WindowFrame resize already e
 **Pin means always-on-top (GLFW Floating).**
 Rejected: a desktop layer under every app (needs WndProc subclassing to stop activation raising it); no toggle at all.
 
-**Pin to desktop copies the view and the tab stays where it was.**
+**Add to sticky note copies the view and the tab stays where it was.**
 The copy is a second view sharing the note's session (N3). Rejected: moving the tab. Non-file tabs (none today in practice) move, same as Split.
 
 **Stickies show in the taskbar and Alt+Tab.**
@@ -96,8 +96,18 @@ Extends [[shutdown-sequence]] (§6 per-window close and §7 OS close now hide th
 
 **Amended 2026-10-21:** stickies are now vault or free (a free sticky lives in the stickies folder and a separate `stickies` session partition) — see [[start-at-login]].
 
+**Amended 2026-10-25 — a sticky is bare: pageless text and keybinds, no editing chrome.**
+- `TabViewControl.bare` (XML `Bare`): `SyncTools` mounts no tools on the tab row and sets `DocumentEditorControl.bare` on the active editor. Tab strip kept (user), so a sticky still holds several notes.
+- `DocumentEditorControl.bare`: reloads the view (`ViewState` / `LoadDocument` / `RestoreView`); `content.page` = a private Pageless `PageLayout` with 8-design-unit margins (`barePadMm`), `content.fitWidth = true`, no `NotePropertiesControl` header, `scrollDirection = Vertical`.
+- `DocumentControl.fitWidth`: paper width = the viewport width offered to `MeasureCore`, no `PageGap` inset (`Inset`), page sheets unfilled and edgeless; `NoteChangeKind.Page` leaves the override in place; `MovePicture` clamps to the fitted width.
+- Data: `StickyPane.ui.axml` (asset `sticky-pane`, `EditableTabs Bare="true"`); `StickyWindow.ui.axml` workspace `Default`/`Pane` = `sticky-pane`.
+- Why a view override, not the note's `layout.page`: a sticky shares the note's session with the main window (N3), so changing the note would make the main view pageless and save that into the file.
+- Why set from `SyncTools`: it runs on every activation and move, so a note torn out of a sticky into a normal pane gets its toolbar and page back.
+- Formatting in a sticky is keybinds and the right-click menu (kept, user default). Code blocks with wrap off still widen the content and scroll sideways.
+- Test: `Sticky.Bare` (Sticky suite). NOT GUI-verified: the look, resize reflow.
+
 ## Known gaps
-- NOT GUI-verified: tray icon appearance, left/right click on it, the engine tray menu actually taking focus (Windows may refuse foreground to a background process; `ContextMenus.Tick` would then close it next frame), X hiding the main window, the second launch bringing the window forward, sign-out saving, sticky look/resize/pin by hand, the "Pin to desktop" submenu listing existing stickies and adding a note into one.
+- NOT GUI-verified: tray icon appearance, left/right click on it, the engine tray menu actually taking focus (Windows may refuse foreground to a background process; `ContextMenus.Tick` would then close it next frame), X hiding the main window, the second launch bringing the window forward, sign-out saving, sticky look/resize/pin by hand, the "Add to sticky note" submenu listing existing stickies and adding a note into one.
 - Tray setting: test-verified only (full suite 287 passed, 2 failed — Boot pre-existing, `Perf.TypeLargeNote` perf, not chased; 40 skipped; Background suite 3/3 besides Boot). Launch check: Carbon Debug shows no `ArctisAurora.Background` window, Thorium Debug does. Tray icon appearance NOT GUI-verified.
 - No test covers the tray-off `Close` path (it would request shutdown of the test session).
 - Tray icon is IDI_APPLICATION — Thorium has no ApplicationIcon/.ico.

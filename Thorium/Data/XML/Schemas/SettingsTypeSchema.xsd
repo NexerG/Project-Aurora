@@ -78,6 +78,7 @@
   </xs:complexType>
   <xs:attributeGroup name="KnownVault.Attributes">
     <xs:attribute name="Path" type="xs:string" />
+    <xs:attribute name="Id" type="xs:string" />
   </xs:attributeGroup>
   <xs:element name="KnownVault" type="types:KnownVault" />
   <xs:complexType name="KnownVault">

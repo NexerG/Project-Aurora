@@ -11,6 +11,7 @@
 	<Asset Type="UIDocumentAsset" Name="main"      Source="XML/Documents/UI/UI.ui.axml"/>
 	<Asset Type="UIDocumentAsset" Name="workspace" Source="XML/Documents/UI/Workspace.ui.axml"/>
 	<Asset Type="UIDocumentAsset" Name="tab-pane"  Source="XML/Documents/UI/TabPane.ui.axml"/>
+	<Asset Type="UIDocumentAsset" Name="sticky-pane" Source="XML/Documents/UI/StickyPane.ui.axml"/>
 
 	<!-- context menus on the new stack, named by a control's ContextMenu attribute -->
 	<Asset Type="ContextMenuAsset" Name="title-bar" Source="XML/Documents/Menus/TitleBar.menu.axml"/>

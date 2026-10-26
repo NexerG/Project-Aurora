@@ -23,7 +23,8 @@ namespace ArctisAurora.Core.UI
     {
         None, Clear,
         Ground, Surface, Chrome, Field, SubField, Line, Accent, Danger,
-        Ink, MutedInk
+        Ink, MutedInk,
+        Doc, Sheet, Planner
     }
 
     // Which palette radius a code-built control takes. TabEnd rounds only the top right.
@@ -88,6 +89,14 @@ namespace ArctisAurora.Core.UI
         [A_XSDElementProperty("Comment", "UI", "Comments in code blocks, as a hex code. Muted text when left out.")]
         public string comment = "";
 
+        // file kind colours, optional
+        [A_XSDElementProperty("Doc", "UI", "Icons of notes and documents in file browsers, as a hex code. Muted text when left out.")]
+        public string doc = "";
+        [A_XSDElementProperty("Sheet", "UI", "Icons of sheets in file browsers, as a hex code. Muted text when left out.")]
+        public string sheet = "";
+        [A_XSDElementProperty("Planner", "UI", "Icons of planners in file browsers, as a hex code. Muted text when left out.")]
+        public string planner = "";
+
         // derivation
         [A_XSDElementProperty("Step", "UI", "How far each hover or press step moves a colour toward its text colour, 0 to 1.")]
         public float step = 0.04f;
@@ -133,7 +142,7 @@ namespace ArctisAurora.Core.UI
         public const uint clear = inlineBit | gradientBit;
 
         // block layout: surfaces × states, ink and muted ink per surface, the two raw inks, the edge accent,
-        // the ground's ink stepped once, the four code colours, then the idle accent
+        // the ground's ink stepped once, the four code colours, the idle accent, then the three file kinds
         private const uint surfaceCount = 8;
         private const uint stateCount = 3;
         private const uint inkBase = surfaceCount * stateCount;
@@ -142,7 +151,8 @@ namespace ArctisAurora.Core.UI
         private const uint inkStepSlot = edgeAccentSlot + 1;
         private const uint codeBase = inkStepSlot + 1;
         private const uint idleAccentSlot = codeBase + 4;
-        internal const uint blockSize = idleAccentSlot + 1;
+        private const uint fileKindBase = idleAccentSlot + 1;
+        internal const uint blockSize = fileKindBase + 3;
 
         private static readonly Dictionary<string, PaletteDefinition> byName =
             new Dictionary<string, PaletteDefinition>(StringComparer.OrdinalIgnoreCase);
@@ -261,6 +271,9 @@ namespace ArctisAurora.Core.UI
         // A code token's slot; Plain has none.
         public static uint Code(PaletteDefinition palette, SyntaxToken token) => palette.firstSlot + codeBase + (uint)token - 1;
 
+        // A file kind role's slot: Doc, Sheet or Planner.
+        public static uint FileKind(PaletteDefinition palette, PaletteRole role) => palette.firstSlot + fileKindBase + (uint)(role - PaletteRole.Doc);
+
         // A gradient stop's role as offsets inside any palette block: its colour, and that colour stepped once.
         public static (uint rest, uint stepped) RoleOffsets(PaletteRole role)
         {
@@ -359,6 +372,9 @@ namespace ArctisAurora.Core.UI
                 stringLiteral = element.Attribute("String")?.Value ?? "",
                 number = element.Attribute("Number")?.Value ?? "",
                 comment = element.Attribute("Comment")?.Value ?? "",
+                doc = element.Attribute("Doc")?.Value ?? "",
+                sheet = element.Attribute("Sheet")?.Value ?? "",
+                planner = element.Attribute("Planner")?.Value ?? "",
                 darkInk = Required(element, "DarkInk"),
                 lightInk = Required(element, "LightInk")
             };
@@ -447,6 +463,13 @@ namespace ArctisAurora.Core.UI
 
             Vector3 lineInk = Contrast(dark, surfaces[5]) >= Contrast(light, surfaces[5]) ? dark : light;
             Put(new Vector4(HexOr(palette.idleAccent, Vector3.Lerp(surfaces[5], lineInk, palette.step * 2)), 1f));
+
+            Vector3 browserGround = surfaces[1];
+            Vector3 browserInk = Contrast(dark, browserGround) >= Contrast(light, browserGround) ? dark : light;
+            Vector3 browserMuted = Vector3.Lerp(browserInk, browserGround, palette.muted);
+            Put(new Vector4(HexOr(palette.doc, browserMuted), 1f));
+            Put(new Vector4(HexOr(palette.sheet, browserMuted), 1f));
+            Put(new Vector4(HexOr(palette.planner, browserMuted), 1f));
         }
 
         private static Vector3 HexOr(string hex, Vector3 fallback) => string.IsNullOrEmpty(hex) ? fallback : Control.HexToRGB(hex);

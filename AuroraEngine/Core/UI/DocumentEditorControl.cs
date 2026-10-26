@@ -85,6 +85,25 @@ namespace ArctisAurora.Core.UI
         private NoteToolsControl? noteTools;
         public Control tools => noteTools ??= new NoteToolsControl(this);
 
+        // plain text view: pageless at the viewport's width, no properties header
+        private static readonly float barePadMm = 8f / PageLayout.PxPerMm;
+        public bool bare
+        {
+            get => field;
+            set
+            {
+                if (field == value) return;
+                field = value;
+                scrollDirection = value ? ScrollDirection.Vertical : ScrollDirection.Both;
+                if (activeDocument == null) return;
+
+                SessionTab view = ViewState();
+                if (session != null && session.lead == content) session.lead = null;
+                LoadDocument(activeDocument);
+                RestoreView(view);
+            }
+        }
+
         private void BookChanged(SheetDocument? edited) => content?.RefreshSheetLinks();
 
         private void NoteChanged(NoteChange change)
@@ -160,7 +179,8 @@ namespace ArctisAurora.Core.UI
             content = new DocumentControl
             {
                 blockSpacing = document.layout.blockSpacing,
-                page = document.layout.Page,
+                page = bare ? new PageLayout { mode = PageMode.Pageless, marginTop = barePadMm, marginBottom = barePadMm, marginLeft = barePadMm, marginRight = barePadMm } : document.layout.Page,
+                fitWidth = bare,
                 zoom = zoomOverride ?? DocumentZoom,
                 document = document,
                 caretColorHex = caretColorHex,
@@ -175,7 +195,7 @@ namespace ArctisAurora.Core.UI
             FileKind? kind = Kind;
             content.plainText = kind == FileKind.PlainText || Source;
             content.readOnly = document.readOnly;
-            properties = !Source && kind is FileKind.Markdown or FileKind.Note ? new NotePropertiesControl(this, kind == FileKind.Markdown) : null;
+            properties = !bare && !Source && kind is FileKind.Markdown or FileKind.Note ? new NotePropertiesControl(this, kind == FileKind.Markdown) : null;
             if (properties != null)
             {
                 ExpanderControl expander = new ExpanderControl();
@@ -433,6 +453,15 @@ namespace ArctisAurora.Core.UI
 
             using (BeginStep("Sorted task list"))
                 if (content.ToggleList(ListKind.SortedTask, null)) MarkDirty();
+        }
+
+        // Re-sorts the sorted checklist under the caret by the current setting.
+        public void SortCaretChecklist()
+        {
+            if (!Writable || content.caretBlock == null) return;
+
+            using (BeginStep("Sort checklist"))
+                if (content.SortChecklistAt(content.Blocks().IndexOf(content.caretBlock))) MarkDirty();
         }
 
         public void InsertRule()

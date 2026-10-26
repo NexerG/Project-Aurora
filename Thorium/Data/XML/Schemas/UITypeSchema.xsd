@@ -418,6 +418,9 @@
       <xs:enumeration value="Danger" />
       <xs:enumeration value="Ink" />
       <xs:enumeration value="MutedInk" />
+      <xs:enumeration value="Doc" />
+      <xs:enumeration value="Sheet" />
+      <xs:enumeration value="Planner" />
     </xs:restriction>
   </xs:simpleType>
   <xs:simpleType name="WindowCorners">
@@ -445,6 +448,9 @@
     <xs:attribute name="String" type="xs:string" />
     <xs:attribute name="Number" type="xs:string" />
     <xs:attribute name="Comment" type="xs:string" />
+    <xs:attribute name="Doc" type="xs:string" />
+    <xs:attribute name="Sheet" type="xs:string" />
+    <xs:attribute name="Planner" type="xs:string" />
     <xs:attribute name="Step" type="xs:float" />
     <xs:attribute name="Muted" type="xs:float" />
     <xs:attribute name="RowRadius" type="xs:float" />
@@ -770,6 +776,7 @@
     <xs:attribute name="GripPressColorHex" type="xs:string" />
     <xs:attribute name="TearOffDocument" type="xs:string" />
     <xs:attribute name="StickyDocument" type="xs:string" />
+    <xs:attribute name="Bare" type="xs:boolean" />
     <xs:attribute name="TabContextMenu" type="xs:string" />
   </xs:attributeGroup>
   <xs:element name="TabView" type="types:TabView" />
@@ -889,6 +896,7 @@
       <xs:enumeration value="Xml" />
       <xs:enumeration value="Sheet" />
       <xs:enumeration value="Planner" />
+      <xs:enumeration value="Graph" />
     </xs:restriction>
   </xs:simpleType>
   <xs:attributeGroup name="FileType.Attributes">

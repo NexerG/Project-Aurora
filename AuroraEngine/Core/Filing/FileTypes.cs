@@ -13,7 +13,8 @@ namespace ArctisAurora.Core.Filing
         Tex,
         Xml,
         Sheet,
-        Planner
+        Planner,
+        Graph
     }
 
     [A_XSDType("FileType", "UI")]

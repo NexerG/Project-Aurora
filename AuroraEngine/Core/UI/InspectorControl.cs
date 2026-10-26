@@ -22,9 +22,12 @@ namespace ArctisAurora.Core.UI
         private readonly LabelControl styleCaption;
         private readonly IconControl alignLeft, alignCenter, alignRight, alignJustify;
         private readonly SwitchControl listShape;
+        private readonly LabelControl checkedCaption;
+        private readonly SwitchControl checkedEnd;
         private TextStyleType? shownStyle;
         private bool? shownLeft, shownCenter, shownRight, shownJustify;
         private ListShape? shownList;
+        private SortedTasksSetting.CheckedEnd? shownChecked;
 
         private enum ListShape { None, Bullets, Numbers, Tasks, SortedTasks }
 
@@ -43,6 +46,11 @@ namespace ArctisAurora.Core.UI
         private readonly StackPanelControl layersHost;
         private SheetLayersControl? layers;
         private (SheetEditorControl, SheetPage)? layersFor;
+
+        // Links, rebuilt for each target and after it saves
+        private readonly LinksPanelControl links;
+        private string? linksFor;
+        private bool linksDirty;
 
         public override bool takesActiveControl => false;
 
@@ -83,6 +91,18 @@ namespace ArctisAurora.Core.UI
             };
             paragraph.AddChild(Caption("List", PaletteRole.MutedInk));
             paragraph.AddChild(listShape);
+
+            checkedCaption = Caption("Checked", PaletteRole.MutedInk);
+            checkedEnd = new SwitchControl { options = new[] { "Bottom", "Top" } };
+            checkedEnd.onChanged = index =>
+            {
+                SettingsRegistry.Get<UISettings>().sortedTasks.checkedEnd = (SortedTasksSetting.CheckedEnd)index;
+                SettingsRegistry.Commit();
+                Note(editor => editor.SortCaretChecklist());
+                shownChecked = null;
+            };
+            paragraph.AddChild(checkedCaption);
+            paragraph.AddChild(checkedEnd);
 
             docs.AddChild(Header("Page", out _));
             StackPanelControl page = Section();
@@ -153,6 +173,10 @@ namespace ArctisAurora.Core.UI
             layersHost = new StackPanelControl { alpha = 0f, horizontalAlignment = HorizontalAlignment.Stretch, padding = new Thickness(4f) };
             sheets.AddChild(layersHost);
             #endregion
+
+            AddChild(Header("Links", out _));
+            links = new LinksPanelControl();
+            AddChild(links);
 
             SheetBook.changed += BookChanged;
             Hide();
@@ -253,9 +277,22 @@ namespace ArctisAurora.Core.UI
                 docs.Hide();
                 ReflectSheet(SheetTarget());
             }
+            ReflectLinks(RibbonControl.Target(page) as IFileEditor);
         }
 
         #region ---- reflection ----
+        private void ReflectLinks(IFileEditor? editor)
+        {
+            string? path = editor?.path;
+            bool dirty = editor?.isDirty == true;
+            bool saved = linksDirty && !dirty;
+            linksDirty = dirty;
+            if (path == linksFor && !saved) return;
+
+            linksFor = path;
+            links.Show(path);
+        }
+
         private void ReflectNote(DocumentEditorControl? editor)
         {
             TextStyleType styling = editor?.CaretBlockStyling ?? TextStyleType.Text;
@@ -276,6 +313,15 @@ namespace ArctisAurora.Core.UI
             {
                 shownList = list;
                 if (listShape.selected != (int)list) listShape.selected = (int)list;
+                if (list == ListShape.SortedTasks) { checkedCaption.Show(); checkedEnd.Show(); }
+                else { checkedCaption.Hide(); checkedEnd.Hide(); }
+            }
+
+            SortedTasksSetting.CheckedEnd end = SettingsRegistry.Get<UISettings>().sortedTasks.checkedEnd;
+            if (shownChecked != end)
+            {
+                shownChecked = end;
+                if (checkedEnd.selected != (int)end) checkedEnd.selected = (int)end;
             }
 
             PageLayout? page = editor?.Page;

@@ -129,6 +129,35 @@ either way — and press/release still match, since both resolve to the same pan
 - **Not verified:** scrolling a vault long enough to overflow the sidebar, and any vault deeper than
   two levels — `Data/Notes` has one folder holding one note.
 
+## Row icons and New folder — 2026-10-24
+
+**Scope:** `ArctisAurora.Core.UI` (`FileBrowserControl`, `PaletteRole`, `Palettes`, `PaletteDefinition`, `Control.RolePaint`), `Thorium.Editor.CustomControls.VaultBrowserControl`.
+
+- `FileBrowserControl.RowIcon(FileObject)` — `protected virtual (string icon, PaletteRole role)? RowIcon(FileObject file) => null`. `AddRow` inserts a 14 px `IconControl` (set "default", margin right 4) between the expander gutter and the name when it returns a value, painted with `PaintOr(null, role)`.
+- `VaultBrowserControl.RowIcon` override: directory → ("folder", MutedInk); CSV → ("sheet", Sheet); by `FileTypes.KindOf`: Note / Markdown / PlainText → ("doc", Doc), Sheet → ("sheet", Sheet), Planner → ("planner", Planner); anything else (Tex, Xml) → ("file", MutedInk).
+- New `PaletteRole` values `Doc`, `Sheet`, `Planner` (after MutedInk), authored as optional `PaletteDefinition` attributes — see [[ui-palettes]].
+- New SVGs `doc.svg` (page with folded corner, three text-line cut-outs), `sheet.svg` (page, 2×3 cell cut-outs), `planner.svg` (calendar: two ring tabs, body, 3×2 day cut-outs) in the engine's `default` icon set; all `fill-rule="evenodd"`, 24×24, same silhouette family as `file.svg`. Thorium's atlas re-baked to 53 icons.
+- Folder creation: `Folders.New` / `Folders.NewHere`, see [[context-menus]] § Vault "New" submenu.
+
+**Icon design chosen with the user from four candidates per kind (page + lines, page + cells, calendar), coloured per kind.**
+Rejected: text-lines-only / pilcrow docs; 3×3 grid, solid-header and the existing `table.svg` for sheets; calendar + check, kanban and gantt for planners. `list-task.svg` was rejected for planners because the ribbon already uses it for task lists.
+
+**The icon sits in its own 14 px column after the expander gutter, on every row including folders.**
+Rejected: the empty 12 px gutter of file rows — it is 10 px tall, the planner shape does not read at that size, and folders would have no icon.
+
+**Kind colours live in the palette, per-palette slots like the code colours.**
+Themes can retune them and the theme crossfade covers them. Rejected: a hardcoded hex in the browser (no per-theme contrast), and mono MutedInk (the user wanted kinds told apart at a glance).
+
+**The hook returns icon and role together as one nullable tuple.**
+Rejected: two hooks (`RowIcon` + `RowIconRole`) — two overrides that must agree.
+
+**Verified:** test-verified, `_Build/test.sh` 385 passed, 1 failed (Boot — the pre-existing default-sampler error, no new errors), no `[Vulkan]` lines. Shot-verified via a throwaway test (deleted): rows for folder, sheet, CSV, tex, txt and planner showed the right icons and colours on thorium dark. **Not checked:** light palettes.
+
+**Known gaps:**
+- Pre-existing: file rows sit ~3 px left of folder rows — the empty-icon expander gutter never binds an icon set, so it measures without the set's `cellScale`. Now visible with icons stacked under each other. Not fixed.
+- The engine's own `Data/Icons/default` atlas is not re-baked (only Thorium booted); it re-bakes on the next boot of a host that imports it.
+- Engine `default` / `print` palettes leave the three roles unset, so their icons fall back to muted.
+
 ## Still open
 
 - Rows are still rebuilt wholesale, and nothing calls `Refresh()` — a note added on disk while the

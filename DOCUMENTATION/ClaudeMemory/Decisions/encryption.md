@@ -39,7 +39,7 @@ Sync loaders throw `LockedFileException`; tabs show a `LockedFileControl` (the u
 Whole write via temp + replace, so the crash journal never holds plaintext.
 
 **Cross-file sheet rewrites prompt for a locked sheet's password.**
-The user's fork I choice; the alternative was skip + warn. Every encrypted sheet prompts on each rename/shift because there is no way to tell whether it holds a reference without decrypting. Remembered keys skip the prompt. Formulas and note links into a locked sheet show `#LOCKED!`.
+The user's fork I choice; the alternative was skip + warn. Every encrypted sheet prompts on each rename/shift because there is no way to tell whether it holds a reference without decrypting. Remembered keys skip the prompt. Formulas and note links into a locked sheet show `#LOCKED!`. The stage-2 link index of [[link-graph]] will answer whether a sheet holds a reference (not built).
 
 **`SheetBook` caches locked paths by stat.**
 Length + write time instead of parse + exception per recalc; before it, each formula into a locked sheet cost a full XDocument parse, a thrown exception and a second open per recalc. The cache holds no secret, so a stale entry can only cause an extra `#LOCKED!` or one recheck. `FileKeys.Has` bypasses it.

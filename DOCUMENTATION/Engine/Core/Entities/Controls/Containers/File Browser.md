@@ -38,6 +38,7 @@ A scrolling list of rows over a [[File Object]] tree, split in two so one model 
 | `Activate(file)` | abstract | What a file row's click does. The engine cannot know, so the leaf answers. |
 | `Accepts(file)` | virtual | Files a row is built for. Defaults to all of them. |
 | `DisplayName(file)` | virtual | Name a row shows. Defaults to `file.name`, extension intact. |
+| `RowIcon(file)` | virtual | Icon name and palette role for a row's file-type icon, or null for none. Null by default. |
 | `Rebuild()` | public | Destroys every row, re-reads the root, calls `PopulateRows()`. |
 | `AddRow(file, depth, expander, activate)` | protected | Builds one row and appends it. |
 | `BeginRename(file)` | protected | Turns that entry's row name into a field, in place. |
@@ -81,11 +82,29 @@ The content panel calls `BubbleAll()`. Without it the row is inert — a `StackP
 AddRow(file, depth, expander, activate)
     gutter = Label(expander) with preferredWidth = gutterWidth
     name   = EditableLabel(DisplayName(file)) tinted folder or file
+    icon   = RowIcon(file)
     content = horizontal StackPanel, invisible mask, BubbleAll()
+    if icon is not null -> content gets a 14 px IconControl (set "default", margin right 4) painted with the icon's role, between gutter and name
     row = Button, height = rowHeight, margin.left = depth * indent
     row.label = name
     row.onRelease = activate
 ```
+
+### RowIcon
+A leaf answers with the icon and the palette role together, so the two cannot disagree. `VaultBrowserControl` draws a folder, a doc, a sheet, a planner or a plain file, and tints the three note kinds with the palette's `Doc`, `Sheet` and `Planner` colours. The icon takes its own 14 px column after the expander gutter on every row, folders included.
+
+```
+RowIcon(file)
+    if file is Directory -> ("folder", MutedInk)
+    if file is CSV -> ("sheet", Sheet)
+    switch FileTypes.KindOf(file)
+        Note, Markdown, PlainText -> ("doc", Doc)
+        Sheet -> ("sheet", Sheet)
+        Planner -> ("planner", Planner)
+        else -> ("file", MutedInk)
+```
+
+File rows sit about 3 px left of folder rows: the empty expander gutter never binds an icon set, so it measures without the set's cell scale. Not fixed.
 
 ### BeginRename and Rename
 The pair a host implements renaming with. `BeginRename` finds the row built for an entry and opens the in-place edit on it; `Rename` is what the commit calls, and does nothing unless a leaf overrides it — a browser that cannot rename says so by never offering the entry.

@@ -139,4 +139,6 @@ Vault windows other than the primary must also stay open when emptied.
 - `SheetBook.PathOf` is a linear scan of loaded documents on each cross-file formula lookup (tens of documents; not measured).
 - [[vault-list-and-switching]] "Two things track a vault … `ThoriumSettings.vault.path` is the one you are in" is superseded by stage B (the setting is read-only input); amended there.
 
-Related: [[multi-vault-plan]], [[vault-list-and-switching]], [[start-at-login]], [[desktop-stickies]], [[encryption]], [[session-restore]]
+- Vault identity (a vault id in `.aurora/Vault.manifest.axml`, `KnownVault.id`) and links between vaults are settled in [[link-graph]].
+
+Related: [[multi-vault-plan]], [[vault-list-and-switching]], [[start-at-login]], [[desktop-stickies]], [[encryption]], [[session-restore]], [[link-graph]]

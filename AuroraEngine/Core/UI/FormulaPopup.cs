@@ -40,7 +40,7 @@ namespace ArctisAurora.Core.UI
         public static bool PasteLink()
         {
             if (open == null || open.done || !open.box.isEditing) return false;
-            string? reference = SheetEditorControl.CopiedReference(ClipboardText.Get() ?? string.Empty);
+            string? reference = SheetEditorControl.CopiedReference(ClipboardText.Get() ?? string.Empty, open.editor.path);
             return reference != null && open.box.Paste(@"\sheet{" + reference + "}");
         }
 

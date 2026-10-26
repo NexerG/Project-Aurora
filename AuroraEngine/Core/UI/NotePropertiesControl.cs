@@ -77,7 +77,7 @@ namespace ArctisAurora.Core.UI
         }
 
         // How the host opens a [[note]] or web link; null shows links as plain values.
-        public static Func<string, bool>? openLink;
+        public static Func<string?, string, bool>? openLink;
 
         public override bool OnPointerPress(PointerEvent e) => true;
 
@@ -176,7 +176,7 @@ namespace ArctisAurora.Core.UI
                           || link.StartsWith("https://", StringComparison.OrdinalIgnoreCase);
             if (!isLink || openLink == null) return field;
 
-            return Cell(field, Button(Caption("Open"), 48f, () => openLink(link)));
+            return Cell(field, Button(Caption("Open"), 48f, () => openLink(editor.path, link)));
         }
 
         private bool AddProperty(string key)

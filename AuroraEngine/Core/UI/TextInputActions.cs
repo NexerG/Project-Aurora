@@ -175,6 +175,9 @@ namespace ArctisAurora.Core.UI
         [A_XSDActionDependency("Text.Strikethrough", "Input", "Toggles strikethrough over the selection, or for what is typed next")]
         public static void Strikethrough() => Toggle(span => span.strikethrough, style => style.strikethrough, on => new StyleDelta(strikethrough: on));
 
+        [A_XSDActionDependency("Text.InlineCode", "Input", "Toggles inline code over the selection, or for what is typed next")]
+        public static void InlineCode() => Toggle(span => span.stylingType == TextStyleType.Code, style => style.code, on => new StyleDelta(code: on));
+
         #region ---- alignment ----
         [A_XSDActionDependency("Text.AlignLeft", "Input", "Aligns the paragraphs under the caret to the left")]
         public static void AlignLeft() => Editor()?.SetAlignment(TextAlignment.Left);
@@ -188,6 +191,34 @@ namespace ArctisAurora.Core.UI
         [A_XSDActionDependency("Text.Tasks", "Input", "Turns the paragraphs under the caret into a task list, or back into text")]
         public static void Tasks() => Editor()?.ToggleTasks();
 
+        [A_XSDActionDependency("Text.CycleList", "Input", "Steps the caret's paragraphs through bullets, numbers, tasks, sorted tasks and back to text")]
+        public static void CycleList()
+        {
+            DocumentEditorControl editor = Editor();
+            BlockControl block = editor?.CaretBlock;
+            if (block == null) return;
+
+            switch (block.listKind)
+            {
+                case ListKind.None: editor.ToggleBullets(); break;
+                case ListKind.Bullet when !ListMarkers.IsNumbered(block.listMarker ?? ListMarker.Disc): editor.ToggleNumbers(); break;
+                case ListKind.Bullet: editor.ToggleTasks(); break;
+                case ListKind.Task: editor.ToggleSortedTasks(); break;
+                case ListKind.SortedTask: editor.ToggleSortedTasks(); break;
+            }
+        }
+
+        [A_XSDActionDependency("Text.ToggleCheck", "Input", "Ticks or unticks the task under the caret")]
+        public static void ToggleCheck()
+        {
+            DocumentEditorControl editor = Editor();
+            BlockControl block = editor?.CaretBlock;
+            if (block?.listKind is ListKind.Task or ListKind.SortedTask) editor.SetChecked(block, !block.isChecked);
+        }
+
+        [A_XSDActionDependency("Text.Rule", "Input", "Inserts a horizontal line after the caret's paragraph")]
+        public static void Rule() => Editor()?.InsertRule();
+
         [A_XSDActionDependency("Text.AlignCenter", "Input", "Centres the paragraphs under the caret")]
         public static void AlignCenter() => Editor()?.SetAlignment(TextAlignment.Center);
 
@@ -196,6 +227,44 @@ namespace ArctisAurora.Core.UI
 
         [A_XSDActionDependency("Text.AlignJustify", "Input", "Spreads the paragraphs under the caret across the full width")]
         public static void AlignJustify() => Editor()?.SetAlignment(TextAlignment.Justify);
+        #endregion
+
+        #region ---- paragraph styles ----
+        [A_XSDActionDependency("Text.Paragraph", "Input", "Turns the paragraphs under the caret back into plain text")]
+        public static void Paragraph() => Editor()?.SetBlockStyling(TextStyleType.Text);
+
+        [A_XSDActionDependency("Text.Heading1", "Input", "Makes the paragraphs under the caret a level 1 heading, or text again")]
+        public static void Heading1() => Block(TextStyleType.Heading1);
+
+        [A_XSDActionDependency("Text.Heading2", "Input", "Makes the paragraphs under the caret a level 2 heading, or text again")]
+        public static void Heading2() => Block(TextStyleType.Heading2);
+
+        [A_XSDActionDependency("Text.Heading3", "Input", "Makes the paragraphs under the caret a level 3 heading, or text again")]
+        public static void Heading3() => Block(TextStyleType.Heading3);
+
+        [A_XSDActionDependency("Text.Heading4", "Input", "Makes the paragraphs under the caret a level 4 heading, or text again")]
+        public static void Heading4() => Block(TextStyleType.Heading4);
+
+        [A_XSDActionDependency("Text.Heading5", "Input", "Makes the paragraphs under the caret a level 5 heading, or text again")]
+        public static void Heading5() => Block(TextStyleType.Heading5);
+
+        [A_XSDActionDependency("Text.Heading6", "Input", "Makes the paragraphs under the caret a level 6 heading, or text again")]
+        public static void Heading6() => Block(TextStyleType.Heading6);
+
+        [A_XSDActionDependency("Text.Quote", "Input", "Makes the paragraphs under the caret a quote, or text again")]
+        public static void Quote() => Block(TextStyleType.Quote);
+
+        [A_XSDActionDependency("Text.CodeBlock", "Input", "Makes the paragraphs under the caret a code block, or text again")]
+        public static void CodeBlock() => Block(TextStyleType.Code);
+
+        // Applies the paragraph style, or plain text when the caret's paragraph already has it.
+        private static void Block(TextStyleType type)
+        {
+            DocumentEditorControl editor = Editor();
+            if (editor == null) return;
+
+            editor.SetBlockStyling(editor.CaretBlockStyling == type ? TextStyleType.Text : type);
+        }
         #endregion
 
         #region ---- list markers ----

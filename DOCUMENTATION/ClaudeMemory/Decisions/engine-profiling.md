@@ -718,6 +718,7 @@ captures.
   all. The earliest arm is `Profiling.ArmBoot` inside `Init`; see §13.
 - ~~**The visualizer is not here.**~~ **Landed 2026-09-02 as `Carbon`** — a fourth application on the
   engine's own UI, with `FrameCaptureReader` beside `FrameSpool`. See [[carbon-frame-viewer]].
+- **Release builds fail (seen 2026-10-26).** SixLabors.ImageSharp 4.1.3's MSBuild licence check (`ValidateLicenseTask`) passes only configurations whose name starts with "Debug", and the repo has no sixlabors.lic / SixLaborsLicenseKey, so a Release+PROFILE build cannot be made. Pre-existing. Workaround used for the link-graph measurements: a custom `DebugPerf` configuration with Optimize=true and DefineConstants `TRACE;PROFILE` — not `DEBUG`, since `Engine.isDebug` follows DEBUG and measured tests skip under it. See [[link-graph]].
 
 ## Verified
 

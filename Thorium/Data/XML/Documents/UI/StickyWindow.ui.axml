@@ -21,7 +21,7 @@
 			</Button>
 		</TitleBar>
 
-		<Workspace Name="Workspace" HeightStar="1" Default="tab-pane" Pane="tab-pane"/>
+		<Workspace Name="Workspace" HeightStar="1" Default="sticky-pane" Pane="sticky-pane"/>
 	</StackPanel>
 	</WindowFrame>
 </WindowRoot>

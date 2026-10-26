@@ -653,7 +653,7 @@ namespace ArctisAurora.Core.UI
             if (!ReferenceEquals(source, document) && document.isCsv) return Paste(text);
             string prefix = ReferenceEquals(page, sheet.page) ? ""
                 : ReferenceEquals(source, document) ? SheetFormula.Prefix(null, page.name) + "!"
-                : SheetFormula.Prefix(sourcePath != null ? SheetBook.FileName(sourcePath) : source.name ?? "", page.name) + "!";
+                : SheetFormula.Prefix(sourcePath != null ? SheetBook.FilePart(path, sourcePath) : source.name ?? "", page.name) + "!";
 
             List<(int, int, string?)> cells = new List<(int, int, string?)>();
             for (int r = top; r <= bottom; r++)
@@ -670,11 +670,11 @@ namespace ArctisAurora.Core.UI
         }
 
         // A note link to the last copied cells while the clipboard still holds them; null otherwise.
-        internal static string? CopiedReference(string clipboardText)
+        internal static string? CopiedReference(string clipboardText, string? home)
         {
             if (copiedText == null || clipboardText != copiedText || copiedFrom.path == null) return null;
             (_, string path, SheetPage page, int top, int left, int bottom, int right) = copiedFrom;
-            return SheetLinks.Reference(path, page.name, top, left, bottom, right);
+            return (SheetBook.filePrefix?.Invoke(home, path) ?? "") + SheetLinks.Reference(path, page.name, top, left, bottom, right);
         }
 
         // Tab-separated rows from the active cell, selected after.

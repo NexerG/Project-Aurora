@@ -153,6 +153,32 @@ namespace ArctisAurora.Tests
             ContextMenus.Close();
         }
 
+        [A_XSDActionDependency("Input.DropToggles", "Test")]
+        private static IEnumerator<int> DropToggles(TestContext t)
+        {
+            TabToolsControl tools = new TabToolsControl();
+            LabelControl caption = tools.Text("Size", owner =>
+                TabToolsControl.Drop(owner, new List<ContextMenuEntry> { new ContextMenuButton("A4", () => { }) }), true);
+            t.Show(tools);
+            yield return 2;
+
+            Control button = (Control)((Control)caption.parent).parent;
+            bool Open() => Rows(tools).Any(row => (row.entry as ContextMenuButton)?.text == "A4");
+
+            yield return t.Click(button);
+            yield return 20;
+            t.Check(Open(), "a press on a drop button opens its menu");
+
+            yield return t.Click(button);
+            yield return 20;
+            t.Check(!Open() && ContextMenus.target == null, "a second press on the same button closes the menu and does not reopen it");
+
+            yield return t.Click(button);
+            yield return 20;
+            t.Check(Open(), "a third press opens it again");
+            ContextMenus.Close();
+        }
+
         // Menu rows open in the control's window.
         private static List<ContextMenuControl.Row> Rows(Control within)
         {

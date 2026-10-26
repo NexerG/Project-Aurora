@@ -25,6 +25,11 @@
 		<Repeat />
 	</Keybind>
 
+	<Keybind Trigger="Enter" Action="Text.ToggleCheck">
+		<Modifier Key="LeftControl" />
+		<Press />
+	</Keybind>
+
 	<Keybind Trigger="Enter" Action="Text.NewBlock">
 		<Repeat />
 	</Keybind>
@@ -119,6 +124,12 @@
 		<Press />
 	</Keybind>
 
+	<Keybind Trigger="V" Action="Text.PasteLink">
+		<Modifier Key="LeftControl" />
+		<Modifier Key="LeftShift" />
+		<Press />
+	</Keybind>
+
 	<Keybind Trigger="V" Action="Text.Paste">
 		<Modifier Key="LeftControl" />
 		<Press />
@@ -145,7 +156,111 @@
 		<Press />
 	</Keybind>
 
+	<Keybind Trigger="M" Action="Math.Edit">
+		<Modifier Key="LeftControl" />
+		<Modifier Key="LeftAlt" />
+		<Press />
+	</Keybind>
+
 	<Keybind Trigger="M" Action="Math.Insert">
+		<Modifier Key="LeftControl" />
+		<Press />
+	</Keybind>
+
+	<Keybind Trigger="X" Action="Text.Strikethrough">
+		<Modifier Key="LeftControl" />
+		<Modifier Key="LeftShift" />
+		<Press />
+	</Keybind>
+
+	<Keybind Trigger="E" Action="Text.InlineCode">
+		<Modifier Key="LeftControl" />
+		<Modifier Key="LeftShift" />
+		<Press />
+	</Keybind>
+
+	<Keybind Trigger="R" Action="Text.Rule">
+		<Modifier Key="LeftControl" />
+		<Modifier Key="LeftShift" />
+		<Press />
+	</Keybind>
+
+	<Keybind Trigger="RightBracket" Action="Text.Indent">
+		<Modifier Key="LeftControl" />
+		<Press />
+	</Keybind>
+
+	<Keybind Trigger="LeftBracket" Action="Text.Outdent">
+		<Modifier Key="LeftControl" />
+		<Press />
+	</Keybind>
+
+	<!-- paragraph styles and lists: Ctrl+Shift+digit binds are declared ahead of their Ctrl+digit binds -->
+	<Keybind Trigger="Num0" Action="Text.Paragraph">
+		<Modifier Key="LeftControl" />
+		<Modifier Key="LeftShift" />
+		<Press />
+	</Keybind>
+
+	<Keybind Trigger="Num7" Action="Text.Numbers">
+		<Modifier Key="LeftControl" />
+		<Modifier Key="LeftShift" />
+		<Press />
+	</Keybind>
+
+	<Keybind Trigger="Num8" Action="Text.Bullets">
+		<Modifier Key="LeftControl" />
+		<Modifier Key="LeftShift" />
+		<Press />
+	</Keybind>
+
+	<Keybind Trigger="Num9" Action="Text.Tasks">
+		<Modifier Key="LeftControl" />
+		<Modifier Key="LeftShift" />
+		<Press />
+	</Keybind>
+
+	<Keybind Trigger="Num1" Action="Text.Heading1">
+		<Modifier Key="LeftControl" />
+		<Press />
+	</Keybind>
+
+	<Keybind Trigger="Num2" Action="Text.Heading2">
+		<Modifier Key="LeftControl" />
+		<Press />
+	</Keybind>
+
+	<Keybind Trigger="Num3" Action="Text.Heading3">
+		<Modifier Key="LeftControl" />
+		<Press />
+	</Keybind>
+
+	<Keybind Trigger="Num4" Action="Text.Heading4">
+		<Modifier Key="LeftControl" />
+		<Press />
+	</Keybind>
+
+	<Keybind Trigger="Num5" Action="Text.Heading5">
+		<Modifier Key="LeftControl" />
+		<Press />
+	</Keybind>
+
+	<Keybind Trigger="Num6" Action="Text.Heading6">
+		<Modifier Key="LeftControl" />
+		<Press />
+	</Keybind>
+
+	<Keybind Trigger="Num7" Action="Text.Quote">
+		<Modifier Key="LeftControl" />
+		<Press />
+	</Keybind>
+
+	<Keybind Trigger="Num8" Action="Text.CycleList">
+		<Modifier Key="LeftControl" />
+		<Press />
+	</Keybind>
+
+	<Keybind Trigger="Num9" Action="Text.CodeBlock">
 		<Modifier Key="LeftControl" />
 		<Press />
 	</Keybind>

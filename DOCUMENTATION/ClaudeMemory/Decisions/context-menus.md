@@ -171,14 +171,83 @@ Different from the skipped `EnabledWhen`: those rows were harmless no-ops; these
 
 **NOT GUI-verified:** a real right-click in Thorium. Test-verified: `TextInput.NoteMenuFollowsCaret` (`bash _Build/test.sh TextInput` → 99 passed; the one failure is the baseline Boot sampler error).
 
+## Entries closing without acting — a hidden window kept a stale `isInWindow` — 2026-10-23
+
+Scope: `ArctisAurora.Core.UI.UIEngine.Poll(RenderWindow)`, `RenderWindow.isInWindow`, `RenderWindow.hidden`.
+
+- Symptom (first seen on Thorium's title-bar "Thorium" and File menus): a click on a menu entry only closed the menu.
+- `UIEngine.Poll`: new local `bool inWindow = window.isInWindow && !window.hidden;` replaces `window.isInWindow` in the "pointer left this window" early-out (clears `hovering` if it is in this root, returns) and in the `SolveHover` guard.
+- A hidden window that owns the current drag (`ownsDrag`) still runs its press/release/drag handling, without hover — the same as an un-hovered window owning a drag.
+- Tests (Thorium, `Thorium.Tests.TitleBarTests`, suite file `TitleBar.tests.axml`):
+	- `TitleBar.ThoriumMenu` loads the real `main` UI document, clicks File then "Vaults" (vaults window opens, menu closes), then Thorium then "Settings". Waits 40 ticks after opening a menu: the `menu-open` clip slides the panel in over 0.16 s and a point computed mid-slide misses the row.
+	- `TitleBar.HiddenWindowIgnored` hides a second window (`Engine.OpenMenuWindow("titlebar-hidden", …)`, empty `WindowRoot`) through `Background.HideWindow`, opens File, `t.MoveTo(row)`, sets `hidden.isInWindow = true` and presses with `t.Key(Keys.MouseLeft)` (a press without a pointer move, because `TestContext.Point` rewrites every window's `isInWindow` on each move or click). Failed before the fix, passes after.
+
+**Cause (proven): `Poll` runs for every window each frame, and a hidden window still counted as one the pointer was in.**
+Each window with `isInWindow` true hit-tests the global button press against its own tree. `isInWindow` is set only by GLFW cursor enter/leave callbacks and `AGlfwWindow.SeedIsInWindow`; `glfwHideWindow` sends no leave, so the flag stays true. Thorium hides its primary `main` window whenever the vaults live in editor windows (`VaultWindows` restore: `Background.HideWindow(Engine.primary)`), so a pointer over that rect at launch left `main` with `isInWindow = true`. `Engine.windows` polls `main` before the editor window: its hit test (pointer outside its tree) gives `hovering = null`, `SolvePress` calls `ContextMenus.DismissUnlessInside(null)` and closes the open menu, and the editor window then sees the press land on the note under the vanished menu. The menu opens fine because nothing is open yet when `main` sees the press.
+
+**Evidence.** Live Debug Thorium, real pointer (`SetCursorPos` + `mouse_event`), cursor parked at a screen point during boot, then Thorium then Vaults: cursor inside hidden `main`'s rect (364,120, 1280x720) at boot, the menu opens and Vaults does not (2 of 2, plus 2 earlier identical failures with Settings); cursor outside, Vaults opens (2 of 2). After the fix, inside, Vaults opens (2 of 2). The first theory ("closing with the Settings window open breaks it") was the mouse position: closing left the cursor inside that rect for the next launch.
+
+**Why tests never saw it.** `TestContext.Point` sets `isInWindow` for every window (true only for the target) on each move or click, and `AGlfwWindow.SeedIsInWindow` forces false under `TestRunner.active`, so no test could carry a stale flag.
+
+**Fix: skip hidden windows in `Poll` (user choice).**
+Rejected: clearing `isInWindow` in `AGlfwWindow.Hide()` — covers every hide path, including ones that call `os.Hide()` without setting `RenderWindow.hidden`, but leaves the flag wrong by construction elsewhere; the user chose the `Poll` guard. Cost of the chosen fix: a window hidden with `os.Hide()` alone (not through `Background.Hide`/`HideWindow`, which set `hidden`) still keeps a stale flag. Not done: routing each press only to the window GLFW reported it in (the deeper design; every window still sees the global button state).
+
+**Verified:** test-verified and GUI-verified (live real-pointer trials above). Full suite `bash _Build/test.sh` → 384 passed, only the known baseline Boot error, no `[Vulkan]` lines; `TitleBar.HiddenWindowIgnored` failed before the change and passes after. The user settings file was unchanged across all live runs (hash-compared to a copy taken first).
+
+Gaps: a window hidden by `os.Hide()` without `RenderWindow.hidden` keeps the stale flag (none known in Thorium's hide paths); `isInWindow` itself stays true on a hidden window, only `Poll` ignores it; `ContextMenus.DismissUnlessInside(null)` still closes menus for a press any polling window resolves to nothing, which is intended for a real press outside every tree. Related: [[synthetic-click-into-foreground-app]].
+
+## A drop button's second press closes its menu — 2026-10-23
+
+Scope: `ArctisAurora.Core.UI.ContextMenus`, `TabToolsControl`, `DocumentToolbarControl`, `MenuButtonControl`, `DropdownControl`.
+
+- `ContextMenus._closedOn` (private static `Control?`): `DismissUnlessInside` clears it on every press and, when that press closes the menu, records `target` (the control the menu was opened on) before `Close()`.
+- `ContextMenus.ClosedOn(Control on)` (public static bool): true once when the current press just closed a menu opened on `on`, then clears.
+- Openers that start with `if (ContextMenus.ClosedOn(owner/this)) return;`: `TabToolsControl.Drop` (now a block body), `DocumentToolbarControl.Drop` (private, block body), `MenuButtonControl.OnPointerPress`, `DropdownControl.OnPointerRelease`.
+- Covers: inspector/ribbon dropdowns (page Size, Style, Format), document toolbar dropdowns, menu bar buttons, Settings-window dropdowns.
+- Test: `Input.DropToggles` (`AuroraEngine/Tests/InputTests.cs`, listed in `Input.tests.axml`): open, second press closes and stays closed, third opens.
+
+**The mechanism is needed because the button only ever sees a closed menu.**
+`UIEngine.SolvePress` runs `ContextMenus.DismissUnlessInside` before dispatching the press, so by the time the button handles it the menu is already gone and the press reopens it.
+
+**Opt-in per opener, not built into `ContextMenus.Open`.**
+Rejected: suppressing any `Open` on the control the press just closed a menu for. Popups open on shared controls (`FormulaPopup` opens on the whole `DocumentEditorControl`), so a press on a second formula would close the first popup and then be refused.
+
+**`_closedOn` lives from one press to the next.**
+Cleared at the start of each press, so it covers buttons that open on press and `DropdownControl`, which opens on release.
+
+**Not applied:**
+- Right-click menus (`OpenOn`): a second right-click should reopen at the new spot.
+- The formula, planner ticket, planner category and sheet-grow popups, the sheet layers button (`SheetPageStripControl.OpenLayers`), the vault browser's New button.
+- A dropdown inside an open popup: that press closes a nested list through the `ContextMenuControl` branch, not the menu.
+
+**Test-verified:** `Input.DropToggles`; Input suite 7 passed, only the known baseline Boot failure. The toggle is tested only through `TabToolsControl.Drop`, not the toolbar, menu bar or Settings dropdown paths. **NOT GUI-verified** in a live window.
+
+## Vault "New" submenu — 2026-10-24
+
+- Scope: `Thorium.Editor.CustomControls.VaultBrowserControl` (actions), `Thorium/Data/XML/Documents/Menus/*.menu.axml`.
+- Every vault-browser context menu and the title-bar File menu replace the separate "New note / New sheet / New planner" entries with one **New** submenu: Folder, Doc, Sheet ▸ (Fixed size, Unfixed), Planner.
+- Root menus (`Vault.menu.axml`, `File.menu.axml`) use the root actions: `Folders.New`, `Notes.New`, `Sheets.NewFixed` / `Sheets.New`, `Planners.New`.
+- Row menus use the `…Here` actions (inside the right-clicked folder, or beside the right-clicked file): `VaultFolder`, `VaultNote`, `VaultNoteXml`, `VaultCsv` (gained New, had none), `VaultAsNote`, `VaultAsSheet`, `VaultAsPlanner`. `Folders.NewHere` falls back to the root without a row.
+- `NewFolder(string)` asks `NoteNameWindow.Ask` (default "New folder"); `CreateFolder(folder, name)` picks "name", "name 2", … free against both directories and files, calls `Directory.CreateDirectory`, then `Expand(folder)` + `Rebuild()`. It opens nothing.
+- `PaneNew.menu.axml`, `Thorium.menu.axml` and the old-stack `ContextMenus.menus.axml` are unchanged.
+
+**Sheet stays a submenu with Fixed size / Unfixed, a third level.**
+A single "Sheet" leaf would drop fixed-size creation from the menu.
+
+**No icons in menu rows.**
+`ContextButton` and `ContextSubmenu` have no Icon attribute and adding one is an engine change not taken now.
+
+**Verified:** shot-verified via a throwaway test (deleted): right-click a folder → New → Sheet opened the nested submenu with Folder / Doc / Sheet / Planner and Fixed size / Unfixed. **NOT GUI-verified:** clicking Folder end to end (name dialog and folder creation), the File title-bar menu by eye. Row icons of the same change: [[file-browser-tree]].
+
 ## Known gaps
+- No icons in context-menu rows (`ContextButton` / `ContextSubmenu` carry no Icon attribute).
 - No flipping or clamping to the monitor — a windowed menu near a screen edge goes off-screen.
 - A windowed panel renders 1:1 even when the origin window autoscales; only its position is converted.
 - No Escape, no keyboard navigation, no hover delay for a diagonal move into a submenu.
 - A bad `Action` name in a menu document throws at the first open, not at boot — the document is parsed lazily.
 - Each window opened after boot logs the pre-existing `DemoteToHelperInvocation` validation error once more.
 - The Editor's and the engine's own font copies were already stale (importer v1 and v3) and were not re-baked.
-- A menu button's second press re-opens its menu — `SolvePress` dismisses it, then the press opens it again.
+- A second press closes the menu only for the openers listed under "A drop button's second press closes its menu"; the others (right-click, popups on shared controls, sheet layers, vault browser New) still dismiss and reopen.
 - `Tick` closes menus when no application window has focus, and returns early under `TestRunner.active` (2026-10-05), so `--test` popup tests (`Sheet.MathLinks`, `Sheet.Layers`, `TextInput.Math*`) do not depend on OS focus.
 - New note, Vaults, Settings, Save note, Undo and Redo run old-stack actions, which draw nothing since `UIModule` left
   the module list. They come alive at 6c and 6c2; Exit works.

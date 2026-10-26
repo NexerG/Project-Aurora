@@ -11,6 +11,10 @@ namespace ArctisAurora.Core.UI
         public static Func<string?, string, string?>? findSheet;
         public static Func<string?, IEnumerable<string>>? vaultSheets;
         public static Func<string?, IEnumerable<string>>? vaultNotes;
+        public static Func<string?, string, bool>? vaultMissing;
+        public static Func<string?, string, string, string?>? vaultPart;
+        public static Func<string?, IEnumerable<string>>? referencingVaults;
+        public static Func<string?, string, string?>? filePrefix;
 
         // the document whose cells were written, or null when only values may have moved
         public static event Action<SheetDocument?>? changed;
@@ -128,28 +132,28 @@ namespace ArctisAurora.Core.UI
             foreach ((string path, SheetDocument loaded) in documents)
                 if (ReferenceEquals(loaded, document)) home = path;
 
-            Func<string?, string, string?> RenameIn(SheetDocument owner) => (file, page) =>
+            Func<string?, string, string?> RenameIn(SheetDocument owner, string? ownerPath) => (file, page) =>
                 page.Equals(oldName, StringComparison.OrdinalIgnoreCase)
-                && (file == null ? ReferenceEquals(owner, document) : home != null && Names(file, home))
+                && (file == null ? ReferenceEquals(owner, document) : home != null && Points(ownerPath, file, home))
                     ? newName : null;
 
-            RewritePages(document, RenameIn(document));
+            RewritePages(document, RenameIn(document, home));
             foreach ((string path, SheetDocument other) in documents)
             {
-                if (ReferenceEquals(other, document) || other.isCsv || !RewritePages(other, RenameIn(other))) continue;
+                if (ReferenceEquals(other, document) || other.isCsv || !RewritePages(other, RenameIn(other, path))) continue;
                 if (TabViewControl.FindOpenDocument(path, out _) == null) other.Save(path);
                 changed?.Invoke(other);
             }
 
             if (home != null)
             {
-                foreach (string file in vaultSheets?.Invoke(home) ?? Enumerable.Empty<string>())
+                foreach (string file in Linked(home, vaultSheets))
                 {
                     string path = Path.GetFullPath(file);
                     if (documents.ContainsKey(path) || !File.Exists(path)) continue;
-                    RewriteOnDisk(path, other => RewritePages(other, RenameIn(other)));
+                    RewriteOnDisk(path, other => RewritePages(other, RenameIn(other, path)));
                 }
-                SheetLinks.PageRenamed(home, oldName, newName, vaultNotes?.Invoke(home) ?? Enumerable.Empty<string>());
+                SheetLinks.PageRenamed(home, oldName, newName, Linked(home, vaultNotes));
             }
 
             calc.RecalcAll();
@@ -163,29 +167,29 @@ namespace ArctisAurora.Core.UI
             foreach ((string path, SheetDocument loaded) in documents)
                 if (ReferenceEquals(loaded, document)) home = path;
 
-            Func<SheetPage, string, string> ShiftIn(SheetDocument owner) => (formulaPage, raw) => SheetFormula.ShiftCells(raw, (file, page) =>
-                file != null ? home != null && Names(file, home) && page!.Equals(shifted.name, StringComparison.OrdinalIgnoreCase)
+            Func<SheetPage, string, string> ShiftIn(SheetDocument owner, string? ownerPath) => (formulaPage, raw) => SheetFormula.ShiftCells(raw, (file, page) =>
+                file != null ? home != null && Points(ownerPath, file, home) && page!.Equals(shifted.name, StringComparison.OrdinalIgnoreCase)
                 : page == null ? ReferenceEquals(formulaPage, shifted)
                 : ReferenceEquals(owner, document) && page.Equals(shifted.name, StringComparison.OrdinalIgnoreCase),
                 column, at, count);
 
-            RewriteFormulas(document, ShiftIn(document));
+            RewriteFormulas(document, ShiftIn(document, home));
             foreach ((string path, SheetDocument other) in documents)
             {
-                if (ReferenceEquals(other, document) || other.isCsv || !RewriteFormulas(other, ShiftIn(other))) continue;
+                if (ReferenceEquals(other, document) || other.isCsv || !RewriteFormulas(other, ShiftIn(other, path))) continue;
                 if (TabViewControl.FindOpenDocument(path, out _) == null) other.Save(path);
                 changed?.Invoke(other);
             }
 
             if (home != null)
             {
-                foreach (string file in vaultSheets?.Invoke(home) ?? Enumerable.Empty<string>())
+                foreach (string file in Linked(home, vaultSheets))
                 {
                     string path = Path.GetFullPath(file);
                     if (documents.ContainsKey(path) || !File.Exists(path)) continue;
-                    RewriteOnDisk(path, other => RewriteFormulas(other, ShiftIn(other)));
+                    RewriteOnDisk(path, other => RewriteFormulas(other, ShiftIn(other, path)));
                 }
-                SheetLinks.Shifted(home, shifted.name, column, at, count, vaultNotes?.Invoke(home) ?? Enumerable.Empty<string>());
+                SheetLinks.Shifted(home, shifted.name, column, at, count, Linked(home, vaultNotes));
             }
 
             calc.RecalcAll();
@@ -238,13 +242,13 @@ namespace ArctisAurora.Core.UI
             }
 
             string NewPage(string page) => pageFollows && page.Equals(oldName, StringComparison.OrdinalIgnoreCase) ? newName : page;
-            Func<string, string> RenameIn(SheetDocument owner) => raw => SheetFormula.RenamePrefix(raw, (file, page) =>
-                file != null ? (Names(file, oldPath) ? (Renamed(file, oldPath, newPath), NewPage(page)) : null)
+            Func<string, string> RenameIn(SheetDocument owner, string ownerPath) => raw => SheetFormula.RenamePrefix(raw, (file, page) =>
+                file != null ? (Points(ownerPath, file, oldPath) ? (Renamed(file, oldPath, newPath), NewPage(page)) : null)
                 : ReferenceEquals(owner, moved) ? (null, NewPage(page)) : null);
 
             foreach ((string path, SheetDocument document) in documents)
             {
-                if (document.isCsv && !ReferenceEquals(document, moved) || !RewriteFormulas(document, RenameIn(document))) continue;
+                if (document.isCsv && !ReferenceEquals(document, moved) || !RewriteFormulas(document, RenameIn(document, path))) continue;
                 if (TabViewControl.FindOpenDocument(path, out _) == null) document.Save(path);
                 changed?.Invoke(document);
             }
@@ -253,7 +257,7 @@ namespace ArctisAurora.Core.UI
             {
                 string path = Path.GetFullPath(file);
                 if (documents.ContainsKey(path) || !File.Exists(path)) continue;
-                RewriteOnDisk(path, document => RewriteFormulas(document, RenameIn(document)));
+                RewriteOnDisk(path, document => RewriteFormulas(document, RenameIn(document, path)));
             }
 
             calc.RecalcAll();
@@ -314,6 +318,18 @@ namespace ArctisAurora.Core.UI
                     }
             return any;
         }
+
+        // Whether a file part, written in the file at home, names the file at target: in home's vault, or the one its alias names.
+        internal static bool Points(string? home, string file, string target) =>
+            vaultPart == null ? Names(file, target) : vaultPart(home, file, target) is string rest && Names(rest, target);
+
+        // The home vault's files from list, then those of every open vault that references it.
+        public static IEnumerable<string> Linked(string? home, Func<string?, IEnumerable<string>>? list) =>
+            new[] { home }.Concat(referencingVaults?.Invoke(home) ?? Enumerable.Empty<string>())
+                .SelectMany(from => list?.Invoke(from) ?? Enumerable.Empty<string>());
+
+        // The file part a file at destination writes for the sheet at source: its name, behind "@Alias/" across vaults.
+        public static string FilePart(string? destination, string source) => (filePrefix?.Invoke(destination, source) ?? "") + FileName(source);
 
         // A file part names a path when it is the file's name or the end of its path, as vault links resolve.
         internal static bool Names(string file, string path)

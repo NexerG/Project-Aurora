@@ -67,7 +67,9 @@ A split copies the source pane's chrome onto a new view, and the construction wa
 
 Tearing off is not the same problem: a torn window is built from `TearOffDocument`, so the XML names the kind. `TabWindow.ui.axml` names `<EditableTabs>` for that reason. The attribute carries the name the manifest gives the document — `TearOffDocument="tab-window"` — not its file name; see [[UI Document]].
 
-Pinning a tab to the desktop works the same way: `StickyDocument` names the document a sticky window is built from, a small window with its own title bar (a pin toggle that keeps it above other windows, and close) over a workspace whose pane holds tabs. "Pin to desktop" in the tab menu copies the tab as a second view of the same note into a new sticky or an existing one, and the original tab stays where it was. A split pane carries `StickyDocument` along with `TearOffDocument`.
+Pinning a tab to the desktop works the same way: `StickyDocument` names the document a sticky window is built from, a small window with its own title bar (a pin toggle that keeps it above other windows, and close) over a workspace whose pane holds tabs. "Add to sticky note" in the tab menu copies the tab as a second view of the same note into a new sticky or an existing one, and the original tab stays where it was. A split pane carries `StickyDocument` along with `TearOffDocument`.
+
+A sticky's pane is `Bare`: the tab row shows no tools, and a note in it is laid out pageless at the window's width with no page sheet, margins of a few units and no properties header, so the sticky is text and keybinds only. The override lives on the view, never on the note, so the same note open in the main window stays paged with its toolbar, and a tab torn out of a sticky gets both back.
 
 ## Input
 

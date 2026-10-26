@@ -81,7 +81,7 @@ namespace ArctisAurora.Core.UI
         public override bool OnPointerRelease(PointerEvent e)
         {
             base.OnPointerRelease(e);
-            if (e.button != PointerEvent.leftButton) return true;
+            if (e.button != PointerEvent.leftButton || ContextMenus.ClosedOn(this)) return true;
 
             List<ContextMenuEntry> entries = new List<ContextMenuEntry>();
             foreach (string option in options)

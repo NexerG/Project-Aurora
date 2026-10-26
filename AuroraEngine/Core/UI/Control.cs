@@ -558,6 +558,7 @@ namespace ArctisAurora.Core.UI
             PaletteRole.None or PaletteRole.Clear => ground,
             PaletteRole.Ink => Palettes.Ink(scheme, ground, false),
             PaletteRole.MutedInk => Palettes.Ink(scheme, ground, true),
+            PaletteRole.Doc or PaletteRole.Sheet or PaletteRole.Planner => Palettes.FileKind(scheme, role),
             _ => Palettes.Surface(scheme, role)
         };
 

@@ -109,6 +109,8 @@ A palette also carries shape, all of it optional: how round browser rows, tabs, 
 
 A palette can also colour code in notes, again optionally: `Keyword`, `String`, `Number` and `Comment`. They sit at the end of the palette's block of the paint table, so a theme fade carries them with everything else. Left out, the first three take the accent and comments take muted text on the sub-field colour code is drawn on. See [[Rich Text Document]] § Code blocks.
 
+A palette can also colour file-type icons, optionally: `Doc`, `Sheet` and `Planner`. They sit after the idle tab accent in the palette's block of the paint table, so a theme fade carries them too. Left out, each takes the muted text colour of the palette's surface colour. The vault browser tints its note, sheet and planner icons with them. They are not gradient-stop roles, so a gradient stop cannot name them.
+
 ```
 apply shape
 	scheme = the control's palette, else default
@@ -308,7 +310,7 @@ Poll(window)
 	if the window has no tree
 		return
 	turn the window's pointer position into the tree's own units
-	if the pointer is no longer inside this window
+	if the pointer is no longer inside this window, or the window is hidden
 		if the hovered control belongs to our tree
 			clear the hover
 		return
@@ -508,6 +510,28 @@ A menu closes three ways. Clicking a button runs its action and then closes ever
 An action written in a menu document takes no arguments, so it finds out what it is acting on by asking which control the menu was opened on. That answer is set before the action runs and cleared when the menu closes. The window commands read it first, which is what makes Maximize from a menu in its own window maximize the window it was opened from rather than the menu.
 
 A menu bar button opens on a left press rather than a right click, and shows only its own menu, dropped directly beneath it. It leaves the focused control where it was, so the entries act on what you were working in — View ▸ Split right splits the view you last clicked into, not the title bar. A tab offers its own menu and stops the gathering there, so the view's entries are not repeated under every tab; the view offers its splits from its own empty area. Tab and view actions look for the tab or view above the control the menu was opened on, and when there is none they fall back to the focused control and then to whatever is under the pointer.
+
+A button that opens a menu on press or release, such as a ribbon or toolbar dropdown or a menu bar button, closes its own menu when pressed again. The window dismisses an open menu on every press before the press reaches the control under the pointer, so the button would only ever see a closed menu and reopen it. The menu layer therefore remembers, until the next press, the control a menu was opened on when that press closed it, and a button asks whether the press it is handling just closed its own menu and does nothing if so. It is opt-in per button: a popup opened on a shared control, such as a formula popup opened on the whole editor, must still open when a second formula is pressed, and a right-click elsewhere reopens at the new spot.
+
+```
+DismissUnlessInside(press)
+	closedOn = nothing
+	if the press is outside every open panel
+		if a menu is open
+			closedOn = the control the menu was opened on
+			close the menu
+
+ClosedOn(control)
+	if closedOn is the control
+		closedOn = nothing
+		return true
+	return false
+
+OpenerPress(button)
+	if ClosedOn(button)
+		return
+	open the button's menu
+```
 
 > Opening or closing a panel inside the window re-lays the whole window out, because adding or removing a child of the root invalidates the root.
 

@@ -28,7 +28,7 @@
 ## Why these choices
 
 **RETRACTED 2026-10-22 (user, [[multi-vault-workspace]] stage B): stickies are one global system, a vault file shows in one only as a link; `Startup.Place` no longer posts `VaultsWindow.Open` on login; `StartupSetting.opens` now applies to every launch. Original reasoning follows.** **The note's file decides whether a sticky is free or belongs to a vault.**
-User chose this over a per-sticky "keep on desktop" switch (B): a desktop sticky could then show a note of a closed or locked vault, and its links would resolve against whatever vault is open. Also rejected: every sticky global (C), which has the same problems for every sticky and stops a vault's notes being contained in it. Cost of the chosen rule: one sticky cannot mix both kinds, and "Pin to desktop" lists only same-kind stickies.
+User chose this over a per-sticky "keep on desktop" switch (B): a desktop sticky could then show a note of a closed or locked vault, and its links would resolve against whatever vault is open. Also rejected: every sticky global (C), which has the same problems for every sticky and stops a vault's notes being contained in it. Cost of the chosen rule: one sticky cannot mix both kinds, and "Add to sticky note" lists only same-kind stickies.
 
 **Startup options are four fields, not one enum.**
 Opens is the two-value toggle; Stickies and InTray are independent checkboxes, so InTray + Stickies leaves only free stickies on the desktop. The user asked for a two-option toggle with captions each side and InTray as a checkbox.

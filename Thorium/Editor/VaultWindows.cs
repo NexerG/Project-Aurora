@@ -23,6 +23,7 @@ namespace Thorium.Editor
         private const string stickyDocument = "sticky-window";
         private const string browsersName = "Browsers";
         private const string trayButtonName = "TrayButton";
+        private const string referencedName = "Referenced";
         private const string hostTitle = "Thorium";
 
         // menu document registered in ThoriumAssets.assets.axml
@@ -37,6 +38,9 @@ namespace Thorium.Editor
         // vaults the layout being restored lists, so a tab built before its window counts its vault open
         private static HashSet<string>? restoring;
 
+        // vaults each window shows because its vaults reference them
+        private static readonly Dictionary<RenderWindow, List<string>> referenced = new Dictionary<RenderWindow, List<string>>();
+
         #region ---- queries ----
         internal static IEnumerable<RenderWindow> Editors() =>
             Engine.windows.Values.Where(window => !window.closeRequested && window.uiDocument == editorDocument);
@@ -45,7 +49,8 @@ namespace Thorium.Editor
 
         internal static bool IsOpen(string vault) =>
             restoring?.Contains(Path.TrimEndingDirectorySeparator(vault)) == true
-            || Editors().Any(window => window.roots.Any(root => KnownVaults.SamePath(root, vault)));
+            || Editors().Any(window => window.roots.Any(root => KnownVaults.SamePath(root, vault))
+                                       || referenced.TryGetValue(window, out List<string>? shown) && shown.Any(other => KnownVaults.SamePath(other, vault)));
 
         internal static string NameOf(string vault) => Path.GetFileName(Path.TrimEndingDirectorySeparator(vault));
 
@@ -96,6 +101,7 @@ namespace Thorium.Editor
                 {
                     window.roots.Add(vault);
                     AddBrowser(window, vault);
+                    Sync(window);
                     Retitle(window);
                 }
                 else RebuildBrowsers(vault);
@@ -175,6 +181,7 @@ namespace Thorium.Editor
         {
             window.roots.RemoveAll(root => KnownVaults.SamePath(root, vault));
             RemoveBrowser(window, vault);
+            Sync(window);
             foreach ((TabItemControl item, TabViewControl view) in Tabs(window))
                 if (TabViewControl.FileEditorOf(item)?.path is string path && Inside(vault, path)) view.CloseTab(item);
 
@@ -193,6 +200,7 @@ namespace Thorium.Editor
 
             NoteActions.SaveEdited();
             List<string> vaults = window.roots.ToList();
+            if (referenced.Remove(window, out List<string>? shown)) vaults.AddRange(shown);
             window.roots.Clear();
             if (window == Engine.primary) Empty(window);
             else Engine.CloseWindow(window);
@@ -230,6 +238,7 @@ namespace Thorium.Editor
 
             if (VaultLock.HasLock(vault)) SheetBook.Clear();
             VaultLock.Close(vault);
+            LinkIndex.Close(vault);
             Log.Info($"'{vault}' is open in no window");
         }
 
@@ -269,16 +278,68 @@ namespace Thorium.Editor
 
             RemoveBrowsers(window);
             foreach (string vault in window.roots) AddBrowser(window, vault);
+            Sync(window);
             Retitle(window);
         }
 
         private static void Retitle(RenderWindow window) =>
             Engine.SetTitle(window, window.roots.Count == 0 ? hostTitle : string.Join(", ", window.roots.Select(NameOf)));
 
-        private static void AddBrowser(RenderWindow window, string vault)
+        private static void AddBrowser(RenderWindow window, string vault, string? via = null)
         {
             if (window.ui.uiRoot?.FindByName(browsersName) is not StackPanelControl browsers) return;
 
+            StackPanelControl header = Header(NameOf(vault), via);
+            VaultBrowserControl browser = new VaultBrowserControl { vault = vault, fitContent = true, stopsContextMenu = true, padding = new Thickness(8, 0, 8, 0) };
+            StackPanelControl group = new StackPanelControl { orientation = StackPanelControl.Orientation.Vertical, alpha = 0f };
+            if (via != null) group.name = referencedName;
+            group.AddChild(header);
+            group.AddChild(browser);
+            browsers.AddChild(group);
+            Divide(browsers);
+            browser.Rebuild();
+            browsers.InvalidateLayout();
+        }
+
+        // A referenced vault this machine doesn't have: its name and a way to point at its folder.
+        private static void AddMissing(RenderWindow window, string id, string alias, string via)
+        {
+            if (window.ui.uiRoot?.FindByName(browsersName) is not StackPanelControl browsers) return;
+
+            StackPanelControl header = Header(alias, via);
+            header.contextMenu = null;
+            LabelControl state = new LabelControl { text = "not on this machine", fontSize = 12, preferredHeight = headerHeight, verticalPosition = 0.5f, margin = new Thickness(0, 0, 0, 8), role = PaletteRole.MutedInk };
+            header.AddChild(state);
+
+            ButtonControl locate = new ButtonControl
+            {
+                preferredHeight = 26,
+                padding = new Thickness(12f, 0f),
+                margin = new Thickness(4, 0, 0, 8),
+                role = PaletteRole.Chrome,
+                cornerRole = CornerRole.Control,
+                horizontalAlignment = HorizontalAlignment.Left
+            };
+            locate.AddChild(new LabelControl { text = "Locate...", fontSize = 14, role = PaletteRole.MutedInk });
+            locate.RegisterOnRelease(_ =>
+            {
+                Engine.Post(() => FolderPicker.Pick(window, Path.GetDirectoryName(Path.TrimEndingDirectorySeparator(via)) ?? via, picked =>
+                {
+                    if (picked != null && !Locate(id, picked)) state.text = "that folder is a different vault";
+                }));
+                return true;
+            });
+
+            StackPanelControl group = new StackPanelControl { orientation = StackPanelControl.Orientation.Vertical, alpha = 0f, name = referencedName };
+            group.AddChild(header);
+            group.AddChild(locate);
+            browsers.AddChild(group);
+            Divide(browsers);
+            browsers.InvalidateLayout();
+        }
+
+        private static StackPanelControl Header(string title, string? via)
+        {
             StackPanelControl header = new StackPanelControl
             {
                 orientation = StackPanelControl.Orientation.Horizontal,
@@ -299,22 +360,115 @@ namespace Thorium.Editor
             });
             header.AddChild(new LabelControl
             {
-                text = NameOf(vault),
+                text = title,
                 fontSize = 12,
                 preferredHeight = headerHeight,
                 verticalPosition = 0.5f,
                 role = PaletteRole.Ink,
                 style = FontStyle.Bold
             });
+            if (via != null)
+                header.AddChild(new LabelControl
+                {
+                    text = "via " + NameOf(via),
+                    fontSize = 12,
+                    preferredHeight = headerHeight,
+                    verticalPosition = 0.5f,
+                    margin = new Thickness(0, 0, 0, 8),
+                    role = PaletteRole.MutedInk
+                });
+            return header;
+        }
 
-            VaultBrowserControl browser = new VaultBrowserControl { vault = vault, fitContent = true, stopsContextMenu = true, padding = new Thickness(8, 0, 8, 0) };
-            StackPanelControl group = new StackPanelControl { orientation = StackPanelControl.Orientation.Vertical, alpha = 0f };
-            group.AddChild(header);
-            group.AddChild(browser);
-            browsers.AddChild(group);
+        // Rebuilds the groups of vaults the window's vaults reference, and theirs in turn; settles the ones it stopped showing.
+        private static void Sync(RenderWindow window)
+        {
+            if (window.ui.uiRoot?.FindByName(browsersName) is not StackPanelControl browsers) return;
+            foreach (Entity child in browsers.children.Where(child => child.name == referencedName).ToList()) child.Destroy();
+
+            KnownVaults known = SettingsRegistry.Get<KnownVaults>();
+            HashSet<string> seen = new HashSet<string>(window.roots.Select(root => Path.TrimEndingDirectorySeparator(root)), StringComparer.OrdinalIgnoreCase);
+            HashSet<string> missing = new HashSet<string>();
+            List<string> shown = new List<string>();
+            Queue<string> pending = new Queue<string>(window.roots);
+            while (pending.Count > 0)
+            {
+                string from = pending.Dequeue();
+                foreach ((string id, string alias) in VaultManifest.Depends(from))
+                {
+                    string? vault = known.PathOf(id);
+                    if (vault == null || !Directory.Exists(vault))
+                    {
+                        if (missing.Add(id)) AddMissing(window, id, alias, from);
+                        continue;
+                    }
+                    if (!seen.Add(Path.TrimEndingDirectorySeparator(vault))) continue;
+
+                    shown.Add(vault);
+                    AddBrowser(window, vault, from);
+                    pending.Enqueue(vault);
+                }
+            }
+
+            List<string> before = referenced.GetValueOrDefault(window) ?? new List<string>();
+            referenced[window] = shown;
             Divide(browsers);
-            browser.Rebuild();
-            browsers.InvalidateLayout();
+            foreach (string vault in before)
+                if (!IsOpen(vault)) Settle(vault);
+        }
+
+        // Re-syncs every editor window's referenced vaults.
+        private static void SyncAll()
+        {
+            foreach (RenderWindow window in Editors().ToList()) Sync(window);
+        }
+
+        [A_XSDActionDependency("Vault.AddReference", "UI", "Picks a folder and adds it as a vault the menu's vault references")]
+        public static void AddMenuReference()
+        {
+            RenderWindow window = VaultBrowserControl.Home();
+            string vault = VaultBrowserControl.CurrentVault();
+            FolderPicker.Pick(window, Path.GetDirectoryName(Path.TrimEndingDirectorySeparator(vault)) ?? vault, picked =>
+            {
+                if (picked != null) AddReference(vault, picked);
+            });
+        }
+
+        // Adds the picked folder as a vault this one references, under an alias from its folder name.
+        internal static bool AddReference(string vault, string picked)
+        {
+            if (KnownVaults.SamePath(vault, picked)) return false;
+            SettingsRegistry.Get<KnownVaults>().Remember(picked);
+            SettingsRegistry.Commit();
+            string id = VaultManifest.IdOf(picked);
+            if (id.Length == 0) return false;
+
+            string name = new string(NameOf(picked).Where(c => "#[]!/@|".IndexOf(c) < 0).ToArray()).Trim();
+            if (name.Length == 0) name = "Vault";
+            string alias = name;
+            for (int n = 2; VaultManifest.AliasTarget(vault, alias) != null; n++) alias = $"{name} {n}";
+            if (!VaultManifest.AddDependency(vault, id, alias)) return false;
+
+            Log.Info($"'{vault}' references '{picked}' as @{alias}");
+            SyncAll();
+            return true;
+        }
+
+        // Takes the picked folder as the referenced vault the id names, when its manifest carries that id.
+        internal static bool Locate(string id, string picked)
+        {
+            if (!File.Exists(VaultManifest.PathOf(picked)) || VaultManifest.IdOf(picked) != id)
+            {
+                Log.Warn($"'{picked}' is not the referenced vault {id}");
+                return false;
+            }
+
+            KnownVaults known = SettingsRegistry.Get<KnownVaults>();
+            known.vaults.RemoveAll(v => v.id == id && !Directory.Exists(v.path));
+            known.Remember(picked);
+            SettingsRegistry.Commit();
+            SyncAll();
+            return true;
         }
 
         private static void RemoveBrowser(RenderWindow window, string vault)

@@ -75,6 +75,9 @@ namespace ArctisAurora.Core.UI
 
         protected virtual string DisplayName(FileObject file) => file.name;
 
+        // The icon ahead of a row's name and the role it paints with; null draws none.
+        protected virtual (string icon, PaletteRole role)? RowIcon(FileObject file) => null;
+
         // What a committed rename does. Nothing by default — a browser that cannot rename says so by
         // not offering the entry.
         protected virtual void Rename(FileObject file, string newName) { }
@@ -193,6 +196,21 @@ namespace ArctisAurora.Core.UI
                 horizontalPosition = 0f
             };
             content.AddChild(gutter);
+            if (RowIcon(file) is (string icon, PaletteRole role))
+            {
+                IconControl kind = new IconControl
+                {
+                    setName = "default",
+                    iconName = icon,
+                    preferredWidth = 14f,
+                    preferredHeight = 14f,
+                    margin = new Thickness(0, 4, 0, 0),
+                    verticalAlignment = VerticalAlignment.Center,
+                    hitTestable = false
+                };
+                kind.PaintOr(null, role);
+                content.AddChild(kind);
+            }
             content.AddChild(name);
 
             // A row with a menu of its own is the whole menu — the browser's ground entries are for

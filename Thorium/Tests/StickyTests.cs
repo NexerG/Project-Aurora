@@ -33,8 +33,8 @@ namespace Thorium.Tests
 
             yield return t.Click(Find<TabStripButtonControl>(view, _ => true)!, Keys.MouseRight);
             yield return 20;
-            ContextMenuControl.Row? submenu = MenuRow("Pin to desktop");
-            t.Check(submenu != null, "the tab menu offers Pin to desktop");
+            ContextMenuControl.Row? submenu = MenuRow("Add to sticky note");
+            t.Check(submenu != null, "the tab menu offers Add to sticky note");
             if (submenu == null) yield break;
             yield return t.MoveTo(submenu);
             yield return 20;
@@ -70,6 +70,58 @@ namespace Thorium.Tests
             yield return 3;
 
             SessionLayout.scope = before;
+            foreach (RenderWindow window in Engine.windows.Values.ToList())
+                if (window.uiDocument == stickyDocument) Engine.CloseWindow(window);
+            t.Show(new StackPanelControl());
+            yield return 3;
+            File.Delete(path);
+        }
+
+        [A_XSDActionDependency("Sticky.Bare", "Test")]
+        private static IEnumerator<int> Bare(TestContext t)
+        {
+            string path = TempNote();
+            WorkspaceControl workspace = new WorkspaceControl
+            {
+                paneDocument = "tab-pane",
+                defaultDocument = "tab-pane",
+                horizontalAlignment = HorizontalAlignment.Stretch,
+                verticalAlignment = VerticalAlignment.Stretch
+            };
+            t.Show(workspace);
+            WorkspacePageControl page = workspace.AddPage("General", WorkspaceKind.General);
+            TabViewControl view = workspace.LoadPane(page);
+            TabItemControl tab = SessionLayout.tabFactory(path, false);
+            view.AddChild(tab);
+            yield return 3;
+
+            yield return t.Click(Find<TabStripButtonControl>(view, _ => true)!, Keys.MouseRight);
+            yield return 20;
+            ContextMenuControl.Row? submenu = MenuRow("Add to sticky note");
+            if (submenu == null) { t.Check(false, "the tab menu offers Add to sticky note"); yield break; }
+            yield return t.MoveTo(submenu);
+            yield return 20;
+            ContextMenuControl.Row? fresh = MenuRow("New sticky");
+            if (fresh == null) { t.Check(false, "its submenu offers New sticky"); yield break; }
+            yield return t.Click(fresh);
+            yield return 5;
+
+            RenderWindow? sticky = Sticky();
+            TabViewControl? stuck = sticky != null ? TabViewControl.TabViews(sticky.ui.uiRoot).FirstOrDefault() : null;
+            DocumentEditorControl? copy = stuck?.activeItem != null ? TabViewControl.EditorOf(stuck.activeItem) : null;
+            if (stuck == null || copy == null) { t.Check(false, "a sticky opens with the note in it"); yield break; }
+            DocumentEditorControl source = TabViewControl.EditorOf(tab);
+            DocumentControl stuckText = Find<DocumentControl>(copy, _ => true)!;
+            DocumentControl sourceText = Find<DocumentControl>(source, _ => true)!;
+
+            t.Check(stuck.bare && !stuck.children.OfType<TabToolsControl>().Any(), "the sticky's tab row has no tools");
+            t.Check(view.children.OfType<TabToolsControl>().Any(), "the main pane keeps its tools");
+            t.Check(copy.bare && stuckText.fitWidth && stuckText.page.mode == PageMode.Pageless && stuckText.header == null,
+                "the sticky's view is pageless with no properties header");
+            t.Check(stuckText.DesiredSize.X <= copy.arrangedRect.width + 0.5f, "its text fits the window's width");
+            t.Check(!source.bare && !sourceText.fitWidth && sourceText.page.mode == PageMode.Paged && source.Page?.mode == PageMode.Paged,
+                "the note and its main view stay paged");
+
             foreach (RenderWindow window in Engine.windows.Values.ToList())
                 if (window.uiDocument == stickyDocument) Engine.CloseWindow(window);
             t.Show(new StackPanelControl());

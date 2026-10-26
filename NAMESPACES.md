@@ -164,6 +164,9 @@ ArctisAurora.Core.UI -> AuroraEngine/Core/UI/FormulaPopup.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/Frontmatter.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/GanttChartControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/Gradients.cs
+ArctisAurora.Core.UI -> AuroraEngine/Core/UI/GraphDocument.cs
+ArctisAurora.Core.UI -> AuroraEngine/Core/UI/GraphEditorControl.cs
+ArctisAurora.Core.UI -> AuroraEngine/Core/UI/GraphLayout.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/GridListControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/HintControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/IconControl.cs
@@ -173,6 +176,8 @@ ArctisAurora.Core.UI -> AuroraEngine/Core/UI/InspectorControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/KeyCaptureControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/LabelControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/LayoutEngine.cs
+ArctisAurora.Core.UI -> AuroraEngine/Core/UI/LinkIndex.cs
+ArctisAurora.Core.UI -> AuroraEngine/Core/UI/LinksPanelControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/LockedFileControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/MathLayout.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/MathParser.cs
@@ -350,12 +355,16 @@ Thorium -> Thorium/Thorium.cs
 Thorium -> Thorium/ThoriumSettings.cs
 Thorium.Editor -> Thorium/Editor/Decorations.cs
 Thorium.Editor -> Thorium/Editor/StatusBarActions.cs
+Thorium.Editor -> Thorium/Editor/VaultManifest.cs
 Thorium.Editor -> Thorium/Editor/VaultsWindow.cs
 Thorium.Editor -> Thorium/Editor/VaultWindows.cs
 Thorium.Editor.CustomControls -> Thorium/Editor/CustomControls/ClosedVaultControl.cs
 Thorium.Editor.CustomControls -> Thorium/Editor/CustomControls/VaultBrowserControl.cs
+Thorium.Tests -> Thorium/Tests/CrossVaultTests.cs
 Thorium.Tests -> Thorium/Tests/EncryptionTests.cs
 Thorium.Tests -> Thorium/Tests/LatinModernTests.cs
+Thorium.Tests -> Thorium/Tests/LinkGraphTests.cs
+Thorium.Tests -> Thorium/Tests/LinkIndexTests.cs
 Thorium.Tests -> Thorium/Tests/NoteModelTests.cs
 Thorium.Tests -> Thorium/Tests/PaletteTests.cs
 Thorium.Tests -> Thorium/Tests/PlannerTests.cs
@@ -366,6 +375,8 @@ Thorium.Tests -> Thorium/Tests/StartupTests.cs
 Thorium.Tests -> Thorium/Tests/StickyTests.cs
 Thorium.Tests -> Thorium/Tests/TabToolsTests.cs
 Thorium.Tests -> Thorium/Tests/TextInputTests.cs
+Thorium.Tests -> Thorium/Tests/TitleBarTests.cs
+Thorium.Tests -> Thorium/Tests/VaultManifestTests.cs
 Thorium.Tests -> Thorium/Tests/VaultScopeTests.cs
 Thorium.Tests -> Thorium/Tests/VaultWindowsTests.cs
 Thorium.Tests -> Thorium/Tests/WorkspaceTests.cs

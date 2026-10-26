@@ -55,8 +55,8 @@
 - **A value shows by its shape,** for display only:
   - `true`/`false` → a `CheckBoxControl`;
   - `[[Note]]` or `http(s)://` → a field plus an **Open** button calling `NotePropertiesControl.openLink`.
-    Thorium sets that to `VaultBrowserControl.OpenLink`: a `[[name|alias#heading]]` is matched by file name or
-    path ending in the vault tree, a URL goes to the shell;
+    Thorium sets that to `VaultBrowserControl.OpenLink(home, link)`, `home` being the note's path: a `[[name|alias#heading]]` is matched by file name or
+    path ending in the note's own vault, through the static `VaultBrowserControl.FindNote` shared with the link index ([[link-graph]]), a URL goes to the shell;
   - anything else → a field.
 - **YAML block lists are editable** (`Entry.list`): shown comma-separated, and written back as a block list at
   the indent the items had (`ListLines`), so tags/aliases keep Obsidian's shape. `YamlValue` quotes a

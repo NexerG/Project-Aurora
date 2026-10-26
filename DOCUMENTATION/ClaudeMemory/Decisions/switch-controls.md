@@ -79,6 +79,7 @@ Rejected: restoring "Sorted tasks" now that its row has room (M4a).
 - The "List" caption is left-aligned on its own line while the other Paragraph/Page row labels (Style, Align, Layout...) are right-aligned in a 76 px label column; not changed.
 - Interrupting a slide with a second click jumps the thumb to the previous choice before sliding (`_from` = previous target index, not the thumb's current rect).
 - The PNGs were read: the switch shows three captions with the thumb on the first, then on the last; the toggle off shows "Script" right of a left knob on grey, on shows white "Yes" left of a right knob on Accent blue.
-- NOT GUI-verified: the Settings window (the New notes row as a 3-option switch, its fit in the 220 px editor column), the mid-slide fade in a live window, the dark palette.- Title-bar "Thorium" menu: pressing it just closes the context menu instead of acting (user report). Not reproduced, cause unknown.
+- NOT GUI-verified: the Settings window (the New notes row as a 3-option switch, its fit in the 220 px editor column), the mid-slide fade in a live window, the dark palette.
+- Title-bar "Thorium" menu closing without acting: fixed 2026-10-23, not a switch defect — see [[context-menus]] § Entries closing without acting.
 
 Related: [[start-at-login]], [[sorted-checklist]], [[measure-child-panel-at-arrange-size]]

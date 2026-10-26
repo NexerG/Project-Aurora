@@ -198,16 +198,17 @@ namespace ArctisAurora.Core.UI
             // reporting positions far outside itself and stops every other window hearing anything.
             // So the drag's own window drives the whole gesture, wherever the pointer has gone.
             bool ownsDrag = dragging != null && ReferenceEquals(WindowOf(dragging), window);
+            bool inWindow = window.isInWindow && !window.hidden;
 
             // The pointer left this window, so nothing of ours is under it any more. Scoped to our
             // own tree, because every window polls and the contexts are global.
-            if (!window.isInWindow && !ownsDrag)
+            if (!inWindow && !ownsDrag)
             {
                 if (RootOf(hovering) == root) SetHovering(null, point, delta);
                 return;
             }
 
-            if (window.isInWindow) SolveHover(point, delta, root);
+            if (inWindow) SolveHover(point, delta, root);
 
             if (ownsDrag && dragging.parent is not WindowFrameControl) SolveDragWindow(window);
 

@@ -45,6 +45,12 @@ namespace Thorium.Editor.CustomControls
         private static TabViewControl? pendingPane;
         private const string paneNewMenu = "pane-new";
 
+        // a row's "Add to sticky note" submenu and the window a sticky opens as
+        private const string stickySource = "vault-stickies";
+        private const string stickyDocument = "sticky-window";
+
+        static VaultBrowserControl() => ContextMenus.RegisterSource(stickySource, StickyEntries);
+
         public VaultBrowserControl()
         {
             contextMenu = vaultMenu;
@@ -97,7 +103,7 @@ namespace Thorium.Editor.CustomControls
 
         private static bool IsXml(string path) => IsAuroraXml(path) || FileTypes.KindOf(path) == FileKind.Xml;
 
-        private static bool IsAuroraXml(string path) => FileTypes.KindOf(path) is FileKind.Note or FileKind.Sheet or FileKind.Planner;
+        private static bool IsAuroraXml(string path) => FileTypes.KindOf(path) is FileKind.Note or FileKind.Sheet or FileKind.Planner or FileKind.Graph;
 
         private static string FilterName(WorkspaceKind kind) => kind switch
         {
@@ -168,6 +174,17 @@ namespace Thorium.Editor.CustomControls
             pendingPane = null;
             Open(file.path);
         }
+
+        protected override (string icon, PaletteRole role)? RowIcon(FileObject file) =>
+            file.type == FileObject.FileType.Directory ? ("folder", PaletteRole.MutedInk)
+            : SheetCsv.IsCsv(file.path) ? ("sheet", PaletteRole.Sheet)
+            : FileTypes.KindOf(file.path) switch
+            {
+                FileKind.Note or FileKind.Markdown or FileKind.PlainText => ("doc", PaletteRole.Doc),
+                FileKind.Sheet => ("sheet", PaletteRole.Sheet),
+                FileKind.Planner => ("planner", PaletteRole.Planner),
+                _ => ("file", PaletteRole.MutedInk)
+            };
 
         protected override void Rename(FileObject file, string newName) => RenameNote(file.path, newName);
 
@@ -244,6 +261,38 @@ namespace Thorium.Editor.CustomControls
             if (row == null) { NewPlanner(); return; }
 
             Browser()?.NewPlanner(row.file.type == FileObject.FileType.Directory ? row.file.path : row.file.parent.path);
+        }
+
+        [A_XSDActionDependency("Graphs.New", "UI", "Creates a graph view at the vault root and opens it")]
+        public static void NewGraph()
+        {
+            VaultBrowserControl browser = Browser();
+            browser?.NewGraph(browser.RootPath);
+        }
+
+        [A_XSDActionDependency("Graphs.NewHere", "UI", "Creates a graph view beside the entry the menu was opened on")]
+        public static void NewGraphHere()
+        {
+            FileRowControl row = MenuRow();
+            if (row == null) { NewGraph(); return; }
+
+            Browser()?.NewGraph(row.file.type == FileObject.FileType.Directory ? row.file.path : row.file.parent.path);
+        }
+
+        [A_XSDActionDependency("Folders.New", "UI", "Creates a folder at the vault root")]
+        public static void NewFolder()
+        {
+            VaultBrowserControl browser = Browser();
+            browser?.NewFolder(browser.RootPath);
+        }
+
+        [A_XSDActionDependency("Folders.NewHere", "UI", "Creates a folder inside the folder the menu was opened on, or beside the file")]
+        public static void NewFolderHere()
+        {
+            FileRowControl row = MenuRow();
+            if (row == null) { NewFolder(); return; }
+
+            Browser()?.NewFolder(row.file.type == FileObject.FileType.Directory ? row.file.path : row.file.parent.path);
         }
 
         [A_XSDActionDependency("Sheets.FromCsv", "UI", "Writes the CSV the menu was opened on as a sheet beside it, keeps the CSV and opens the sheet")]
@@ -524,6 +573,31 @@ namespace Thorium.Editor.CustomControls
             if (row != null) Open(row.file.path, false);
         }
 
+        // "Add to sticky note": a new sticky, then every open sticky.
+        private static List<ContextMenuEntry> StickyEntries()
+        {
+            List<ContextMenuEntry> entries = new List<ContextMenuEntry>();
+            if (MenuRow() is not FileRowControl row) return entries;
+
+            string path = row.file.path;
+            bool asXml = ShownKind(Home()) == WorkspaceKind.Xml && IsXml(path);
+            RenderWindow source = UIActions.Invoking();
+            entries.Add(new ContextMenuButton("New sticky", () => TabViewControl.OpenStickyAtPointer(BuildTab(path, asXml), stickyDocument, source)));
+            foreach (RenderWindow window in Engine.windows.Values)
+            {
+                if (window.closeRequested || window.uiDocument != stickyDocument) continue;
+                if (TabViewControl.TabViews(window.ui.uiRoot).FirstOrDefault() is not TabViewControl view) continue;
+
+                entries.Add(new ContextMenuButton(view.activeItem?.header ?? "Sticky", () =>
+                {
+                    TabItemControl tab = BuildTab(path, asXml);
+                    view.AddChild(tab);
+                    view.SetActive(tab);
+                }));
+            }
+            return entries;
+        }
+
         // The row the open menu was opened on, or null when it was opened on the browser's ground.
         private static FileRowControl MenuRow()
         {
@@ -610,6 +684,33 @@ namespace Thorium.Editor.CustomControls
             Open(path);
         }
 
+        private void NewGraph(string folder) =>
+            NoteNameWindow.Ask(UIEngine.WindowOf(this), "Graph", name => CreateGraph(folder, name), null);
+
+        private void CreateGraph(string folder, string name)
+        {
+            string path = FreePath(folder, name, GraphDocument.extension);
+            GraphDocument.Blank(BaseName(path)).Save(path);
+
+            Expand(folder);
+            Rebuild();
+            Open(path);
+        }
+
+        private void NewFolder(string folder) =>
+            NoteNameWindow.Ask(UIEngine.WindowOf(this), "New folder", name => CreateFolder(folder, name), null);
+
+        private void CreateFolder(string folder, string name)
+        {
+            string path = Path.Combine(folder, name);
+            for (int i = 2; Directory.Exists(path) || File.Exists(path); i++)
+                path = Path.Combine(folder, $"{name} {i}");
+            Directory.CreateDirectory(path);
+
+            Expand(folder);
+            Rebuild();
+        }
+
         // The loaded copy, so edits not yet saved to the CSV come along; replacing deletes the CSV and its tab.
         private void SheetFromCsv(string csv, bool replace)
         {
@@ -658,7 +759,7 @@ namespace Thorium.Editor.CustomControls
 
         // The name lives in three places: the file, the Name inside it, and every editor already
         // holding the note open. Static, because a tab renames through here too and has no row.
-        private static void RenameNote(string path, string newName)
+        internal static void RenameNote(string path, string newName)
         {
             string name = newName?.Trim();
             if (SheetCsv.IsCsv(path) && name != null && SheetCsv.IsCsv(name)) name = name[..^SheetCsv.extension.Length];
@@ -680,8 +781,8 @@ namespace Thorium.Editor.CustomControls
 
             if (SheetDocument.IsSheet(target) || SheetCsv.IsCsv(target))
             {
-                SheetBook.Renamed(path, target, VaultSheets(target));
-                SheetLinks.Renamed(path, target, VaultNotes(target));
+                SheetBook.Renamed(path, target, SheetBook.Linked(target, VaultSheets));
+                SheetLinks.Renamed(path, target, SheetBook.Linked(target, VaultNotes));
             }
             if (PlannerDocument.IsPlanner(target)) PlannerBook.Renamed(Path.GetFullPath(path), target);
 
@@ -692,7 +793,7 @@ namespace Thorium.Editor.CustomControls
 
         // Focuses the note wherever it is on screen, and only opens a tab when it is not. A note open
         // in a hidden workspace gets a second view in the shown one.
-        private static void Open(string notePath) => Open(notePath, ShownKind(Home()) == WorkspaceKind.Xml && IsXml(notePath));
+        internal static void Open(string notePath) => Open(notePath, ShownKind(Home()) == WorkspaceKind.Xml && IsXml(notePath));
 
         private static void Open(string notePath, bool asXml)
         {
@@ -742,6 +843,7 @@ namespace Thorium.Editor.CustomControls
         // A sheet reference's file part: the first sheet whose name, or path ending, matches it.
         public static string? FindSheet(string? home, string file)
         {
+            if (!Redirect(ref home, ref file)) return null;
             string name = file.Trim().Replace('\\', '/');
             if (SheetCsv.IsCsv(name))
             {
@@ -770,6 +872,72 @@ namespace Thorium.Editor.CustomControls
                 : Enumerable.Empty<string>();
         }
 
+        // An "@Alias/" target moves home into the vault the alias names; false when that vault isn't on this machine.
+        private static bool Redirect(ref string? home, ref string name)
+        {
+            (bool aliased, _, string? vault) = ReferencedVault(home, name, out string rest);
+            if (!aliased) return true;
+            if (vault == null) return false;
+
+            home = Path.Combine(vault, "_");
+            name = rest;
+            return true;
+        }
+
+        // Whether name starts "@Alias/", the id the alias names, and that vault's folder when it is on this machine.
+        private static (bool aliased, string? id, string? vault) ReferencedVault(string? home, string name, out string rest)
+        {
+            rest = name;
+            string trimmed = name.Trim();
+            int slash = trimmed.IndexOfAny(['/', '\\']);
+            if (!trimmed.StartsWith('@') || slash < 2) return (false, null, null);
+
+            rest = trimmed[(slash + 1)..];
+            string? id = VaultManifest.AliasTarget(VaultOf(home), trimmed[1..slash]);
+            string? vault = id == null ? null : SettingsRegistry.Get<KnownVaults>().PathOf(id);
+            return (true, id, vault != null && Directory.Exists(vault) ? vault : null);
+        }
+
+        // A reference into a vault the home vault names but this machine doesn't have.
+        public static bool VaultMissing(string? home, string file) => ReferencedVault(home, file, out _) is (true, not null, null);
+
+        // The file part without its "@Alias/" when, written in home, it points into target's vault; null otherwise.
+        public static string? VaultPart(string? home, string file, string target)
+        {
+            (bool aliased, _, string? vault) = ReferencedVault(home, file, out string rest);
+            string? into = aliased ? vault : VaultOf(home);
+            return into != null && KnownVaults.SamePath(into, VaultOf(target)) ? (aliased ? rest : file) : null;
+        }
+
+        // Homes inside the open vaults whose manifests reference home's vault.
+        public static IEnumerable<string> ReferencingVaults(string? home)
+        {
+            string vault = VaultOf(home);
+            string id = VaultManifest.IdOf(vault);
+            if (id.Length == 0) return Enumerable.Empty<string>();
+            return SettingsRegistry.Get<KnownVaults>().vaults
+                .Where(known => !KnownVaults.SamePath(known.path, vault) && VaultWindows.IsOpen(known.path)
+                                && VaultManifest.Depends(known.path).Any(d => d.id == id))
+                .Select(known => Path.Combine(known.path, "_"))
+                .ToList();
+        }
+
+        // "@Alias/" for a link from a file in one vault to a sheet in another, adding the reference when there is none yet.
+        public static string? FilePrefix(string? destination, string source)
+        {
+            string? from = destination == null ? null : VaultWindows.KnownVaultOf(destination);
+            string? into = VaultWindows.KnownVaultOf(source);
+            if (from == null || into == null || KnownVaults.SamePath(from, into)) return null;
+
+            string id = VaultManifest.IdOf(into);
+            string? alias = AliasOf(from, id);
+            if (alias == null && VaultWindows.AddReference(from, into)) alias = AliasOf(from, id);
+            return alias == null ? null : "@" + alias + "/";
+        }
+
+        private static string? AliasOf(string vault, string id) =>
+            VaultManifest.Depends(vault).FirstOrDefault(d => d.id == id).alias is { Length: > 0 } alias ? alias : null;
+
         // Notes that can hold a sheet link: .md and .axml, sheets and planners left out.
         internal static IEnumerable<string> VaultNotes(string? home)
         {
@@ -777,11 +945,18 @@ namespace Thorium.Editor.CustomControls
             if (!Directory.Exists(root)) return Enumerable.Empty<string>();
             return Directory.EnumerateFiles(root, "*.md", System.IO.SearchOption.AllDirectories)
                 .Concat(Directory.EnumerateFiles(root, "*.axml", System.IO.SearchOption.AllDirectories)
-                    .Where(path => !SheetDocument.IsSheet(path) && !PlannerDocument.IsPlanner(path)));
+                    .Where(path => !SheetDocument.IsSheet(path) && !PlannerDocument.IsPlanner(path) && !GraphDocument.IsGraph(path)))
+                .Where(path => !InDotFolder(root, path));
         }
 
+        // Whether a file sits under a folder the browser hides.
+        internal static bool InDotFolder(string root, string path) =>
+            Path.GetRelativePath(root, Path.GetDirectoryName(path)!)
+                .Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
+                .Any(part => part.StartsWith('.') && part != ".");
+
         // A [[note]] by name, or a web address handed to the system browser.
-        public static bool OpenLink(string link)
+        public static bool OpenLink(string? home, string link)
         {
             if (link.StartsWith("http://", StringComparison.OrdinalIgnoreCase) || link.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
             {
@@ -791,33 +966,32 @@ namespace Thorium.Editor.CustomControls
 
             if (!link.StartsWith("[[") || !link.EndsWith("]]")) return false;
 
-            string name = link[2..^2].Split('|', '#')[0].Trim().Replace('\\', '/');
-            VaultBrowserControl browser = Browser();
-            string note = browser?.FindNote(browser.root, name);
+            string? note = FindNote(home, link[2..^2].Split('|', '#')[0]);
             if (note == null) return false;
 
             Open(note);
             return true;
         }
 
-        // The first note whose name, or path ending, matches a link target.
-        private string FindNote(FileObject folder, string name)
+        // The link index of the open vault holding a file; null for a file in none.
+        internal static LinkIndex? IndexOf(string path) =>
+            VaultWindows.KnownVaultOf(path) is string vault && !VaultWindows.Closed(path) ? LinkIndex.For(vault, VaultManifest.IdOf(vault)) : null;
+
+        // The first file whose name, or path ending, matches a link target, in the vault of home.
+        public static string? FindNote(string? home, string name)
         {
-            if (folder == null) return null;
+            if (!Redirect(ref home, ref name)) return null;
+            string root = VaultOf(home);
+            if (!Directory.Exists(root)) return null;
 
-            foreach (FileObject child in folder.Children)
+            name = name.Trim().Replace('\\', '/');
+            foreach (string path in Directory.EnumerateFiles(root, "*", System.IO.SearchOption.AllDirectories))
             {
-                if (child.type == FileObject.FileType.Directory)
-                {
-                    string found = FindNote(child, name);
-                    if (found != null) return found;
-                    continue;
-                }
-
-                string withoutExtension = Path.ChangeExtension(child.path, null).Replace('\\', '/');
-                if (Accepts(child) && !SheetCsv.IsCsv(child.path) && (withoutExtension.EndsWith("/" + name, StringComparison.OrdinalIgnoreCase)
-                                       || child.path.Replace('\\', '/').EndsWith("/" + name, StringComparison.OrdinalIgnoreCase)))
-                    return child.path;
+                string withoutExtension = Path.ChangeExtension(path, null).Replace('\\', '/');
+                if ((withoutExtension.EndsWith("/" + name, StringComparison.OrdinalIgnoreCase)
+                     || path.Replace('\\', '/').EndsWith("/" + name, StringComparison.OrdinalIgnoreCase))
+                    && FileTypes.Of(path) != null && !SheetCsv.IsCsv(path) && !InDotFolder(root, path))
+                    return path;
             }
             return null;
         }
@@ -856,6 +1030,7 @@ namespace Thorium.Editor.CustomControls
             if (asXml) return BuildXmlTab(notePath);
             if (SheetDocument.IsSheet(notePath) || SheetCsv.IsCsv(notePath)) return BuildSheetTab(notePath);
             if (PlannerDocument.IsPlanner(notePath)) return BuildPlannerTab(notePath);
+            if (GraphDocument.IsGraph(notePath)) return BuildGraphTab(notePath);
             if (FileTypes.KindOf(notePath) == FileKind.Tex) return BuildTexTab(notePath);
 
             DocumentEditorControl editor = new DocumentEditorControl { contextMenu = "note" };
@@ -895,6 +1070,21 @@ namespace Thorium.Editor.CustomControls
             {
                 name = plannerPath,
                 header = editor.document.name ?? BaseName(plannerPath),
+                onRename = name => RenameNote(editor.path, name)
+            };
+            tab.AddChild(editor);
+            return tab;
+        }
+
+        private static TabItemControl BuildGraphTab(string graphPath)
+        {
+            GraphEditorControl editor = new GraphEditorControl();
+            editor.LoadPath(graphPath);
+
+            TabItemControl tab = new TabItemControl
+            {
+                name = graphPath,
+                header = editor.document.name ?? BaseName(graphPath),
                 onRename = name => RenameNote(editor.path, name)
             };
             tab.AddChild(editor);
@@ -961,6 +1151,7 @@ namespace Thorium.Editor.CustomControls
         private static string Extension(string path) =>
             SheetDocument.IsSheet(path) ? SheetDocument.extension
             : PlannerDocument.IsPlanner(path) ? PlannerDocument.extension
+            : GraphDocument.IsGraph(path) ? GraphDocument.extension
             : Path.GetExtension(path);
 
         // "Name", then "Name 2", "Name 3" — a name already taken is never written over.

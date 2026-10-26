@@ -128,7 +128,7 @@ placement is a separate decision.
 ## Still open
 
 - The window-menu placement bug above.
-- No rename, no new folder, no delete folder; a folder row offers only `New note`.
+- No rename, no new folder, no delete folder; a folder row offers only `New note`. (New folder landed on the new stack 2026-10-24 — see [[context-menus]].)
 - `ConfirmWindow` is mouse-only and its message does not wrap.
 - Nothing watches the vault, so a note created by another app still appears only after a rebuild.
 - Deleting a note that is open in a **torn-off** window closes that tab and, if it was the last one,

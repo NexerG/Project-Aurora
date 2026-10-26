@@ -986,9 +986,19 @@ namespace Thorium.Tests
             yield return 2;
 
             content.SetCaret(p[0], 1);
+            float aWas = p[0].arrangedRect.y;
             editor.SetChecked(p[0], true);
             t.Check(Order() == "b,c,a+,d+,after", $"ticking moves the item to the top of the ticked ones: {Order()}");
             t.Check(content.caretBlock == p[2] && content.caretOffset == 1, "the caret moves with its item");
+            yield return 1;
+
+            float aSliding = p[2].arrangedRect.y;
+            t.Check(p[2].reveal > 0f, $"the moved item is still sliding a frame later: reveal {p[2].reveal}");
+            yield return 20;
+
+            t.Check(p[2].reveal == 0f && aWas <= aSliding && aSliding < p[2].arrangedRect.y,
+                $"it slid down from its old spot: {aWas} -> {aSliding} -> {p[2].arrangedRect.y}");
+            t.Check(p[0].arrangedRect.y == aWas, $"the item that took its slot slid up into it: {p[0].arrangedRect.y} vs {aWas}");
 
             editor.SetChecked(p[3], false);
             t.Check(Order() == "b,c,d,a+,after", $"unticking moves it to the bottom of the unticked ones, past sub-items: {Order()}");
