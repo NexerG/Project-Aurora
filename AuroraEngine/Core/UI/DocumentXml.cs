@@ -146,6 +146,9 @@ namespace ArctisAurora.Core.UI
             if (align != null && Enum.TryParse(align.Value, true, out TextAlignment alignment))
                 block.alignment = alignment;
             block.firstIndent = (float?)element.Attribute("Indent") ?? 0f;
+            block.leftIndent = (float?)element.Attribute("LeftIndent") ?? 0f;
+            block.rightIndent = (float?)element.Attribute("RightIndent") ?? 0f;
+            block.rightIndentLast = (float?)element.Attribute("RightIndentLast");
             block.ruleWeight = (float?)element.Attribute("Weight");
             block.spaceBefore = (float?)element.Attribute("SpaceBefore");
             block.pageBreak = ReadPageBreak(element);
@@ -416,6 +419,12 @@ namespace ArctisAurora.Core.UI
                 element.SetAttributeValue("Align", block.alignment.ToString());
             if (block.firstIndent != 0f)
                 element.SetAttributeValue("Indent", Format(block.firstIndent));
+            if (block.leftIndent != 0f)
+                element.SetAttributeValue("LeftIndent", Format(block.leftIndent));
+            if (block.rightIndent != 0f)
+                element.SetAttributeValue("RightIndent", Format(block.rightIndent));
+            if (block.rightIndentLast.HasValue)
+                element.SetAttributeValue("RightIndentLast", Format(block.rightIndentLast.Value));
             if (block.ruleWeight.HasValue)
                 element.SetAttributeValue("Weight", Format(block.ruleWeight.Value));
             if (block.spaceBefore.HasValue)

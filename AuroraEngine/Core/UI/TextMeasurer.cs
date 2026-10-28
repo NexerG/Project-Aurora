@@ -305,7 +305,8 @@ namespace ArctisAurora.Core.UI
 
         // firstLineOffset applies to line 0 only; ragged lines stretch without limit, as TeX's fil glue.
         public static BlockLayout MeasureBlock(IReadOnlyList<Run> runs, float contentWidth, IGlyphMetrics metrics,
-            float lineHeight, float firstLineOffset = 0f, ILineSlots slots = null, BlockLayout reuse = null, bool optimal = false, bool ragged = false)
+            float lineHeight, float firstLineOffset = 0f, ILineSlots slots = null, BlockLayout reuse = null, bool optimal = false, bool ragged = false,
+            float lastExtra = 0f)
         {
             BlockLayout layout = reuse ?? new BlockLayout();
             layout.Reset();
@@ -313,7 +314,7 @@ namespace ArctisAurora.Core.UI
             int count = layout.count;
             byte[] flags = layout.flags;
 
-            if (slots != null) return MeasureAround(layout, count, runs, metrics, lineHeight, firstLineOffset, slots);
+            if (slots != null) return MeasureAround(layout, count, runs, metrics, lineHeight, firstLineOffset, slots, lastExtra);
 
             if (count == 0)
             {
@@ -323,8 +324,9 @@ namespace ArctisAurora.Core.UI
                 return layout;
             }
 
-            if (optimal && BreakOptimal(layout, count, contentWidth, firstLineOffset, ragged, runs))
+            if (optimal && BreakOptimal(layout, count, contentWidth, firstLineOffset, ragged, runs, lastExtra))
             {
+                ExtendLast(layout, contentWidth, lastExtra);
                 IndentFirst(layout, firstLineOffset, contentWidth);
                 foreach (TextLine line in layout.lines)
                     if (line.left + line.width > layout.width) layout.width = line.left + line.width;
@@ -334,6 +336,7 @@ namespace ArctisAurora.Core.UI
             int lineStart = 0;
             int lastBreak = -1;     // last character this line is allowed to end on
             float penX = firstLineOffset;
+            bool lastLine = false;
 
             for (int i = 0; i < count; i++)
             {
@@ -343,8 +346,15 @@ namespace ArctisAurora.Core.UI
                 // A break character is never what pushes a line over: trailing spaces are allowed to
                 // hang past the column, and letting one wrap would push the break onto the next line
                 // where it would show up as a leading indent.
-                if (((f & BreakAfter) == 0 || (f & Picture) != 0) && penX + advance > contentWidth && i > lineStart)
+                if (((f & BreakAfter) == 0 || (f & Picture) != 0) && penX + advance > contentWidth && i > lineStart && !lastLine)
                 {
+                    if (lastExtra > 0f && RestFits(layout, i, count, penX, contentWidth + lastExtra, runs))
+                    {
+                        lastLine = true;
+                        penX += advance;
+                        continue;
+                    }
+
                     // End the line at the last break opportunity. Without one the word is wider than
                     // the column, so it has to split mid-word or nothing would ever fit.
                     int breakAt = (f & Picture) != 0 || lastBreak < 0 ? i - 1 : lastBreak;
@@ -365,12 +375,29 @@ namespace ArctisAurora.Core.UI
             }
 
             AppendLine(layout, lineStart, count - 1, runs);
+            ExtendLast(layout, contentWidth, lastExtra);
             IndentFirst(layout, firstLineOffset, contentWidth);
 
             foreach (TextLine line in layout.lines)
                 if (line.left + line.width > layout.width) layout.width = line.left + line.width;
 
             return layout;
+        }
+
+        // Whether the characters from i to the end fit in width, the line already at penX.
+        private static bool RestFits(BlockLayout layout, int i, int count, float penX, float width, IReadOnlyList<Run> runs)
+        {
+            for (int j = i; j < count && penX <= width; j++)
+                penX += AdvanceAt(layout, j, penX, runs);
+            return penX <= width;
+        }
+
+        // The last line's room past the column.
+        private static void ExtendLast(BlockLayout layout, float contentWidth, float lastExtra)
+        {
+            if (lastExtra == 0f || layout.lines.Count == 0) return;
+            TextLine last = layout.lines[^1];
+            last.room = (last.room > 0f ? last.room : contentWidth) + lastExtra;
         }
 
         // The first line starts past the indent, with that much less room.
@@ -385,7 +412,7 @@ namespace ArctisAurora.Core.UI
         // One line at a time, each placed and narrowed by the slots; a line found taller than its
         // guess asks again with its real height.
         private static BlockLayout MeasureAround(BlockLayout layout, int count, IReadOnlyList<Run> runs,
-            IGlyphMetrics metrics, float lineHeight, float firstLineOffset, ILineSlots slots)
+            IGlyphMetrics metrics, float lineHeight, float firstLineOffset, ILineSlots slots, float lastExtra)
         {
             if (count == 0)
             {
@@ -407,7 +434,9 @@ namespace ArctisAurora.Core.UI
                 for (int attempt = 0; attempt < 3; attempt++)
                 {
                     top = slots.Place(layout.height, guess, out left, out right);
-                    end = FillLine(layout, lineStart, count, right - left, lineStart == 0 ? firstLineOffset : 0f, runs);
+                    float offset = lineStart == 0 ? firstLineOffset : 0f;
+                    end = lastExtra > 0f && RestFits(layout, lineStart, count, offset, right - left + lastExtra, runs)
+                        ? count - 1 : FillLine(layout, lineStart, count, right - left, offset, runs);
 
                     float ascent = 0f, descent = 0f;
                     for (int r = RunOf(layout, lineStart); r < layout.runs.Count && layout.runs[r].start <= end; r++)
@@ -421,7 +450,7 @@ namespace ArctisAurora.Core.UI
                 }
 
                 AppendLine(layout, lineStart, end, top, left, runs);
-                layout.lines[^1].room = MathF.Max(0f, right - left);
+                layout.lines[^1].room = MathF.Max(0f, right - left) + (end == count - 1 ? lastExtra : 0f);
                 lineStart = end + 1;
             }
             IndentFirst(layout, firstLineOffset, 0f);
@@ -462,7 +491,8 @@ namespace ArctisAurora.Core.UI
         }
 
         // Knuth-Plass over the block's characters; false when no break set fits, leaving the block to the greedy loop.
-        private static bool BreakOptimal(BlockLayout layout, int count, float contentWidth, float firstLineOffset, bool ragged, IReadOnlyList<Run> runs)
+        private static bool BreakOptimal(BlockLayout layout, int count, float contentWidth, float firstLineOffset, bool ragged, IReadOnlyList<Run> runs,
+            float lastExtra)
         {
             float[] advances = layout.advances;
             byte[] flags = layout.flags;
@@ -502,7 +532,7 @@ namespace ArctisAurora.Core.UI
                     int end = j;
                     while (end >= start && flags[end] == BreakAfter) end--;
 
-                    float room = contentWidth - (from.line == 0 ? firstLineOffset : 0f);
+                    float room = contentWidth - (from.line == 0 ? firstLineOffset : 0f) + (j == count - 1 ? lastExtra : 0f);
                     float shortfall = room - (width[end + 1] - width[start] + hyphen);
                     float ratio;
                     bool filled = fills[end + 1] - fills[start] > (end == j && (flags[j] & Fill) != 0 ? 1 : 0);

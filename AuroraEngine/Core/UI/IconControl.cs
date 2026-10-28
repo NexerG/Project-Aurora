@@ -71,6 +71,7 @@ namespace ArctisAurora.Core.UI
         // Recorded by name over its artwork box while an export records; otherwise drawn as a quad.
         internal override void Emit(float z)
         {
+            if (sampler == null) return;
             if (UIEngine.recorder == null)
             {
                 base.Emit(z);

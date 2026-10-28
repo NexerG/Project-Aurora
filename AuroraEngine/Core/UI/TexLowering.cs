@@ -126,6 +126,7 @@ namespace ArctisAurora.Core.UI
         // what Runs leaves on the tree for PageRefs: a \pageref's run, and a label's block and offset
         private sealed record PageRefNote(string key);
         private sealed record LabelSite(string key, int offset);
+        private sealed record BoxFitNote(XElement spacer, float width, float fixedWidth, float share, TexStyle style);
 
         // Every \pageref run and label site in a lowered tree, labels by top-level block index; a label in a table stands at the table's top.
         public static TexPageRefs PageRefs(XElement root)
@@ -139,6 +140,8 @@ namespace ArctisAurora.Core.UI
                 {
                     foreach (PageRefNote note in e.Annotations<PageRefNote>())
                         found.refs.Add((e, note.key));
+                    foreach (BoxFitNote fit in e.Annotations<BoxFitNote>())
+                        found.fits.Add((e, fit.spacer, fit.width - fit.fixedWidth, fit.share, fit.style));
                     foreach (LabelSite site in e.Annotations<LabelSite>())
                         found.labels.TryAdd(site.key, (index, e == entry ? site.offset : 0));
                 }
@@ -257,8 +260,11 @@ namespace ArctisAurora.Core.UI
                                 continue;
                             }
 
-                            XElement block = Block(p, pieces[k], i == 0 && k == 0, normal, headings);
-                            if (p.style.indent && i == 0 && k == 0) block.SetAttributeValue("Indent", Format(spacing.indent));
+                            bool skips = p.style.leftSkip != 0 || p.style.rightSkip != 0, opening = i == 0 && k == 0;
+                            float hang = skips && opening ? TakeLeading(pieces[k]) : 0f;
+                            XElement block = Block(p, pieces[k], opening, normal, headings);
+                            if (p.style.indent && opening && !skips) block.SetAttributeValue("Indent", Format(spacing.indent));
+                            if (skips) Skips(block, p.style, opening ? (p.style.indent ? p.style.indentWidth / Unity * PxPerPt : 0f) + hang : 0f);
                             if (!placed)
                             {
                                 if (p.pageStyle != null) block.SetAttributeValue("PageStyle", p.pageStyle);
@@ -291,6 +297,44 @@ namespace ArctisAurora.Core.UI
                     Footnotes(t.rows.SelectMany(r => r).SelectMany(c => Flat(c.vlist)).OfType<TexParagraph>().SelectMany(p => p.list), root, normal, headings, blockLines);
                     break;
             }
+        }
+
+        // The glue, kerns, penalties and empty boxes a line opens with, taken off it, px: under \leftskip they hang the first line.
+        private static float TakeLeading(List<TexNode> line)
+        {
+            float px = 0f;
+            for (int n = 0; n < line.Count;)
+                switch (line[n])
+                {
+                    case TexGlueNode { interword: false, leader: null, glue.stretchOrder: 0 } g:
+                        px += g.glue.width / Unity * PxPerPt;
+                        line.RemoveAt(n);
+                        break;
+                    case TexKern k:
+                        px += k.width / Unity * PxPerPt;
+                        line.RemoveAt(n);
+                        break;
+                    case TexPenalty:
+                    case TexHBox { width: < 0, list.Count: 0 }:
+                        line.RemoveAt(n);
+                        break;
+                    case TexLabelMark:
+                        n++;
+                        break;
+                    default:
+                        return px;
+                }
+            return px;
+        }
+
+        // \leftskip and \rightskip as the block's indents, \parfillskip under \rightskip as its last line's, and the first line's indent.
+        private static void Skips(XElement block, TexParStyle s, float indent)
+        {
+            if (s.leftSkip != 0) block.SetAttributeValue("LeftIndent", Format(s.leftSkip / Unity * PxPerPt));
+            if (s.rightSkip != 0) block.SetAttributeValue("RightIndent", Format(s.rightSkip / Unity * PxPerPt));
+            if (s.rightSkip != 0 && s.parFillSkip != 0)
+                block.SetAttributeValue("RightIndentLast", Format(MathF.Max(0f, (s.rightSkip + s.parFillSkip) / Unity * PxPerPt)));
+            if (MathF.Abs(indent) >= 0.01f) block.SetAttributeValue("Indent", Format(indent));
         }
 
         // A line cut around its display formulas, each display a piece of its own: TeX breaks the text either side separately.
@@ -585,6 +629,57 @@ namespace ArctisAurora.Core.UI
             return width;
         }
 
+        // A string's width in a style, px.
+        internal static float TextWidth(string text, TexStyle s)
+        {
+            float width = 0f;
+            foreach (char c in text)
+                width += Advance(c, s);
+            return width;
+        }
+
+        // A \leaders box as its text, the text's inset and the box's width, px; null for more than characters, kerns, mu kerns and \hbox.
+        private static (string text, float inset, float width)? LeaderCell(TexHBox box)
+        {
+            StringBuilder text = new StringBuilder();
+            float width = 0f, inset = 0f;
+            foreach (TexNode node in box.list)
+                switch (node)
+                {
+                    case TexChar c:
+                        if (text.Length == 0) inset = width;
+                        text.Append(c.ch);
+                        width += Advance(c.ch, c.style);
+                        break;
+                    case TexKern k:
+                        width += k.width / Unity * PxPerPt;
+                        break;
+                    case TexGlueNode g:
+                        width += g.glue.width / Unity * PxPerPt;
+                        break;
+                    case TexMathNode m when MathParser.Parse(m.source) is MathList list:
+                        float em = m.style.font.size / Unity * PxPerPt;
+                        foreach (MathNode item in list.items)
+                            switch (item)
+                            {
+                                case MathSpace space:
+                                    width += space.em * em;
+                                    break;
+                                case MathText run:
+                                    if (text.Length == 0) inset = width;
+                                    text.Append(run.text);
+                                    width += TextWidth(run.text, m.style);
+                                    break;
+                                default:
+                                    return null;
+                            }
+                        break;
+                    default:
+                        return null;
+                }
+            return (text.ToString(), inset, width);
+        }
+
         private static float Advance(char c, TexStyle s)
         {
             int px = Px(s.font.size);
@@ -675,6 +770,7 @@ namespace ArctisAurora.Core.UI
             StringBuilder text = new StringBuilder();
             TexStyle? current = null;
             int flushed = 0;
+            (XElement run, TexRefNode node)? lastPageRef = null;
 
             void Flush()
             {
@@ -702,6 +798,65 @@ namespace ArctisAurora.Core.UI
                 flushed++;
             }
 
+            // \hbox to: its contents, the slack shared out at its fil glue or put after them; a page number's spacers always kept.
+            void FixedBox(TexHBox b)
+            {
+                int fils = 0;
+                TexRefNode? page = null;
+                TexStyle? boxStyle = null;
+                foreach (TexNode node in b.list)
+                    switch (node)
+                    {
+                        case TexGlueNode { glue.stretchOrder: > 0 } g:
+                            fils++;
+                            boxStyle ??= g.style;
+                            break;
+                        case TexRefNode { page: true } number:
+                            page = number;
+                            boxStyle ??= number.style;
+                            break;
+                        case TexChar c:
+                            boxStyle ??= c.style;
+                            break;
+                    }
+                if (boxStyle is not TexStyle style) return;
+
+                float target = b.width / Unity * PxPerPt, natural = Width(b.list, 0);
+                float share = fils > 0 ? 1f / fils : 1f;
+                float fixedWidth = page == null ? natural : natural - TextWidth(page.text, page.style);
+                List<XElement>? spacers = page == null ? null : new List<XElement>(Math.Max(1, fils));
+                lastPageRef = null;
+
+                void Slack(TexStyle s)
+                {
+                    float px = MathF.Max(0f, target - natural) * share;
+                    if (spacers == null && px < 0.5f) return;
+                    Flush();
+                    current = null;
+                    XElement spacer = TextRun(" ", s, blockFont, blockSize);
+                    spacer.SetAttributeValue("Space", Format(MathF.Max(0.01f, px)));
+                    block.Add(spacer);
+                    flushed++;
+                    spacers?.Add(spacer);
+                }
+
+                List<TexNode> part = new List<TexNode>(b.list.Count);
+                foreach (TexNode node in b.list)
+                    if (node is TexGlueNode { glue.stretchOrder: > 0 } g)
+                    {
+                        Walk(part, true);
+                        part.Clear();
+                        Slack(g.style);
+                    }
+                    else part.Add(node);
+                Walk(part, true);
+                if (fils == 0) Slack(style);
+
+                if (spacers != null && lastPageRef is (XElement numberRun, TexRefNode numbered))
+                    foreach (XElement spacer in spacers)
+                        numberRun.AddAnnotation(new BoxFitNote(spacer, target, fixedWidth, share, numbered.style));
+            }
+
             void Walk(List<TexNode> nodes, bool unbreakable)
             {
                 for (int n = 0; n < nodes.Count; n++)
@@ -718,6 +873,12 @@ namespace ArctisAurora.Core.UI
                             current = null;
                             XElement fill = TextRun(" ", g.style, blockFont, blockSize);
                             fill.SetAttributeValue("Fill", "true");
+                            if (g.leader != null && LeaderCell(g.leader) is (string leader, float inset, float cell) && leader.Length > 0 && cell > 0f)
+                            {
+                                fill.SetAttributeValue("Leader", leader);
+                                fill.SetAttributeValue("LeaderWidth", Format(cell));
+                                fill.SetAttributeValue("LeaderInset", Format(inset));
+                            }
                             block.Add(fill);
                             flushed++;
                             break;
@@ -726,6 +887,9 @@ namespace ArctisAurora.Core.UI
                             break;
                         case TexKern k:
                             Spacer(k.width, k.style);
+                            break;
+                        case TexHBox { width: >= 0 } b:
+                            FixedBox(b);
                             break;
                         case TexHBox b:
                             Walk(b.list, true);
@@ -737,6 +901,7 @@ namespace ArctisAurora.Core.UI
                             pageRef.AddAnnotation(new PageRefNote(r.keys[0]));
                             block.Add(pageRef);
                             flushed += r.text.Length;
+                            lastPageRef = (pageRef, r);
                             break;
                         case TexRefNode r:
                             Put(r.text, r.style);
@@ -830,6 +995,19 @@ namespace ArctisAurora.Core.UI
     {
         public readonly List<(XElement run, string key)> refs = new List<(XElement, string)>();
         public readonly Dictionary<string, (int block, int offset)> labels = new Dictionary<string, (int, int)>();
+
+        // a \pageref's run in a fixed-width box: a spacer taking its share of the room the number leaves, px
+        public readonly List<(XElement run, XElement spacer, float room, float share, TexStyle style)> fits =
+            new List<(XElement, XElement, float, float, TexStyle)>(64);
+
+        // Each spacer of run re-sized for the number it now shows.
+        public void Fit(XElement run, string number)
+        {
+            foreach ((XElement fitted, XElement spacer, float room, float share, TexStyle style) in fits)
+                if (fitted == run)
+                    spacer.SetAttributeValue("Space", MathF.Max(0.01f, (room - TexLowering.TextWidth(number, style)) * share)
+                        .ToString("0.###", CultureInfo.InvariantCulture));
+        }
     }
 
     // em and ex from the baked Latin Modern atlases; cmr10's ratio where a face is missing.

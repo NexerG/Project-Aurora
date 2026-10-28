@@ -28,7 +28,7 @@ This file holds **open work**. A landed entry moves to [[Changelog]]; one that s
 	- [ ] **per-tab view state not GUI-verified** — caret, selection, top line and header state across a real quit/relaunch and a vault switch; test-verified only → `session-restore`
 	- [ ] an iconified window comes back normal; a window whose every recorded note was deleted comes back as an empty pane rather than not at all
 - [ ] bootstrap and shutdown steps report success unconditionally — the `bool` is wired end to end but no step actually detects its own failure yet
-- [ ] **Linux goldens / lavapipe tolerance (2026-10-16)** — 51 goldens fail on Linux (colours match since the swapchain UNORM fallback): 42 shots edges only, 13 also 1–3 level flat deltas; a measured tolerant rule passes 55 of 61, not built → `linux-test-port`
+- [ ] **Linux goldens / lavapipe tolerance (2026-10-16)** — 54 goldens fail on Linux, 51 on 2026-10-16 (colours match since the swapchain UNORM fallback); of the 51: 42 shots edges only, 13 also 1–3 level flat deltas; a measured tolerant rule passes 55 of 61, not built → `linux-test-port`
 - [ ] **TeX inter-word spaces draw baseline dots on lavapipe (2026-10-16)** — 6 TeX goldens show faint dots under some spaces (delta 11–31); suspected bilinear bleed into a space's empty atlas cell, unverified → `linux-test-port`
 - [ ] **Notes.LocalWins intermittent on Linux (2026-10-16)** — torn-XML failure in 2 of 4 full runs, 3/3 alone; suspected outside-write vs save race under advisory file locks → `linux-test-port`
 - [ ] **Linux window drag by title bar (2026-10-16)** — `AGlfwWindow.DragByCaption` is a no-op off Windows; the extra GLFW button-up is believed harmless, unverified → `linux-test-port`
@@ -74,7 +74,7 @@ This file holds **open work**. A landed entry moves to [[Changelog]]; one that s
 		- [x] **tables (2026-09-29)** — landed, See `ClaudeMemory/Decisions/document-tables.md`
 			- [ ] typing p95 up ~0.03 ms on the 1M-char scenario — likely `Blocks()` type-testing page panels, not pinned
 		- [ ] **math in notes, M1–M5 (2026-10-02, M5 2026-10-06)** — landed, test-verified; **NOT GUI-verified** (popup placement, live reflow, click-away, focus loss mid-edit). M5 (matrices/`cases`/`aligned`, `\tag`) landed with L6 → `math-plan`
-		- [ ] **LaTeX editor** — native route agreed 2026-10-05; L1–L6, L7a–L7g, L8, L9, L10a, L10b, L10c and L10d landed → `ClaudeMemory/Context/tex-plan.md`
+		- [ ] **LaTeX editor** — native route agreed 2026-10-05; L1–L6, L7a–L7g, L8, L9, L10a, L10b, L10c, L10d and L10e landed → `ClaudeMemory/Context/tex-plan.md`
 			- [ ] **L1 (2026-10-05)** — `.tex` opens as source in the note editor, saves byte-identical; `ArctisAurora.Core.Tex` TeX expander, not wired to the UI. **Verified**: builds clean; Tex 11/11, Syntax incl. `Syntax.Latex`, Thorium `--test` 156 passed (only the pre-existing Boot failure besides `Tex.SourceEnterPaste`, since fixed); TextInput 88/88 after the fix; `Tex.SourceColours` golden checked. **NOT GUI-verified.** → `latex-editor`
 			- [x] **Enter on an empty last line kept as LaTeX (2026-10-05)** — `DocumentControl.EndCodeBlock` returns false in `plainText`; `Tex.SourceEnterPaste` passes → `latex-editor`
 			- [x] **`.tex` joins the `.txt` gates (2026-10-05)** — `CanAlign`, `InsertTable`, `PasteImage` refuse in a `.tex`; no test → `latex-editor`
@@ -96,7 +96,8 @@ This file holds **open work**. A landed entry moves to [[Changelog]]; one that s
 			- [ ] **per-block line height** — `\fontsize`'s baselineskip and setspace's single-spaced floats and footnotes need a `NoteBlock.lineHeight`; L10b keeps one document-wide height (L10b-F1 a) → `latex-editor`
 			- [ ] **Lithuanian `\today`** — not done (L10d gap) → `latex-editor`
 			- [ ] **per-character language for `\foreignlanguage`** — language is per paragraph (L10d-F2 a), so `\foreignlanguage` and a mid-paragraph `\selectlanguage` leave the hyphenation of the words they cover alone; per character through `TexStyle` splits runs at every language change → `latex-editor`
-			- [ ] **L10e — table of contents** — tocloft leaders, two-pass page numbers → `tex-plan`
+			- [ ] **starred titlesec headings lose the before-code `\hspace`** — TURINYS and SANTRAUKA sit 7 pt left of the thesis (86.46 vs 93.54 pt); the `\hspace{0.25 cm}` is lost on `\section*`; pre-existing → `latex-editor`
+			- [ ] **`\appendix` unsupported** — undefined; the thesis's `\appendix` lines → `latex-editor`
 			- [ ] **L10f — biblatex** — alphabetic labels like [tmp23], Lithuanian strings → `tex-plan`
 			- [ ] **em dash does not draw at 13px in a note** — U+2014 from L3 lowering is emitted but missing in the preview golden; a `LabelControl` draws it faintly; likely a sub-pixel-tall quad (renderer, unproven) → `latex-editor`
 			- [ ] **delete the dead `TexLowering.Spaces` helper** — unused since L7c; its line holds a literal U+00A0 the Edit tool cannot match → `latex-editor`

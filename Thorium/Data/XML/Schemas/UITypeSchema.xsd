@@ -69,6 +69,9 @@
     <xs:attribute name="Sheet" type="xs:string" />
     <xs:attribute name="Space" type="xs:float" />
     <xs:attribute name="Fill" type="xs:boolean" />
+    <xs:attribute name="Leader" type="xs:string" />
+    <xs:attribute name="LeaderWidth" type="xs:float" />
+    <xs:attribute name="LeaderInset" type="xs:float" />
     <xs:attribute name="Note" type="xs:string" />
   </xs:attributeGroup>
   <xs:element name="Run" type="types:Run" />

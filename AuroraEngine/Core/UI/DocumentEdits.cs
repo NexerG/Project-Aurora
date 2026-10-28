@@ -25,6 +25,9 @@ namespace ArctisAurora.Core.UI
         public TextStyleType stylingType;
         public TextAlignment alignment;
         public float firstIndent;
+        public float leftIndent;
+        public float rightIndent;
+        public float? rightIndentLast;
         public float? ruleWeight;
         public float? spaceBefore;
         public PageBreak pageBreak;

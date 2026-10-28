@@ -1793,10 +1793,12 @@ namespace ArctisAurora.Tests
         [A_XSDActionDependency("Tex.NoStrayText", "Test")]
         private static IEnumerator<int> NoStrayText(TestContext t)
         {
-            string body = Lines("\\documentclass{article}\\usepackage{fontspec}\\setmainfont{Times New Roman}[Ligatures=TeX]"
+            List<TexParagraph> toc = Pars(Typeset("\\documentclass{article}\\usepackage{fontspec}\\setmainfont{Times New Roman}[Ligatures=TeX]"
                 + "\\newfontface\\sectionfont[Path=fonts/]{Calibri}\\begin{document}\\selectlanguage{lithuanian}\\tableofcontents"
-                + "\\phantomsection\\addcontentsline{toc}{section}{Priedai}{\\sectionfont Body}\\end{document}", out List<TexError> errors);
-            t.Check(body == "Body" && errors.Count == 0, $"the placeholders typeset nothing: {body} {string.Join("; ", errors)}");
+                + "\\phantomsection\\addcontentsline{toc}{section}{Priedai}{\\sectionfont Body}\\end{document}", out List<TexError> errors));
+            string body = toc.Count == 3 ? BoxText(toc[0].list) + " / " + BoxText(toc[1].list) + " / " + BoxText(toc[2].list) : toc.Count.ToString();
+            t.Check(body == "Turinys / Priedai?? / Body" && errors.Count == 0,
+                $"the contents lists its entry under the Lithuanian title, no stray text: {body} {string.Join("; ", errors)}");
 
             string folder = Folder(("refs.bib", "@misc{a, title = {Title}, year = 2000}\n"));
             TexTypesetter typesetter = new TexTypesetter("\\documentclass{article}\\bibliography{refs}\\begin{document}\\cite{a}\n"
@@ -2005,6 +2007,200 @@ namespace ArctisAurora.Tests
             t.Check(justified.lines[0].hyphen != 0f && !hyphenated && ragged.lines.Count == 3,
                 $"a ragged paragraph takes a line more rather than a hyphen, as TeX's fil glue does: {ragged.lines.Count} lines");
             yield break;
+        }
+
+        [A_XSDActionDependency("Tex.Contents", "Test")]
+        private static IEnumerator<int> Contents(TestContext t)
+        {
+            TexTypesetter typesetter = Typeset("\\documentclass{article}\\usepackage{tocloft}\\renewcommand{\\cftsecleader}{\\cftdotfill{\\cftdotsep}}"
+                + "\\begin{document}\\tableofcontents\\section*{Abstract}\\addcontentsline{toc}{section}{Abstract}\n"
+                + "\\section{Intro}\\subsection[Short]{Long title}\\subsubsection{Deep}\\paragraph{Para} text\n\\end{document}", out List<TexError> errors);
+            List<TexParagraph> pars = Pars(typesetter);
+            string[] lines = new string[pars.Count];
+            for (int i = 0; i < pars.Count; i++)
+                lines[i] = BoxText(pars[i].list);
+            t.Check(lines.Length == 10 && lines[0] == "Contents" && lines[1] == "Abstract ??" && lines[2] == "1Intro ??"
+                    && lines[3] == "1.1Short ??" && lines[4] == "1.1.1Deep ??",
+                $"one entry a heading, \\addcontentsline adds one, [short] titles it, \\paragraph is past tocdepth: {string.Join(" / ", lines)}");
+
+            TexParStyle sub = pars[3].style;
+            t.Check(Near(Pt(sub.leftSkip), 38f) && Near(Pt(sub.rightSkip), 25.5f) && Near(Pt(sub.parFillSkip), -25.5f) && Near(Pt(sub.indentWidth), 15f),
+                $"tocloft's subsection: \\leftskip indent + numwidth, \\rightskip \\@tocrmarg, \\parfillskip its negative: {Pt(sub.leftSkip)} {Pt(sub.rightSkip)} {Pt(sub.parFillSkip)} {Pt(sub.indentWidth)}");
+
+            TexHBox? number = null;
+            TexGlueNode? leader = null;
+            foreach (TexNode node in pars[3].list)
+                if (node is TexHBox { width: > 0 } box && number == null) number = box;
+                else if (node is TexGlueNode { leader: not null } g) leader = g;
+            t.Check(number != null && Near(Pt(number.width), 23f), $"\\numberline sets the number in a box \\cftsubsecnumwidth wide: {(number == null ? -1 : Pt(number.width))}");
+            t.Check(leader != null && leader.leader!.list.Count == 1 && leader.leader.list[0] is TexMathNode { source: string dots } && dots.Contains("\\mkern 4.5 mu"),
+                "the leader is \\cftdotfill's box of 4.5 mu kerns either side of a dot");
+            t.Check(pars[1].list.Exists(n => n is TexGlueNode { leader: not null }), "\\renewcommand of \\cftsecleader gives sections dots too");
+            t.Check(errors.Count == 0, $"no errors: {string.Join("; ", errors)}");
+
+            TexTypesetter plain = Typeset("\\documentclass{article}\\begin{document}\\tableofcontents\\section{A}\\subsection{B}\\end{document}", out errors);
+            pars = Pars(plain);
+            t.Check(pars.Count == 5 && BoxText(pars[1].list) == "1A??" &&!pars[1].list.Exists(n => n is TexGlueNode { leader: not null })
+                    && pars[2].list.Exists(n => n is TexGlueNode { leader: not null }) && errors.Count == 0,
+                $"without tocloft, article's sections have no dots, subsections do: {BoxText(pars[1].list)} {string.Join("; ", errors)}");
+            yield break;
+        }
+
+        [A_XSDActionDependency("Tex.ContentsLists", "Test")]
+        private static IEnumerator<int> ContentsLists(TestContext t)
+        {
+            string folder = Folder(("refs.bib", "@misc{a, title = {Title}, year = 2000}\n"));
+            TexTypesetter typesetter = new TexTypesetter("\\documentclass{article}\\usepackage{tocbibind}\\bibliography{refs}\\begin{document}"
+                + "\\tableofcontents\\listoffigures\\listoftables\\section{A}\\begin{figure}\\caption[Fig]{Figure text}\\end{figure}"
+                + "\\begin{table}\\caption{Tab}\\end{table}\\cite{a}\\printbibliography\\section*{After}\\addcontentsline{toc}{section}{After}\\end{document}",
+                null, folder);
+            typesetter.Run();
+            List<TexParagraph> pars = Pars(typesetter);
+            StringBuilder all = new StringBuilder();
+            foreach (TexParagraph p in pars)
+                all.Append(BoxText(p.list)).Append(" / ");
+            string text = all.ToString();
+            t.Check(text.StartsWith("Contents / Contents?? / List of Figures?? / List of Tables?? / 1A?? / References?? / After?? / "
+                    + "List of Figures / 1Fig ?? / List of Tables / 1Tab ?? / "),
+                $"tocbibind lists the contents and lists, the bibliography stays where it stood among the entries, captions fill lof and lot: {text}");
+            t.Check(typesetter.errors.Count == 0, $"no errors: {string.Join("; ", typesetter.errors)}");
+            Directory.Delete(folder, true);
+            yield break;
+        }
+
+        [A_XSDActionDependency("Tex.ContentsLowering", "Test")]
+        private static IEnumerator<int> ContentsLowering(TestContext t)
+        {
+            const float px = 96f / 72.27f;
+            XElement document = TexLowering.Compile("\\documentclass{article}\\usepackage{tocloft}\\begin{document}\\tableofcontents\\section{A}"
+                + "\\subsection{A subsection title long enough that it has to wrap onto a second line of the contents, past the leaders and the page number}"
+                + "\\end{document}", out List<TexError> errors);
+            XElement? entry = null;
+            foreach (XElement block in document.Elements("Block"))
+                if (entry == null && Near((float?)block.Attribute("LeftIndent") ?? 0f, 38f * px, 0.05f)) entry = block;
+            t.Check(entry != null && Near((float?)entry.Attribute("LeftIndent") ?? 0f, 38f * px, 0.05f) && Near((float?)entry.Attribute("RightIndent") ?? 0f, 25.5f * px, 0.05f)
+                    && (float?)entry.Attribute("RightIndentLast") == 0f && Near((float?)entry.Attribute("Indent") ?? 0f, -23f * px, 0.05f),
+                $"\\leftskip, \\rightskip and \\parfillskip lower to the block's indents, \\hskip-\\leftskip to a hanging first line: {entry?.ToString(SaveOptions.DisableFormatting)}");
+            if (entry == null) yield break;
+
+            XElement? leader = null;
+            foreach (XElement run in entry.Elements("Run"))
+                if ((string?)run.Attribute("Leader") != null) leader = run;
+            float dot = TexLowering.TextWidth(".", new TexStyle(new TexFont(TexFamily.Roman, false, false, 10 * 65536), null, false));
+            t.Check(leader != null && (string?)leader.Attribute("Leader") == "." && Near((float?)leader.Attribute("LeaderWidth") ?? 0f, 5f * px + dot, 0.05f)
+                    && Near((float?)leader.Attribute("LeaderInset") ?? 0f, 2.5f * px, 0.05f),
+                $"\\cftdotfill lowers to a leader fill: a dot in a 9 mu + dot cell, 4.5 mu in: {leader?.ToString(SaveOptions.DisableFormatting)}");
+
+            TexPageRefs refs = TexLowering.PageRefs(document);
+            XElement? number = null;
+            foreach ((XElement run, string key) in refs.refs)
+                if (run.Parent == entry) number = run;
+            XElement? spacer = null;
+            foreach (XElement run in entry.Elements("Run"))
+            {
+                if (run == number) break;
+                spacer = run;
+            }
+            float before = (float?)spacer?.Attribute("Space") ?? 0f;
+            if (number != null) refs.Fit(number, "123");
+            float after = (float?)spacer?.Attribute("Space") ?? 0f;
+            TexStyle normal = new TexStyle(new TexFont(TexFamily.Roman, false, false, 10 * 65536), null, false);
+            t.Check(number != null && Near(before - after, TexLowering.TextWidth("123", normal) - TexLowering.TextWidth("??", normal), 0.05f),
+                $"the page number's box keeps its width as the number changes, its \\hss spacer giving way: {before} → {after}");
+            t.Check(errors.Count == 0, $"no errors: {string.Join("; ", errors)}");
+
+            DocumentEditorControl editor = ShowDocument(t, document);
+            yield return 2;
+            int index = 0;
+            foreach (XElement block in document.Elements())
+            {
+                if (block == entry) break;
+                if (block.Name.LocalName != "DocumentLayout") index++;
+            }
+            BlockControl? shown = View(editor, index) as BlockControl;
+            if (shown != null && shown.Lines is { Count: 2 } lines)
+            {
+                float content = shown.arrange.arranged.width - shown.padding.left - shown.padding.right;
+                float right = shown.padding.right;
+                t.Check(lines[0].left < -1f && lines[0].left + lines[0].width <= content + 5f,
+                    $"the first line hangs left of the indent and stays inside \\rightskip but for its trailing space: left {lines[0].left}, right {lines[0].left + lines[0].width} of {content}");
+                t.Check(Near(lines[1].left + lines[1].width, content + right, 1f),
+                    $"the last line runs into \\rightskip, its number flush with the margin: {lines[1].left + lines[1].width} of {content + right}");
+            }
+            else t.Check(false, $"the entry wraps to two lines: {shown?.Lines?.Count}");
+            t.Show(new StackPanelControl());
+        }
+
+        [A_XSDActionDependency("Tex.LastLineRoom", "Test")]
+        private static IEnumerator<int> LastLineRoom(TestContext t)
+        {
+            IGlyphMetrics metrics = new FontAssetGlyphMetrics();
+            AtlasMetaData atlas = AssetRegistries.GetRegistryByValueType<string, FontAsset>(typeof(FontAsset))["default"].atlasMetaData;
+            const string text = "aaaa bbbb cccc";
+            TextMeasurer.Run run = new TextMeasurer.Run(text, 0, text.Length, "default", atlas, 16, FontStyle.Regular);
+            List<TextMeasurer.Run> runs = new List<TextMeasurer.Run> { run };
+            float whole = 0f;
+            foreach (char c in text)
+                whole += TextMeasurer.MeasureAdvance(c, run);
+            float width = whole - 4f;
+
+            foreach (bool optimal in new[] { false, true })
+            {
+                BlockLayout narrow = TextMeasurer.MeasureBlock(runs, width, metrics, 1.5f, optimal: optimal);
+                BlockLayout extended = TextMeasurer.MeasureBlock(runs, width, metrics, 1.5f, optimal: optimal, lastExtra: 8f);
+                t.Check(narrow.lines.Count == 2 && extended.lines.Count == 1 && Near(extended.lines[0].room, width + 8f, 0.01f),
+                    $"{(optimal ? "Knuth-Plass" : "greedy")}: a paragraph that fits only with the last line's extra room is one line of that room: {narrow.lines.Count} → {extended.lines.Count}");
+            }
+            yield break;
+        }
+
+        [A_XSDActionDependency("Tex.BlockIndents", "Test")]
+        private static IEnumerator<int> BlockIndents(TestContext t)
+        {
+            RichTextDocument document = DocumentXml.Parse(XElement.Parse("<Document><Block LeftIndent=\"10\" RightIndent=\"20\" RightIndentLast=\"0\">"
+                + "<Run Text=\"ab\"/><Run Text=\" \" Fill=\"true\" Leader=\".\" LeaderWidth=\"9\" LeaderInset=\"3\"/><Run Text=\"1\"/></Block></Document>"));
+            XElement? block = null, fill = null;
+            foreach (XElement element in DocumentXml.ToXml(document).Descendants())
+                if (element.Name.LocalName == "Block") block ??= element;
+                else if (element.Name.LocalName == "Run" && (string?)element.Attribute("Fill") == "true") fill = element;
+            t.Check(block != null && (string?)block.Attribute("LeftIndent") == "10" && (string?)block.Attribute("RightIndent") == "20" && (string?)block.Attribute("RightIndentLast") == "0"
+                    && fill != null && (string?)fill.Attribute("Leader") == "." && (string?)fill.Attribute("LeaderWidth") == "9" && (string?)fill.Attribute("LeaderInset") == "3",
+                $"block indents and a fill's leaders survive a save: {block?.ToString(SaveOptions.DisableFormatting)}");
+
+            NoteBlock head = (NoteBlock)document.blocks[0];
+            NoteBlock tail = head.SplitAt(1);
+            NoteBlock taken = new NoteBlock();
+            taken.TakeKind(head.Snapshot());
+            t.Check(tail.leftIndent == 10f && tail.rightIndent == 20f && tail.rightIndentLast == 0f
+                    && taken.leftIndent == 10f && taken.rightIndent == 20f && taken.rightIndentLast == 0f,
+                "Enter's tail and a block taking another's kind keep its indents");
+            yield break;
+        }
+
+        // A list's text with boxes opened, a leader or fil glue as nothing and other glue as a space.
+        private static string BoxText(List<TexNode> list)
+        {
+            StringBuilder text = new StringBuilder();
+            foreach (TexNode node in list)
+                switch (node)
+                {
+                    case TexChar c:
+                        text.Append(c.ch);
+                        break;
+                    case TexGlueNode { leader: null, glue.stretchOrder: 0 } g when g.glue.width > 0:
+                        text.Append(' ');
+                        break;
+                    case TexGlueNode { leader: not null }:
+                        text.Append(' ');
+                        break;
+                    case TexHBox b:
+                        text.Append(BoxText(b.list));
+                        break;
+                    case TexRefNode r:
+                        text.Append(r.text);
+                        break;
+                }
+            return text.ToString();
         }
 
         // The asset when it is registered in this host, else the fallback.

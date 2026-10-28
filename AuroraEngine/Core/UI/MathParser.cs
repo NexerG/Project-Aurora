@@ -318,6 +318,9 @@ namespace ArctisAurora.Core.UI
                     case " ": return new MathSpace { em = 1f / 3f };
                     case "quad": return new MathSpace { em = 1f };
                     case "qquad": return new MathSpace { em = 2f };
+                    case "mkern":
+                    case "mskip":
+                        return new MathSpace { em = ReadMu() / 18f };
 
                     case "frac":
                     case "dfrac":
@@ -410,7 +413,9 @@ namespace ArctisAurora.Core.UI
                         return stack.rows.Any(row => row.Count > 1) ? Fail() : stack;
                     }
 
-                    case "text": return new MathText { text = ReadRawGroup(), face = FontStyle.Regular, cls = MathClass.Ord };
+                    case "text":
+                    case "hbox":
+                        return new MathText { text = ReadRawGroup(), face = FontStyle.Regular, cls = MathClass.Ord };
                     case "mathrm": return InMode(FontMode.Roman);
                     case "mathbf": return InMode(FontMode.Bold);
                     case "mathbb": return InMode(FontMode.Blackboard);
@@ -594,6 +599,45 @@ namespace ArctisAurora.Core.UI
                     symbol.ch = doubleStruck;
                 else if (node is MathList list)
                     foreach (MathNode item in list.items) Blackboard(item);
+            }
+
+            // \mkern's or \mskip's amount in mu; a glue's plus and minus parts are read and dropped.
+            private float ReadMu()
+            {
+                float mu = ReadNumber();
+                if (!SkipKeyword("mu"))
+                {
+                    Fail();
+                    return 0f;
+                }
+                if (SkipKeyword("plus"))
+                {
+                    ReadNumber();
+                    SkipKeyword("mu");
+                }
+                if (SkipKeyword("minus"))
+                {
+                    ReadNumber();
+                    SkipKeyword("mu");
+                }
+                return mu;
+            }
+
+            private float ReadNumber()
+            {
+                SkipSpace();
+                int start = pos;
+                if (!AtEnd && s[pos] is '-' or '+') pos++;
+                while (!AtEnd && (char.IsAsciiDigit(s[pos]) || s[pos] == '.')) pos++;
+                return float.TryParse(s.AsSpan(start, pos - start), NumberStyles.Float, CultureInfo.InvariantCulture, out float value) ? value : 0f;
+            }
+
+            private bool SkipKeyword(string keyword)
+            {
+                SkipSpace();
+                if (string.CompareOrdinal(s, pos, keyword, 0, keyword.Length) != 0) return false;
+                pos += keyword.Length;
+                return true;
             }
 
             // \text's braces, taken verbatim

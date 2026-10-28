@@ -72,4 +72,9 @@
 	<Test Action="Tex.Language"/>
 	<Test Action="Tex.CaptionSetup"/>
 	<Test Action="Tex.RaggedNoHyphen"/>
+	<Test Action="Tex.Contents"/>
+	<Test Action="Tex.ContentsLists"/>
+	<Test Action="Tex.ContentsLowering"/>
+	<Test Action="Tex.LastLineRoom"/>
+	<Test Action="Tex.BlockIndents"/>
 </TestSuite>

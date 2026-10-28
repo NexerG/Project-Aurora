@@ -80,6 +80,11 @@ namespace ArctisAurora.Core.UI
         // a fill: takes its line's slack and draws nothing
         public bool fill;
 
+        // a fill's leaders: this text in cells leaderWidth apart from the line box's left edge, leaderInset into each; null draws nothing
+        public string leader;
+        public float leaderWidth;
+        public float leaderInset;
+
         // a footnote anchor: the id of the footnote its page makes room for
         public string note;
 
@@ -99,6 +104,7 @@ namespace ArctisAurora.Core.UI
             text.sheetRef = null;
             text.spaceWidth = 0f;
             text.fill = false;
+            text.leader = null;
             text.note = null;
             text.mathSource = null;
             text.mathDisplay = false;
@@ -456,6 +462,9 @@ namespace ArctisAurora.Core.UI
 
         protected virtual float FirstLineIndent => 0f;
 
+        // how far the last line may run past the wrap width, px at this zoom
+        protected virtual float LastLineExtra => 0f;
+
         // Shifts each line across its room by the alignment, trailing spaces left hanging.
         private void Align()
         {
@@ -617,7 +626,8 @@ namespace ArctisAurora.Core.UI
             Profiling.Zone.End("Text.BuildRuns");
 
             Profiling.Zone.Start("Text.MeasureBlock");
-            _layout = TextMeasurer.MeasureBlock(_runs, wrapWidth, metrics, lineHeight, FirstLineIndent, reuse: _layout, optimal: OptimalBreaks, ragged: Alignment != TextAlignment.Justify);
+            _layout = TextMeasurer.MeasureBlock(_runs, wrapWidth, metrics, lineHeight, FirstLineIndent, reuse: _layout, optimal: OptimalBreaks,
+                                                ragged: Alignment != TextAlignment.Justify, lastExtra: LastLineExtra);
             laidAround = false;
             Profiling.Zone.End("Text.MeasureBlock");
             _wrapWidth = wrapWidth;
@@ -636,7 +646,7 @@ namespace ArctisAurora.Core.UI
         {
             if (_layout == null) return 0f;
 
-            _layout = TextMeasurer.MeasureBlock(_runs, _wrapWidth, metrics, lineHeight, FirstLineIndent, slots, _layout);
+            _layout = TextMeasurer.MeasureBlock(_runs, _wrapWidth, metrics, lineHeight, FirstLineIndent, slots, _layout, lastExtra: LastLineExtra);
             laidAround = slots != null;
             Align();
             return _layout.height;
@@ -770,7 +780,10 @@ namespace ArctisAurora.Core.UI
                         if (run.space != 0f || run.fill)
                         {
                             UIEngine.recorder?.Glyph(font, font.atlasMetaData.Effective(run.style), ' ', run.fontSize, pen, baselineY, paint, clip);
-                            pen += run.fill ? Stretch(line, index) : run.space;
+                            float advance = run.fill ? Stretch(line, index) : run.space;
+                            if (run.fill && spans[segment.runIndex].leader != null)
+                                WriteLeaders(quads, spans[segment.runIndex], run, font, paint, alpha, pen, pen + advance, baselineY, z, clip, gradientRect);
+                            pen += advance;
                             continue;
                         }
                         if (s[index] == '\t')
@@ -927,6 +940,24 @@ namespace ArctisAurora.Core.UI
         // Cuts one glyph's quad out of the atlas and writes both of its columns, returning the pen
         // advance. Cell geometry is GlyphControl's, which is also what FontAssetGlyphMetrics
         // reproduces — three copies of it would drift.
+        // A leader's text in every whole cell between from and to, the cells counted from the line box's left edge.
+        private void WriteLeaders(DataPool quads, in StyleSpan span, TextMeasurer.Run run, FontAsset font, uint paint, float alpha,
+                                  float from, float to, float baselineY, float z, Vector4 clip, Vector4 gradientRect)
+        {
+            float width = span.leaderWidth * textZoom;
+            if (width <= 0f) return;
+            float origin = _origin.X - LeaderOffset;
+            for (float cell = origin + MathF.Ceiling((from - origin) / width - 0.001f) * width; cell + width <= to + 0.01f; cell += width)
+            {
+                float x = cell + span.leaderInset * textZoom;
+                foreach (char c in span.leader)
+                    x += WriteGlyph(quads, c, run.style, paint, alpha, font, run.fontSize, 0u, 0f, x, baselineY, z, clip, gradientRect);
+            }
+        }
+
+        // how far the line box's left edge sits left of the text's, px at this zoom
+        protected virtual float LeaderOffset => 0f;
+
         private float WriteGlyph(DataPool quads, char character, FontStyle glyphStyle, uint paint, float alpha,
                                  FontAsset font, float size, uint effect, float effectStart,
                                  float penX, float baselineY, float z,

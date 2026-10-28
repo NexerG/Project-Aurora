@@ -110,7 +110,7 @@ namespace ArctisAurora.Core.Tex
             "amsmath", "amssymb", "amsfonts", "geometry", "xcolor", "color", "hyperref", "url",
             "inputenc", "fontenc", "lmodern", "textcomp", "babel", "microtype", "graphicx", "graphics", "booktabs", "fancyhdr",
             "ulem", "enumitem", "titlesec", "mathptmx", "times", "tgtermes", "newtxtext", "setspace", "fontspec",
-            "polyglossia", "caption", "indentfirst"
+            "polyglossia", "caption", "indentfirst", "tocloft", "tocbibind"
         };
 
         // what TeX reads before a row's first cell: \noalign rules, \omit (\multicolumn) and the tabular's end
@@ -205,6 +205,10 @@ namespace ArctisAurora.Core.Tex
         private bool quote;
         private TexHBox? box;
 
+        // \leaders: its box is next, then the box waiting for the glue it fills
+        private bool leaderPending;
+        private TexHBox? leaderBox;
+
         private Mode mode;
         private TexParagraph? par;
         private List<TexNode> vtarget;
@@ -242,6 +246,18 @@ namespace ArctisAurora.Core.Tex
         private (List<TexNode> list, TexBibliographyMark mark)? bibMark;
         private bool allCited;
         private int bibCount;
+
+        // contents: every list's entries as ranges of one token list in document order, where each \@starttoc stood,
+        // the heading's \addcontentsline waiting for its paragraph, the entries keyed so far, where the bibliography's
+        // entries go (-1 at the end), where its mark stood, and whether it is an entry itself
+        private readonly List<TexToken> contentsTokens = new List<TexToken>(1024);
+        private readonly List<(string extension, int start, int count)> contentsEntries = new List<(string, int, int)>(64);
+        private readonly List<(List<TexNode> list, TexContentsMark mark)> contentsMarks = new List<(List<TexNode>, TexContentsMark)>(4);
+        private TexToken[]? headingContents;
+        private int contentsKeys;
+        private int contentsAt = -1;
+        private int bibContentsAt;
+        private bool bibInContents;
 
         // page style slot sources by style and place, the styles fancyhdr defined, the one \fancyhead writes to, the styles used,
         // what the next paragraph takes, the numbered heading whose marks are pending, and whether a slot is being typeset
@@ -332,6 +348,7 @@ namespace ArctisAurora.Core.Tex
             while (!done && expander.Next(out TexToken t)) Dispatch(t);
             EndParagraph();
             TypesetBibliography();
+            TypesetContents();
             TypesetPageStyles();
             Resolve();
         }
@@ -489,17 +506,13 @@ namespace ArctisAurora.Core.Tex
             // caption
             On("captionsetup", CaptionSetup);
 
-            // read and set nothing until their stage lands
-            On("tableofcontents", _ => { });
+            // a hyperref anchor; nothing to set
             On("phantomsection", _ => { });
-            On("addcontentsline", t =>
-            {
-                if (expander.Argument(t, false) != null && expander.Argument(t, false) != null) expander.Argument(t, true);
-            });
             On("printbibliography", t =>
             {
-                expander.Optional(t);
+                TexToken[]? options = expander.Optional(t);
                 if (bibStyle.Length == 0) bibStyle = "plain";
+                if (options != null && Text(options).Replace(" ", "").Contains("heading=bibintoc")) bibInContents = true;
                 PlaceBibliography();
             });
             expander.InsertSource($"\\countdef\\year=247 \\year={DateTime.Today.Year}\\relax ");
@@ -563,12 +576,36 @@ namespace ArctisAurora.Core.Tex
                     headingAfterCode = null;
                 }
                 else VSkip(headingAfter);
+                InsertHeadingContents();
             });
             On("@runin", _ =>
             {
                 Space(1f);
                 suppressSpace = true;
+                InsertHeadingContents();
             });
+            On("addcontentsline", AddContentsLine);
+            On("addtocontents", t =>
+            {
+                string? extension = expander.NameArgument(t)?.Trim();
+                TexToken[]? text = extension == null ? null : expander.Argument(t, true);
+                if (text == null) return;
+                int start = contentsTokens.Count;
+                contentsTokens.AddRange(Protected(text, t));
+                AddContents(extension!, start);
+            });
+            On("@starttoc", t =>
+            {
+                string? extension = expander.NameArgument(t)?.Trim();
+                if (extension == null) return;
+                EndParagraph();
+                EnsureDocument();
+                TexContentsMark mark = new TexContentsMark(extension);
+                vtarget.Add(mark);
+                contentsMarks.Add((vtarget, mark));
+            });
+            On("@endcontents", _ => done = true);
+            On("@afterindenttrue", _ => afterHeading = false);
 
             On("bfseries", _ => SetFont(style.font with { bold = true }));
             On("mdseries", _ => SetFont(style.font with { bold = false }));
@@ -736,7 +773,13 @@ namespace ArctisAurora.Core.Tex
             {
                 TexGlue glue = expander.ScanGlue();
                 StartParagraph();
-                HList.Add(new TexGlueNode(glue, false, style));
+                HList.Add(new TexGlueNode(glue, false, style) { leader = leaderBox });
+                leaderBox = null;
+            });
+            On("leaders", _ =>
+            {
+                StartParagraph();
+                leaderPending = true;
             });
             On("vskip", _ =>
             {
@@ -891,6 +934,7 @@ namespace ArctisAurora.Core.Tex
             style = style with { font = style.font with { size = Size(NormalSize) } };
             expander.InsertSource($"\\global\\parindent={parIndents[sizeOption].ToString(CultureInfo.InvariantCulture)}pt\\relax ");
             if (Chapters) expander.InsertSource(@"\gdef\thesection{\thechapter.\arabic{section}}");
+            if (Chapters) ReadCode(TexFormat.ChapterContents);
         }
 
         private void UsePackage(TexToken t)
@@ -915,6 +959,8 @@ namespace ArctisAurora.Core.Tex
                 if (name == "geometry" && options != null) Geometry(options);
                 if (name == "babel") BabelLanguages(options);
                 if (name == "indentfirst") indentFirstPackage = indentFirst = true;
+                if (name == "tocloft" && loadedFiles.Add(name)) ReadCode(TexFormat.Tocloft);
+                if (name == "tocbibind" && loadedFiles.Add(name)) TocBibind(options);
                 if (timesPackages.Contains(name)) times = true;
                 if (!knownPackages.Contains(name)) Log.Info($"package {name} is not supported and is ignored");
             }
@@ -1081,7 +1127,7 @@ namespace ArctisAurora.Core.Tex
                 depth = 1;
             }
             bool star = expander.TakeStar();
-            expander.Optional(t);
+            TexToken[]? shortTitle = expander.Optional(t);
             TexToken[]? title = expander.Argument(t, true);
             if (title == null) return;
             EndParagraph();
@@ -1097,6 +1143,7 @@ namespace ArctisAurora.Core.Tex
             string number = numbered ? Text(expander.Expanded(new[] { TexToken.Cs("the" + sectionNames[depth]) }, t) ?? Array.Empty<TexToken>()) : "";
             if (numbered) SetLabel(number);
             headingMark = !star && depth <= 2 ? (depth, number) : null;
+            headingContents = star ? null : ContentsLine("toc", sectionNames[depth], numbered ? number : null, shortTitle ?? title);
 
             TexToken[] indent = titled?.indent > 0
                 ? new[] { TexToken.Cs("hskip") }.Concat(Chars(titled.indent.ToString(CultureInfo.InvariantCulture) + "sp")).Append(TexToken.Cs("relax")).ToArray()
@@ -1636,7 +1683,9 @@ namespace ArctisAurora.Core.Tex
 
         private void Box(TexToken t)
         {
-            if (expander.ScanKeyword("to") || expander.ScanKeyword("spread")) expander.ScanDimen();
+            int width = -1;
+            if (expander.ScanKeyword("to")) width = expander.ScanDimen();
+            else if (expander.ScanKeyword("spread")) expander.ScanDimen();
             StartParagraph();
             if (!expander.Next(out TexToken next)) return;
             if (!next.IsChar(next.ch, TexCatcode.BeginGroup))
@@ -1645,8 +1694,10 @@ namespace ArctisAurora.Core.Tex
                 return;
             }
 
-            TexHBox made = new TexHBox();
-            HList.Add(made);
+            TexHBox made = new TexHBox { width = width };
+            if (leaderPending) leaderBox = made;
+            else HList.Add(made);
+            leaderPending = false;
             TexHBox? outer = box;
             expander.Save(() => box = outer);
             box = made;
@@ -1725,6 +1776,12 @@ namespace ArctisAurora.Core.Tex
             string? key = expander.NameArgument(t)?.Trim();
             if (key == null) return;
             if (labels.ContainsKey(key)) expander.Error($"LaTeX Warning: Label `{key}' multiply defined");
+            MarkLabel(key);
+        }
+
+        // A label at the current position: in the paragraph being set, else at the end of the last one.
+        private void MarkLabel(string key)
+        {
             labels[key] = currentLabel;
             if (mode == Mode.Horizontal) HList.Add(new TexLabelMark(key));
             else if (vtarget.LastOrDefault(n => n is not TexVGlue) is TexParagraph last) last.list.Add(new TexLabelMark(key));
@@ -2071,7 +2128,7 @@ namespace ArctisAurora.Core.Tex
         // \fnum@kind's label, caption's separator and fonts, then the text, centred; numbered within the chapter in report and book.
         private void Caption(TexToken t)
         {
-            expander.Optional(t);
+            TexToken[]? shortText = expander.Optional(t);
             TexToken[]? text = expander.Argument(t, true);
             if (text == null) return;
             if (floatKind == null)
@@ -2107,6 +2164,7 @@ namespace ArctisAurora.Core.Tex
             tokens.Add(close);
             tokens.Add(close);
             tokens.Add(TexToken.Cs("@endcaption"));
+            tokens.AddRange(ContentsLine(kind == "figure" ? "lof" : "lot", kind, number, shortText ?? text));
             expander.Insert(tokens.ToArray());
         }
 
@@ -2375,6 +2433,145 @@ namespace ArctisAurora.Core.Tex
         private int OptionalWidth(TexToken[]? option) => option == null ? 0 : Dimen(option);
         #endregion
 
+        #region ---- contents ----
+        // \addcontentsline{ext}{level}{text}: the entry as \contentsline source, its page a \pageref to a label placed here.
+        private void AddContentsLine(TexToken t)
+        {
+            TexToken[]? extension = expander.Argument(t, false);
+            TexToken[]? level = extension == null ? null : expander.Argument(t, false);
+            TexToken[]? text = level == null ? null : expander.Argument(t, true);
+            if (text == null) return;
+
+            string key = "@toc" + (++contentsKeys).ToString(CultureInfo.InvariantCulture);
+            MarkLabel(key);
+            int start = contentsTokens.Count;
+            contentsTokens.Add(TexToken.Cs("contentsline"));
+            contentsTokens.AddRange(Grouped(Protected(level!, t)));
+            contentsTokens.AddRange(Grouped(Protected(text, t)));
+            contentsTokens.Add(TexToken.Char('{', TexCatcode.BeginGroup));
+            contentsTokens.Add(TexToken.Cs("pageref"));
+            contentsTokens.AddRange(Grouped(Chars(key)));
+            contentsTokens.Add(TexToken.Char('}', TexCatcode.EndGroup));
+            AddContents(Text(Protected(extension!, t)).Trim(), start);
+        }
+
+        // The entry made of contentsTokens from start on, in document order; the bibliography's go where it stood.
+        private void AddContents(string extension, int start)
+        {
+            (string, int, int) entry = (extension, start, contentsTokens.Count - start);
+            if (contentsAt >= 0) contentsEntries.Insert(contentsAt++, entry);
+            else contentsEntries.Add(entry);
+        }
+
+        // The tokens expanded as LaTeX's \protected@write does: everything but what \protect guards.
+        private TexToken[] Protected(TexToken[] tokens, TexToken owner)
+        {
+            TexToken[] guarded = new TexToken[tokens.Length];
+            for (int i = 0; i < tokens.Length; i++)
+                guarded[i] = tokens[i].IsCs && tokens[i].name == "protect" ? TexToken.Cs("noexpand") : tokens[i];
+            return expander.Expanded(guarded, owner) ?? tokens;
+        }
+
+        // \addcontentsline{extension}{level}{\protect\numberline{number}title} as a heading or caption writes it; number null for none.
+        private static TexToken[] ContentsLine(string extension, string level, string? number, TexToken[] title)
+        {
+            TexToken open = TexToken.Char('{', TexCatcode.BeginGroup), close = TexToken.Char('}', TexCatcode.EndGroup);
+            TexToken[] line = new TexToken[1 + extension.Length + 2 + level.Length + 2 + (number == null ? 0 : number.Length + 4) + title.Length + 2];
+            int at = 0;
+            line[at++] = TexToken.Cs("addcontentsline");
+            foreach (string name in new[] { extension, level })
+            {
+                line[at++] = open;
+                foreach (TexToken c in Chars(name))
+                    line[at++] = c;
+                line[at++] = close;
+            }
+            line[at++] = open;
+            if (number != null)
+            {
+                line[at++] = TexToken.Cs("protect");
+                line[at++] = TexToken.Cs("numberline");
+                line[at++] = open;
+                foreach (TexToken c in Chars(number))
+                    line[at++] = c;
+                line[at++] = close;
+            }
+            title.CopyTo(line, at);
+            line[^1] = close;
+            return line;
+        }
+
+        private void InsertHeadingContents()
+        {
+            if (headingContents == null) return;
+            expander.Insert(headingContents);
+            headingContents = null;
+        }
+
+        // Each \@starttoc's list, typeset where it stood once every entry is known.
+        private void TypesetContents()
+        {
+            foreach ((List<TexNode> list, TexContentsMark mark) in contentsMarks)
+            {
+                int length = 5;
+                foreach ((string extension, int _, int count) in contentsEntries)
+                    if (extension == mark.extension) length += count;
+                TexToken[] source = new TexToken[length];
+                int at = 0;
+                source[at++] = TexToken.Cs("begingroup");
+                source[at++] = TexToken.Cs("@starttocsetup");
+                foreach ((string extension, int start, int count) in contentsEntries)
+                    if (extension == mark.extension)
+                    {
+                        contentsTokens.CopyTo(start, source, at, count);
+                        at += count;
+                    }
+                source[at++] = TexToken.Cs("par");
+                source[at++] = TexToken.Cs("endgroup");
+                source[at] = TexToken.Cs("@endcontents");
+
+                List<TexNode> made = new List<TexNode>(length / 8);
+                vtarget = made;
+                mode = Mode.Vertical;
+                par = null;
+                done = false;
+                expander.Insert(source);
+                while (!done && expander.Next(out TexToken t)) Dispatch(t);
+                EndParagraph();
+
+                int place = list.IndexOf(mark);
+                list.RemoveAt(place);
+                list.InsertRange(place, made);
+            }
+        }
+
+        // tocbibind: the contents, lists and bibliography each an entry in the contents, unless an option says not.
+        private void TocBibind(TexToken[]? options)
+        {
+            List<string> given = new List<string>(Options(options));
+            StringBuilder code = new StringBuilder();
+            foreach ((string option, string command, string name, string extension) in new[]
+                     {
+                         ("nottoc", "tableofcontents", "contentsname", "toc"), ("notlof", "listoffigures", "listfigurename", "lof"),
+                         ("notlot", "listoftables", "listtablename", "lot")
+                     })
+                if (!given.Contains(option))
+                    code.Append($@"\def\{command}{{\csname\@toclevel\endcsname*{{\{name}\@mkboth{{}}{{}}}}\addcontentsline{{toc}}{{\@toclevel}}{{\{name}}}\@starttoc{{{extension}}}}}");
+            if (!given.Contains("notbib")) bibInContents = true;
+            ReadCode(code.ToString());
+        }
+
+        // Package code of our own, read as a local package is: @ a letter until it ends.
+        private void ReadCode(string code)
+        {
+            expander.InputSource(code, () =>
+            {
+                if (--readingPackages == 0) expander.Insert(new[] { TexToken.Cs("makeatother") });
+            });
+            if (readingPackages++ == 0) expander.Insert(new[] { TexToken.Cs("makeatletter") });
+        }
+        #endregion
+
         #region ---- bibliography ----
         private void Bibliography(TexToken t)
         {
@@ -2393,6 +2590,7 @@ namespace ArctisAurora.Core.Tex
             TexBibliographyMark mark = new TexBibliographyMark();
             vtarget.Add(mark);
             bibMark = (vtarget, mark);
+            bibContentsAt = contentsEntries.Count;
         }
 
         private void BeginBibliography(TexToken t)
@@ -2400,11 +2598,14 @@ namespace ArctisAurora.Core.Tex
             expander.Argument(t, false);
             EndParagraph();
             bibCount = 0;
-            expander.Insert(new[]
+            TexToken[] heading =
             {
                 TexToken.Cs(Chapters ? "chapter" : "section"), TexToken.Char('*', TexCatcode.Other), TexToken.Char('{', TexCatcode.BeginGroup),
                 TexToken.Cs(Chapters ? "bibname" : "refname"), TexToken.Char('}', TexCatcode.EndGroup)
-            });
+            };
+            if (bibInContents)
+                expander.Insert(ContentsLine("toc", Chapters ? "chapter" : "section", null, new[] { TexToken.Cs(Chapters ? "bibname" : "refname") }));
+            expander.Insert(heading);
         }
 
         // \bibitem[label]{key}: a paragraph starting [label], or [n] counted.
@@ -2458,10 +2659,12 @@ namespace ArctisAurora.Core.Tex
             mode = Mode.Vertical;
             par = null;
             done = false;
+            contentsAt = bibContentsAt;
             expander.Insert(new[] { TexToken.Cs("@endbib") });
             expander.InsertSource(TexBibliography.Format(cited, bibStyle));
             while (!done && expander.Next(out TexToken t)) Dispatch(t);
             EndParagraph();
+            contentsAt = -1;
 
             int at = list.IndexOf(mark);
             list.RemoveAt(at);
@@ -2574,7 +2777,7 @@ namespace ArctisAurora.Core.Tex
             }
             EnsureDocument();
 
-            TexParStyle parStyle = new TexParStyle { kind = quote ? TexParKind.Quote : TexParKind.Text };
+            TexParStyle parStyle = new TexParStyle { kind = quote ? TexParKind.Quote : TexParKind.Text, indentWidth = expander.RegisterValue("parindent") ?? 0 };
             parStyle.indent = !noIndent && !(afterHeading && !indentFirst) && !afterEnvironment && list == null && !quote;
             noIndent = afterHeading = afterEnvironment = false;
             if (list != null && !itemPending) VSkip(list.settings.parSep ?? ListSkip(itemSeps, list.depth));
@@ -2607,6 +2810,9 @@ namespace ArctisAurora.Core.Tex
             List<TexNode> hlist = par!.list;
             while (hlist.Count > 0 && hlist[^1] is TexGlueNode { interword: true }) hlist.RemoveAt(hlist.Count - 1);
             par.style.align = align;
+            par.style.leftSkip = expander.RegisterValue("leftskip") ?? 0;
+            par.style.rightSkip = expander.RegisterValue("rightskip") ?? 0;
+            par.style.parFillSkip = expander.RegisterValue("parfillskip") ?? 0;
             if (align != TexAlign.Justify) par.style.indent = false;
             if (hlist.Count > 0 || par.style.item)
             {

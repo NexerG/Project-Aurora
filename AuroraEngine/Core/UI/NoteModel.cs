@@ -49,6 +49,11 @@ namespace ArctisAurora.Core.UI
         // first-line indent, px
         public float firstIndent;
 
+        // TeX's \leftskip and \rightskip, and the last line's right indent (\parfillskip under \rightskip); null is the right indent, px
+        public float leftIndent;
+        public float rightIndent;
+        public float? rightIndentLast;
+
         // a rule's weight in px, standing on its line's baseline; null is a 1 px rule centred on the line
         public float? ruleWeight;
 
@@ -110,6 +115,9 @@ namespace ArctisAurora.Core.UI
                 sheetRef = appended.image == null && appended.math == null ? appended.sheet : null,
                 spaceWidth = appended.image == null && appended.math == null && appended.sheet == null ? appended.space : 0f,
                 fill = appended.image == null && appended.math == null && appended.sheet == null && appended.fill,
+                leader = appended.fill ? appended.leader : null,
+                leaderWidth = appended.fill ? appended.leaderWidth : 0f,
+                leaderInset = appended.fill ? appended.leaderInset : 0f,
                 note = appended.note
             });
 
@@ -125,6 +133,9 @@ namespace ArctisAurora.Core.UI
                 stylingType = stylingType,
                 alignment = alignment,
                 firstIndent = firstIndent,
+                leftIndent = leftIndent,
+                rightIndent = rightIndent,
+                rightIndentLast = rightIndentLast,
                 ruleWeight = ruleWeight,
                 spaceBefore = spaceBefore,
                 insert = insert,
@@ -165,6 +176,9 @@ namespace ArctisAurora.Core.UI
                 stylingType = stylingType,
                 alignment = alignment,
                 firstIndent = firstIndent,
+                leftIndent = leftIndent,
+                rightIndent = rightIndent,
+                rightIndentLast = rightIndentLast,
                 ruleWeight = ruleWeight,
                 spaceBefore = spaceBefore,
                 pageBreak = pageBreak,
@@ -219,6 +233,9 @@ namespace ArctisAurora.Core.UI
             stylingType = kind.stylingType;
             alignment = kind.alignment;
             firstIndent = kind.firstIndent;
+            leftIndent = kind.leftIndent;
+            rightIndent = kind.rightIndent;
+            rightIndentLast = kind.rightIndentLast;
             ruleWeight = kind.ruleWeight;
             spaceBefore = kind.spaceBefore;
             pageBreak = kind.pageBreak;

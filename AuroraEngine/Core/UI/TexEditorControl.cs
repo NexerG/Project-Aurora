@@ -216,6 +216,7 @@ namespace ArctisAurora.Core.UI
                 string number = page.Value.ToString(CultureInfo.InvariantCulture);
                 if (run.Attribute("Text")?.Value == number) continue;
                 run.SetAttributeValue("Text", number);
+                pageRefs.Fit(run, number);
                 changed = true;
             }
 

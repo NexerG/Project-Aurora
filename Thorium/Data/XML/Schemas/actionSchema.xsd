@@ -491,6 +491,11 @@
           <xs:enumeration value="Tex.Language" />
           <xs:enumeration value="Tex.CaptionSetup" />
           <xs:enumeration value="Tex.RaggedNoHyphen" />
+          <xs:enumeration value="Tex.Contents" />
+          <xs:enumeration value="Tex.ContentsLists" />
+          <xs:enumeration value="Tex.ContentsLowering" />
+          <xs:enumeration value="Tex.LastLineRoom" />
+          <xs:enumeration value="Tex.BlockIndents" />
           <xs:enumeration value="Vault.LockRoundTrip" />
           <xs:enumeration value="Vault.TwoOpen" />
           <xs:enumeration value="Vault.WrongPassword" />

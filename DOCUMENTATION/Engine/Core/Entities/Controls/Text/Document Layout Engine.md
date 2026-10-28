@@ -113,6 +113,29 @@ the first line starts at `left` += `offset`
 the first line's `room` = (`room` or content width) − `offset`   // the same in greedy, Knuth-Plass, empty block and floating-picture paths
 `layout.width` counts `line.left`
 
+#### Block Indents (block)
+`left` = the block's `leftIndent`, `right` = its `rightIndent`
+`ApplyInset` adds `left` and `right` to the block's padding   // the content width shrinks by both
+the first line's `offset` is the block's `firstIndent` as before   // a negative `Indent` from TeX lowering hangs the first line
+`NoteBlock.SplitAt`, `SliceSnapshot` and `TakeKind` copy the indents, so the tail of an Enter keeps them
+`DocumentXml` reads and writes `<Block LeftIndent RightIndent RightIndentLast>`
+
+#### Last Line Room (block, lastExtra)
+`lastExtra` = the block's `rightIndentLast`   // `BlockControl` overrides `LastLineExtra`; TeX's `\parfillskip` of `-\rightskip`
+greedy
+	the paragraph's last line is the one where the rest fits in `room` + `lastExtra`   // `RestFits`, `ExtendLast`
+Knuth-Plass
+	the final breakpoint's line gets `room` + `lastExtra`   // `BreakOptimal`
+text flowing around a floating picture takes the same `lastExtra`   // `MeasureAround`
+
+#### Leader Run (run)
+a fill run carries `Leader` (the leader text), `LeaderWidth` (one cell) and `LeaderInset`
+`cells` are counted from the block's left edge before `leftIndent`, from `LeaderOffset`   // TeX's line box, so the dots of different entries line up
+for each whole cell inside the fill
+	`WriteLeaders` writes the leader text through `WriteGlyph`   // so the PDF records the dots
+`AsText` clears the leader
+`SameStyle` compares it, so runs with different leaders do not merge
+
 #### Spacer Run (run)
 for each `char` in `run` text
 	`advances`[`count`] = `run` space   // the run's fixed advance, in place of the glyph's

@@ -324,6 +324,41 @@ The line height is one value for the whole document, so floats and footnotes are
 		`TexPenalty (10000)`
 		interword glue   // TeX's tie, not the U+00A0 glyph
 
+#### Table of contents and lists
+The lists are not formatted in C#. `TexFormat.Prelude` holds ports of latex.ltx's `\contentsline`, `\numberline` and `\@dottedtocline`, article's `\l@section` to `\l@subparagraph` and `\l@figure`, `\l@table`; `ChapterContents` adds `\l@chapter` for report and book. The `tocloft` and `tocbibind` packages are built in: `ReadCode` reads their code like a local package, with `@` a letter until it ends. Entries are this compile's headings, typeset at the `\@starttoc` mark after the run, as the bibliography is.
+	new primitives: `\leaders`, `\addcontentsline`, `\addtocontents`, `\@starttoc`, `\@endcontents`, `\@afterindenttrue`
+	`\leaders` sets `TexGlueNode.leader`
+	`Box` honours `\hbox to`   // `TexHBox.width`, -1 is natural
+	`\@afterindenttrue` clears afterHeading   // an entry keeps its indent box after a heading
+	`EndParagraph` records `\leftskip`, `\rightskip` and `\parfillskip` in `TexParStyle`
+	`StartParagraph` records `\parindent`
+	`\tableofcontents`, `\listoffigures`, `\listoftables`
+		set the title as `\section*` of `\contentsname`, `\listfigurename` or `\listtablename`   // tocloft's [titles] mode
+		`\@starttoc{toc|lof|lot}` leaves a `TexContentsMark (extension)`
+	`Section (level, [short], title)`
+		typeset the heading
+		`headingContents` = `\addcontentsline{toc}{level}{\protect\numberline{n}title}`   // `[short]` replaces the title
+		`InsertHeadingContents` writes it at `@endhead`, or `@runin` for a run-in heading
+		label the heading `@toc<n>`
+	`Caption`
+		write the lof or lot entry the same way, with `[short]`
+	`BeginBibliography`
+		when `bibInContents`, add a toc entry   // set by tocbibind unless `notbib`, or by `\printbibliography[heading=bibintoc]`
+	`\addcontentsline{ext}{level}{text}` and `\addtocontents{ext}{text}` (`AddContentsLine`, `AddContents`)
+		`Protected (text)`   // `\protect` becomes `\noexpand`, then `Expanded`, as \protected@write does
+		append it to `contentsTokens` and record the range in `contentsEntries`
+	`TypesetContents`   // after `TypesetBibliography`, before `Resolve`
+		for each `TexContentsMark`
+			wrap its entries in `\begingroup\@starttocsetup … \par\endgroup`   // tocloft sets `\parskip\cftparskip`, 0pt, there
+			typeset them and splice the list in at the mark
+		a bibliography entry goes where its mark stood   // `bibContentsAt`, `contentsAt`
+	an entry's page is `\pageref{@toc<n>}`   // filled by `ResolvePages`, so two passes are the preview reload
+	`\l@<level>` runs `\@dottedtocline`   // tocloft: `\@cftentry`
+		`\leftskip` = the level's indent, `\rightskip` = `\@tocrmarg`, `\parfillskip` = `-\rightskip`
+		`\hskip -\leftskip` starts the entry
+		the page number sits in a right-aligned box of `\@pnumwidth`
+	`\cftparskip`, `\cft<L>indent`, `\cft<L>numwidth` and the `\cft<L>font`, `pagefont`, `dotsep`, `leader` hooks exist per level   // sec, subsec, subsubsec, para, subpara, fig, tab
+
 ### Run, the end of the document
 	typeset the body up to `\end{document}`
 		`\ref` and `\cite` leave a `TexRefNode` carrying their style
@@ -333,6 +368,7 @@ The line height is one value for the whole document, so floats and footnotes are
 		format the cited entries in the `\bibliographystyle` with `TexBibliography.Format` into thebibliography source
 		`InsertSource` pushes that source into the expander
 		typeset it into a list and splice the list in at the mark
+	`TypesetContents`   // the entries of the contents and the lists, see Table of contents and lists
 	`Resolve`
 		for each `TexRefNode`, fill its text
 		a `\ref` inside a math node is rewritten to `\text{…}` in the math source
@@ -432,6 +468,17 @@ A font name from fontspec becomes a font asset here. Termes and Carlito are bund
 	`TexEditorControl.ResolvePages` runs after layout
 		for each label, read its page through `PageAt`
 		if a `\pageref` number changed, reload the preview, at most twice
+		when a number is filled into its run, `pageRefs.Fit (run, number)` re-sizes the spacers of the number's fixed box   // `TexPageRefs.fits`
+
+### Contents lines in `TexLowering`
+	`Skips` writes the block's `LeftIndent`, `RightIndent`, `RightIndentLast` and `Indent` from the paragraph's `TexParStyle`
+	`TakeLeading` for a `\leftskip` paragraph
+		its leading glue, kerns, penalties and empty boxes become the block's `Indent`   // `\hskip -\leftskip` hangs the entry; no negative-width spacer runs
+	`FixedBox` for an `\hbox to`
+		share the slack at its fil glue as spacers, or put it after the content when there is no fil glue
+	a fill run gets `Leader`, `LeaderWidth` and `LeaderInset` from `LeaderCell`
+		`LeaderCell` = the leader text, its inset and its cell width   // math kerns in mu, `\hbox` text in the text font
+	`MathParser` reads `\mkern` and `\mskip` in mu (plus and minus read and dropped) and `\hbox{…}` as `\text`
 
 ### `TexAtlasMetrics`
 	em is the font size
@@ -474,7 +521,7 @@ Not exported: clickable `\href` links, bookmarks, floating pictures, gradients a
 List bullets are exported. While recording, an icon control records its name and artwork box, and the writer draws the six default bullet shapes (disc, circle, square, outlined square, triangle, outlined triangle) as filled paths from a copy of their SVG geometry, with the outlines even-odd. Any other icon is skipped. If a bullet SVG changes, the writer's copy has to follow.
 
 ## Not supported yet
-`\suppressfloats`, `placeins` and `\FloatBarrier`, `afterpage`, `tabularx`, `tabular*`, `longtable`, `\multirow`, natbib, `\autoref`, `\nameref`, `\listoffigures`, `\listoftables`, subfigure, hanging indent in bibliography entries, clickable references, `\arrayrulecolor`, `\parindent` on left-aligned tables, `\numberwithin`, `subequations`, `\intertext`, `\shoveleft`, `\shoveright`, `\hdotsfor`, mathtools, `\hbox to`, `\setbox`, `\wd`, `\lastskip`. There is no kerning. Vertical glue has no stretch or shrink, infinite glue vanishes except horizontal fil glue, which lowering turns into a fill run, `\tolerance`, `\pretolerance`, `\emergencystretch` and `\exhyphenpenalty` are registers that nothing reads, a `\rule` inside running text draws nothing, `\raisebox` ignores its raise, titlesec shapes other than hang and block are set as hang, `\partopsep` is not added (the skip before a list after a blank line is 27.8 pt where the thesis has 30.9), `\titlespacing`'s right argument is ignored, `\roman`, `\alph`, `\Roman` and `\Alph` are undefined inside `\the<counter>`, `\labelsep` and `\leftmargin` are not registers, setspace's `spacing`, `onehalfspace` and `doublespace` environments are missing, `\sectionbreak` runs whether or not titlesec is loaded, bibliography entries have no `\itemsep` between them, a quotation's `\listparindent` is not modelled, a `\cline` under part of a merged cell rules the whole cell, booktabs gaps do not interrupt vertical rules, a spacer never breaks a line, and display formulas inside table cells get no display skips. Hyphenation is US English only, so accented words are never hyphenated; an explicit hyphen in a word ("well-known") is not a break opportunity; `\lefthyphenmin`, `\righthyphenmin`, `\uchyph` and `\hyphenpenalty` are not read. The preview breaks a paragraph Knuth-Plass only where a break set exists at tolerance 200; the rest stay greedy. Small caps are set upright and Sans is set in Roman unless `\setsansfont` names a font. fontspec's file keys and options are ignored, a font name that resolves to nothing keeps the default face and is only logged, and `indentfirst` is not supported. The em dash and the en dash do not draw at 13 px in a note. A `\def` inside a tabular cell leaks into later cells. Two-sided page styles (`[LE,RO]` reads only the odd entry, `\cleardoublepage` is `\clearpage`), `\pagenumbering`, `\footnotemark`, `\footnotetext`, footnotes split across pages, `\footnotesep` and `\renewcommand` of `\sectionmark` are not supported; a mid-document `\pagestyle` sets the whole document's style, and a `\label` inside display math or a table cell has no page site.
+`\suppressfloats`, `placeins` and `\FloatBarrier`, `afterpage`, `tabularx`, `tabular*`, `longtable`, `\multirow`, natbib, `\autoref`, `\nameref`, subfigure, hanging indent in bibliography entries, clickable references, `\arrayrulecolor`, `\parindent` on left-aligned tables, `\numberwithin`, `subequations`, `\intertext`, `\shoveleft`, `\shoveright`, `\hdotsfor`, mathtools, `\setbox`, `\wd`, `\lastskip`, `\appendix`, clickable contents entries, tocloft's `\cftsetindents`, `\cftpagenumbersoff` and `\newlistof`, and tocloft's non-`[titles]` title formatting. There is no kerning. Vertical glue has no stretch or shrink, infinite glue vanishes except horizontal fil glue, which lowering turns into a fill run, `\tolerance`, `\pretolerance`, `\emergencystretch` and `\exhyphenpenalty` are registers that nothing reads, a `\rule` inside running text draws nothing, `\raisebox` ignores its raise, titlesec shapes other than hang and block are set as hang, `\partopsep` is not added (the skip before a list after a blank line is 27.8 pt where the thesis has 30.9), `\titlespacing`'s right argument is ignored, `\roman`, `\alph`, `\Roman` and `\Alph` are undefined inside `\the<counter>`, `\labelsep` and `\leftmargin` are not registers, setspace's `spacing`, `onehalfspace` and `doublespace` environments are missing, `\sectionbreak` runs whether or not titlesec is loaded, bibliography entries have no `\itemsep` between them, a quotation's `\listparindent` is not modelled, a `\cline` under part of a merged cell rules the whole cell, booktabs gaps do not interrupt vertical rules, a spacer never breaks a line, and display formulas inside table cells get no display skips. Hyphenation is US English only, so accented words are never hyphenated; an explicit hyphen in a word ("well-known") is not a break opportunity; `\lefthyphenmin`, `\righthyphenmin`, `\uchyph` and `\hyphenpenalty` are not read. The preview breaks a paragraph Knuth-Plass only where a break set exists at tolerance 200; the rest stay greedy. Small caps are set upright and Sans is set in Roman unless `\setsansfont` names a font. fontspec's file keys and options are ignored, a font name that resolves to nothing keeps the default face and is only logged, and `indentfirst` is not supported. The em dash and the en dash do not draw at 13 px in a note. A `\def` inside a tabular cell leaks into later cells. `\hbox to` content wider than its box overflows (TeX would shrink `\hss`; spacers never go negative). A `\label` in vertical mode with no paragraph before it (right after a mark or a table) is dropped, so a contents entry pointing there keeps "??" as its page. A starred titlesec heading loses the `\hspace` of the class's before-code (7 pt left of the thesis). Two-sided page styles (`[LE,RO]` reads only the odd entry, `\cleardoublepage` is `\clearpage`), `\pagenumbering`, `\footnotemark`, `\footnotetext`, footnotes split across pages, `\footnotesep` and `\renewcommand` of `\sectionmark` are not supported; a mid-document `\pagestyle` sets the whole document's style, and a `\label` inside display math or a table cell has no page site.
 
 ## Related
 - [[Tex Expander]] — the tokens this reads

@@ -255,6 +255,7 @@ namespace ArctisAurora.Core.UI
             && a.fontSizeAuthored == b.fontSizeAuthored
             && a.spaceWidth == b.spaceWidth
             && a.fill == b.fill
+            && a.leader == b.leader && a.leaderWidth == b.leaderWidth && a.leaderInset == b.leaderInset
             && a.note == b.note;
 
         // Save: the spans cut back into runs. The last span absorbs whatever is left of the string,
@@ -282,6 +283,9 @@ namespace ArctisAurora.Core.UI
                     sheet = span.sheetRef,
                     space = span.spaceWidth,
                     fill = span.fill,
+                    leader = span.leader,
+                    leaderWidth = span.leaderWidth,
+                    leaderInset = span.leaderInset,
                     note = span.note,
                     width = span.imageWidth,
                     height = span.imageHeight,

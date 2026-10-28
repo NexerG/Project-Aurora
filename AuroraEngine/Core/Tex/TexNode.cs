@@ -30,6 +30,12 @@ namespace ArctisAurora.Core.Tex
 
         // first line indented by \parindent
         public bool indent;
+
+        // \parindent when it started, and \leftskip, \rightskip and \parfillskip's width when it ended, sp
+        public int indentWidth;
+        public int leftSkip;
+        public int rightSkip;
+        public int parFillSkip;
     }
 
     public abstract class TexNode { }
@@ -54,6 +60,9 @@ namespace ArctisAurora.Core.Tex
         // from a space in the source
         public readonly bool interword;
         public readonly TexStyle style;
+
+        // \leaders: the box repeated across the glue; null leaves it empty
+        public TexHBox? leader;
 
         public TexGlueNode(TexGlue glue, bool interword, TexStyle style)
         {
@@ -119,6 +128,9 @@ namespace ArctisAurora.Core.Tex
     public sealed class TexHBox : TexNode
     {
         public readonly List<TexNode> list = new List<TexNode>();
+
+        // \hbox to: the width in sp, its slack taken by the fil glue inside; -1 is the natural width
+        public int width = -1;
     }
 
     // \ref or \cite; text is filled once the whole document has been read.
@@ -250,6 +262,14 @@ namespace ArctisAurora.Core.Tex
 
     // where \bibliography put the reference list, filled after the document ends
     public sealed class TexBibliographyMark : TexNode { }
+
+    // \@starttoc: where a contents list (toc, lof, lot) is typeset once every entry is known
+    public sealed class TexContentsMark : TexNode
+    {
+        public readonly string extension;
+
+        public TexContentsMark(string extension) => this.extension = extension;
+    }
 
     // tabular column: alignment, and a p{} width in sp (0 = natural)
     public struct TexColumn

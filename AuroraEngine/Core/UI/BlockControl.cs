@@ -179,6 +179,15 @@ namespace ArctisAurora.Core.UI
         [A_XSDElementProperty("Fill", "UI", "Stretches to take the line's slack, as TeX's \\hfill: the line is not justified or aligned past it; absent is ordinary text.")]
         public bool fill { get; set; }
 
+        [A_XSDElementProperty("Leader", "UI", "A fill's leaders, as TeX's \\leaders: this text repeated across the fill; absent leaves it empty.")]
+        public string? leader { get; set; }
+
+        [A_XSDElementProperty("LeaderWidth", "UI", "A leader cell's width in pixels; cells line up across lines from the block's left edge.")]
+        public float leaderWidth { get; set; }
+
+        [A_XSDElementProperty("LeaderInset", "UI", "Where the leader text starts inside its cell, in pixels.")]
+        public float leaderInset { get; set; }
+
         [A_XSDElementProperty("Note", "UI", "The id of the footnote this run anchors; its page reserves room for it.")]
         public string? note { get; set; }
 
@@ -315,9 +324,9 @@ namespace ArctisAurora.Core.UI
         {
             Thickness inset = padding;
             bool code = stylingType == TextStyleType.Code;
-            inset.left = listKind != ListKind.None ? (listLevel + 1) * listIndent * textZoom
-                       : code ? codeInset * textZoom : 0f;
-            inset.right = code ? codeInset * textZoom : 0f;
+            inset.left = (listKind != ListKind.None ? (listLevel + 1) * listIndent * textZoom
+                       : code ? codeInset * textZoom : 0f) + note.leftIndent * textZoom;
+            inset.right = (code ? codeInset * textZoom : 0f) + note.rightIndent * textZoom;
             padding = inset;
         }
 
@@ -360,6 +369,10 @@ namespace ArctisAurora.Core.UI
         protected override bool OptimalBreaks => optimalBreaks;
 
         protected override float FirstLineIndent => firstIndent * textZoom;
+
+        protected override float LastLineExtra => (note.rightIndent - (note.rightIndentLast ?? note.rightIndent)) * textZoom;
+
+        protected override float LeaderOffset => note.leftIndent * textZoom;
 
         protected override bool Wraps => stylingType != TextStyleType.Code || codeWrap;
 
