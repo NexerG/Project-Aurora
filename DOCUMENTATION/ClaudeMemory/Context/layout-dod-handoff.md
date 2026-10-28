@@ -9,7 +9,7 @@
   - Release+PROFILE boots: `XSDGenerator.WriteSchema` creates the schema folder; `Thorium.csproj` copies all of `Data\` (the engine's own font bakes are stale — WIP)
   - `ProfileScenario`: sparse stage, `--dump-tree`; `UITreeDump.Dump(label)`
   - layout-DOD steps 0–3: dump check, `LayoutNode` structure, paint resolved at draw, `MeasureCore`/`ArrangeCore`
-- **Also dirty, not from this work:** `CLAUDE.md`, `.claude/agents/*`, `.claude/skills/*` (the user's edits), `NAMESPACES.md` (regenerated), generated `Thorium/Data/XML/Schemas/*`. CLAUDE.md §9: when asked, one commit of everything (`aurora-committer`); never unasked.
+- **Also dirty, not from this work:** `CLAUDE.md`, `.claude/agents/*`, `.claude/skills/*` (the user's edits), `NAMESPACES.md` (regenerated), generated `Thorium/Data/XML/Schemas/*`. CLAUDE.md §7: when asked, one commit of everything (`aurora-committer`); never unasked.
 - **Step 4 (the walks): planned, NOT approved.** Three forks open (§ Forks). Step 5 = docs.
 - **Next:** fork answers + go → re-read the regions the plan touches → baseline dumps from the current tree → implement → verify → step 5 docs → terse report with the NOT GUI-verified list.
 
@@ -76,7 +76,7 @@ internal static LayoutRect ClipOf(LayoutRect rect, bool hasParent, LayoutRect pa
 internal Vector2 CallMeasureCore(Vector2 offer) => MeasureCore(offer);
 internal void CallArrangeCore(LayoutRect rect) => ArrangeCore(rect);
 ```
-- No new files, no packages. No subagent handoff (§10) — nothing mechanical once the flag-clear sweep is out.
+- No new files, no packages. No subagent handoff (§8) — nothing mechanical once the flag-clear sweep is out.
 - Unchanged: every Custom override, `InvalidateLayout`/`InvalidateArrange`, the root loop in `ResolveLayout`, hit-test and draw lists (still read `subtreeBounds`), `TextRunControl`'s wrap-width early-out.
 
 ### Left out

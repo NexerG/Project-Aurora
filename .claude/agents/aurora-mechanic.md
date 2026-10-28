@@ -28,7 +28,7 @@ You have no Bash. That is deliberate — see Encoding.
 
 This repo's files are **CRLF**, and many `.cs` files carry a **UTF-8 BOM**. The `Edit` tool preserves both.
 Shell rewrites (`sed -i`, redirects, heredocs) do not — they mangle line endings, strip the BOM, and
-half-apply when one pattern misses. CLAUDE.md §11 forbids them for exactly this reason, which is why you
+half-apply when one pattern misses. CLAUDE.md §9 forbids them for exactly this reason, which is why you
 were given no Bash rather than asked politely.
 
 ## Report

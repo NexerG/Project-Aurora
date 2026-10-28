@@ -51,7 +51,7 @@ cd "$(git rev-parse --show-toplevel)" && log="${TEMP:-/tmp}/aurora-ship.txt"; Sh
 ```
 
 The same filter as `_Build/test.sh`, pointed at the shipped exe. It should match a Debug `test.sh` run: the
-same failures, no `new error:` lines. A `[Vulkan]` line stops the work (CLAUDE.md §12). `Arx.XmlRoundTrip`
+same failures, no `new error:` lines. A `[Vulkan]` line stops the work (CLAUDE.md §10). `Arx.XmlRoundTrip`
 passes trivially here — a shipped app carries no source trees to compare against.
 
 On Linux (the cloud container `aurora-test` provisions), build `_Build` and ship the Linux target there, then

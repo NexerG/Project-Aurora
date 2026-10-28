@@ -89,7 +89,7 @@ any code. Part of the Thorium productivity suite (WIP list, Phase A). No decisio
 | C6 | Google OAuth via browser + Google CalDAV, read-only | same |
 | C7 | two-way sync: etags, 412 conflicts, offline edit queue | tests against a fake server; then live |
 
-Handoff (CLAUDE.md §10): C3 fixture `.ics` and mechanical XML/menu wiring can go to `aurora-mechanic`.
+Handoff (CLAUDE.md §8): C3 fixture `.ics` and mechanical XML/menu wiring can go to `aurora-mechanic`.
 
 ## Sources
 - https://developers.google.com/calendar/caldav/v2/guide

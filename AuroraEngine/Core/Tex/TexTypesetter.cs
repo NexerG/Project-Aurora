@@ -72,12 +72,13 @@ namespace ArctisAurora.Core.Tex
             }
         }
 
-        // titlesec for one section level; null skips leave the class's, sp
+        // titlesec or \@startsection for one section level; null skips leave the class's, sp
         private sealed class TitleFormat
         {
             public TexToken[]? format, label, before, after;
-            public int sep;
+            public int sep, indent;
             public int? beforeSkip, afterSkip;
+            public bool? runIn;
         }
 
         private sealed class FixedMetrics : ITexFontMetrics
@@ -97,6 +98,10 @@ namespace ArctisAurora.Core.Tex
         };
         private const int NormalSize = 4;
 
+        // setspace's \onehalfspacing and \doublespacing stretch at 10pt, 11pt and 12pt
+        private static readonly float[] oneHalfStretches = { 1.25f, 1.213f, 1.241f };
+        private static readonly float[] doubleStretches = { 1.667f, 1.618f, 1.655f };
+
         private static readonly string[] sectionNames = { "chapter", "section", "subsection", "subsubsection", "paragraph", "subparagraph" };
 
         // packages whose commands are here, or that need none
@@ -104,7 +109,14 @@ namespace ArctisAurora.Core.Tex
         {
             "amsmath", "amssymb", "amsfonts", "geometry", "xcolor", "color", "hyperref", "url",
             "inputenc", "fontenc", "lmodern", "textcomp", "babel", "microtype", "graphicx", "graphics", "booktabs", "fancyhdr",
-            "ulem", "enumitem", "titlesec", "mathptmx", "times", "tgtermes", "newtxtext"
+            "ulem", "enumitem", "titlesec", "mathptmx", "times", "tgtermes", "newtxtext", "setspace", "fontspec",
+            "polyglossia", "caption", "indentfirst"
+        };
+
+        // what TeX reads before a row's first cell: \noalign rules, \omit (\multicolumn) and the tabular's end
+        private static readonly HashSet<string> rowStart = new HashSet<string>
+        {
+            "hline", "cline", "toprule", "midrule", "bottomrule", "cmidrule", "multicolumn", "endtabular"
         };
 
         // packages that set the roman family in Times
@@ -168,6 +180,13 @@ namespace ArctisAurora.Core.Tex
         public float? customWidth, customHeight, fitHeight;
         // the roman family is Times (mathptmx and kin), not Latin Modern
         public bool times;
+        // fontspec's main, sans and mono fonts as the source names them
+        public string? mainFont, sansFont, monoFont;
+        // polyglossia and babel: the language in force, the main one a package set, and whether a heading's first paragraph indents
+        private string language = "english";
+        private string? mainLanguage;
+        private bool indentFirst, indentFirstPackage;
+        private readonly Dictionary<string, bool> indentFirsts = new Dictionary<string, bool> { ["lithuanian"] = true };
 
         // \label key -> its text, cited keys in citation order, \bibitem key -> its label
         public readonly Dictionary<string, string> labels = new Dictionary<string, string>();
@@ -248,6 +267,30 @@ namespace ArctisAurora.Core.Tex
         private readonly Dictionary<int, TitleFormat> titleFormats = new Dictionary<int, TitleFormat>();
         private TexToken[]? headingAfterCode;
 
+        // \@startsection's format for the heading it starts
+        private TitleFormat? startSection;
+
+        // the sectioning command being dispatched has had its titlesec \<name>break inserted
+        private bool sectionBreakRun;
+
+        // class and package options: the \documentclass options, and the file being read's \DeclareOption code and given options
+        private string[] classOptions = Array.Empty<string>();
+        private Dictionary<string, TexToken[]> declaredOptions = new Dictionary<string, TexToken[]>();
+        private TexToken[]? otherOption;
+        private string[] givenOptions = Array.Empty<string>();
+
+        // classes and packages read from beside the source, and how many are being read
+        private readonly HashSet<string> loadedFiles = new HashSet<string>();
+        private int readingPackages;
+
+        // \fontsize waiting for \selectfont, sp; how many \MakeUppercase arguments are being set
+        private int? pendingSize;
+        private int uppercase;
+
+        // \baselinestretch now, and the one the document's first paragraph ended under
+        private float lineStretch = 1f;
+        private float? bodyStretch;
+
         private List<TexNode> HList => box?.list ?? par!.list;
 
         // \normalsize at the class option, sp
@@ -256,6 +299,9 @@ namespace ArctisAurora.Core.Tex
         // \parindent in pt, and whether \hyphenpenalty allows hyphens
         public float parIndent => (expander.RegisterValue("parindent") ?? 0) / (float)Unity;
         public bool hyphenate => (expander.RegisterValue("hyphenpenalty") ?? 0) < 10000;
+
+        // the \baselinestretch the whole document is set at
+        public float lineSpread => bodyStretch ?? lineStretch;
 
         private bool Chapters => documentClass is "report" or "book";
 
@@ -293,7 +339,9 @@ namespace ArctisAurora.Core.Tex
         private void Dispatch(TexToken t)
         {
             if (t.line > 0) sourceLine = t.line;
-            if (!t.IsCs) Character(t);
+            if (tables.Count > 0 && tables[^1].cell == null && (t.IsCs ? commands.ContainsKey(t.name!) && !rowStart.Contains(t.name!) : t.cat != TexCatcode.Space))
+                StartCell();
+            if (!t.IsCs) Character(uppercase > 0 && char.IsLower(t.ch) ? TexToken.Char(char.ToUpperInvariant(t.ch), t.cat, t.line, t.column) : t);
             else if (commands.TryGetValue(t.name!, out Action<TexToken>? command)) command(t);
         }
 
@@ -309,12 +357,159 @@ namespace ArctisAurora.Core.Tex
             On("documentclass", DocumentClass);
             On("usepackage", UsePackage);
             On("geometry", t => Geometry(expander.Argument(t, true)));
+            On("LoadClass", t =>
+            {
+                TexToken[]? options = expander.Optional(t);
+                string? name = expander.NameArgument(t);
+                if (name == null) return;
+                expander.Optional(t);
+                SetClass(options, name);
+            });
+            On("RequirePackage", t =>
+            {
+                TexToken[]? options = expander.Optional(t);
+                string? names = expander.NameArgument(t);
+                if (names == null) return;
+                expander.Optional(t);
+                Packages(options, names);
+            });
+            foreach (string name in new[] { "ProvidesClass", "ProvidesPackage", "NeedsTeXFormat" })
+                On(name, t =>
+                {
+                    if (expander.Argument(t, false) != null) expander.Optional(t);
+                });
+            On("DeclareOption", DeclareOption);
+            On("ProcessOptions", t =>
+            {
+                expander.TakeStar();
+                RunOptions(givenOptions);
+            });
+            On("ExecuteOptions", t =>
+            {
+                string? names = expander.NameArgument(t);
+                if (names != null) RunOptions(names.Split(',').Select(n => n.Trim()));
+            });
+            On("@startsection", StartSection);
+            On("input", t => InputFile(t, false));
+            On("include", t => InputFile(t, true));
+            On("centerline", t =>
+            {
+                TexToken[]? body = expander.Argument(t, true);
+                if (body != null)
+                    expander.Insert(new[] { TexToken.Cs("par") }.Concat(Grouped(new[] { TexToken.Cs("centering") }.Concat(body).Append(TexToken.Cs("par")))).ToArray());
+            });
+            On("fontsize", t =>
+            {
+                TexToken[]? size = expander.Argument(t, false);
+                if (size == null || expander.Argument(t, false) == null) return;
+                pendingSize = Dimen(size);
+            });
+            On("selectfont", _ =>
+            {
+                if (pendingSize is int size) SetFont(style.font with { size = size });
+                pendingSize = null;
+            });
+            On("setstretch", t =>
+            {
+                if (expander.Argument(t, false) is TexToken[] factor) Stretch(Number(factor));
+            });
+            On("linespread", t =>
+            {
+                if (expander.Argument(t, false) is TexToken[] factor) Stretch(Number(factor));
+            });
+            On("onehalfspacing", _ => Stretch(oneHalfStretches[sizeOption]));
+            On("doublespacing", _ => Stretch(doubleStretches[sizeOption]));
+            On("singlespacing", _ => Stretch(1f));
+            On("MakeUppercase", t =>
+            {
+                TexToken[]? body = expander.Argument(t, true);
+                if (body == null) return;
+                uppercase++;
+                expander.Insert(Grouped(body.Append(TexToken.Cs("@endupper"))));
+            });
+            On("@endupper", _ => uppercase--);
+            On("titlepage", _ =>
+            {
+                PageBreak(true);
+                expander.Insert(new[] { TexToken.Cs("thispagestyle") }.Concat(Grouped(Chars("empty"))).ToArray());
+            });
+            On("endtitlepage", _ => PageBreak(true));
+            On("@ifundefined", t =>
+            {
+                string? name = expander.NameArgument(t);
+                TexToken[]? yes = name == null ? null : expander.Argument(t, true);
+                TexToken[]? no = yes == null ? null : expander.Argument(t, true);
+                if (no == null) return;
+                expander.Insert(new[] { TexToken.Cs("ifcsname") }.Concat(Chars(name!.Trim())).Append(TexToken.Cs("endcsname"))
+                    .Concat(no).Append(TexToken.Cs("else")).Concat(yes!).Append(TexToken.Cs("fi")).ToArray());
+            });
+
+            // fontspec
+            On("setmainfont", t => mainFont = FontName(t));
+            On("setsansfont", t => sansFont = FontName(t));
+            On("setmonofont", t => monoFont = FontName(t));
+            On("fontspec", t =>
+            {
+                if (FontName(t) is string name) SetFont(style.font with { face = name });
+            });
+            On("newfontface", NewFontFace);
+            On("newfontfamily", NewFontFace);
+
+            // polyglossia and babel
+            On("setmainlanguage", MainLanguage);
+            On("setdefaultlanguage", MainLanguage);
+            On("setotherlanguage", t =>
+            {
+                expander.Optional(t);
+                expander.NameArgument(t);
+            });
+            On("setotherlanguages", t => expander.NameArgument(t));
+            On("SetLanguageKeys", SetLanguageKeys);
+            On("selectlanguage", t =>
+            {
+                if (expander.NameArgument(t) is string name) SelectLanguage(name.Trim(), true);
+            });
+            On("foreignlanguage", t =>
+            {
+                expander.Optional(t);
+                TexToken[]? text = expander.NameArgument(t) == null ? null : expander.Argument(t, true);
+                if (text != null) expander.Insert(Grouped(text));
+            });
+            foreach (string name in new[] { "otherlanguage", "otherlanguage*" })
+            {
+                bool captions = name == "otherlanguage";
+                On(name, t =>
+                {
+                    expander.Optional(t);
+                    if (expander.NameArgument(t) is string other) SelectLanguage(other.Trim(), captions);
+                });
+                On("end" + name, _ => { });
+            }
+
+            // caption
+            On("captionsetup", CaptionSetup);
+
+            // read and set nothing until their stage lands
+            On("tableofcontents", _ => { });
+            On("phantomsection", _ => { });
+            On("addcontentsline", t =>
+            {
+                if (expander.Argument(t, false) != null && expander.Argument(t, false) != null) expander.Argument(t, true);
+            });
+            On("printbibliography", t =>
+            {
+                expander.Optional(t);
+                if (bibStyle.Length == 0) bibStyle = "plain";
+                PlaceBibliography();
+            });
+            expander.InsertSource($"\\countdef\\year=247 \\year={DateTime.Today.Year}\\relax ");
             On("document", _ =>
             {
                 EndParagraph();
                 inDocument = true;
                 vtarget = vlist;
                 PageDimens();
+                if (mainLanguage != null) SelectLanguage(mainLanguage, true);
             });
             On("@pagedimens", _ => PageDimens());
             On("enddocument", _ =>
@@ -341,7 +536,19 @@ namespace ArctisAurora.Core.Tex
             for (int i = 0; i < sectionNames.Length; i++)
             {
                 int depth = i;
-                On(sectionNames[i], t => Section(t, depth));
+                On(sectionNames[i], t =>
+                {
+                    if (!sectionBreakRun)
+                    {
+                        sectionBreakRun = true;
+                        string name = sectionNames[depth] + "break";
+                        expander.Insert(new[] { TexToken.Cs("ifcsname") }.Concat(Chars(name))
+                            .Concat(new[] { TexToken.Cs("endcsname"), TexToken.Cs(name), TexToken.Cs("fi"), t }).ToArray());
+                        return;
+                    }
+                    sectionBreakRun = false;
+                    Section(t, depth);
+                });
             }
             On("@endhead", _ =>
             {
@@ -374,10 +581,10 @@ namespace ArctisAurora.Core.Tex
                 warnedSmallCaps = true;
                 SetFont(style.font with { italic = false });
             });
-            On("rmfamily", _ => SetFont(style.font with { family = TexFamily.Roman }));
-            On("sffamily", _ => SetFont(style.font with { family = TexFamily.Sans }));
-            On("ttfamily", _ => SetFont(style.font with { family = TexFamily.Mono }));
-            On("normalfont", _ => SetFont(style.font with { family = TexFamily.Roman, bold = false, italic = false }));
+            On("rmfamily", _ => SetFont(style.font with { family = TexFamily.Roman, face = null }));
+            On("sffamily", _ => SetFont(style.font with { family = TexFamily.Sans, face = null }));
+            On("ttfamily", _ => SetFont(style.font with { family = TexFamily.Mono, face = null }));
+            On("normalfont", _ => SetFont(style.font with { family = TexFamily.Roman, bold = false, italic = false, face = null }));
             On("em", _ => SetFont(style.font with { italic = !style.font.italic }));
             for (int i = 0; i < sizeNames.Length; i++)
             {
@@ -563,7 +770,12 @@ namespace ArctisAurora.Core.Tex
             On(";", _ => Kern(5f / 18f));
             On("!", _ => Kern(-3f / 18f));
             On(" ", _ => Interword());
-            On("nobreakspace", _ => AddText(" "));
+            On("nobreakspace", _ =>
+            {
+                StartParagraph();
+                HList.Add(new TexPenalty(10000));
+                Interword();
+            });
             On("-", _ => AddText("­"));
             On("hyphenation", t =>
             {
@@ -586,7 +798,7 @@ namespace ArctisAurora.Core.Tex
                 TexToken[]? arg = expander.Argument(t, true);
                 if (arg == null) return;
                 TexStyle outer = style;
-                style = style with { font = style.font with { family = TexFamily.Mono } };
+                style = style with { font = style.font with { family = TexFamily.Mono, face = null } };
                 AddText(Text(arg));
                 style = outer;
             });
@@ -624,8 +836,47 @@ namespace ArctisAurora.Core.Tex
             if (name == null) return;
             inDocument = false;
             vtarget = preamble;
+            classOptions = Options(options).ToArray();
+            if (!ReadPackage(name + ".cls", classOptions)) SetClass(null, name);
+        }
 
-            foreach (string option in Options(options))
+        // A class or package beside the source, read with @ a letter and its own options; false when there is none.
+        private bool ReadPackage(string file, IEnumerable<string> options)
+        {
+            string? path = folder == null ? null : Path.Combine(folder, file);
+            if (path == null || !File.Exists(path)) return false;
+            if (!loadedFiles.Add(file)) return true;
+
+            (Dictionary<string, TexToken[]> declared, TexToken[]? other, string[] given) = (declaredOptions, otherOption, givenOptions);
+            (declaredOptions, otherOption, givenOptions) = (new Dictionary<string, TexToken[]>(), null, options.ToArray());
+            expander.InputSource(VaultFiles.ReadText(path), () =>
+            {
+                (declaredOptions, otherOption, givenOptions) = (declared, other, given);
+                if (--readingPackages == 0) expander.Insert(new[] { TexToken.Cs("makeatother") });
+            });
+            if (readingPackages++ == 0) expander.Insert(new[] { TexToken.Cs("makeatletter") });
+            return true;
+        }
+
+        // \input{name} or \include{name}: name.tex or name beside the source; \include clears the page around it.
+        private void InputFile(TexToken t, bool include)
+        {
+            string? name = expander.NameArgument(t)?.Trim();
+            if (name == null) return;
+            string? path = folder == null ? null : new[] { name + ".tex", name }.Select(n => Path.Combine(folder, n)).FirstOrDefault(File.Exists);
+            if (path == null)
+            {
+                expander.Error($"LaTeX Error: File `{name}.tex' not found");
+                return;
+            }
+            if (include) PageBreak(true);
+            expander.InputSource(VaultFiles.ReadText(path), include ? () => expander.Insert(new[] { TexToken.Cs("clearpage") }) : null);
+        }
+
+        // The standard class a \documentclass or \LoadClass names, at its options and the \documentclass options.
+        private void SetClass(TexToken[]? options, string name)
+        {
+            foreach (string option in Options(options).Concat(classOptions))
                 switch (option)
                 {
                     case "10pt": sizeOption = 0; break;
@@ -639,6 +890,7 @@ namespace ArctisAurora.Core.Tex
             pageStyle = documentClass == "book" ? "headings" : "plain";
             style = style with { font = style.font with { size = Size(NormalSize) } };
             expander.InsertSource($"\\global\\parindent={parIndents[sizeOption].ToString(CultureInfo.InvariantCulture)}pt\\relax ");
+            if (Chapters) expander.InsertSource(@"\gdef\thesection{\thechapter.\arabic{section}}");
         }
 
         private void UsePackage(TexToken t)
@@ -647,13 +899,50 @@ namespace ArctisAurora.Core.Tex
             string? names = expander.NameArgument(t);
             if (names == null) return;
             if (inDocument) expander.Error("LaTeX Error: Can be used only in preamble");
+            Packages(options, names);
+        }
 
+        private void Packages(TexToken[]? options, string names)
+        {
+            List<string> local = new List<string>();
             foreach (string name in names.Split(',').Select(n => n.Trim()).Where(n => n.Length > 0))
             {
+                if (folder != null && File.Exists(Path.Combine(folder, name + ".sty")))
+                {
+                    local.Add(name);
+                    continue;
+                }
                 if (name == "geometry" && options != null) Geometry(options);
+                if (name == "babel") BabelLanguages(options);
+                if (name == "indentfirst") indentFirstPackage = indentFirst = true;
                 if (timesPackages.Contains(name)) times = true;
                 if (!knownPackages.Contains(name)) Log.Info($"package {name} is not supported and is ignored");
             }
+            for (int i = local.Count - 1; i >= 0; i--)
+                ReadPackage(local[i] + ".sty", Options(options));
+        }
+
+        // \DeclareOption{name}{code}, or \DeclareOption*{code} for any option not declared.
+        private void DeclareOption(TexToken t)
+        {
+            if (expander.TakeStar())
+            {
+                otherOption = expander.Argument(t, true);
+                return;
+            }
+            string? name = expander.NameArgument(t);
+            TexToken[]? code = name == null ? null : expander.Argument(t, true);
+            if (code != null) declaredOptions[name!.Trim()] = code;
+        }
+
+        // Each option's declared code in order, \DeclareOption*'s for one not declared.
+        private void RunOptions(IEnumerable<string> names)
+        {
+            List<TexToken> code = new List<TexToken>();
+            foreach (string name in names)
+                if (declaredOptions.TryGetValue(name, out TexToken[]? declared)) code.AddRange(declared);
+                else if (otherOption != null) code.AddRange(otherOption);
+            expander.Insert(code.ToArray());
         }
 
         // geometry's paper and margin keys; other keys are ignored.
@@ -797,22 +1086,28 @@ namespace ArctisAurora.Core.Tex
             if (title == null) return;
             EndParagraph();
             int ex = metrics.XHeight(new TexFont(TexFamily.Roman, false, false, Size(NormalSize)));
-            TitleFormat? titled = titleFormats.GetValueOrDefault(depth);
+            TitleFormat? titled = titleFormats.GetValueOrDefault(depth) ?? startSection;
+            startSection = null;
             VSkip(titled?.beforeSkip ?? depth switch { 0 => 50f * Unity, 1 => 3.5f * ex, _ => 3.25f * ex }, true);
             headingAfter = titled?.afterSkip ?? depth switch { 0 => 40f * Unity, 1 => 2.3f * ex, _ => 1.5f * ex };
 
             int top = Chapters ? 0 : 1;
             bool numbered = !star && depth <= (Chapters ? 2 : 3);
             if (numbered) expander.StepCounter(sectionNames[depth]);
-            string number = numbered ? string.Join(".", Enumerable.Range(top, depth - top + 1).Select(d => expander.Counter(sectionNames[d]))) : "";
+            string number = numbered ? Text(expander.Expanded(new[] { TexToken.Cs("the" + sectionNames[depth]) }, t) ?? Array.Empty<TexToken>()) : "";
             if (numbered) SetLabel(number);
             headingMark = !star && depth <= 2 ? (depth, number) : null;
 
-            if (depth >= 4)
+            TexToken[] indent = titled?.indent > 0
+                ? new[] { TexToken.Cs("hskip") }.Concat(Chars(titled.indent.ToString(CultureInfo.InvariantCulture) + "sp")).Append(TexToken.Cs("relax")).ToArray()
+                : Array.Empty<TexToken>();
+            if (titled?.runIn ?? depth >= 4)
             {
                 noIndent = true;
                 StartParagraph();
-                expander.Insert(Grouped(new[] { TexToken.Cs("bfseries") }.Concat(title)).Append(TexToken.Cs("@runin")).ToArray());
+                TexToken[] shown = number.Length > 0 ? Chars(number).Append(TexToken.Cs("quad")).Concat(title).ToArray() : title;
+                TexToken[] font = titled?.runIn == true ? titled.format ?? Array.Empty<TexToken>() : new[] { TexToken.Cs("bfseries") };
+                expander.Insert(indent.Concat(Grouped(font.Concat(shown))).Append(TexToken.Cs("@runin")).ToArray());
                 return;
             }
 
@@ -829,7 +1124,7 @@ namespace ArctisAurora.Core.Tex
             if (titled?.format != null)
             {
                 Suspend(new TexParStyle { kind = TexParKind.Heading, level = heading, align = TexAlign.Left }, normal with { bold = false });
-                List<TexToken> set = new List<TexToken>(titled.format);
+                List<TexToken> set = new List<TexToken>(indent.Concat(titled.format));
                 if (number.Length > 0 && titled.label == null) set.AddRange(Chars(number).Append(TexToken.Cs("quad")));
                 else if (number.Length > 0 && titled.label!.Length > 0)
                 {
@@ -839,7 +1134,7 @@ namespace ArctisAurora.Core.Tex
                     set.Add(TexToken.Cs("relax"));
                 }
                 set.AddRange(titled.before ?? Array.Empty<TexToken>());
-                set.AddRange(title);
+                set.AddRange(Grouped(title));
                 set.Add(TexToken.Cs("@endhead"));
                 headingAfterCode = titled.after;
                 expander.Insert(set.ToArray());
@@ -856,6 +1151,31 @@ namespace ArctisAurora.Core.Tex
             expander.Insert(title.Append(TexToken.Cs("@endhead")).ToArray());
         }
 
+        // \@startsection{name}{level}{indent}{beforeskip}{afterskip}{style}, then the heading's own * [short] {title}; a negative afterskip runs in.
+        private void StartSection(TexToken t)
+        {
+            TexToken[]? name = expander.Argument(t, false);
+            TexToken[]? level = name == null ? null : expander.Argument(t, false);
+            TexToken[]? indent = level == null ? null : expander.Argument(t, false);
+            TexToken[]? before = indent == null ? null : expander.Argument(t, false);
+            TexToken[]? after = before == null ? null : expander.Argument(t, false);
+            TexToken[]? format = after == null ? null : expander.Argument(t, true);
+            if (format == null) return;
+            if (!int.TryParse(Text(level!).Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out int depth) || depth < 0 || depth >= sectionNames.Length)
+            {
+                expander.Error($"\\@startsection level {Text(level!).Trim()} is not 0 to {sectionNames.Length - 1}");
+                return;
+            }
+
+            int Skip(TexToken[] value) => Dimen(value.TakeWhile(v => !(v.IsCs && v.name is "@plus" or "@minus")).ToArray());
+            int afterSkip = Skip(after!);
+            startSection = new TitleFormat
+            {
+                format = format, indent = Dimen(indent!), beforeSkip = Math.Abs(Skip(before!)), afterSkip = Math.Abs(afterSkip), runIn = afterSkip < 0
+            };
+            Section(t, depth);
+        }
+
         private void Color(TexToken t)
         {
             TexToken[]? model = expander.Optional(t);
@@ -864,6 +1184,144 @@ namespace ArctisAurora.Core.Tex
             string? hex = ResolveColor(model == null ? "" : Text(model).Trim(), spec.Trim());
             if (hex == null) expander.Error($"Package xcolor Error: Undefined color `{spec}'");
             else SetStyle(style with { color = hex });
+        }
+
+        // Sets \baselinestretch; a change after the document's first paragraph is noted and not set.
+        private void Stretch(float factor)
+        {
+            if (bodyStretch is float body && body != factor) Log.Once().Info($"line spacing {factor} after the first paragraph is ignored; the document stays at {body}");
+            lineStretch = factor;
+        }
+
+        // fontspec's [options]{name}[options]; the name, options read and dropped.
+        private string? FontName(TexToken t)
+        {
+            expander.Optional(t);
+            TexToken[]? name = expander.Argument(t, false);
+            if (name == null) return null;
+            expander.Optional(t);
+            return Text(name).Trim();
+        }
+
+        // \newfontface\cs[options]{name}[options]: \cs selects the face and a pending \fontsize.
+        private void NewFontFace(TexToken t)
+        {
+            TexToken[]? command = expander.Argument(t, false);
+            if (FontName(t) is not string name || command == null || command.Length == 0 || !command[0].IsCs) return;
+            string cs = command[0].name!;
+            expander.DefinePrimitive(cs);
+            commands[cs] = owner =>
+            {
+                SetFont(style.font with { face = name });
+                commands["selectfont"](owner);
+            };
+        }
+
+        // polyglossia's \setmainlanguage[options]{name}: in force now, its captions from \begin{document}.
+        private void MainLanguage(TexToken t)
+        {
+            expander.Optional(t);
+            if (expander.NameArgument(t) is not string name) return;
+            mainLanguage = name.Trim();
+            SelectLanguage(mainLanguage, inDocument);
+        }
+
+        // babel's last language option is the main language.
+        private void BabelLanguages(TexToken[]? options)
+        {
+            foreach (string option in Options(options))
+                if (expander.IsDefined("captions" + option)) mainLanguage = language = option;
+        }
+
+        // \SetLanguageKeys{name}{keys}: indentfirst; other keys are read and ignored.
+        private void SetLanguageKeys(TexToken t)
+        {
+            string? name = expander.NameArgument(t)?.Trim();
+            TexToken[]? keys = name == null ? null : expander.Argument(t, true);
+            if (keys == null) return;
+            foreach (string option in Options(keys))
+            {
+                string[] pair = option.Split('=');
+                if (pair[0].Trim() != "indentfirst") continue;
+                bool on = pair.Length < 2 || pair[1].Trim() == "true";
+                indentFirsts[name!] = on;
+                if (name == language) indentFirst = indentFirstPackage || on;
+            }
+        }
+
+        // The language paragraphs start in, and with captions its \captions<name>, until the group ends.
+        private void SelectLanguage(string name, bool captions)
+        {
+            string outer = language;
+            bool outerIndent = indentFirst;
+            expander.Save(() =>
+            {
+                language = outer;
+                indentFirst = outerIndent;
+            });
+            language = name;
+            indentFirst = indentFirstPackage || indentFirsts.TryGetValue(name, out bool on) && on;
+            if (captions && expander.IsDefined("captions" + name)) expander.Insert(new[] { TexToken.Cs("captions" + name) });
+        }
+
+        // caption's \captionsetup[kind]{keys}: name, labelsep, labelfont, font and textfont become \caption@key[@kind] macros
+        // the group scopes; other keys are read and ignored.
+        private void CaptionSetup(TexToken t)
+        {
+            expander.TakeStar();
+            TexToken[]? kind = expander.Optional(t);
+            TexToken[]? keys = expander.Argument(t, true);
+            if (keys == null) return;
+            string suffix = kind == null ? "" : "@" + Text(kind).Trim();
+            List<TexToken> defs = new List<TexToken>();
+            foreach (TexToken[] option in Split(keys))
+            {
+                int equals = Array.FindIndex(option, x => x.IsChar('=', TexCatcode.Other));
+                if (equals < 0) continue;
+                string key = Text(option[..equals]).Trim();
+                TexToken[] value = Unbraced(option[(equals + 1)..]);
+                TexToken[]? body = key switch
+                {
+                    "name" => value,
+                    "labelsep" => LabelSeparator(Text(value).Trim()),
+                    "labelfont" or "font" or "textfont" => CaptionFont(value),
+                    _ => null
+                };
+                if (body == null) continue;
+                string macro = "caption@" + key switch { "labelsep" => "sep", "labelfont" => "lfont", "textfont" => "tfont", _ => key } + suffix;
+                defs.Add(TexToken.Cs("def"));
+                defs.Add(TexToken.Cs(macro));
+                defs.AddRange(Grouped(body));
+            }
+            expander.Insert(defs.ToArray());
+        }
+
+        private static TexToken[]? LabelSeparator(string separator) => separator switch
+        {
+            "colon" => new[] { TexToken.Char(':', TexCatcode.Other), TexToken.Cs("space") },
+            "period" => new[] { TexToken.Char('.', TexCatcode.Other), TexToken.Cs("space") },
+            "space" => new[] { TexToken.Cs("space") },
+            "quad" => new[] { TexToken.Cs("quad") },
+            "endash" => new[] { TexToken.Cs("space"), TexToken.Cs("textendash"), TexToken.Cs("space") },
+            "none" => Array.Empty<TexToken>(),
+            _ => null
+        };
+
+        // caption's font keys: bf, it, small, … as the switches they name.
+        private static TexToken[] CaptionFont(TexToken[] value)
+        {
+            List<TexToken> switches = new List<TexToken>();
+            foreach (string item in Options(value))
+            {
+                string? cs = item switch
+                {
+                    "bf" => "bfseries", "md" => "mdseries", "it" => "itshape", "sl" => "slshape", "sc" => "scshape", "up" => "upshape",
+                    "rm" => "rmfamily", "sf" => "sffamily", "tt" => "ttfamily", "normalfont" => "normalfont",
+                    _ => Array.IndexOf(sizeNames, item) >= 0 ? item : null
+                };
+                if (cs != null) switches.Add(TexToken.Cs(cs));
+            }
+            return switches.ToArray();
         }
 
         // \vskip of sp; merge takes the larger of it and what is pending, as \addvspace does
@@ -891,12 +1349,16 @@ namespace ArctisAurora.Core.Tex
             if (settings.label != null && LabelMarker(settings.label) == null && kind != TexListKind.Description)
                 Log.Info($"list label {Text(settings.label)} is set as the default marker");
 
-            VSkip(settings.topSep ?? ListSkip(topSeps, (list?.depth ?? 0) + 1), true);
+            int depth = (list?.depth ?? 0) + 1;
+            int top = (int)(settings.topSep ?? ListSkip(topSeps, depth));
+            int sep = (int)ListSkip(itemSeps, depth);
+            VSkip(top, true);
             ListFrame frame = new ListFrame(kind, list) { settings = settings };
             if (frame.depth > 4) expander.Error("LaTeX Error: Too deeply nested");
             ListFrame? outer = list;
             expander.Save(() => list = outer);
             list = frame;
+            expander.InsertSource($"\\topsep={top}sp\\itemsep={settings.itemSep ?? sep}sp\\parsep={settings.parSep ?? sep}sp\\relax ");
         }
 
         private void Item(TexToken t)
@@ -912,8 +1374,7 @@ namespace ArctisAurora.Core.Tex
 
             if (list != null)
             {
-                float sep = ListSkip(itemSeps, list.depth);
-                if (list.started) VSkip((list.settings.itemSep ?? sep) + (list.settings.parSep ?? sep));
+                if (list.started) VSkip((expander.RegisterValue("itemsep") ?? 0) + (expander.RegisterValue("parsep") ?? 0));
                 list.started = true;
             }
             itemPending = true;
@@ -1051,6 +1512,7 @@ namespace ArctisAurora.Core.Tex
                 if (text.StartsWith('*') && float.TryParse(text[1..], NumberStyles.Float, CultureInfo.InvariantCulture, out float n)) return (int)(n * ex);
                 return Dimen(value);
             }
+            Titled(depth).indent = Skip(left!);
             Titled(depth).beforeSkip = Skip(before!);
             Titled(depth).afterSkip = Skip(after);
         }
@@ -1108,7 +1570,7 @@ namespace ArctisAurora.Core.Tex
             if (lines.Count > 1 && string.IsNullOrWhiteSpace(lines[0])) { lines.RemoveAt(0); sourceAt++; }
             if (lines.Count > 1 && string.IsNullOrWhiteSpace(lines[^1])) lines.RemoveAt(lines.Count - 1);
 
-            TexStyle code = style with { font = style.font with { family = TexFamily.Mono, bold = false, italic = false } };
+            TexStyle code = style with { font = style.font with { family = TexFamily.Mono, bold = false, italic = false, face = null } };
             int depth = (list?.depth ?? 0) + 1;
             VSkip(ListSkip(topSeps, depth), true);
             foreach (string line in lines)
@@ -1146,7 +1608,7 @@ namespace ArctisAurora.Core.Tex
             }
 
             TexStyle outer = style;
-            style = style with { font = style.font with { family = TexFamily.Mono } };
+            style = style with { font = style.font with { family = TexFamily.Mono, face = null } };
             AddText(text);
             style = outer;
         }
@@ -1606,7 +2068,7 @@ namespace ArctisAurora.Core.Tex
             return letters.Replace("!", "") == "h" ? letters + "t" : letters;
         }
 
-        // "Figure n: text", centred, numbered within the chapter in report and book.
+        // \fnum@kind's label, caption's separator and fonts, then the text, centred; numbered within the chapter in report and book.
         private void Caption(TexToken t)
         {
             expander.Optional(t);
@@ -1624,10 +2086,33 @@ namespace ArctisAurora.Core.Tex
             SetLabel(number);
             EndParagraph();
             Suspend(new TexParStyle { kind = TexParKind.Text, align = TexAlign.Center }, style.font);
-            expander.Insert(new[] { TexToken.Cs(floatKind + "name"), TexToken.Char(' ', TexCatcode.Space) }
-                .Concat(Chars(number + ":")).Append(TexToken.Char(' ', TexCatcode.Space))
-                .Concat(text).Append(TexToken.Cs("@endcaption")).ToArray());
+
+            string kind = floatKind;
+            TexToken open = TexToken.Char('{', TexCatcode.BeginGroup), close = TexToken.Char('}', TexCatcode.EndGroup);
+            List<TexToken> tokens = new List<TexToken>(text.Length + number.Length + 16) { open, TexToken.Cs(CaptionMacro("font", kind)!), open };
+            tokens.Add(TexToken.Cs(CaptionMacro("lfont", kind)!));
+            if (CaptionMacro("name", kind) is string name)
+            {
+                tokens.Add(TexToken.Cs("let"));
+                tokens.Add(TexToken.Cs(kind + "name"));
+                tokens.Add(TexToken.Cs(name));
+            }
+            tokens.Add(TexToken.Cs("fnum@" + kind));
+            tokens.AddRange(Grouped(Chars(number)));
+            tokens.Add(close);
+            tokens.Add(TexToken.Cs(CaptionMacro("sep", kind)!));
+            tokens.Add(open);
+            tokens.Add(TexToken.Cs(CaptionMacro("tfont", kind)!));
+            tokens.AddRange(text);
+            tokens.Add(close);
+            tokens.Add(close);
+            tokens.Add(TexToken.Cs("@endcaption"));
+            expander.Insert(tokens.ToArray());
         }
+
+        // caption's setting for a float kind: its own \caption@key@kind, else \caption@key, else null.
+        private string? CaptionMacro(string key, string kind) =>
+            expander.IsDefined($"caption@{key}@{kind}") ? $"caption@{key}@{kind}" : expander.IsDefined("caption@" + key) ? "caption@" + key : null;
 
         // graphicx's width, height, scale, angle and keepaspectratio; other keys are ignored.
         private void IncludeGraphics(TexToken t)
@@ -1896,6 +2381,13 @@ namespace ArctisAurora.Core.Tex
             string? names = expander.NameArgument(t);
             if (names == null) return;
             bibFiles = Keys(names);
+            if (!inDocument) return;
+            PlaceBibliography();
+        }
+
+        // The bibliography is typeset here once every \cite is known.
+        private void PlaceBibliography()
+        {
             EndParagraph();
             EnsureDocument();
             TexBibliographyMark mark = new TexBibliographyMark();
@@ -2083,7 +2575,7 @@ namespace ArctisAurora.Core.Tex
             EnsureDocument();
 
             TexParStyle parStyle = new TexParStyle { kind = quote ? TexParKind.Quote : TexParKind.Text };
-            parStyle.indent = !noIndent && !afterHeading && !afterEnvironment && list == null && !quote;
+            parStyle.indent = !noIndent && !(afterHeading && !indentFirst) && !afterEnvironment && list == null && !quote;
             noIndent = afterHeading = afterEnvironment = false;
             if (list != null && !itemPending) VSkip(list.settings.parSep ?? ListSkip(itemSeps, list.depth));
             if (list == null && expander.RegisterValue("parskip") is int parskip and not 0) VSkip(parskip);
@@ -2098,7 +2590,7 @@ namespace ArctisAurora.Core.Tex
                 parStyle.leftMargin = list.settings.leftMargin ?? 0;
             }
             itemPending = false;
-            par = new TexParagraph(parStyle) { line = sourceLine };
+            par = new TexParagraph(parStyle) { line = sourceLine, language = language };
             mode = Mode.Horizontal;
             boundary = true;
         }
@@ -2118,6 +2610,7 @@ namespace ArctisAurora.Core.Tex
             if (align != TexAlign.Justify) par.style.indent = false;
             if (hlist.Count > 0 || par.style.item)
             {
+                if (vtarget == vlist && inDocument) bodyStretch ??= lineStretch;
                 if (vtarget == vlist) TakePending(par);
                 vtarget.Add(par);
             }
@@ -2148,7 +2641,7 @@ namespace ArctisAurora.Core.Tex
             quote = false;
             align = parStyle.align;
             style = new TexStyle(font, null, false);
-            par = new TexParagraph(parStyle) { line = sourceLine };
+            par = new TexParagraph(parStyle) { line = sourceLine, language = language };
             mode = Mode.Horizontal;
             boundary = true;
         }

@@ -1,6 +1,6 @@
 ---
 name: aurora-committer
-description: Writes and makes the one commit of everything dirty in the Aurora tree, message derived from the diff in CLAUDE.md §9's shape. Use only when the user has asked for a commit. Handles trees whose changes span several sessions. Pass "draft" to get the message without committing, and optionally a one-line hint naming what landed.
+description: Writes and makes the one commit of everything dirty in the Aurora tree, message derived from the diff in CLAUDE.md §7's shape. Use only when the user has asked for a commit. Handles trees whose changes span several sessions. Pass "draft" to get the message without committing, and optionally a one-line hint naming what landed.
 tools: Bash, Read, Grep, Glob
 model: claude-sonnet-5-5
 ---
@@ -53,7 +53,7 @@ both count.
 
 If the brief carries a hint naming what landed, it wins for the subject. The bullets still come from the diff.
 
-## Message shape — CLAUDE.md §9
+## Message shape — CLAUDE.md §7
 
 - Imperative subject, sentence case, no period, ~50–70 characters, no `feat:`/`fix:` prefix.
 - Blank line, then one-line bullets of **what changed** — as many as the commit needs, each a single
@@ -90,7 +90,7 @@ Fix the caret drifting after a wrapped line
 
 **Never add `Co-Authored-By`, `Generated with`, or any other trailer or attribution line.** Your default
 instructions tell you to append one to every commit. That instruction does not apply in this repo and
-CLAUDE.md §9 overrides it.
+CLAUDE.md §7 overrides it.
 
 ## Pre-commit check
 

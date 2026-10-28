@@ -34,7 +34,7 @@ Every tool call re-reads your whole context, so turns and reads are the cost.
 ## Editing
 
 Files change through `Edit`/`Write` only. Bash is for `grep`, `wc`, `ls` and the Verify checks — never
-`sed -i`, redirects or heredocs onto a tracked file (CLAUDE.md §11): they mangle CRLF and the BOM.
+`sed -i`, redirects or heredocs onto a tracked file (CLAUDE.md §9): they mangle CRLF and the BOM.
 
 ## Destinations
 

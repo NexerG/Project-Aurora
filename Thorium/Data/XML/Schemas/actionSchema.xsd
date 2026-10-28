@@ -467,6 +467,7 @@
           <xs:enumeration value="Tex.Lowering.Float" />
           <xs:enumeration value="Tex.FloatPlacement" />
           <xs:enumeration value="Tex.RunningHeads" />
+          <xs:enumeration value="Tex.PageOfRounding" />
           <xs:enumeration value="Tex.Lengths" />
           <xs:enumeration value="Tex.Parameters" />
           <xs:enumeration value="Tex.DimExpr" />
@@ -477,6 +478,19 @@
           <xs:enumeration value="Tex.CenteredOverfull" />
           <xs:enumeration value="Tex.Pdf.Bullets" />
           <xs:enumeration value="Tex.FitPage" />
+          <xs:enumeration value="Tex.Input" />
+          <xs:enumeration value="Tex.LocalClass" />
+          <xs:enumeration value="Tex.NoStrayText" />
+          <xs:enumeration value="Tex.ListLengths" />
+          <xs:enumeration value="Tex.SectionNumbers" />
+          <xs:enumeration value="Tex.TitleArgument" />
+          <xs:enumeration value="Tex.Setspace" />
+          <xs:enumeration value="Tex.MainFont" />
+          <xs:enumeration value="Tex.FontFace" />
+          <xs:enumeration value="Tex.Lithuanian" />
+          <xs:enumeration value="Tex.Language" />
+          <xs:enumeration value="Tex.CaptionSetup" />
+          <xs:enumeration value="Tex.RaggedNoHyphen" />
           <xs:enumeration value="Vault.LockRoundTrip" />
           <xs:enumeration value="Vault.TwoOpen" />
           <xs:enumeration value="Vault.WrongPassword" />

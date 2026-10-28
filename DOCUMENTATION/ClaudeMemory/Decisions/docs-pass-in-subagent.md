@@ -33,7 +33,7 @@ Some transcripts are resumed copies, so absolute totals are inflated; the ratios
 tokens and grows with what it reads.
 Fewer turns (batched edits) is the secondary lever and is a rule in the agent.
 
-**The judgment stays in the main session, written into the brief.** CLAUDE.md §10 keeps design with the main
+**The judgment stays in the main session, written into the brief.** CLAUDE.md §8 keeps design with the main
 model; the scribe gets decided facts and places them. A fact missing from the brief is reported as `GAP`,
 not invented.
 

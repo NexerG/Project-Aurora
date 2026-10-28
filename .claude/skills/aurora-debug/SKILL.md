@@ -98,5 +98,5 @@ redirect file next to the crash. Everything else keeps the logging rules (`LogCh
 - Report the log lines that show the cause, then the fix as a plan (CLAUDE.md §2) — instrumenting was approved,
   fixing was not.
 - Remove every temporary line: `grep -rn 'TEMP-DEBUG' --include=*.cs .` must print nothing, and the build must
-  succeed, before anything is reported as done or committed. Commits take the whole tree (§9), so a forgotten
+  succeed, before anything is reported as done or committed. Commits take the whole tree (§7), so a forgotten
   line ships.

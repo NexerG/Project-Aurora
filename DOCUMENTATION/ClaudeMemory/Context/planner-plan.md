@@ -88,7 +88,7 @@ Decision record: [planner](../Decisions/planner.md). Part of the Thorium product
 - Added: Gantt link elbows (user's pick), `OuterStart` / `OuterEnd`, `PlannerDocument.Find` / `Followers` / `Upstream`.
 - Open follow-ups: attachments on the board, Month chips and the calendar strip; followers moving live.
 
-Handoff (CLAUDE.md §10): mechanical XML wiring may go to `aurora-mechanic`.
+Handoff (CLAUDE.md §8): mechanical XML wiring may go to `aurora-mechanic`.
 
 ## Facts that were expensive
 - Nested private classes count for the `AssetRegistries.RegisterSerializableTypes` name collision: `Parts` and `Scroller`, copied from `SheetControl` / `SheetEditorControl`, killed boot and were renamed `ChartParts` / `PlannerScroller`. See [[parallel-stack-name-collisions]].

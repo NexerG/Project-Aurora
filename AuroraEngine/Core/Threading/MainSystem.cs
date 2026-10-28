@@ -26,10 +26,10 @@ namespace ArctisAurora.Core.Threading
         private DataPool? _done;
         private DataPool? _dirty;
 
-        // Whether the next frame must run now. Drops wakeAt once a frame has reached it.
-        internal bool Pending(ref double wakeAt)
+        // Whether the next frame must run now. Drops the wake times a frame has reached; wakeAt is the earliest left.
+        internal bool Pending(out double wakeAt)
         {
-            if (wakeAt <= Engine.totalTime) wakeAt = double.PositiveInfinity;
+            wakeAt = FrameScheduler.NextWake();
 
             _done ??= DataManager.Get("AnimationDone");
             _dirty ??= DataManager.Get("LayoutDirty");

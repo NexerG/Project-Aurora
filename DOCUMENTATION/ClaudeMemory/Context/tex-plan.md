@@ -1,7 +1,7 @@
-# LaTeX editor (native) — agreed route, L1–L6, L7a–L7g, L8 and L9 landed
+# LaTeX editor (native) — agreed route, L1–L6, L7a–L7g, L8, L9, L10a, L10b, L10c and L10d landed
 
 **Agreed:** 2026-10-05 (user: native route, "as many packages as possible", L3 node list on the recommendation).
-**Built:** L1, which merged the file/source editor with the TeX expander (user). L2 (CFF + Latin Modern) landed 2026-10-05. L3 (typesetter + lowering) landed 2026-10-05. L4 (split view) landed 2026-10-06. L5 (floats, `tabular`, `\label`/`\ref`, BibTeX, note-table column spans) landed 2026-10-06. L6 (amsmath natively, shared with notes math M5) landed 2026-10-06. L7 was split into slices L7a–L7g (user-approved 2026-10-06) and L7a, L7b, L7c, L7d, L7e, L7f and L7g landed 2026-10-06. L8 (in-house PDF export) landed 2026-10-07. L9 (a real-world resume `.tex`) landed 2026-10-18.
+**Built:** L1, which merged the file/source editor with the TeX expander (user). L2 (CFF + Latin Modern) landed 2026-10-05. L3 (typesetter + lowering) landed 2026-10-05. L4 (split view) landed 2026-10-06. L5 (floats, `tabular`, `\label`/`\ref`, BibTeX, note-table column spans) landed 2026-10-06. L6 (amsmath natively, shared with notes math M5) landed 2026-10-06. L7 was split into slices L7a–L7g (user-approved 2026-10-06) and L7a, L7b, L7c, L7d, L7e, L7f and L7g landed 2026-10-06. L8 (in-house PDF export) landed 2026-10-07. L9 (a real-world resume `.tex`) landed 2026-10-18. L10a (read the template), L10b (layout values), L10c (fonts) and L10d (Lithuanian) landed 2026-10-28; L10e and L10f not started.
 **Decisions:** [../Decisions/latex-editor.md](../Decisions/latex-editor.md).
 **Checklist form:** the LaTeX item in `DOCUMENTATION/Work in Progress List.md`.
 
@@ -142,7 +142,26 @@ Cost accepted with the native route: support is bounded by what is reimplemented
 - Left out: honouring `\tolerance`/`\pretolerance`/`\emergencystretch`/`\exhyphenpenalty`, inline `\rule` boxes, `\raisebox` raise, titlesec shapes beyond hang/block, enumitem keys beyond seven, clickable `\href`
 - Details: [[latex-editor]]
 
+### L10 — a real-world thesis `.tex` — L10a, L10b, L10c, L10d DONE 2026-10-28; L10e and L10f not started
+- Goal: the user's VU MIF bachelor thesis (`VUMIFTemplateClass.cls` + `LTPlius.sty` + `titulinis.tex`) typeset and exported close to its LuaLaTeX PDF (ground truth, 35 A4 pages; the export is 27 after L10a, 36 after L10b, 32 after L10c, still 32 after L10d)
+- Stages:
+
+| Stage | Content | Status |
+|---|---|---|
+| L10a | read the template: `\input`/`\include`, local `.cls`/`.sty` read through the expander, `\@startsection`, title page, A4 at 12pt, class margins, placeholders for later-stage commands | DONE 2026-10-28 |
+| L10b | layout values: setspace, list lengths (`\itemsep`/`\topsep` stray "0pt 0pt"), "1." numbering, uppercase section titles via titlesec's last-command-takes-the-title, `\sectionbreak`, `\fontsize` baselineskip (not done: F1 a keeps one document-wide line height) | DONE 2026-10-28 |
+| L10c | fonts: fontspec (`\setmainfont`, `\setsansfont`, `\setmonofont`, `\fontspec`, `\newfontface`, `\newfontfamily`) Times New Roman → bundled Termes, Calibri → bundled Carlito (L10c-F1 A); a tabular row's first cell starts as in TeX | DONE 2026-10-28 |
+| L10d | Lithuanian: polyglossia captions ("1 pav.", "lentelė"), polyglossia/babel language commands, hyphenation patterns hyph-lt from hyph-utf8 (MIT; an outside download, user-approved; `TexHyphenator.For`), `\captionsetup`, indentfirst, ragged paragraphs do not hyphenate, `~` as TeX's tie and U+00A0 as interword glue | DONE 2026-10-28 |
+| L10e | table of contents: tocloft leaders, two-pass page numbers | not started |
+| L10f | biblatex: alphabetic labels like [tmp23], Lithuanian strings | not started |
+
+- Forks taken in L10a (L10-F1 to L10-F3 and the reader stack): `latex-editor`
+- Forks taken in L10b (L10b-F1, L10b-F2): `latex-editor`
+- Forks taken in L10c (L10c-F1 to L10c-F5): `latex-editor`
+- Forks taken in L10d (L10d-F1 to L10d-F7): `latex-editor`
+- Details: [[latex-editor]]
+
 ## Left out overall
-- TikZ/PGF, beamer, BibLaTeX/biber, catcode-level arbitrary TeX, `\output`, multi-column, `\input`/`\include` (for now)
+- TikZ/PGF, beamer, BibLaTeX/biber (L10f plans biblatex), catcode-level arbitrary TeX, `\output`, multi-column
 
 Related: [[latex-editor]], [[math-in-notes]]

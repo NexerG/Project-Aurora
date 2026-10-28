@@ -197,9 +197,9 @@ A pool's frame edge is a step of its own, placed after every step that writes th
 With `Idle Wait` on, an app that has nothing to do stops running frames and waits for the OS to hand it an event, the way a desktop app does. Whatever ends the wait gets one whole frame, so input needs no special handling; the question at the end of every frame is only whether the next one must run now.
 
 ```
-Pending(wakeAt):
-	if a frame has reached wakeAt:
-		forget wakeAt
+Pending():
+	forget every stored wake time a frame has reached
+	wakeAt = the earliest wake time left, or none
 	return any animation track is awake
 		or AnimationDone or LayoutDirty has rows
 		or posted work is queued
@@ -207,7 +207,7 @@ Pending(wakeAt):
 		or wakeAt has already passed
 ```
 
-Anything that changes on its own time asks for a frame with `FrameScheduler.RequestFrameAt(totalTime)`; the earliest request wins. The caret asks for its next blink, and a control or text run with a GPU effect asks for the moment the effect ends. `Engine.Post` wakes the wait too, so work posted from another thread is never stranded.
+Anything that changes on its own time asks for a frame with `FrameScheduler.RequestFrameAt(totalTime)`; the scheduler keeps a short list of them, so a later request never displaces an earlier one, and two requests within half a millisecond count as one. The caret asks for its next blink, and a control or text run with a GPU effect asks for the moment the effect ends. `Engine.Post` wakes the wait too, so work posted from another thread is never stranded.
 
 Render draws once per frame main finishes, whether idle waiting is on or not, and blocks in between. A frame only counts as drawn once every visible window has presented it; a pass that only built a new window's GPU objects, or that rebuilt a stale swapchain instead of presenting, runs again straight away.
 

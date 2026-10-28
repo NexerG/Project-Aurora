@@ -247,9 +247,13 @@ namespace ArctisAurora.Core.UI
         private const byte Tab = 4;
         private const byte Soft = 8;
         private const byte Fill = 16;
+        private const byte Tie = 32;
 
         // a break that shows a hyphen only when a line ends at it
         public const char SoftHyphen = '­';
+
+        // a space no line breaks at, as wide and as stretchy as any other
+        public const char NoBreakSpace = ' ';
 
         // Knuth-Plass: interword glue as a share of the space, and TeX's plain parameters
         internal const float GlueStretch = 0.5f;
@@ -299,9 +303,9 @@ namespace ArctisAurora.Core.UI
             return measured.Count - 1;
         }
 
-        // firstLineOffset applies to line 0 only.
+        // firstLineOffset applies to line 0 only; ragged lines stretch without limit, as TeX's fil glue.
         public static BlockLayout MeasureBlock(IReadOnlyList<Run> runs, float contentWidth, IGlyphMetrics metrics,
-            float lineHeight, float firstLineOffset = 0f, ILineSlots slots = null, BlockLayout reuse = null, bool optimal = false)
+            float lineHeight, float firstLineOffset = 0f, ILineSlots slots = null, BlockLayout reuse = null, bool optimal = false, bool ragged = false)
         {
             BlockLayout layout = reuse ?? new BlockLayout();
             layout.Reset();
@@ -319,7 +323,7 @@ namespace ArctisAurora.Core.UI
                 return layout;
             }
 
-            if (optimal && BreakOptimal(layout, count, contentWidth, firstLineOffset, runs))
+            if (optimal && BreakOptimal(layout, count, contentWidth, firstLineOffset, ragged, runs))
             {
                 IndentFirst(layout, firstLineOffset, contentWidth);
                 foreach (TextLine line in layout.lines)
@@ -458,7 +462,7 @@ namespace ArctisAurora.Core.UI
         }
 
         // Knuth-Plass over the block's characters; false when no break set fits, leaving the block to the greedy loop.
-        private static bool BreakOptimal(BlockLayout layout, int count, float contentWidth, float firstLineOffset, IReadOnlyList<Run> runs)
+        private static bool BreakOptimal(BlockLayout layout, int count, float contentWidth, float firstLineOffset, bool ragged, IReadOnlyList<Run> runs)
         {
             float[] advances = layout.advances;
             byte[] flags = layout.flags;
@@ -469,7 +473,7 @@ namespace ArctisAurora.Core.UI
             for (int i = 0; i < count; i++)
             {
                 if ((flags[i] & Tab) != 0) return false;
-                float glue = flags[i] == BreakAfter ? advances[i] : 0f;
+                float glue = flags[i] is BreakAfter or Tie ? advances[i] : 0f;
                 width[i + 1] = width[i] + advances[i];
                 stretch[i + 1] = stretch[i] + glue * GlueStretch;
                 shrink[i + 1] = shrink[i] + glue * GlueShrink;
@@ -502,7 +506,7 @@ namespace ArctisAurora.Core.UI
                     float shortfall = room - (width[end + 1] - width[start] + hyphen);
                     float ratio;
                     bool filled = fills[end + 1] - fills[start] > (end == j && (flags[j] & Fill) != 0 ? 1 : 0);
-                    if (MathF.Abs(shortfall) < 0.01f || shortfall > 0f && (last || filled)) ratio = 0f;
+                    if (MathF.Abs(shortfall) < 0.01f || shortfall > 0f && (last || filled || ragged)) ratio = 0f;
                     else if (shortfall > 0f)
                     {
                         float give = stretch[end + 1] - stretch[start];
@@ -630,7 +634,7 @@ namespace ArctisAurora.Core.UI
                                 char c = run.text[i];
                                 advances[count] = MeasureAdvance(c, run);
                                 flags[count] = run.fill ? (byte)(BreakAfter | Fill) : c == ' ' ? BreakAfter : c == '\t' ? (byte)(BreakAfter | Tab)
-                                    : c == SoftHyphen ? (byte)(BreakAfter | Soft) : (byte)0;
+                                    : c == SoftHyphen ? (byte)(BreakAfter | Soft) : c == NoBreakSpace && run.space == 0f ? Tie : (byte)0;
                             }
                         }
                     }
@@ -720,6 +724,7 @@ namespace ArctisAurora.Core.UI
         {
             if (run.picture) return run.floating ? 0f : run.imageWidth;
             if (run.math) return run.imageWidth;
+            if (character == NoBreakSpace) character = ' ';
             if (run.space != 0f) return run.space;
             if (run.fill || character == SoftHyphen) return 0f;
             if (character < AtlasMetaData.AdvanceTableSize) return run.atlas.TableAdvance(character, run.face) * run.fontSize;

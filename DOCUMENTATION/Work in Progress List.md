@@ -74,7 +74,7 @@ This file holds **open work**. A landed entry moves to [[Changelog]]; one that s
 		- [x] **tables (2026-09-29)** — landed, See `ClaudeMemory/Decisions/document-tables.md`
 			- [ ] typing p95 up ~0.03 ms on the 1M-char scenario — likely `Blocks()` type-testing page panels, not pinned
 		- [ ] **math in notes, M1–M5 (2026-10-02, M5 2026-10-06)** — landed, test-verified; **NOT GUI-verified** (popup placement, live reflow, click-away, focus loss mid-edit). M5 (matrices/`cases`/`aligned`, `\tag`) landed with L6 → `math-plan`
-		- [ ] **LaTeX editor** — native route agreed 2026-10-05; L1–L6, L7a–L7g, L8 and L9 landed → `ClaudeMemory/Context/tex-plan.md`
+		- [ ] **LaTeX editor** — native route agreed 2026-10-05; L1–L6, L7a–L7g, L8, L9, L10a, L10b, L10c and L10d landed → `ClaudeMemory/Context/tex-plan.md`
 			- [ ] **L1 (2026-10-05)** — `.tex` opens as source in the note editor, saves byte-identical; `ArctisAurora.Core.Tex` TeX expander, not wired to the UI. **Verified**: builds clean; Tex 11/11, Syntax incl. `Syntax.Latex`, Thorium `--test` 156 passed (only the pre-existing Boot failure besides `Tex.SourceEnterPaste`, since fixed); TextInput 88/88 after the fix; `Tex.SourceColours` golden checked. **NOT GUI-verified.** → `latex-editor`
 			- [x] **Enter on an empty last line kept as LaTeX (2026-10-05)** — `DocumentControl.EndCodeBlock` returns false in `plainText`; `Tex.SourceEnterPaste` passes → `latex-editor`
 			- [x] **`.tex` joins the `.txt` gates (2026-10-05)** — `CanAlign`, `InsertTable`, `PasteImage` refuse in a `.tex`; no test → `latex-editor`
@@ -88,6 +88,16 @@ This file holds **open work**. A landed entry moves to [[Changelog]]; one that s
 				- [ ] **inline `\rule` boxes in running text** — draw nothing; `\raisebox` ignores the raise; rule colour is always ink → `latex-editor`
 				- [ ] **clickable `\href` in the PDF** — the tree keeps no URL (L8 gap, still open) → `latex-editor`
 				- [ ] **review the Carbon and AuroraEditor font/icon re-bakes** — booting them for the schema regeneration re-baked their atlases; the files are dirty in the tree → `latex-editor`
+			- [ ] **L10a — read the template (2026-10-28)** — `\input`/`\include`, local `.cls`/`.sty` read through the expander, `\@startsection`, title page; first stage of L10 (thesis vs its LuaLaTeX PDF). **Verified**: builds clean; `Tex` suite 60 passed, 1 failed (pre-existing Boot); thesis exported headless, text checked (27 A4 pages, truth 35). **NOT GUI-verified.** → `latex-editor`
+				- [ ] **`\input file` unbraced form** — only the braced LaTeX form works → `latex-editor`
+				- [ ] **`@` letter state after local files** — restored by counting nested files, so a `\usepackage` of a local file inside `\makeatletter` ends with `@` other → `latex-editor`
+				- [ ] **`titlepage` keeps the page counter; thesis logo missing** — `images/MIF.png` is not in the folder (only `VU_MIF.png`) → `latex-editor`
+			- [ ] **`\partopsep` not added** — the skip before a list after a blank line is 27.8 pt vs the thesis's 30.9 → `latex-editor`
+			- [ ] **per-block line height** — `\fontsize`'s baselineskip and setspace's single-spaced floats and footnotes need a `NoteBlock.lineHeight`; L10b keeps one document-wide height (L10b-F1 a) → `latex-editor`
+			- [ ] **Lithuanian `\today`** — not done (L10d gap) → `latex-editor`
+			- [ ] **per-character language for `\foreignlanguage`** — language is per paragraph (L10d-F2 a), so `\foreignlanguage` and a mid-paragraph `\selectlanguage` leave the hyphenation of the words they cover alone; per character through `TexStyle` splits runs at every language change → `latex-editor`
+			- [ ] **L10e — table of contents** — tocloft leaders, two-pass page numbers → `tex-plan`
+			- [ ] **L10f — biblatex** — alphabetic labels like [tmp23], Lithuanian strings → `tex-plan`
 			- [ ] **em dash does not draw at 13px in a note** — U+2014 from L3 lowering is emitted but missing in the preview golden; a `LabelControl` draws it faintly; likely a sub-pixel-tall quad (renderer, unproven) → `latex-editor`
 			- [ ] **delete the dead `TexLowering.Spaces` helper** — unused since L7c; its line holds a literal U+00A0 the Edit tool cannot match → `latex-editor`
 			- [ ] **Carbon `Tex.Lowering` fails** — passes in Thorium, fails when the Tex suite runs in the Carbon host; likely host data, unknown if pre-existing; not investigated → `latex-editor`
@@ -95,6 +105,7 @@ This file holds **open work**. A landed entry moves to [[Changelog]]; one that s
 			- [ ] **L7f: confirm the nested-float fallback** — a float in a box, note, cell or float reports "Not in outer par mode" and stays inline; LaTeX would lose it; pending your confirmation → `latex-editor`
 			- [ ] **Perf.Controls.Scrollable.Relayout failed in two full runs (L7g, L8)** — 8 "subtreeBounds stale" layout errors, logged while the test itself is skipped (unoptimized JIT); not reproduced in four Perf-suite reruns (two each time); plain ScrollableControls, no tables or math; not investigated → `latex-editor`
 			- [ ] **Latin Modern minus at 10pt drops out depending on sub-pixel position (thin glyph strokes)** — ~0.5 px stroke in an alpha-tested atlas; missing in `(a−b)²`, `(n−k)`, `ad−bc` of the `Tex.Amsmath` golden; glyph drawing, not math layout → `latex-editor`
+			- [ ] **`TexEditorControl` asks for the next frame with `RequestFrameAt(Engine.totalTime)`, which is ignored — relies on `LayoutDirty`** (`Recompile`, `ResolvePages` twice) → `idle-frames`
 		- [ ] **pictures in notes, Word-style (2026-09-29)** — inline, wrap modes + free position, resize handles, Ctrl+V from the clipboard. Stages 1–7 built: textures, `<Image>`, inline pictures, text-first Ctrl+V into `attachments/`, XML + Markdown, resize handles, wrap modes (Square, Tight, Top and bottom, Behind, In front), drag-move with re-anchoring, rotate ring (inline + floats, Square collision Box/Shape). Test- and golden-verified; real Ctrl+V, handle, move and rotate drags and the Wrap/Collision menus NOT GUI-verified → `note-images-plan`	- [ ] cursor change on context
 - [ ] UI
 	- **Standing decision:** glyphs stay full controls with their own mat4 and tint — per-letter colour, rotation and animation are required. Do not propose making them plain data rows

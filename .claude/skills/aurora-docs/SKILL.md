@@ -54,7 +54,7 @@ scribe per write-up.
 
 ## 3. Check what came back
 
-Its report is not evidence (CLAUDE.md §10).
+Its report is not evidence (CLAUDE.md §8).
 
 - `git diff --stat -- DOCUMENTATION`, then `git diff -- DOCUMENTATION` on the files that matter.
 - Each `GAP` or `CONFLICT` line in the report: answer it with an `Edit` here, or tell the user.

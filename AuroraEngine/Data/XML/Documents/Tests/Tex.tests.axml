@@ -44,6 +44,7 @@
 	<Test Action="Tex.Lowering.Pages"/>
 	<Test Action="Tex.PageBreak"/>
 	<Test Action="Tex.RunningHeads"/>
+	<Test Action="Tex.PageOfRounding"/>
 	<Test Action="Tex.Lowering.Footnote"/>
 	<Test Action="Tex.Footnotes"/>
 	<Test Action="Tex.Lowering.Float"/>
@@ -58,4 +59,17 @@
 	<Test Action="Tex.FitPage"/>
 	<Test Action="Tex.CenteredOverfull"/>
 	<Test Action="Tex.Pdf.Bullets"/>
+	<Test Action="Tex.Input"/>
+	<Test Action="Tex.LocalClass"/>
+	<Test Action="Tex.NoStrayText"/>
+	<Test Action="Tex.ListLengths"/>
+	<Test Action="Tex.SectionNumbers"/>
+	<Test Action="Tex.TitleArgument"/>
+	<Test Action="Tex.Setspace"/>
+	<Test Action="Tex.MainFont"/>
+	<Test Action="Tex.FontFace"/>
+	<Test Action="Tex.Lithuanian"/>
+	<Test Action="Tex.Language"/>
+	<Test Action="Tex.CaptionSetup"/>
+	<Test Action="Tex.RaggedNoHyphen"/>
 </TestSuite>

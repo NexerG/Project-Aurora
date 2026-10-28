@@ -4,7 +4,7 @@ using System.Xml.Linq;
 
 namespace ArctisAurora.Core.Tex
 {
-    // Liang's hyphenation: a trie of patterns and whole-word exceptions, over lowercase a-z.
+    // Liang's hyphenation: a trie of patterns and whole-word exceptions, over lowercase letters.
     public sealed class TexHyphenator
     {
         private static readonly LogChannel Log = LogChannel.For("Tex");
@@ -20,10 +20,28 @@ namespace ArctisAurora.Core.Tex
         public readonly int leftMin;
         public readonly int rightMin;
 
-        private static readonly Lazy<TexHyphenator?> english = new Lazy<TexHyphenator?>(() => Load(Paths.Doc("Hyphenation/en-us.hyphenation.axml")));
+        // a language's name as polyglossia and babel spell it → its pattern file
+        private static readonly Dictionary<string, string> patternFiles = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["english"] = "en-us", ["american"] = "en-us", ["usenglish"] = "en-us", ["british"] = "en-us", ["ukenglish"] = "en-us",
+            ["lithuanian"] = "lt"
+        };
+        private static readonly Dictionary<string, TexHyphenator?> loaded = new Dictionary<string, TexHyphenator?>();
 
         // US English, or null when its pattern file is missing.
-        public static TexHyphenator? English => english.Value;
+        public static TexHyphenator? English => For("english");
+
+        // A language's patterns, loaded once; null for a language without a pattern file.
+        public static TexHyphenator? For(string language)
+        {
+            if (!patternFiles.TryGetValue(language, out string? file)) return null;
+            lock (loaded)
+            {
+                if (!loaded.TryGetValue(file, out TexHyphenator? hyphenator))
+                    loaded[file] = hyphenator = Load(Paths.Doc("Hyphenation/" + file + ".hyphenation.axml"));
+                return hyphenator;
+            }
+        }
 
         public TexHyphenator(IEnumerable<string> patterns, IEnumerable<string> exceptions, int leftMin = 2, int rightMin = 3)
         {

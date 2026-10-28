@@ -511,7 +511,7 @@ namespace ArctisAurora.Core.UI
             if (room == float.MaxValue || line.segments.Count == 0 || line.fillExtra != 0f) return;
 
             float pen = 0f, visible = 0f, spaceWidth = 0f, inner = 0f;
-            int end = 0;
+            int end = 0, spaceCount = 0, spaces = 0;
             bool tab = false;
             foreach (LineSegment segment in line.segments)
                 for (int k = segment.charStart; k < segment.charStart + segment.charCount && k < s.Length; k++)
@@ -519,19 +519,21 @@ namespace ArctisAurora.Core.UI
                     float advance = TextMeasurer.MeasureAdvance(s[k], _runs[segment.runIndex], pen);
                     pen += advance;
                     if (s[k] == '\t') tab = true;
-                    else if (s[k] == ' ') spaceWidth += advance;
+                    else if (s[k] == ' ' || s[k] == TextMeasurer.NoBreakSpace && _runs[segment.runIndex].space == 0f)
+                    {
+                        spaceWidth += advance;
+                        spaceCount++;
+                    }
                     else
                     {
                         visible = pen;
                         end = k + 1;
                         inner = spaceWidth;
+                        spaces = spaceCount;
                     }
                 }
 
             visible += line.hyphen;
-            int spaces = 0;
-            for (int k = line.segments[0].charStart; k < end; k++)
-                if (s[k] == ' ') spaces++;
             if (tab || spaces == 0 || visible == room || visible < room && !stretch) return;
             if (visible > room && (!OptimalBreaks || visible - room > inner * TextMeasurer.GlueShrink + 0.01f)) return;
 
@@ -574,7 +576,7 @@ namespace ArctisAurora.Core.UI
         private float Stretch(TextLine line, int index)
         {
             if (line.fillExtra != 0f && FillAt(index)) return line.fillExtra;
-            return line.spaceExtra != 0f && index < line.justifyEnd && text[index] == ' ' ? line.spaceExtra : 0f;
+            return line.spaceExtra != 0f && index < line.justifyEnd && text[index] is ' ' or TextMeasurer.NoBreakSpace ? line.spaceExtra : 0f;
         }
 
         // Whether character index belongs to a fill span.
@@ -615,7 +617,7 @@ namespace ArctisAurora.Core.UI
             Profiling.Zone.End("Text.BuildRuns");
 
             Profiling.Zone.Start("Text.MeasureBlock");
-            _layout = TextMeasurer.MeasureBlock(_runs, wrapWidth, metrics, lineHeight, FirstLineIndent, reuse: _layout, optimal: OptimalBreaks);
+            _layout = TextMeasurer.MeasureBlock(_runs, wrapWidth, metrics, lineHeight, FirstLineIndent, reuse: _layout, optimal: OptimalBreaks, ragged: Alignment != TextAlignment.Justify);
             laidAround = false;
             Profiling.Zone.End("Text.MeasureBlock");
             _wrapWidth = wrapWidth;
@@ -785,8 +787,8 @@ namespace ArctisAurora.Core.UI
                         }
                         uint ink = tokens != null && index < tokens.Length && tokens[index] != SyntaxToken.Plain
                             ? Palettes.Code(palette ?? Palettes.Default, tokens[index]) : paint;
-                        pen += WriteGlyph(quads, s[index], run.style, ink, alpha, font, run.fontSize, effect, effectStart,
-                                          pen, baselineY, z, clip, gradientRect) + Stretch(line, index);
+                        pen += WriteGlyph(quads, s[index] == TextMeasurer.NoBreakSpace ? ' ' : s[index], run.style, ink, alpha, font, run.fontSize,
+                                          effect, effectStart, pen, baselineY, z, clip, gradientRect) + Stretch(line, index);
                     }
 
                     float weight = MathF.Max(1f, run.fontSize * decorationWeight);

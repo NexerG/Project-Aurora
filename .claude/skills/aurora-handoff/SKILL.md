@@ -1,11 +1,11 @@
 ---
 name: aurora-handoff
-description: Hand mechanical work to a cheaper subagent and verify what comes back. Use when a change repeats across many call sites, when a question needs sweeping many files, or whenever CLAUDE.md §10 says the decision is made and only the typing is left.
+description: Hand mechanical work to a cheaper subagent and verify what comes back. Use when a change repeats across many call sites, when a question needs sweeping many files, or whenever CLAUDE.md §8 says the decision is made and only the typing is left.
 ---
 
 # Handing work off
 
-CLAUDE.md §10 sets the policy — what goes out, what stays, and that approving the plan is the permission to
+CLAUDE.md §8 sets the policy — what goes out, what stays, and that approving the plan is the permission to
 spawn. This is the mechanics.
 
 ## Why it pays
@@ -17,7 +17,7 @@ returns 300 tokens is paid once. That is the whole trade, and it inverts near th
 38 a spawn is a wash, so just read it.
 
 **The floor.** A spawn starts cold and re-derives project context before it does anything. Below roughly
-three files, or a question you could answer with two greps, doing it yourself is cheaper. §10's "one agent per
+three files, or a question you could answer with two greps, doing it yourself is cheaper. §8's "one agent per
 mechanical sweep, not one per file" is this same arithmetic.
 
 ## Which one
@@ -29,7 +29,7 @@ mechanical sweep, not one per file" is this same arithmetic.
 | send when | old text, new text and the file list are all fixed | the reading is much larger than the answer | the user asked for a commit |
 | never send | anything needing a judgment call | anything that must decide something | a requested split into multiple commits |
 
-None of them can notice it is departing from a plan it was never shown (§8). If the work could turn into a
+None of them can notice it is departing from a plan it was never shown (§6). If the work could turn into a
 departure, it stays with you.
 
 ## The brief
@@ -44,12 +44,12 @@ Boundary:   <what it may NOT touch — adjacent lines, comments, usings, other o
 On a miss:  report it, do not adapt
 ```
 
-The test from §10: could a wrong result be obvious on sight? If you are writing "use your judgment" or
+The test from §8: could a wrong result be obvious on sight? If you are writing "use your judgment" or
 "and anywhere else it appears", the brief is not ready and the work is not eligible.
 
 ## Verifying what comes back
 
-**The report is not evidence** (§10). Never repeat an agent's claim as a verified result.
+**The report is not evidence** (§8). Never repeat an agent's claim as a verified result.
 
 ```bash
 git diff --stat                    # did it touch what the brief named, and only that?

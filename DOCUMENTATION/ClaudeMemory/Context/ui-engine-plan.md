@@ -260,7 +260,7 @@ cannot also carry a mask (a second index plus a second UV set is the fix, and gr
 `uint.MaxValue` as the "no texture" sentinel rather than a reserved slot 0, because table slot 0 is a real
 texture the old stack resolves `maskAsset = null` to; the property named **`sampler`** (user, over `texture`
 and `maskAsset`); and the landing **kept** rather than handed to a subagent — descriptor plumbing, coverage
-ordering and a shader are what §10 reserves, and there was no exact old→new text to brief.
+ordering and a shader are what §8 reserves, and there was no exact old→new text to brief.
 
 No struct changed — every field was already there and written by nothing. The mask multiplies **last**, after
 the edge band, so it cuts the stroke along with the fill. The gradient buffer is a **static** on
@@ -661,9 +661,9 @@ AuroraEditor; the regenerated XSDs carry no `Next` or `UISystem` name. Thorium *
 shell, vault tree, format bar and two notes draw. **NOT GUI-verified:** everything past boot, and the close
 buttons (the probe killed the processes).
 
-**Handoff (CLAUDE.md §10):** landings 2–5 and 6a stayed with the model — layout correctness, dispatch, Vulkan,
+**Handoff (CLAUDE.md §8):** landings 2–5 and 6a stayed with the model — layout correctness, dispatch, Vulkan,
 and 6a is the design the rest is measured against. Landing 5 was originally marked for a subagent and was
-kept: descriptor plumbing, coverage ordering and a shader are what §10 reserves. **6b's rebase is the sweep
+kept: descriptor plumbing, coverage ordering and a shader are what §8 reserves. **6b's rebase is the sweep
 that goes out** now the base is frozen — exact old→new text per class, one agent per folder. 6c stays.
 
 ## Open — not decided

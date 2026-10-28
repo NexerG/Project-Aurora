@@ -44,9 +44,12 @@ Lengths in `em` and `ex` are read from the `quad` and `xHeight` callbacks, which
 | `DefinePrimitive(name)` | method | Makes `Next` return the token under its own name. |
 | `Save(Action restore)` | method | Runs the action when the current group closes. |
 | `Insert(TexToken[])` | method | Pushes tokens back to be read next. |
+| `InputSource(string, Action?)` | method | Opens a file's text as a lazily read input level above the pending tokens; the optional action runs when the file is used up. |
+| `Expanded(TexToken[], TexToken owner)` | method | Returns the tokens fully expanded as `\edef` would. |
 | `InsertSource(string)` | method | Tokenizes text with the current catcodes and pushes the tokens; they carry no source positions. |
 | `CanReadRaw`, `ReadRaw(terminator)`, `ReadRawChar(out char)` | method | Reads source characters without tokenizing, for `\verb` and similar. |
 | `Counter(name)`, `StepCounter(name)` | method | Reads and steps a LaTeX counter. |
+| `IsDefined(name)` | method | Whether a macro of that name is defined. |
 | `Error`, `ScanInt`, `ScanDimen()`, `ScanGlue`, `ScanKeyword`, `Argument`, `Optional`, `NameArgument`, `TakeStar` | method | The scanning helpers a typesetter's own commands use. |
 
 ## Tokens
@@ -103,8 +106,29 @@ What `Next` returns: characters, `{` and `}` (after their group is opened or clo
 	the sentinel closes the group once the end code has run
 	a `\end` that does not match the open environment is reported LaTeX-style
 
+### `InputSource` and reading an input file
+	`InputSource(text, atEnd)`
+		push the current reader, the end hook, the line and column of the input and the input-stack depth (`floor`) onto `files`
+		start a new reader over the text
+	`Get`
+		repeat
+			if the input stack is deeper than the current file's `floor`
+				take the next token from the pushed-back levels
+			else if the current reader has a token
+				return it with the line and column where the file was input
+			else if a file is open
+				pop it and restore the outer reader
+				run its end hook
+	a reader error inside the file is reported at the position of the input
+	because a file is read lazily, a `\makeatletter` or `\verb` inside it acts on the text that follows
+
+### `Expanded`
+	`Expanded(tokens, owner)`
+		push the tokens and a closing `}`
+		return `ExpandedBody`   // the body as `\edef` reads it
+
 ## Not supported yet
-`#{` parameters, `^^` notation, `\input`, `\number`, `\romannumeral`, `\meaning`, `\aftergroup`, `\afterassignment`, `\refstepcounter`, `\outer` and mu units.
+`#{` parameters, `^^` notation, TeX's unbraced `\input file`, `\number`, `\romannumeral`, `\meaning`, `\aftergroup`, `\afterassignment`, `\refstepcounter`, `\outer` and mu units.
 
 ## Related
 - [[Tex Typesetter]] — turns these tokens into a node list and lowers it to a `<Document>`

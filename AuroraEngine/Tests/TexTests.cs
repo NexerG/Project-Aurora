@@ -296,7 +296,8 @@ namespace ArctisAurora.Tests
         {
             string two = Lines("Hello   world.\n\nSecond  para\nline.", out List<TexError> errors);
             t.Check(two == "Hello world. / Second para line." && errors.Count == 0, $"a blank line ends a paragraph and spaces collapse: {two}");
-            t.Check(Lines("a~b") == "a\u00A0b", "~ is a no-break space");
+            t.Check(Lines("a~b") == "a b", "~ is an interword space");
+            t.Check(Pars(Typeset("a~b", out _))[0].list.Exists(n => n is TexPenalty { penalty: 10000 }), "that no line breaks at");
             t.Check(Lines(@"a \par") == "a", "a paragraph's last space is dropped");
             t.Check(Lines(@"a\\ b") == "a|b", "\\\\ is a forced break");
             t.Check(Lines(@"\begin{document}a\end{document}b") == "a", "nothing after \\end{document} is read");
@@ -509,6 +510,14 @@ namespace ArctisAurora.Tests
             t.Check(table.rows[0][1].vlist.OfType<TexParagraph>().Single().list.OfType<TexChar>().Single().style.font.bold
                 && !table.rows[0][2].vlist.OfType<TexParagraph>().Single().list.OfType<TexChar>().Single().style.font.bold,
                 "a cell's \\bf ends at the next &");
+            XElement styled = TexLowering.Compile("\\begin{tabular}{ll} {\\textbf{Aa}} & bb\\\\ \\textbf{Cc} & dd\\\\ \\end{tabular}\n\nAfter", out _);
+            t.Check((string?)FindRun(styled, "Aa")?.Attribute("Bold") == "true" && (string?)FindRun(styled, "Cc")?.Attribute("Bold") == "true",
+                "a row's first cell starts before its \\textbf, so the cell is bold");
+            t.Check(FindRun(styled, "bb")?.Attribute("Bold") == null && FindRun(styled, "dd")?.Attribute("Bold") == null && FindRun(styled, "After")?.Attribute("Bold") == null,
+                "and its bold stays in the cell, not after the table");
+            int rowCount = 0;
+            foreach (XElement row in styled.Descendants("Row")) rowCount++;
+            t.Check(rowCount == 2, $"a trailing \\\\ before \\end{{tabular}} adds no row: {rowCount}");
 
             TexTable plain = Typeset(@"\begin{tabular}{ll}a&b\end{tabular}", out _).vlist.OfType<TexTable>().Single();
             t.Check(plain.rules.Count == 0 && plain.vrules.All(n => n == 0), "no | and no rule has no rules");
@@ -669,18 +678,18 @@ namespace ArctisAurora.Tests
             }
 
             List<string> plain = Typeset("plain");
-            t.Check(plain[0] == "[2] and [1, 3, p.\u00A05].", $"sorted numbers, a note: {plain[0]}");
+            t.Check(plain[0] == "[2] and [1, 3, p. 5].",$"sorted numbers, a note: {plain[0]}");
             t.Check(plain[1] == "References" && plain[^1] == "After [?].", $"the list stands where \\bibliography was: {string.Join(" / ", plain)}");
             t.Check(plain.Count == 6, $"three entries, the uncited one left out: {plain.Count}");
             t.Check(plain[2] == "[1] Donald E. Knuth. The TeXbook. Addison-Wesley, 1984.", $"a book: {plain[2]}");
-            t.Check(plain[3] == "[2] Leslie Lamport et\u00A0al. A document preparation system. TUGboat Journal, 7(2):10–20, June 1986.", $"an article: {plain[3]}");
+            t.Check(plain[3] == "[2] Leslie Lamport et al. A document preparation system. TUGboat Journal, 7(2):10–20, June 1986.", $"an article: {plain[3]}");
             t.Check(plain[4] == "[3] Johannes Diderik van der Waals and John Smith, Jr. On gases. In Proc. Physics, 1873.", $"von and Jr names: {plain[4]}");
             t.Check(errors.Count == 1 && Has(errors, "Citation `missing' undefined"), $"one warning: {string.Join("; ", errors)}");
 
-            t.Check(Typeset("unsrt")[0] == "[1] and [2, 3, p.\u00A05].", "unsrt numbers in citation order");
+            t.Check(Typeset("unsrt")[0] == "[1] and [2, 3, p. 5].","unsrt numbers in citation order");
             List<string> alpha = Typeset("alpha");
-            t.Check(alpha[0] == "[L+86] and [Knu84, vdWS73, p.\u00A05]." && alpha[2].StartsWith("[Knu84]"), $"alpha labels: {alpha[0]} / {alpha[2]}");
-            t.Check(Typeset("abbrv")[2] == "[1] D.\u00A0E. Knuth. The TeXbook. Addison-Wesley, 1984.", "abbrv initials");
+            t.Check(alpha[0] == "[L+86] and [Knu84, vdWS73, p. 5]."&& alpha[2].StartsWith("[Knu84]"), $"alpha labels: {alpha[0]} / {alpha[2]}");
+            t.Check(Typeset("abbrv")[2] == "[1] D. E. Knuth. The TeXbook. Addison-Wesley, 1984.", "abbrv initials");
 
             TexTypesetter none = new TexTypesetter(@"\cite{a}\bibliographystyle{plain}\bibliography{nope}");
             none.Run();
@@ -1345,7 +1354,7 @@ namespace ArctisAurora.Tests
                 $"a float stands where it was set, or after the paragraph it is in: {string.Join(", ", top.Select(e => e.Name.LocalName))}");
             t.Check((string?)top[1].Attribute("Kind") == "figure" && (string?)top[1].Attribute("Placement") == "!t"
                 && (string?)top[3].Attribute("Kind") == "table" && (string?)top[3].Attribute("Placement") == "b", "<Float> carries the kind and placement");
-            t.Check(top[1].Elements("Block").Count() == 2 && BlockText(top[1].Elements("Block").Last()).Contains("Figure 1: A"), "the float holds its body and caption");
+            t.Check(top[1].Elements("Block").Count() == 2 && BlockText(top[1].Elements("Block").Last()).Contains("Figure 1: A"), "the float holds its body and caption");
             t.Check(top[2].Attribute("SpaceBefore") != null && top[1].Elements("Block").First().Attribute("SpaceBefore") == null,
                 "the space above a float stays with the next block in the text");
             XElement page = document.Descendants("Page").Single();
@@ -1486,6 +1495,17 @@ namespace ArctisAurora.Tests
             t.Check(margins[2][0] == "TWO / B" && margins[2][2] == "3",
                 $"page 3: \\leftmark is the last mark's left, \\rightmark the first mark's right: {string.Join("|", margins[2])}");
             t.Show(new StackPanelControl());
+        }
+
+        [A_XSDActionDependency("Tex.PageOfRounding", "Test")]
+        private static IEnumerator<int> PageOfRounding(TestContext t)
+        {
+            PageBands bands = new PageBands(26.8728485f, 1100f, 1293.20361f);
+            float next = bands.top + 9 * bands.stride + bands.stride;
+            t.Check(bands.PageOf(next) == 10, $"page 9's top plus a stride falls on page 10: {bands.PageOf(next)}");
+            float y = new PageSpace(0f).Push(bands, bands.top + 9 * bands.stride + 1000f, 200f);
+            t.Check(bands.PageOf(y) == 10, $"a line past page 9's foot moves to page 10: {bands.PageOf(y)}");
+            yield break;
         }
         #endregion
 
@@ -1709,6 +1729,304 @@ namespace ArctisAurora.Tests
             t.Check(pages.Count == 1 && pages[0].height > 1.1f * px && pages[0].height < 1.6f * px,
                 $"one page cut to \\pagetotal (one line below the 1in margin) plus 1in: {string.Join(",", pages.Select(p => p.height / px))} in");
             t.Show(new StackPanelControl());
+        }
+
+        [A_XSDActionDependency("Tex.Input", "Test")]
+        private static IEnumerator<int> Input(TestContext t)
+        {
+            string folder = Folder(
+                ("part.tex", "\\begin{titlepage}\n\\makeatletter\n\\centerline{\\fontsize{14pt}{16pt}\\selectfont\\MakeUppercase{\\@who\\space u}}\n"
+                    + "\\@ifundefined{@nobody}{none}{some} \\the\\year{}\n\\makeatother\n\\verb|@v|\n\\end{titlepage}\n"),
+                ("bad.tex", "x\n\\bogus\n"),
+                ("chapter.tex", "Chapter text.\n"));
+            TexTypesetter Run(string source)
+            {
+                TexTypesetter typesetter = new TexTypesetter(source, null, folder);
+                typesetter.Run();
+                return typesetter;
+            }
+
+            TexTypesetter title = Run("\\documentclass{article}\\makeatletter\\def\\@who{gytė}\\makeatother\n\\begin{document}\n\\input{part}After\n\\end{document}\n");
+            List<TexParagraph> pars = Pars(title);
+            string[] lines = pars.Select(p => System.Text.RegularExpressions.Regex.Replace(Line(p), " {2,}", " ").Trim()).ToArray();
+            t.Check(lines.Length == 3 && lines[0] == "GYTĖ U" && lines[1] == $"none {DateTime.Today.Year} @v" && lines[2] == "After",
+                $"the input file's \\makeatletter, \\verb, \\MakeUppercase, \\@ifundefined and \\year: {string.Join(" / ", lines)}");
+            t.Check(pars[0].style.align == TexAlign.Center && pars[0].list.OfType<TexChar>().First().style.font.size == 14 * 65536,
+                "\\centerline centres and \\fontsize with \\selectfont sets 14pt");
+            t.Check(title.vlist.OfType<TexPageBreak>().Count() >= 2 && title.errors.Count == 0,
+                $"the titlepage is a page of its own, no errors: {string.Join("; ", title.errors)}");
+
+            TexTypesetter bad = Run("a\n\\input{bad}\n\\input{nope}\n");
+            t.Check(Has(bad.errors, "Undefined control sequence \\bogus", 2), $"an error in an input file is reported at its \\input line: {string.Join("; ", bad.errors)}");
+            t.Check(Has(bad.errors, "File `nope.tex' not found", 3), "a missing file");
+
+            TexTypesetter included = Run("Before\\include{chapter}After");
+            t.Check(included.vlist.OfType<TexPageBreak>().Count() == 2 && Pars(included).Select(Line).Any(l => l.StartsWith("Chapter text.")),
+                "\\include clears the page around the file");
+            Directory.Delete(folder, true);
+            yield break;
+        }
+
+        [A_XSDActionDependency("Tex.LocalClass", "Test")]
+        private static IEnumerator<int> LocalClass(TestContext t)
+        {
+            string folder = Folder(
+                ("thesis.cls", "\\NeedsTeXFormat{LaTeX2e}\n\\ProvidesClass{thesis}[2024/01/01 test]\n\\def\\@mode{narrow}\\def\\@other{none}\n"
+                    + "\\DeclareOption{wide}{\\def\\@mode{wide}}\n\\DeclareOption*{\\def\\@other{other}}\n\\ProcessOptions\\relax\n"
+                    + "\\LoadClass[12pt, a4paper]{article}\n\\RequirePackage{extra}\n\\newcommand{\\mode}{\\@mode-\\@other}\n"),
+                ("extra.sty", "\\ProvidesPackage{extra}\n\\newcommand{\\extra}[1]{E#1}\n"
+                    + "\\renewcommand\\paragraph{\\@startsection{paragraph}{4}{0pt}{1ex \\@plus 1ex}{-1em}{\\normalfont\\itshape}}\n"));
+            TexTypesetter typesetter = new TexTypesetter("\\documentclass[wide,foo]{thesis}\n\\begin{document}\n\\mode{} \\extra{x} \\ifcat @a L\\else O\\fi\n\n"
+                + "\\paragraph{P} text\n\\end{document}\n", null, folder);
+            typesetter.Run();
+            List<TexParagraph> pars = Pars(typesetter);
+            string[] lines = pars.Select(p => Line(p).Trim()).ToArray();
+            t.Check(typesetter.paperWidth == 210f && typesetter.normalSize == 12 * 65536, $"\\LoadClass[12pt, a4paper]: {typesetter.paperWidth} mm, {typesetter.normalSize / 65536f} pt");
+            t.Check(lines.Length == 2 && lines[0] == "wide-other Ex O", $"declared and other options ran, the package's command works, @ is other again: {string.Join(" / ", lines)}");
+            TexChar p = pars[^1].list.OfType<TexChar>().First();
+            t.Check(lines[^1] == "P text" && p.style.font.italic && !p.style.font.bold, $"\\@startsection runs \\paragraph in, in its style: {lines[^1]}");
+            t.Check(typesetter.errors.Count == 0, $"no errors: {string.Join("; ", typesetter.errors)}");
+            Directory.Delete(folder, true);
+            yield break;
+        }
+
+        [A_XSDActionDependency("Tex.NoStrayText", "Test")]
+        private static IEnumerator<int> NoStrayText(TestContext t)
+        {
+            string body = Lines("\\documentclass{article}\\usepackage{fontspec}\\setmainfont{Times New Roman}[Ligatures=TeX]"
+                + "\\newfontface\\sectionfont[Path=fonts/]{Calibri}\\begin{document}\\selectlanguage{lithuanian}\\tableofcontents"
+                + "\\phantomsection\\addcontentsline{toc}{section}{Priedai}{\\sectionfont Body}\\end{document}", out List<TexError> errors);
+            t.Check(body == "Body" && errors.Count == 0, $"the placeholders typeset nothing: {body} {string.Join("; ", errors)}");
+
+            string folder = Folder(("refs.bib", "@misc{a, title = {Title}, year = 2000}\n"));
+            TexTypesetter typesetter = new TexTypesetter("\\documentclass{article}\\bibliography{refs}\\begin{document}\\cite{a}\n"
+                + "\\printbibliography[heading=bibintoc]\n\\end{document}\n", null, folder);
+            typesetter.Run();
+            string[] lines = Pars(typesetter).Select(p => Line(p).Trim()).ToArray();
+            t.Check(lines.Length == 3 && lines[0] == "[1]" && lines[1] == "References" && lines[2].StartsWith("[1] Title"),
+                $"\\bibliography in the preamble names the files, \\printbibliography[…] sets the list: {string.Join(" / ", lines)}");
+            t.Check(typesetter.errors.Count == 0, $"no errors: {string.Join("; ", typesetter.errors)}");
+            Directory.Delete(folder, true);
+            yield break;
+        }
+
+        [A_XSDActionDependency("Tex.ListLengths", "Test")]
+        private static IEnumerator<int> ListLengths(TestContext t)
+        {
+            TexTypesetter typeset = Typeset("\\documentclass[12pt]{article}\\begin{document}\nText\n\n\\begin{itemize}\n\\setlength{\\itemsep}{0pt}\n"
+                + "\\setlength{\\topsep}{0pt}\n\\item A\n\\item B\n\\end{itemize}\nAfter\n\\end{document}\n", out List<TexError> errors);
+            List<TexParagraph> pars = Pars(typeset);
+            t.Check(errors.Count == 0 && string.Join("/", pars.Select(Line)) == "Text/A/B/After",
+                $"\\setlength on the list lengths sets no text: {string.Join("/", pars.Select(Line))} {string.Join("; ", errors)}");
+            if (pars.Count != 4) yield break;
+
+            List<TexNode> v = typeset.vlist;
+            float Gap(int from, int to, Func<IEnumerable<float>, float> fold) =>
+                fold(v.Skip(v.IndexOf(pars[from]) + 1).Take(v.IndexOf(pars[to]) - v.IndexOf(pars[from]) - 1).OfType<TexVGlue>().Select(g => Pt(g.glue.width)).DefaultIfEmpty(0f));
+            float between = Gap(1, 2, g => g.Sum()), above = Gap(0, 1, g => g.Max()), below = Gap(2, 3, g => g.Max());
+            t.Check(between == 5f, $"\\itemsep 0 leaves \\parsep between items: {between}pt");
+            t.Check(above == 10f && below == 10f, $"\\topsep set inside the list changes neither skip: {above}pt above, {below}pt below");
+            yield break;
+        }
+
+        [A_XSDActionDependency("Tex.SectionNumbers", "Test")]
+        private static IEnumerator<int> SectionNumbers(TestContext t)
+        {
+            TexTypesetter dotted = Typeset("\\documentclass{article}\\renewcommand\\thesection{\\arabic{section}.}"
+                + "\\renewcommand\\thesubsection{\\thesection\\arabic{subsection}.}\\begin{document}\\section{One}\\subsection{Sub}\\label{s}See \\ref{s}\\end{document}",
+                out List<TexError> errors);
+            string[] lines = Pars(dotted).Select(Line).ToArray();
+            t.Check(errors.Count == 0 && lines.SequenceEqual(new[] { "1. One", "1.1. Sub", "See 1.1." }),
+                $"\\thesection and \\thesubsection give the heading and \\ref: {string.Join(" / ", lines)} {string.Join("; ", errors)}");
+            t.Check(Lines("\\documentclass{article}\\begin{document}\\section{A}\\subsection{B}\\end{document}") == "1 A / 1.1 B", "article numbers as before");
+            t.Check(Lines("\\documentclass{report}\\begin{document}\\chapter{C}\\section{S}\\end{document}").EndsWith("1.1 S"), "report's \\thesection takes the chapter");
+            yield break;
+        }
+
+        [A_XSDActionDependency("Tex.TitleArgument", "Test")]
+        private static IEnumerator<int> TitleArgument(TestContext t)
+        {
+            const string format = "\\documentclass{article}\\usepackage{titlesec}\\titleformat{\\section}[block]{\\bfseries}{\\thesection}{0em}{\\hspace{0.25cm}\\MakeUppercase}"
+                + "\\titlespacing*{\\section}{0.25cm}{0pt}{12pt}\n";
+            const string body = "\\begin{document}Text\n\\section{Įvadas į darbą}\\subsection{Sub part}\\end{document}";
+            TexTypesetter broken = Typeset(format + "\\newcommand{\\sectionbreak}{\\clearpage}\n" + body, out List<TexError> errors);
+            List<TexParagraph> pars = Pars(broken);
+            string[] lines = pars.Select(p => System.Text.RegularExpressions.Regex.Replace(Line(p), " {2,}", " ").Trim()).ToArray();
+            t.Check(errors.Count == 0 && lines.SequenceEqual(new[] { "Text", "1 ĮVADAS Į DARBĄ", "1.1 Sub part" }),
+                $"the before-code's last command takes the whole title: {string.Join(" / ", lines)} {string.Join("; ", errors)}");
+            t.Check(pars.Count == 3 && pars[1].list.FirstOrDefault() is TexGlueNode indent && Near(Pt(indent.glue.width), 2.5f / 25.4f * 72.27f),
+                "\\titlespacing's left indents the heading");
+            t.Check(broken.vlist.OfType<TexPageBreak>().Count() == 1 && broken.vlist.IndexOf(broken.vlist.OfType<TexPageBreak>().First()) < broken.vlist.IndexOf(pars[1]),
+                "\\sectionbreak clears the page before \\section only");
+            t.Check(!Typeset(format + body, out _).vlist.OfType<TexPageBreak>().Any(), "no \\sectionbreak, no break");
+            yield break;
+        }
+
+        [A_XSDActionDependency("Tex.Setspace", "Test")]
+        private static IEnumerator<int> Setspace(TestContext t)
+        {
+            const string source = "\\documentclass[12pt]{article}\\usepackage{setspace}\\setstretch{1.2}\\begin{document}\\onehalfspacing\nText\n\n\\doublespacing\nMore\\end{document}";
+            TexTypesetter spaced = Typeset(source, out List<TexError> errors);
+            t.Check(errors.Count == 0 && spaced.lineSpread == 1.241f, $"the stretch the first paragraph ends under holds: {spaced.lineSpread} {string.Join("; ", errors)}");
+            t.Check((string?)TexLowering.Compile(source, out _).Element("DocumentLayout")!.Attribute("LineHeight") == "1.489", "and scales the line height");
+            t.Check((string?)TexLowering.Compile("\\documentclass{article}\\begin{document}x\\end{document}", out _).Element("DocumentLayout")!.Attribute("LineHeight") == "1.2",
+                "no setspace keeps 1.2");
+            t.Check(Typeset("\\documentclass{article}\\begin{document}\\doublespacing x\\end{document}", out _).lineSpread == 1.667f, "\\doublespacing at 10pt");
+            TexChar a = Chars("\\documentclass{article}\\newfontface\\sectionfont{Calibri}\\begin{document}{\\large\\fontsize{11pt}{13pt}\\sectionfont A}\\end{document}")[0];
+            t.Check(Pt(a.style.font.size) == 11f, $"a \\newfontface command selects the pending \\fontsize: {Pt(a.style.font.size)}pt");
+            yield break;
+        }
+
+        [A_XSDActionDependency("Tex.MainFont", "Test")]
+        private static IEnumerator<int> MainFont(TestContext t)
+        {
+            string termes = Registered(TexLowering.TermesFont, TexLowering.RomanFont);
+            string carlito = Registered(TexLowering.CarlitoFont, TexLowering.RomanFont);
+            string modern = Registered(TexLowering.RomanFont, TexLowering.MonoFont);
+            XElement document = TexLowering.Compile("\\documentclass{article}\\usepackage{fontspec}\\setmainfont[Ligatures=TeX]{Times New Roman}\\setsansfont{Calibri}"
+                + "\\setmonofont{Latin Modern Roman}\\begin{document}Body \\textsf{sans} \\texttt{code}\\end{document}", out List<TexError> errors);
+            t.Check(errors.Count == 0 && RunFont(document, FindRun(document, "Body")) == termes,
+                $"\\setmainfont{{Times New Roman}} sets the body in {termes}: {RunFont(document, FindRun(document, "Body"))}, {errors.Count} error(s)");
+            t.Check(RunFont(document, FindRun(document, "sans")) == carlito && RunFont(document, FindRun(document, "code")) == modern,
+                $"\\setsansfont and \\setmonofont: {RunFont(document, FindRun(document, "sans"))}, {RunFont(document, FindRun(document, "code"))}");
+            document = TexLowering.Compile("\\documentclass{article}\\usepackage{fontspec}\\setmainfont{No Such Face}\\begin{document}Body\\end{document}", out errors);
+            t.Check(errors.Count == 0 && RunFont(document, FindRun(document, "Body")) == TexLowering.RomanFont,
+                $"an unknown font keeps Latin Modern without an error: {RunFont(document, FindRun(document, "Body"))}");
+            yield break;
+        }
+
+        [A_XSDActionDependency("Tex.FontFace", "Test")]
+        private static IEnumerator<int> FontFace(TestContext t)
+        {
+            string carlito = Registered(TexLowering.CarlitoFont, TexLowering.RomanFont);
+            XElement document = TexLowering.Compile("\\documentclass{article}\\usepackage{fontspec}"
+                + "\\newfontface\\hf[Path=fonts/Calibri/,Extension=.ttf,UprightFont=*-nm]{Calibri}\\newfontfamily\\ff{Carlito}\\begin{document}"
+                + "Body {\\bfseries\\hf Head} {\\hf\\normalfont back} {\\ff fam} {\\fontspec{Calibri}spec} {\\hf\\verb|vrb|}\\end{document}", out List<TexError> errors);
+            XElement? head = FindRun(document, "Head");
+            t.Check(errors.Count == 0 && RunFont(document, head) == carlito && (string?)head?.Attribute("Bold") == "true",
+                $"a \\newfontface command sets bold text in {carlito}: {RunFont(document, head)}, {errors.Count} error(s)");
+            t.Check(RunFont(document, FindRun(document, "back")) == TexLowering.RomanFont && RunFont(document, FindRun(document, "vrb")) == TexLowering.MonoFont,
+                $"\\normalfont and \\verb leave the face: {RunFont(document, FindRun(document, "back"))}, {RunFont(document, FindRun(document, "vrb"))}");
+            t.Check(RunFont(document, FindRun(document, "fam")) == carlito && RunFont(document, FindRun(document, "spec")) == carlito,
+                $"\\newfontfamily and \\fontspec select a face: {RunFont(document, FindRun(document, "fam"))}, {RunFont(document, FindRun(document, "spec"))}");
+            yield break;
+        }
+
+        [A_XSDActionDependency("Tex.Lithuanian", "Test")]
+        private static IEnumerator<int> Lithuanian(TestContext t)
+        {
+            TexHyphenator? lt = TexHyphenator.For("lithuanian");
+            t.Check(lt != null && lt.leftMin == 2 && lt.rightMin == 2, "the Lithuanian patterns load, 2 letters either side");
+            if (lt != null)
+            {
+                bool[]? virsunes = lt.Points("viršūnes");
+                bool[]? renderinimo = lt.Points("renderinimo");
+                bool[]? kompiuteriniuose = lt.Points("kompiuteriniuose");
+                t.Check(virsunes != null && virsunes[3] && renderinimo != null && renderinimo[3] && renderinimo[5]
+                    && kompiuteriniuose != null && kompiuteriniuose[6], "the breaks LuaLaTeX made in the thesis: vir-šūnes, ren-de-rinimo, kompiu-teriniuose");
+            }
+
+            XElement document = TexLowering.Compile("\\documentclass{article}\\usepackage{polyglossia}\\setmainlanguage{lithuanian}"
+                + "\\begin{document}Turi tris viršūnes.\\end{document}", out List<TexError> errors);
+            XElement? run = FindRun(document, "tris");
+            t.Check(errors.Count == 0 && ((string?)run?.Attribute("Text"))?.Contains("vir­šū") == true,
+                $"a Lithuanian paragraph is hyphenated with its patterns: {((string?)run?.Attribute("Text"))?.Replace('­', '~')}");
+            yield break;
+        }
+
+        [A_XSDActionDependency("Tex.Language", "Test")]
+        private static IEnumerator<int> Language(TestContext t)
+        {
+            const string floats = "\\begin{figure}\\caption{A}\\end{figure}\\begin{table}\\caption{B}\\end{table}";
+            string lines = Lines("\\documentclass{article}\\usepackage{polyglossia}\\setmainlanguage{lithuanian}\\renewcommand{\\figurename}{}"
+                + "\\begin{document}" + floats + "\\selectlanguage{english}\\begin{figure}\\caption{C}\\end{figure}\\end{document}", out List<TexError> errors);
+            t.Check(errors.Count == 0 && lines == "1 pav.: A / 1 lentelė: B / Figure 2: C",
+                $"\\begin{{document}} and \\selectlanguage set the caption names and their order: {lines}");
+            lines = Lines("\\documentclass{article}\\usepackage[english,lithuanian]{babel}\\begin{document}" + floats + "\\end{document}");
+            t.Check(lines == "1 pav.: A / 1 lentelė: B",$"babel's last language is the main one: {lines}");
+
+            TexTypesetter typeset = Typeset("\\documentclass{article}\\usepackage{polyglossia}\\setmainlanguage{lithuanian}\\begin{document}"
+                + "\\section{S}Pirmas.\\begin{otherlanguage}{english}\\section{E}First.\\end{otherlanguage}\\section{T}Antras.\\end{document}", out errors);
+            TexParagraph? first = null, english = null, back = null;
+            foreach (TexParagraph p in Pars(typeset))
+                switch (Line(p))
+                {
+                    case "Pirmas.": first = p; break;
+                    case "First.": english = p; break;
+                    case "Antras.": back = p; break;
+                }
+            t.Check(first?.language == "lithuanian" && english?.language == "english" && back?.language == "lithuanian",
+                $"a paragraph takes the language it starts in: {first?.language}, {english?.language}, {back?.language}");
+            t.Check(first?.style.indent == true && english?.style.indent == false && back?.style.indent == true,
+                "Lithuanian indents the first paragraph after a heading, English does not");
+            yield break;
+        }
+
+        [A_XSDActionDependency("Tex.CaptionSetup", "Test")]
+        private static IEnumerator<int> CaptionSetup(TestContext t)
+        {
+            TexTypesetter typeset = Typeset("\\documentclass{article}\\usepackage{caption}\\captionsetup[table]{name=Tab.,labelsep=space,labelfont=bf,font=it}"
+                + "\\captionsetup*[figure]{labelsep=period}\\begin{document}"
+                + "\\begin{figure}\\caption{A}\\end{figure}\\begin{table}\\captionsetup{justification=justified,singlelinecheck=false}\\caption{B}\\end{table}"
+                + "\\begin{figure}\\captionsetup[figure]{labelsep=none}\\caption{C}\\end{figure}\\begin{figure}\\caption{D}\\end{figure}\\end{document}", out List<TexError> errors);
+            List<TexParagraph> pars = Pars(typeset);
+            string lines = string.Join(" / ", pars.ConvertAll(Line));
+            t.Check(errors.Count == 0 && lines == "Figure 1. A / Tab. 1 B / Figure 2C / Figure 3. D",
+                $"name and labelsep per kind, a \\captionsetup in a float stays in it, other keys print nothing: {lines}");
+            bool labelBoldItalic = false, textItalic = false, textBold = true;
+            foreach (TexNode node in pars[1].list)
+                if (node is TexChar c && c.ch == '1') labelBoldItalic = c.style.font.bold && c.style.font.italic;
+                else if (node is TexChar b && b.ch == 'B')
+                {
+                    textItalic = b.style.font.italic;
+                    textBold = b.style.font.bold;
+                }
+            t.Check(labelBoldItalic && textItalic && !textBold,"font applies to the whole caption, labelfont to the label only");
+            yield break;
+        }
+
+        [A_XSDActionDependency("Tex.RaggedNoHyphen", "Test")]
+        private static IEnumerator<int> RaggedNoHyphen(TestContext t)
+        {
+            IGlyphMetrics metrics = new FontAssetGlyphMetrics();
+            AtlasMetaData atlas = AssetRegistries.GetRegistryByValueType<string, FontAsset>(typeof(FontAsset))["default"].atlasMetaData;
+            const string text = "aaaa bbbb­cccc dddd";
+            TextMeasurer.Run run = new TextMeasurer.Run(text, 0, text.Length, "default", atlas, 16, FontStyle.Regular);
+            List<TextMeasurer.Run> runs = new List<TextMeasurer.Run> { run };
+            float width = TextMeasurer.MeasureAdvance('-', run) + 1f;
+            foreach (char c in "aaaa bbbb")
+                width += TextMeasurer.MeasureAdvance(c, run);
+
+            BlockLayout justified = TextMeasurer.MeasureBlock(runs, width, metrics, 1.5f, optimal: true);
+            BlockLayout ragged = TextMeasurer.MeasureBlock(runs, width, metrics, 1.5f, optimal: true, ragged: true);
+            bool hyphenated = false;
+            foreach (TextLine line in ragged.lines)
+                hyphenated |= line.hyphen != 0f;
+            t.Check(justified.lines[0].hyphen != 0f && !hyphenated && ragged.lines.Count == 3,
+                $"a ragged paragraph takes a line more rather than a hyphen, as TeX's fil glue does: {ragged.lines.Count} lines");
+            yield break;
+        }
+
+        // The asset when it is registered in this host, else the fallback.
+        private static string Registered(string asset, string fallback) =>
+            AssetRegistries.GetRegistryByValueType<string, FontAsset>(typeof(FontAsset)).ContainsKey(asset) ? asset : fallback;
+
+        // The first run whose text holds the given text.
+        private static XElement? FindRun(XElement document, string text)
+        {
+            foreach (XElement run in document.Descendants("Run"))
+                if (((string?)run.Attribute("Text"))?.Contains(text) == true) return run;
+            return null;
+        }
+
+        // The font a run draws in: its own FontName, else the Text style's.
+        private static string? RunFont(XElement document, XElement? run)
+        {
+            if (run == null) return null;
+            if ((string?)run.Attribute("FontName") is string own) return own;
+            foreach (XElement style in document.Element("DocumentLayout")!.Elements("TextStyle"))
+                if ((string?)style.Attribute("Type") == "Text") return (string?)style.Attribute("FontName");
+            return null;
         }
         #endregion
     }

@@ -18,9 +18,9 @@ Before implementing:
 Every change to the repo runs four steps, in order:
 
 1. **Analyze** - read the code that's actually involved. No plan built on a guess about what a file
-   contains.
+   contains. When the change touches C#, load the `aurora-code` skill.
 2. **Write the plan** - files touched and what changes in each, anything *new* (file, type, signature,
-   dependency), what's deliberately left out, and the verification checkpoints (§5's format). Forks go
+   dependency), what's deliberately left out, and the verification checkpoints (§4's format). Forks go
    here as forks, not as a choice already made (§1).
 3. **Ask. Then stop.** The plan is the whole turn. Not a plan followed by the diff in the same breath.
 4. **Go, or don't.** Approved: build exactly that. Rejected: stop and re-plan - never build a rejected
@@ -41,31 +41,18 @@ A small change gets a small plan - one line is fine. It doesn't get to skip the 
 
 Reading, searching, building and answering questions aren't changes. Writing to a file is.
 
-The plan I approve is the "agreed plan" §8 protects: once you're coding, departing from it stops and
+The plan I approve is the "agreed plan" §6 protects: once you're coding, departing from it stops and
 asks again.
 
 The test: about to write to a file, and you can't point at the message where I said go? You've broken this.
 
-## 3. Simplicity First
-
-**Minimum code that solves the problem. Nothing speculative.**
-
-- No features beyond what was asked.
-- No abstractions for single-use code.
-- No "flexibility" or "configurability" that wasn't requested.
-- No error handling for impossible scenarios.
-- If you write 200 lines and it could be 50, rewrite it.
-
-Ask yourself: "Would a senior engineer say this is overcomplicated?" If yes, simplify.
-
-## 4. Surgical Changes
+## 3. Surgical Changes
 
 **Touch only what you must. Clean up only your own mess.**
 
 When editing existing code:
 - Don't "improve" adjacent code, comments, or formatting.
 - Don't refactor things that aren't broken.
-- Match existing style, even if you'd do it differently.
 - If you notice unrelated dead code, mention it - don't delete it.
 
 When your changes create orphans:
@@ -74,7 +61,7 @@ When your changes create orphans:
 
 The test: Every changed line should trace directly to the user's request.
 
-## 5. Goal-Driven Execution
+## 4. Goal-Driven Execution
 
 **Define success criteria. Loop until verified.**
 
@@ -97,43 +84,7 @@ the next step depends on it compiling.
 
 Strong success criteria let you loop independently. Weak criteria ("make it work") require constant clarification.
 
-## 6. Comments In Code
-
-**Rationale lives in the docs. Source files carry names, not explanations.**
-
-- **No "why" in code.** Tradeoffs, rejected alternatives, budgets, consequences, design reasoning -
-  all of it goes to `DOCUMENTATION/ClaudeMemory/*` and `DOCUMENTATION/Engine*`. Never above a method.
-- **Variables: comment the group, never the member.** One short label over a block of related fields.
-- **Methods: one very short descriptor, or nothing.** Not a sentence about context or consequences.
-- **Inside a method: only hard loops and genuinely long methods**, to label sections. A straightforward
-  ~20-line method gets nothing inside it.
-- Don't re-comment code you're editing. If a comment must change, it doesn't get longer.
-
-```csharp
-// WRONG - one per field, and a rationale paragraph over the method
-public float x;          // horizontal position
-public float top;        // top edge
-public float height;     // line height
-
-// Re-measures one block and slides everything below it - the typing path, where a keystroke
-// changes one paragraph and leaves every other block's lines as they were. The shift is a loop
-// rather than a Fenwick tree because a document is a few hundred blocks and the measurement
-// that just ran costs more than the additions do.
-public void InvalidateBlock(int index)
-
-// RIGHT - one label for the group, one short descriptor for the method
-// caret geometry in document space
-public float x;
-public float top;
-public float height;
-
-// Re-measures one block and shifts the tops below it.
-public void InvalidateBlock(int index)
-```
-
-The test: if the comment explains *why*, it belongs in ClaudeMemory, not the file.
-
-## 7. Answering Back
+## 5. Answering Back
 
 **Terse plus caveats. No recap.**
 
@@ -147,7 +98,7 @@ The test: if the comment explains *why*, it belongs in ClaudeMemory, not the fil
 - **Architecture is terse by default too.** Full reasoning when asked "why", when asked for options,
   or in plan mode. Don't volunteer the deep dive.
 
-## 8. Mid-Implementation Changes
+## 6. Mid-Implementation Changes
 
 **Any departure from the agreed plan stops and asks. No exceptions.**
 
@@ -158,7 +109,7 @@ The test: if the comment explains *why*, it belongs in ClaudeMemory, not the fil
 - Do finish every part that doesn't depend on the answer before asking, so the round-trip costs one
   message and not the whole task.
 
-## 9. Git Commits
+## 7. Git Commits
 
 **Subject plus one-line bullets. Nothing else.**
 
@@ -168,7 +119,7 @@ The test: if the comment explains *why*, it belongs in ClaudeMemory, not the fil
 - No opening prose paragraph, no `Key changes:` header, no closing paragraph, no metrics or
   verification block.
 - Bullets say what changed, not why. Rejected alternatives and measurements go to
-  `DOCUMENTATION/ClaudeMemory/Decisions/*`, same as §6.
+  `DOCUMENTATION/ClaudeMemory/Decisions/*`, same as code comments (`aurora-code`).
 - **Never** add a `Co-Authored-By` trailer.
 - **One commit unless I ask for more.** Everything in the tree lands as a single commit, however many
   concerns it spans. Split into slices only when I explicitly ask for multiple commits.
@@ -186,7 +137,7 @@ Virtualize the document view onto the layout cache
 - Text wraps on word boundaries
 ```
 
-## 10. Cheaper Agents For Easier Work
+## 8. Cheaper Agents For Easier Work
 
 **Hand off the mechanical. Keep the judgment. Verify everything that comes back.**
 
@@ -199,7 +150,7 @@ permission, no need to ask me each time.
   agreed pattern across N call sites, mass renames, gathering "which files mention X", reading a
   file set to answer one specific question, transcribing a table.
 - **Stays with you:** everything in §1 and §2 - design, forks, the plan itself. Vulkan, threading and
-  layout correctness. Anything that could turn into a departure (§8), because a subagent cannot
+  layout correctness. Anything that could turn into a departure (§6), because a subagent cannot
   notice it is departing from a plan it was never shown.
 - **The brief must stand alone.** Paths, exact old and new text, and the boundary of what it may
   touch. If you find yourself writing "use your judgment", it does not qualify.
@@ -211,7 +162,7 @@ permission, no need to ask me each time.
 The test: could you write the instruction precisely enough that a wrong result would be obvious on
 sight? Then send it. Otherwise do it yourself.
 
-## 11. Editing Files
+## 9. Editing Files
 
 **Edit files with the editing tools. Never through a shell script.**
 
@@ -225,7 +176,7 @@ sight? Then send it. Otherwise do it yourself.
 
 The test: is a tracked file about to change? Then an edit tool is what changes it.
 
-## 12. Validation Errors
+## 10. Validation Errors
 
 **A `[Vulkan]` log line stops the work. Report it, suggest a fix, wait.**
 
@@ -235,7 +186,7 @@ The test: is a tracked file about to change? Then an edit tool is what changes i
 This project is a C# game engine called Aurora using Silk.NET/Vulkan/GLFW.
 Before suggesting new code, locate it through the §2 chain (`where-things-live.md` → `INDEX.md` → grep `NAMESPACES.md`).
 Current focus is in "DOCUMENTATION/Work in Progress List.md".
-Explain architectural decisions - why one way and not another - when asked for the reasoning; see §7 for when to volunteer it and §6 for where it gets written down.
+Explain architectural decisions - why one way and not another - when asked for the reasoning; see §5 for when to volunteer it and the `aurora-code` skill's Comments rules for where it gets written down.
 When showing code in a reply, show only what changes and where it goes, not the whole file. A new class is written out in full, without usings unless they come from a new NuGet package.
 Data and config files are XML, because the XSD layer generates and validates their schemas; don't introduce JSON or another format.
 When creating new logic or systems update DOCUMENTATION/ClaudeMemory/* and DOCUMENTATION/Engine*
@@ -274,8 +225,6 @@ the path through `NAMESPACES.md` rather than hardcoding paths, which rot on refa
 `DOCUMENTATION/ClaudeMemory/`. (Architectural changes: also read root `Decisions.md`.)
 
 ## Shared Conventions
-- **Style:** Mix of OOP and data-oriented (ECS-first for runtime, OOP for tooling/editor)
-- **Naming:** PascalCase types, camelCase locals, `I`-prefix interfaces
 - **No raw resource management** — wrap Vulkan handles in disposable C# types
 - **GitHub branching:** [add your branch strategy here if any]
 

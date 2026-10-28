@@ -46,6 +46,7 @@ It never throws. Problems are collected in `errors` and the run recovers the way
 | `hyphenation` | field | Word to break points, filled by `\hyphenation{…}`; document exceptions beat the pattern file's. |
 | `parIndent` | field | The paragraph indent in points, 15, 17 or 18 for a 10, 11 or 12pt class. |
 | `displaySkips` | field | The display skips in points, 10, 11 and 12 for a 10, 11 and 12pt class. |
+| `lineSpread` | field | The `\baselinestretch` in force when the first body paragraph ended; lowering sets the document's line height to 1.2 times it. |
 | `documentClass`, `sizeOption`, `paper` | fields | What `\documentclass[…]{…}` and `geometry` asked for. |
 | `marginTop`, `marginBottom`, `marginLeft`, `marginRight` | fields | Margins in mm; null means the class default. |
 | `normalSize`, `expander` | fields | The base size and the expander underneath. |
@@ -146,6 +147,10 @@ It never throws. Problems are collected in `errors` and the run recovers the way
 	a chapter is a "Chapter N" Text block at `\huge` and its title as a Heading1 at `\Huge`
 	`\paragraph` and `\subparagraph` are bold run-in headings
 	`\chapter` in an article is an error and is set as a section
+	the number is the text of `\the<name>` expanded   // so LTPlius's `\renewcommand\thesection{\arabic{section}.}` gives "1." and "1.1."
+	report and book define `\thesection` as `\thechapter.\arabic{section}`
+	the first time a sectioning command is dispatched
+		insert `\ifcsname <name>break\endcsname\<name>break\fi`, then the command again   // a defined `\sectionbreak` runs before every `\section`
 
 ### Vertical glue and indent
 	`VSkip` appends vertical glue in natural widths, with no stretch or shrink
@@ -181,7 +186,7 @@ It never throws. Problems are collected in `errors` and the run recovers the way
 		after a mid-paragraph float the space that follows is eaten when one preceded it (`\@esphack`)
 	a float inside a box, footnote, caption, heading, table cell or another float reports "LaTeX Error: Not in outer par mode" and stays inline
 	where the float lands on a page is `Paginate`'s decision, not the typesetter's
-	`\caption` sets a centred "Figure n: text" paragraph, numbered chapter.n in a report or book
+	`\caption` sets a centred paragraph built from the language's `\fnum@<kind>` and the caption settings (see Languages and captions), numbered chapter.n in a report or book
 	`\includegraphics` looks for the file under the source's folder and each `\graphicspath` entry
 		with no extension, try .png, .jpg, .jpeg
 		a PDF, EPS or PS is reported as unsupported
@@ -190,6 +195,11 @@ It never throws. Problems are collected in `errors` and the run recovers the way
 	for each cell
 		start from the tabular's starting style, a cell is not an expander group
 		`&` ends the cell and the spaces after it are skipped
+		`Dispatch` starts a cell with `StartCell` when a tabular is open with no cell and the next token is a non-space character or a known command that is not in `rowStart`
+			`rowStart` holds hline, cline, toprule, midrule, bottomrule, cmidrule, multicolumn and endtabular
+			an unknown command does not start a cell
+			so the `{\bfseries` of `{\textbf{Aa}} & …` runs inside the first cell, and the style does not leak out of the table
+		`StartParagraph` and `BeginTabular` still start a cell lazily as a backstop
 	`\multicolumn` gives the cell its span
 		a `|` in a `\multicolumn` spec is ignored
 	`|` in the column spec is counted into the tabular's `vrules`, one count per column boundary
@@ -241,6 +251,8 @@ The length and parameter commands are expander primitives. `\newlength` takes th
 	start from normalfont at the normal size, then the `\titleformat` format tokens
 	an empty label shows no number
 	`\the<level>` in a label is replaced by the full number
+	the before-code is followed by the title in braces   // a before-code ending in `\MakeUppercase` takes the whole title
+	`\titlespacing`'s left argument becomes the heading's indent
 	run `@endhead`, then the after-code
 	`@endheadafter` adds the after-skip and keeps the next paragraph unindented
 
@@ -249,8 +261,68 @@ The length and parameter commands are expander primitives. `\newlength` takes th
 	apply the options in the square brackets over them
 	`Item`, `StartParagraph` and `EndEnvironment` use the label, `leftmargin`, `itemsep`, `parsep` and `topsep` they hold
 	a label's commands pick a marker: `\rule` and `\blacksquare` Square, `\textbullet` Disc, `\circ` Circle, `\arabic` Decimal, and so on   // anything else keeps the default marker
+	inside the environment's group, set `\topsep`, `\itemsep` and `\parsep` from those settings or the class default   // as `\@listi` does at every list's begin
+	`Item` adds the `\itemsep` and `\parsep` registers
+	the skip at the end of the list stays the value computed at the begin
+
+A global `\setlength` of `\topsep`, `\itemsep` or `\parsep` is overwritten at the next list's begin, as in LaTeX, and inside a list only `\itemsep` and `\parsep` take effect, because the end skip was computed at the begin. `\partopsep` is a register but is not added.
 
 `\setlist` with a number reads as every level. Only seven enumitem keys are read; the others are logged. Times packages (`mathptmx`, `times`, `tgtermes`, `newtxtext`) set `times`, and lowering then sets the text in TeX Gyre Termes.
+
+#### Line spacing with setspace
+	`\setstretch{x}` and `\linespread{x}` call `Stretch(x)`, which sets `lineStretch`   // `\linespread` needs no `\selectfont`
+	`\onehalfspacing` calls `Stretch` with the entry of `oneHalfStretches` for the class size (1.25, 1.213, 1.241 at 10, 11, 12pt)
+	`\doublespacing` calls `Stretch` with the entry of `doubleStretches` (1.667, 1.618, 1.655)
+	`\singlespacing` calls `Stretch(1)`
+	`EndParagraph`
+		if this is the first body paragraph of the main list in the document
+			`bodyStretch` = `lineStretch`
+	a stretch changed after that is logged once and ignored
+	`lineSpread` = `bodyStretch`, and lowering sets the document's `LineHeight` to 1.2 × `lineSpread`
+
+The line height is one value for the whole document, so floats and footnotes are set at it where setspace would keep them single, and `\fontsize`'s second argument is not read. `\newfontface\cs{…}` defines `\cs` to set the face and then run `\selectfont`, so `\fontsize{a}{b}\cs` takes the pending size.
+
+#### Fonts with fontspec
+`fontspec` is a known package. Its commands record or select a font by the name the source gives, and lowering decides what that name draws in (see Font resolution below). The file keys (`Path=`, `Extension=`, `UprightFont=`) and the other options (`Ligatures=TeX`) are read and ignored, so the font is found by its family name.
+	`\setmainfont`, `\setsansfont` and `\setmonofont` store the name `FontName` reads in `mainFont`, `sansFont` and `monoFont`
+	`\fontspec{name}` sets the `face` of the current `TexFont` to the name
+	`\newfontface\cs{name}` and `\newfontfamily\cs{name}` both call `NewFontFace`
+		`\cs` sets `face` to the name
+		then runs `selectfont`   // so a pending `\fontsize` still applies
+	`FontName`
+		read `[options]{name}[options]`
+		return the name and drop the options
+	`\rmfamily`, `\sffamily`, `\ttfamily`, `\normalfont` and the Mono switches (`\verb`, verbatim and code paragraphs, `\url`) clear `face`
+	a face overrides the family and keeps series, shape and size
+	`TexFont` equality includes `face`, so runs split at a face change
+
+#### Languages and captions
+`polyglossia`, `caption` and `indentfirst` are known packages, and `babel` takes its main language from the last option that has a `\captions<name>`. A language decides three things: the caption names, the hyphenation patterns of a paragraph, and whether the first paragraph after a heading is indented. The language is per paragraph: a `TexParagraph` records the one it started in, so `\foreignlanguage` and a `\selectlanguage` in mid-paragraph do not change how the words they cover hyphenate.
+	`\setmainlanguage` and `\setdefaultlanguage` store `mainLanguage`
+	`\setotherlanguage[opts]{x}` is read, `\setotherlanguages` is read and ignored
+	`\SetLanguageKeys{x}{indentfirst=…}` sets the language's entry in `indentFirsts`   // Lithuanian is true
+	`SelectLanguage (name, captions)`
+		set `language` and `indentFirst`
+		when captions, insert `\captions<name>`
+		`expander.Save` restores both when the group ends
+	`\selectlanguage`, `\foreignlanguage[opts]{x}{text}` and the `otherlanguage` environments call `SelectLanguage`   // `\foreignlanguage` sets its text in a group and does not apply the language
+	`\begin{document}`
+		when a package set `mainLanguage`, `SelectLanguage (mainLanguage, true)`   // otherwise a preamble `\renewcommand\figurename` in a plain document would be overwritten
+	`StartParagraph`
+		indent unless the paragraph follows a heading and `indentFirst` is false
+		record `language` on the new `TexParagraph`
+	`\captionsetup[kind]{keys}` (`CaptionSetup`)
+		for each of the keys name, labelsep, labelfont, font, textfont
+			store a `\caption@key` macro, or `\caption@key@kind` for one kind   // so a `\captionsetup` inside a float ends with its group
+		other keys are read and ignored
+	`Caption`
+		insert `{font {lfont [\let\<kind>name\caption@name@<kind>] \fnum@<kind>{n}} sep {tfont text}} \@endcaption`
+	`\captionsenglish` defines `\fnum@figure` as "Figure~n"
+	`\captionslithuanian` defines `\fnum@figure` as "n~pav."
+	`\nobreakspace` and `~`
+		`StartParagraph`
+		`TexPenalty (10000)`
+		interword glue   // TeX's tie, not the U+00A0 glyph
 
 ### Run, the end of the document
 	typeset the body up to `\end{document}`
@@ -275,10 +347,11 @@ The length and parameter commands are expander primitives. `\newlength` takes th
 ### `TexLowering.Lower`
 	`Hyphenate` first, over `vlist`, each footnote's `vlist` and each table cell, top level only so nothing inside an `\mbox` or `\hbox` is touched
 		for each paragraph
+			pick `TexHyphenator.For (language)` for the paragraph's `language`   // a language with no pattern file gets no hyphenation
 			for each word, a run of letters in one style that is not monospaced
 				capitals are lowered, and the ligatures U+FB00 to U+FB04 are taken apart for lookup
-				leave the word as written when it holds any other letter (é, ï) or already holds a `\-`
-				`TexHyphenator.Points` gives the break points: document exceptions, then the file's exceptions, then the patterns, with minimums 2 and 3
+				leave the word as written when it already holds a `\-`
+				`TexHyphenator.Points` gives the break points: document exceptions, then the file's exceptions, then the patterns, with the minimums of the pattern file (2 and 3 for English, 2 and 2 for Lithuanian)
 				insert a U+00AD character node at each point, none inside a ligature
 	`Advance` gives U+00AD no width
 	for each paragraph in `vlist`
@@ -318,12 +391,33 @@ The length and parameter commands are expander primitives. `\newlength` takes th
 	TextStyles Text and Quote use `latin-modern`, Code uses `latin-modern-mono`, Heading levels take the size of the first heading of that level
 	1pt is 96/72.27 pixels
 	margins: article `\textwidth` is 345, 360 or 390pt for 10, 11 and 12pt, centred on the paper; vertical is (paper height − 550pt)/2
-	the roman face is TeX Gyre Termes when the typesetter loaded a Times package, else Latin Modern; ex follows it
+	the roman face is TeX Gyre Termes when the typesetter loaded a Times package, else Latin Modern; fontspec names can replace the roman, sans and mono faces (see Font resolution below); ex follows the roman
 	horizontal glue of fil order or higher becomes a Run `Text=" " Fill="true"`, never trimmed
 	a paragraph piece of only rule boxes and glue becomes a `<Block StylingType="Rule" Weight>`; a rule box anywhere else draws nothing
 	list blocks take `Marker` and `ListIndent` from the paragraph's style
 	the page is `<Page Size="Custom" Width Height>` when the source set a paper, and carries `FitHeight` when set
 	a negative space above a block is written as a negative `SpaceBefore`   // `\vspace{-7pt}`
+
+### Font resolution in `TexLowering`
+A font name from fontspec becomes a font asset here. Termes and Carlito are bundled only in Thorium; in Carbon and AuroraEditor the names fall back to Latin Modern.
+	`Lower` clears `named`, the per-compile cache of name to asset
+	`Faces(typesetter)` sets `roman`, `sans` and `mono`
+		a Times package gives Termes as the roman face, else Latin Modern
+		`mainFont`, `sansFont` and `monoFont` replace them when `Named` resolves them
+		a null typesetter gives the defaults
+	`FontFor(font)`
+		if `font.face` resolves through `Named`, return it
+		else if the family is Mono, return `mono`
+		else if the family is Sans, return `sans`, or `roman` when there is no sans font
+		else return `roman`
+	`Named(name)`
+		if `named` has the name, return it
+		if `aliases` has the name and the alias asset is registered in this host, use it   // Times New Roman, Times, Nimbus Roman, TeX Gyre Termes → `tex-gyre-termes`; Calibri, Carlito → `carlito`; Latin Modern Roman → `latin-modern`; Latin Modern Mono → `latin-modern-mono`
+		else if a font asset of that name is registered, use it
+		else if `FontLibrary.AssetFor(name)` finds a family imported through the font picker or a bundled family, use it
+		else log the name once (Info, channel Tex; `missing` keeps it from repeating), keep the default face and return null
+	a font imported later through the picker is used on the next compile, because `named` is per compile and `missing` is not
+	the running-head `Slot`, `Advance`, `TextRun`, the Code style, Code blocks and `TexAtlasMetrics.XHeight` all go through `Faces` and `FontFor`
 
 ### Pages, footnotes and `PageRefs` in `TexLowering`
 	`Layout` writes `<Page Style FootnoteSkip>` and its `<PageStyle>` and `<Slot>` children
@@ -380,7 +474,7 @@ Not exported: clickable `\href` links, bookmarks, floating pictures, gradients a
 List bullets are exported. While recording, an icon control records its name and artwork box, and the writer draws the six default bullet shapes (disc, circle, square, outlined square, triangle, outlined triangle) as filled paths from a copy of their SVG geometry, with the outlines even-odd. Any other icon is skipped. If a bullet SVG changes, the writer's copy has to follow.
 
 ## Not supported yet
-`\suppressfloats`, `placeins` and `\FloatBarrier`, `afterpage`, `tabularx`, `tabular*`, `longtable`, `\multirow`, natbib, `\autoref`, `\nameref`, `\listoffigures`, `\listoftables`, subfigure, hanging indent in bibliography entries, clickable references, `\arrayrulecolor`, `\parindent` on left-aligned tables, `\numberwithin`, `subequations`, `\intertext`, `\shoveleft`, `\shoveright`, `\hdotsfor`, mathtools, `\hbox to`, `\setbox`, `\wd`, `\lastskip`, `\input`. There is no kerning. Vertical glue has no stretch or shrink, infinite glue vanishes except horizontal fil glue, which lowering turns into a fill run, `\tolerance`, `\pretolerance`, `\emergencystretch` and `\exhyphenpenalty` are registers that nothing reads, a `\rule` inside running text draws nothing, `\raisebox` ignores its raise, titlesec shapes other than hang and block are set as hang, `\partopsep` is not added, bibliography entries have no `\itemsep` between them, a quotation's `\listparindent` is not modelled, a `\cline` under part of a merged cell rules the whole cell, booktabs gaps do not interrupt vertical rules, a spacer never breaks a line, and display formulas inside table cells get no display skips. Hyphenation is US English only, so accented words are never hyphenated; an explicit hyphen in a word ("well-known") is not a break opportunity; `\lefthyphenmin`, `\righthyphenmin`, `\uchyph` and `\hyphenpenalty` are not read. The preview breaks a paragraph Knuth-Plass only where a break set exists at tolerance 200; the rest stay greedy. Small caps are set upright and Sans is set in Roman. The em dash and the en dash do not draw at 13 px in a note. A `\def` inside a tabular cell leaks into later cells. Two-sided page styles (`[LE,RO]` reads only the odd entry, `\cleardoublepage` is `\clearpage`), `\pagenumbering`, `\footnotemark`, `\footnotetext`, footnotes split across pages, `\footnotesep`, `\MakeUppercase` and `\renewcommand` of `\sectionmark` are not supported; a mid-document `\pagestyle` sets the whole document's style, and a `\label` inside display math or a table cell has no page site.
+`\suppressfloats`, `placeins` and `\FloatBarrier`, `afterpage`, `tabularx`, `tabular*`, `longtable`, `\multirow`, natbib, `\autoref`, `\nameref`, `\listoffigures`, `\listoftables`, subfigure, hanging indent in bibliography entries, clickable references, `\arrayrulecolor`, `\parindent` on left-aligned tables, `\numberwithin`, `subequations`, `\intertext`, `\shoveleft`, `\shoveright`, `\hdotsfor`, mathtools, `\hbox to`, `\setbox`, `\wd`, `\lastskip`. There is no kerning. Vertical glue has no stretch or shrink, infinite glue vanishes except horizontal fil glue, which lowering turns into a fill run, `\tolerance`, `\pretolerance`, `\emergencystretch` and `\exhyphenpenalty` are registers that nothing reads, a `\rule` inside running text draws nothing, `\raisebox` ignores its raise, titlesec shapes other than hang and block are set as hang, `\partopsep` is not added (the skip before a list after a blank line is 27.8 pt where the thesis has 30.9), `\titlespacing`'s right argument is ignored, `\roman`, `\alph`, `\Roman` and `\Alph` are undefined inside `\the<counter>`, `\labelsep` and `\leftmargin` are not registers, setspace's `spacing`, `onehalfspace` and `doublespace` environments are missing, `\sectionbreak` runs whether or not titlesec is loaded, bibliography entries have no `\itemsep` between them, a quotation's `\listparindent` is not modelled, a `\cline` under part of a merged cell rules the whole cell, booktabs gaps do not interrupt vertical rules, a spacer never breaks a line, and display formulas inside table cells get no display skips. Hyphenation is US English only, so accented words are never hyphenated; an explicit hyphen in a word ("well-known") is not a break opportunity; `\lefthyphenmin`, `\righthyphenmin`, `\uchyph` and `\hyphenpenalty` are not read. The preview breaks a paragraph Knuth-Plass only where a break set exists at tolerance 200; the rest stay greedy. Small caps are set upright and Sans is set in Roman unless `\setsansfont` names a font. fontspec's file keys and options are ignored, a font name that resolves to nothing keeps the default face and is only logged, and `indentfirst` is not supported. The em dash and the en dash do not draw at 13 px in a note. A `\def` inside a tabular cell leaks into later cells. Two-sided page styles (`[LE,RO]` reads only the odd entry, `\cleardoublepage` is `\clearpage`), `\pagenumbering`, `\footnotemark`, `\footnotetext`, footnotes split across pages, `\footnotesep` and `\renewcommand` of `\sectionmark` are not supported; a mid-document `\pagestyle` sets the whole document's style, and a `\label` inside display math or a table cell has no page site.
 
 ## Related
 - [[Tex Expander]] — the tokens this reads

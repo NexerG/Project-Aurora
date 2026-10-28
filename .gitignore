@@ -404,6 +404,7 @@ FodyWeavers.xsd
 # Obsidian
 DOCUMENTATION/.obsidian/
 DOCUMENTATION/Extras/
+DOCUMENTATION/Business/
 
 # Generated UI stress-test notes — regenerate with _Build/GenerateStressNotes.ps1
 Thorium/Data/Notes/Stress Test/

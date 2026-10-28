@@ -180,6 +180,9 @@ namespace ArctisAurora.Core.Tex
         public string? markLeft;
         public string? markRight;
 
+        // the language it started in, which picks its hyphenation patterns
+        public string language = "english";
+
         public TexParagraph(TexParStyle style) => this.style = style;
     }
 

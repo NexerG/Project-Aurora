@@ -9,15 +9,25 @@ namespace ArctisAurora.Core.Tex
             \newcounter{subsection}[section]\newcounter{subsubsection}[subsection]%
             \newcounter{paragraph}[subsubsection]\newcounter{subparagraph}[paragraph]%
             \newcounter{footnote}\newcounter{figure}[chapter]\newcounter{table}[chapter]\newcounter{equation}[chapter]%
+            \def\arabic#1{\expandafter\the\csname c@#1\endcsname}%
+            \def\thesubsection{\thesection.\arabic{subsection}}\def\thesubsubsection{\thesubsection.\arabic{subsubsection}}%
+            \def\theparagraph{\thesubsubsection.\arabic{paragraph}}\def\thesubparagraph{\theparagraph.\arabic{subparagraph}}%
             \dimendef\textwidth=250 \dimendef\linewidth=251 \dimendef\columnwidth=252 \dimendef\textheight=253 %
             \dimendef\paperwidth=254 \dimendef\paperheight=255 %
             \countdef\hyphenpenalty=250 \countdef\exhyphenpenalty=251 \countdef\tolerance=252 \countdef\pretolerance=253 %
             \hyphenpenalty=50 \exhyphenpenalty=50 \tolerance=200 \pretolerance=100 %
             \dimendef\parindent=249 \dimendef\emergencystretch=248 \skipdef\parskip=250 %
+            \skipdef\topsep=246 \skipdef\partopsep=247 \skipdef\itemsep=248 \skipdef\parsep=249 %
             \parindent=15pt \parskip=0pt plus1pt\relax
             \def\space{ }\newcommand\uline[1]{{\@underline#1}}\newcommand\hypersetup[1]{}%
             \def\raisebox#1{\@ifnextchar[\@rbopt\mbox}\def\@rbopt[#1]{\@ifnextchar[\@rbopt\mbox}%
-            \def\figurename{Figure}\def\tablename{Table}\def\refname{References}\def\bibname{Bibliography}%
+            \def\captionsenglish{\def\figurename{Figure}\def\tablename{Table}\def\refname{References}\def\bibname{Bibliography}%
+            \def\fnum@figure##1{\figurename\nobreakspace##1}\def\fnum@table##1{\tablename\nobreakspace##1}}%
+            \let\captionsamerican\captionsenglish\let\captionsusenglish\captionsenglish%
+            \let\captionsbritish\captionsenglish\let\captionsUKenglish\captionsenglish%
+            \def\captionslithuanian{\def\figurename{pav.}\def\tablename{lentelė}\def\refname{Literatūra}\def\bibname{Literatūra}%
+            \def\fnum@figure##1{##1\nobreakspace\figurename}\def\fnum@table##1{##1\nobreakspace\tablename}}%
+            \captionsenglish\def\caption@font{}\def\caption@lfont{}\def\caption@tfont{}\def\caption@sep{:\space}%
             \def\newblock{\hskip .11em plus .33em minus .07em\relax}%
             \newcommand\textbf[1]{{\bfseries#1}}\newcommand\textmd[1]{{\mdseries#1}}%
             \newcommand\textit[1]{{\itshape#1}}\newcommand\textsl[1]{{\slshape#1}}%

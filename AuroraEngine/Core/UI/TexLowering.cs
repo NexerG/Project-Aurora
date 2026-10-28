@@ -1,3 +1,4 @@
+using ArctisAurora.Core.Diagnostics;
 using ArctisAurora.Core.Filing;
 using ArctisAurora.Core.Registry.Assets;
 using ArctisAurora.Core.Tex;
@@ -16,10 +17,24 @@ namespace ArctisAurora.Core.UI
         public const string MonoFont = "latin-modern-mono";
         public const string MathFont = "latin-modern-math";
         public const string TermesFont = "tex-gyre-termes";
+        public const string CarlitoFont = "carlito";
 
-        // the roman face of the document being lowered
-        [ThreadStatic] private static string? roman;
+        private static readonly LogChannel Log = LogChannel.For("Tex");
+
+        // fontspec names drawn in a bundled face
+        private static readonly Dictionary<string, string> aliases = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["Times New Roman"] = TermesFont, ["Times"] = TermesFont, ["TeX Gyre Termes"] = TermesFont, ["Nimbus Roman"] = TermesFont,
+            ["Calibri"] = CarlitoFont, ["Carlito"] = CarlitoFont,
+            ["Latin Modern Roman"] = RomanFont, ["Latin Modern Mono"] = MonoFont
+        };
+
+        // the roman, sans and mono faces of the document being lowered; fontspec names resolved this compile, and names never found
+        [ThreadStatic] private static string? roman, sans, mono;
+        [ThreadStatic] private static Dictionary<string, string?>? named;
+        [ThreadStatic] private static HashSet<string>? missing;
         private static string Roman => roman ?? RomanFont;
+        private static string Mono => mono ?? MonoFont;
 
         private const float Unity = 65536f;
         private const float PxPerPt = 96f / 72.27f;
@@ -43,14 +58,14 @@ namespace ArctisAurora.Core.UI
         public static XElement Lower(TexTypesetter typesetter, List<int>? blockLines = null)
         {
             XElement root = new XElement("Document");
-            roman = typesetter.times ? TermesFont : RomanFont;
+            named?.Clear();
+            Faces(typesetter);
             int normal = Px(typesetter.normalSize);
             Dictionary<int, int> headings = HeadingSizes(typesetter.vlist);
             root.Add(Layout(typesetter, normal, headings));
-            TexHyphenator hyphenator = typesetter.hyphenate ? TexHyphenator.English ?? NoPatterns : NoPatterns;
-            Hyphenate(typesetter.vlist, hyphenator, typesetter.hyphenation);
+            Hyphenate(typesetter.vlist, typesetter.hyphenate, typesetter.hyphenation);
             foreach (TexFootnote note in typesetter.footnotes)
-                Hyphenate(note.vlist, hyphenator, typesetter.hyphenation);
+                Hyphenate(note.vlist, typesetter.hyphenate, typesetter.hyphenation);
 
             Spacing spacing = new Spacing
             {
@@ -141,7 +156,7 @@ namespace ArctisAurora.Core.UI
             float top = (typesetter.paperHeight - TexTypesetter.TextHeight * MmPerPt) / 2f;
 
             XElement layout = new XElement("DocumentLayout",
-                new XAttribute("LineHeight", "1.2"),
+                new XAttribute("LineHeight", Format(1.2f * typesetter.lineSpread)),
                 new XAttribute("BlockSpacing", "0"),
                 new XAttribute("ListIndent", Format(normal * 1.875f)),
                 new XAttribute("OptimalBreaks", "true"),
@@ -163,7 +178,7 @@ namespace ArctisAurora.Core.UI
                     typesetter.pageStyles.Select(s => PageStyle(s.Key, s.Value))),
                 Style("Text", normal, Roman),
                 Style("Quote", normal, Roman),
-                Style("Code", normal, MonoFont));
+                Style("Code", normal, Mono));
             foreach (KeyValuePair<int, int> heading in headings.OrderBy(h => h.Key))
                 layout.Add(Style("Heading" + heading.Key, heading.Value, Roman));
             return layout;
@@ -191,7 +206,7 @@ namespace ArctisAurora.Core.UI
                 if (written.Length == 0 || slot.Value.list.OfType<TexChar>().FirstOrDefault() is not TexChar first) continue;
 
                 XElement placed = new XElement("Slot", new XAttribute("Place", slot.Key), new XAttribute("Text", written),
-                    new XAttribute("FontName", first.style.font.family == TexFamily.Mono ? MonoFont : Roman),
+                    new XAttribute("FontName", FontFor(first.style.font)),
                     new XAttribute("FontSize", Px(first.style.font.size)));
                 if (first.style.font.bold) placed.SetAttributeValue("Bold", "true");
                 if (first.style.font.italic) placed.SetAttributeValue("Italic", "true");
@@ -316,7 +331,7 @@ namespace ArctisAurora.Core.UI
                     break;
                 case TexParKind.Code:
                     block.SetAttributeValue("StylingType", "Code");
-                    font = MonoFont;
+                    font = Mono;
                     break;
                 case TexParKind.Quote:
                     block.SetAttributeValue("StylingType", "Quote");
@@ -475,24 +490,24 @@ namespace ArctisAurora.Core.UI
         #region ---- hyphenation ----
         private static readonly TexHyphenator NoPatterns = new TexHyphenator(Array.Empty<string>(), Array.Empty<string>());
 
-        // Soft hyphens into every word of a paragraph that is not code, cells included.
-        private static void Hyphenate(List<TexNode> vlist, TexHyphenator hyphenator, Dictionary<string, bool[]> extra)
+        // Soft hyphens into every word of a paragraph that is not code, cells included, by the paragraph's language.
+        private static void Hyphenate(List<TexNode> vlist, bool patterns, Dictionary<string, bool[]> extra)
         {
             foreach (TexNode node in vlist)
                 switch (node)
                 {
                     case TexParagraph { style.kind: not TexParKind.Code } p:
-                        HyphenateWords(p.list, hyphenator, extra);
+                        HyphenateWords(p.list, patterns ? TexHyphenator.For(p.language) ?? NoPatterns : NoPatterns, extra);
                         foreach (TexFloat f in p.list.OfType<TexFloat>())
-                            Hyphenate(f.vlist, hyphenator, extra);
+                            Hyphenate(f.vlist, patterns, extra);
                         break;
                     case TexFloat f:
-                        Hyphenate(f.vlist, hyphenator, extra);
+                        Hyphenate(f.vlist, patterns, extra);
                         break;
                     case TexTable t:
                         foreach (List<TexTableCell> row in t.rows)
                             foreach (TexTableCell cell in row)
-                                Hyphenate(cell.vlist, hyphenator, extra);
+                                Hyphenate(cell.vlist, patterns, extra);
                         break;
                 }
         }
@@ -530,11 +545,11 @@ namespace ArctisAurora.Core.UI
             }
         }
 
-        // A letter as the patterns spell it, ligatures taken apart; false outside a-z.
+        // A letter as the patterns spell it, ligatures taken apart; false for a soft hyphen.
         private static bool Append(StringBuilder letters, char c)
         {
-            if (c is >= 'a' and <= 'z' or >= 'A' and <= 'Z') letters.Append(char.ToLowerInvariant(c));
-            else if (c switch { 'ﬀ' => "ff", 'ﬁ' => "fi", 'ﬂ' => "fl", 'ﬃ' => "ffi", 'ﬄ' => "ffl", _ => null } is string parts) letters.Append(parts);
+            if (c switch { 'ﬀ' => "ff", 'ﬁ' => "fi", 'ﬂ' => "fl", 'ﬃ' => "ffi", 'ﬄ' => "ffl", _ => null } is string parts) letters.Append(parts);
+            else if (char.IsLetter(c)) letters.Append(char.ToLowerInvariant(c));
             else return false;
             return true;
         }
@@ -574,7 +589,7 @@ namespace ArctisAurora.Core.UI
         {
             int px = Px(s.font.size);
             if (c == TextMeasurer.SoftHyphen) return 0f;
-            if (Font(s.font.family == TexFamily.Mono ? MonoFont : Roman) is not FontAsset font || c >= AtlasMetaData.AdvanceTableSize) return px * 0.5f;
+            if (Font(FontFor(s.font)) is not FontAsset font || c >= AtlasMetaData.AdvanceTableSize) return px * 0.5f;
             return font.atlasMetaData.TableAdvance(c, Face(font.atlasMetaData, s.font)) * px;
         }
 
@@ -587,6 +602,39 @@ namespace ArctisAurora.Core.UI
 
         private static FontAsset? Font(string name) =>
             AssetRegistries.GetRegistryByValueType<string, FontAsset>(typeof(FontAsset)).GetValueOrDefault(name);
+
+        // The document's roman, sans and mono faces from its packages and fontspec; the defaults for none.
+        internal static void Faces(TexTypesetter? typesetter)
+        {
+            roman = typesetter == null ? null : Named(typesetter.mainFont) ?? (typesetter.times ? TermesFont : RomanFont);
+            sans = typesetter == null ? null : Named(typesetter.sansFont);
+            mono = typesetter == null ? null : Named(typesetter.monoFont);
+        }
+
+        // The font asset a selection draws in.
+        internal static string FontFor(TexFont font) =>
+            (font.face == null ? null : Named(font.face)) ?? font.family switch
+            {
+                TexFamily.Mono => Mono,
+                TexFamily.Sans => sans ?? Roman,
+                _ => Roman
+            };
+
+        // The asset a fontspec name draws in: a bundled alias, then a registered asset or family; null, logged once, for none.
+        private static string? Named(string? name)
+        {
+            if (name == null) return null;
+            named ??= new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
+            if (named.TryGetValue(name, out string? known)) return known;
+
+            string? asset = aliases.TryGetValue(name, out string? alias) && Font(alias) != null ? alias
+                : Font(name) != null ? name
+                : FontLibrary.AssetFor(name);
+            if (asset == null && (missing ??= new HashSet<string>(StringComparer.OrdinalIgnoreCase)).Add(name))
+                Log.Info($"font '{name}' is not available; its text keeps the default face");
+            named[name] = asset;
+            return asset;
+        }
 
         private static FontStyle Face(AtlasMetaData atlas, TexFont font) => atlas.Effective(font.bold
             ? font.italic ? FontStyle.BoldItalic : FontStyle.Bold
@@ -656,14 +704,14 @@ namespace ArctisAurora.Core.UI
 
             void Walk(List<TexNode> nodes, bool unbreakable)
             {
-                foreach (TexNode node in nodes)
-                    switch (node)
+                for (int n = 0; n < nodes.Count; n++)
+                    switch (nodes[n])
                     {
                         case TexChar c:
                             Put(c.ch.ToString(), c.style);
                             break;
                         case TexGlueNode { interword: true } g:
-                            Put(unbreakable ? " " : " ", g.style);
+                            Put(unbreakable || n > 0 && nodes[n - 1] is TexPenalty { penalty: >= 10000 } ? " " : " ", g.style);
                             break;
                         case TexGlueNode { glue.stretchOrder: > 0, glue.stretch: > 0 } g:
                             Flush();
@@ -734,7 +782,7 @@ namespace ArctisAurora.Core.UI
             if (s.font.italic) run.SetAttributeValue("Italic", "true");
             if (s.underline) run.SetAttributeValue("Underline", "true");
             if (s.color != null) run.SetAttributeValue("ColorHex", s.color);
-            string font = s.font.family == TexFamily.Mono ? MonoFont : Roman;
+            string font = FontFor(s.font);
             if (font != blockFont) run.SetAttributeValue("FontName", font);
             int px = Px(s.font.size);
             if (px != blockSize) Size(run, px);
@@ -795,8 +843,8 @@ namespace ArctisAurora.Core.UI
         public int XHeight(TexFont font)
         {
             Dictionary<string, FontAsset> fonts = AssetRegistries.GetRegistryByValueType<string, FontAsset>(typeof(FontAsset));
-            string roman = typesetter?.times == true ? TexLowering.TermesFont : TexLowering.RomanFont;
-            if (!fonts.TryGetValue(font.family == TexFamily.Mono ? TexLowering.MonoFont : roman, out FontAsset? asset))
+            TexLowering.Faces(typesetter);
+            if (!fonts.TryGetValue(TexLowering.FontFor(font), out FontAsset? asset))
                 return (int)(font.size * 0.430554);
 
             AtlasMetaData atlas = asset.atlasMetaData;

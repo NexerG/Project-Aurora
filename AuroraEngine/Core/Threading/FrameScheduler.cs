@@ -33,7 +33,8 @@ namespace ArctisAurora.Core.Threading
 
         // idle waiting
         private static MainSystem? _main;
-        private static double _wakeAt = double.PositiveInfinity;
+        private static readonly double[] _wakes = new double[16];
+        private static int _wakeCount;
         private static readonly AutoResetEvent _produced = new AutoResetEvent(false);
 
         private static volatile bool _running;
@@ -76,7 +77,30 @@ namespace ArctisAurora.Core.Threading
         public static void RequestFrameAt(double totalTime)
         {
             if (totalTime <= Engine.totalTime) return;
-            if (totalTime < _wakeAt) _wakeAt = totalTime;
+            int latest = 0;
+            for (int i = 0; i < _wakeCount; i++)
+            {
+                if (Math.Abs(_wakes[i] - totalTime) < 0.0005)
+                {
+                    if (totalTime < _wakes[i]) _wakes[i] = totalTime;
+                    return;
+                }
+                if (_wakes[i] > _wakes[latest]) latest = i;
+            }
+            if (_wakeCount < _wakes.Length) _wakes[_wakeCount++] = totalTime;
+            else if (totalTime < _wakes[latest]) _wakes[latest] = totalTime;
+        }
+
+        // Drops the wake times a frame has reached; the earliest left, or infinity.
+        internal static double NextWake()
+        {
+            double earliest = double.PositiveInfinity;
+            for (int i = _wakeCount - 1; i >= 0; i--)
+            {
+                if (_wakes[i] <= Engine.totalTime) _wakes[i] = _wakes[--_wakeCount];
+                else if (_wakes[i] < earliest) earliest = _wakes[i];
+            }
+            return earliest;
         }
 
         // Blocks until main finishes another frame.
@@ -388,9 +412,9 @@ namespace ArctisAurora.Core.Threading
 
                     Volatile.Write(ref _frame, _frame + 1);
                     Resumed = false;
-                    if (_running && _settings.idle.wait && _main != null && !_main.Pending(ref _wakeAt))
+                    if (_running && _settings.idle.wait && _main != null && !_main.Pending(out double wakeAt))
                     {
-                        _main.IdleWait(_wakeAt);
+                        _main.IdleWait(wakeAt);
                         Resumed = true;
                     }
                     else

@@ -183,8 +183,11 @@ namespace ArctisAurora.Core.Tex
 
         public readonly List<TexError> errors = new List<TexError>();
 
-        private readonly TexReader reader;
+        private TexReader reader;
         private readonly List<Level> input = new List<Level>();
+
+        // files read over the source: the reader each suspended, what runs at its end, where it was input, the input levels under it
+        private readonly Stack<(TexReader outer, Action? atEnd, int line, int column, int floor)> files = new Stack<(TexReader, Action?, int, int, int)>();
         private readonly List<Group> groups = new List<Group>();
         private readonly List<Cond> conds = new List<Cond>();
 
@@ -289,22 +292,37 @@ namespace ArctisAurora.Core.Tex
         private bool Get(out TexToken t)
         {
             noexpandRead = false;
-            while (input.Count > 0)
+            while (true)
             {
-                Level top = input[^1];
-                if (top.index < top.tokens.Length)
+                int floor = files.Count > 0 ? files.Peek().floor : 0;
+                while (input.Count > floor)
                 {
-                    t = top.tokens[top.index++];
-                    noexpandRead = top.noexpand;
-                    return true;
+                    Level top = input[^1];
+                    if (top.index < top.tokens.Length)
+                    {
+                        t = top.tokens[top.index++];
+                        noexpandRead = top.noexpand;
+                        return true;
+                    }
+                    input.RemoveAt(input.Count - 1);
                 }
-                input.RemoveAt(input.Count - 1);
+
+                if (halted)
+                {
+                    t = default;
+                    return false;
+                }
+                if (reader.Next(out t)) break;
+                if (files.Count == 0) return false;
+                (TexReader outer, Action? atEnd, _, _, _) = files.Pop();
+                reader = outer;
+                atEnd?.Invoke();
             }
 
-            if (halted || !reader.Next(out t))
+            if (files.Count > 0)
             {
-                t = default;
-                return false;
+                (_, _, int at, int col, _) = files.Peek();
+                t = t.IsCs ? TexToken.Cs(t.name!, at, col) : TexToken.Char(t.ch, t.cat, at, col);
             }
             line = t.line;
             column = t.column;
@@ -2055,6 +2073,8 @@ namespace ArctisAurora.Core.Tex
         // A control sequence Next hands to the caller unexpanded, under its own name.
         public void DefinePrimitive(string name) => meanings.Set(name, new Primitive(Op.Caller, name), true, groups);
 
+        public bool IsDefined(string name) => meanings.Get(name) != null;
+
         // Runs when the current group ends; never, outside any group.
         public void Save(Action restore)
         {
@@ -2062,6 +2082,13 @@ namespace ArctisAurora.Core.Tex
         }
 
         public void Insert(TexToken[] tokens) => Push(tokens);
+
+        // The tokens fully expanded, as \edef would; null when expansion stopped.
+        public TexToken[]? Expanded(TexToken[] tokens, TexToken owner)
+        {
+            Push(tokens.Append(TexToken.Char('}', TexCatcode.EndGroup)).ToArray());
+            return ExpandedBody(owner)?.ToArray();
+        }
 
         // Source text read with the current catcodes and inserted, its tokens carrying no position.
         public void InsertSource(string text)
@@ -2071,6 +2098,14 @@ namespace ArctisAurora.Core.Tex
             while (inserted.Next(out TexToken t))
                 tokens.Add(t.IsCs ? TexToken.Cs(t.name!) : TexToken.Char(t.ch, t.cat));
             Push(tokens.ToArray());
+        }
+
+        // A file read over the source with the catcodes as it is read; its tokens and errors carry where it was input.
+        public void InputSource(string text, Action? atEnd = null)
+        {
+            int at = line, col = column;
+            files.Push((reader, atEnd, at, col, input.Count));
+            reader = new TexReader(text, "", c => catcodes.Get(c), (message, _, _) => errors.Add(new TexError(at, col, message)));
         }
 
         // Whether the next token comes from the source itself, so raw characters can be read.

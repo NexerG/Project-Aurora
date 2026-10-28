@@ -53,7 +53,7 @@ Silence between the command and `--- comparison done ---` is a pass.
   name plus `.spv`. A naive loop produces `Radiance.compute.comp.spv`, which nothing loads, and leaves the
   real `.spv` stale — a shader that silently keeps running old code.
 - **`Default.vert/.frag` and `Light.vert/.frag` have no `.spv` and nothing loads them.** Dead sources. Do not
-  compile them, do not delete them (CLAUDE.md §4 — mention, don't clean up).
+  compile them, do not delete them (CLAUDE.md §3 — mention, don't clean up).
 - **The Carbon leg of the mirror copies only what Carbon already carries.** The `[ -f … ]` guard is what keeps
   the other 30 files out of its tree, and it cannot tell "not wanted" from "not there yet" — a shader Carbon
   starts needing has to be created there once by hand, or it is silently skipped on every mirror after.

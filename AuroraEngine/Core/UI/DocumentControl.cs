@@ -156,7 +156,7 @@ namespace ArctisAurora.Core.UI
         }
 
         // Page a y falls on, counting the margins and gap below a text area as its page.
-        public int PageOf(float y) => Math.Max(0, (int)MathF.Floor((y - top) / stride));
+        public int PageOf(float y) => Math.Max(0, (int)MathF.Floor((y - top + tolerance) / stride));
 
         // A span that would cross its text area's bottom moves to the next page's top.
         public float Push(float y, float spanHeight)
