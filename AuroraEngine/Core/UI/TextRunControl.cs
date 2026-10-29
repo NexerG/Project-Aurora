@@ -140,23 +140,38 @@ namespace ArctisAurora.Core.UI
         private float _wrapWidth;
 
         // one entry per span, rebuilt each measure; LineSegment.runIndex indexes all of them
-        private readonly List<TextMeasurer.Run> _runs = new List<TextMeasurer.Run>();
-        private readonly List<uint> _runPaints = new List<uint>();
-        private readonly List<FontAsset> _runFonts = new List<FontAsset>();
-        private readonly List<uint> _runGradients = new List<uint>();
-        private readonly List<uint> _runEffects = new List<uint>();
-        private readonly List<(bool underline, bool strike, uint highlight)> _runDecorations = new List<(bool, bool, uint)>();
-        private readonly List<TextureAsset?> _runTextures = new List<TextureAsset?>();
-        private readonly List<(Vector2 size, Quaternion rotation)> _runPictures = new List<(Vector2, Quaternion)>();
-        private readonly List<MathBox?> _runMath = new List<MathBox?>();
-        private readonly List<SheetBox?> _runSheet = new List<SheetBox?>();
+        private List<TextMeasurer.Run> _runs = null!;
+        private RunStyle[] runStyles = Array.Empty<RunStyle>();
+        private RunObject[]? runObjects;
+        private int runCount;
+
+        private struct RunStyle
+        {
+            public FontAsset font;
+            public uint paint;
+            public uint gradient;
+            public uint effect;
+            public uint highlight;
+            public bool underline;
+            public bool strike;
+        }
+
+        // a picture, sheet or formula run's object
+        private struct RunObject
+        {
+            public TextureAsset? texture;
+            public MathBox? math;
+            public SheetBox? sheet;
+            public Vector2 size;
+            public Quaternion rotation;
+        }
 
         // formulas, laid out once per source; the font they draw from
         private static readonly Dictionary<(string source, bool display, FontAsset font), MathBox> mathBoxes = new();
 
         // width-aware displays at this build's widths and the last build's
-        private Dictionary<(string, FontAsset, float), MathBox> _fitted = new();
-        private Dictionary<(string, FontAsset, float), MathBox> _fittedBefore = new();
+        private Dictionary<(string, FontAsset, float), MathBox>? _fitted;
+        private Dictionary<(string, FontAsset, float), MathBox>? _fittedBefore;
         private const string MathFont = "math";
 
         // characters under a selection, which a highlight leaves a gap for; -1 when none
@@ -258,11 +273,12 @@ namespace ArctisAurora.Core.UI
             base.SetPaint(paint);
             if (_paint == paint) return;
             _paint = paint;
-            if (isMeasureDirty || _runPaints.Count != Math.Max(1, spans.Count)) return;
+            if (isMeasureDirty || runCount != Math.Max(1, spans.Count)) return;
 
-            for (int i = 0; i < _runPaints.Count; i++)
+            Span<RunStyle> styles = runStyles.AsSpan(0, runCount);
+            for (int i = 0; i < styles.Length; i++)
                 if (spans.Count == 0 || spans[i].colorHex == null)
-                    _runPaints[i] = paint;
+                    styles[i].paint = paint;
         }
 
         // Replaces the span list and re-measures.
@@ -287,32 +303,22 @@ namespace ArctisAurora.Core.UI
         // still takes a slot, so runIndex keeps indexing the span list.
         private void BuildRuns(float wrapWidth)
         {
+            runCount = Math.Max(1, spans.Count);
+            _runs ??= new List<TextMeasurer.Run>(runCount);
             _runs.Clear();
-            _runPaints.Clear();
-            _runFonts.Clear();
-            _runGradients.Clear();
-            _runEffects.Clear();
-            _runDecorations.Clear();
-            _runTextures.Clear();
-            _runPictures.Clear();
-            _runMath.Clear();
-            _runSheet.Clear();
+            if (runStyles.Length < runCount) runStyles = new RunStyle[runCount];
+            if (runObjects != null)
+                if (runObjects.Length < runCount) runObjects = null;
+                else Array.Clear(runObjects, 0, runCount);
             (_fitted, _fittedBefore) = (_fittedBefore, _fitted);
-            _fitted.Clear();
+            _fitted?.Clear();
 
+            RunStyle[] styles = runStyles;
             string s = text ?? string.Empty;
             if (spans.Count == 0)
             {
-                _runMath.Add(null);
-                _runSheet.Add(null);
                 _runs.Add(new TextMeasurer.Run(s, 0, s.Length, fontName, _fontAsset.atlasMetaData, Zoomed(fontSize), style));
-                _runPaints.Add(_paint);
-                _runFonts.Add(_fontAsset);
-                _runGradients.Add(gradientId);
-                _runEffects.Add(visual.effect);
-                _runDecorations.Add((false, false, 0u));
-                _runTextures.Add(null);
-                _runPictures.Add((Vector2.Zero, Quaternion.Identity));
+                styles[0] = new RunStyle { font = _fontAsset, paint = _paint, gradient = gradientId, effect = visual.effect };
                 return;
             }
 
@@ -336,10 +342,7 @@ namespace ArctisAurora.Core.UI
                     Vector2 box = spans[i].IsFloating ? new Vector2(w, h) : new LayoutRect(0f, 0f, w, h).Turned(rotation).size;
                     _runs.Add(new TextMeasurer.Run(s, start, count, spanFont, font.atlasMetaData, Zoomed(spanSize), spans[i].style, true, box.X, box.Y,
                         spans[i].IsFloating));
-                    _runTextures.Add(picture);
-                    _runPictures.Add((new Vector2(w, h), rotation));
-                    _runMath.Add(null);
-                    _runSheet.Add(null);
+                    ObjectSlots()[i] = new RunObject { texture = picture, size = new Vector2(w, h), rotation = rotation };
                 }
                 else if (spans[i].IsSheet)
                 {
@@ -349,10 +352,7 @@ namespace ArctisAurora.Core.UI
                     float w = box.range && float.IsFinite(wrapWidth) && wrapWidth < float.MaxValue ? wrapWidth : box.width;
                     _runs.Add(new TextMeasurer.Run(s, start, count, spanFont, font.atlasMetaData, size, spans[i].style, false,
                         w, box.height, false, true));
-                    _runTextures.Add(null);
-                    _runPictures.Add((Vector2.Zero, Quaternion.Identity));
-                    _runMath.Add(null);
-                    _runSheet.Add(box);
+                    ObjectSlots()[i].sheet = box;
                 }
                 else if (spans[i].IsMath)
                 {
@@ -366,31 +366,28 @@ namespace ArctisAurora.Core.UI
                         w = MathF.Max(w, wrapWidth);
                     _runs.Add(new TextMeasurer.Run(s, start, count, spanFont, font.atlasMetaData, Zoomed(spanSize), spans[i].style, false,
                         w, box.height * size, false, true, box.depth * size));
-                    _runTextures.Add(null);
-                    _runPictures.Add((Vector2.Zero, Quaternion.Identity));
-                    _runMath.Add(box);
-                    _runSheet.Add(null);
+                    ObjectSlots()[i].math = box;
                     font = mathFont;
                 }
                 else
-                {
                     _runs.Add(new TextMeasurer.Run(s, start, count, spanFont, font.atlasMetaData, Zoomed(spanSize), spans[i].style,
                         space: spans[i].spaceWidth * textZoom, fill: spans[i].fill));
-                    _runTextures.Add(null);
-                    _runPictures.Add((Vector2.Zero, Quaternion.Identity));
-                    _runMath.Add(null);
-                    _runSheet.Add(null);
-                }
-                _runPaints.Add(spans[i].colorHex == null ? _paint : Palettes.Inline(spans[i].colorHex));
-                _runFonts.Add(font);
-                _runGradients.Add(spans[i].gradient == null
-                    ? gradientId : Gradients.IndexOf(spans[i].gradient));
-                _runEffects.Add(spans[i].effect == null ? visual.effect : Effects.IndexOf(spans[i].effect));
-                _runDecorations.Add((spans[i].underline, spans[i].strikethrough,
-                    spans[i].highlightHex == null ? 0u : Palettes.Inline(spans[i].highlightHex)));
+                styles[i] = new RunStyle
+                {
+                    font = font,
+                    paint = spans[i].colorHex == null ? _paint : Palettes.Inline(spans[i].colorHex),
+                    gradient = spans[i].gradient == null ? gradientId : Gradients.IndexOf(spans[i].gradient),
+                    effect = spans[i].effect == null ? visual.effect : Effects.IndexOf(spans[i].effect),
+                    highlight = spans[i].highlightHex == null ? 0u : Palettes.Inline(spans[i].highlightHex),
+                    underline = spans[i].underline,
+                    strike = spans[i].strikethrough
+                };
                 start += count;
             }
         }
+
+        // This build's object slots, made on its first picture, sheet or formula.
+        private RunObject[] ObjectSlots() => runObjects ??= new RunObject[runCount];
 
         // A span's formula laid out in em; an error box when there is no math font.
         private MathBox MathBoxFor(in StyleSpan span, FontAsset font)
@@ -410,7 +407,8 @@ namespace ArctisAurora.Core.UI
         {
             string source = SheetLinks.HasMathLinks(span.mathSource) ? SheetLinks.ExpandMath(NotePath(), span.mathSource) : span.mathSource;
             (string, FontAsset, float) key = (source, font, lineWidth);
-            if (!_fittedBefore.TryGetValue(key, out MathBox? box) && !_fitted.TryGetValue(key, out box))
+            _fitted ??= new Dictionary<(string, FontAsset, float), MathBox>();
+            if ((_fittedBefore == null || !_fittedBefore.TryGetValue(key, out MathBox? box)) && !_fitted.TryGetValue(key, out box))
                 box = MathLayout.Layout(MathParser.Parse(source), true, font.atlasMetaData, font.mathConstants!, lineWidth);
             _fitted[key] = box;
             return box;
@@ -658,9 +656,10 @@ namespace ArctisAurora.Core.UI
         // A picture's drawn size at this run's zoom.
         internal Vector2 PictureSizeAt(int index)
         {
+            if (_runs == null) return Vector2.Zero;
             for (int i = 0; i < _runs.Count; i++)
                 if (_runs[i].picture && index >= _runs[i].charStart && index < _runs[i].charStart + _runs[i].charCount)
-                    return _runPictures[i].size;
+                    return runObjects![i].size;
             return Vector2.Zero;
         }
 
@@ -710,25 +709,26 @@ namespace ArctisAurora.Core.UI
 
                 foreach (LineSegment segment in line.segments)
                 {
-                    uint runGradient = _runGradients[segment.runIndex];
-                    uint paint = runGradient != 0
-                        ? Gradients.Word(runGradient, palette ?? Palettes.Default)
-                        : _runPaints[segment.runIndex];
+                    ref readonly RunStyle runStyle = ref runStyles[segment.runIndex];
+                    uint paint = runStyle.gradient != 0
+                        ? Gradients.Word(runStyle.gradient, palette ?? Palettes.Default)
+                        : runStyle.paint;
                     TextMeasurer.Run run = _runs[segment.runIndex];
-                    FontAsset font = _runFonts[segment.runIndex];
-                    uint effect = _runEffects[segment.runIndex];
+                    FontAsset font = runStyle.font;
+                    uint effect = runStyle.effect;
                     float stagger = Effects.Stagger(effect);
-                    (bool underline, bool strike, uint highlight) = _runDecorations[segment.runIndex];
+                    bool underline = runStyle.underline, strike = runStyle.strike;
+                    uint highlight = runStyle.highlight;
                     float segmentX = pen;
 
                     if (run.picture)
                     {
                         for (int k = 0; k < segment.charCount && !run.floating; k++)
                         {
-                            (Vector2 size, Quaternion rotation) = _runPictures[segment.runIndex];
-                            WriteImage(quads, _runTextures[segment.runIndex], spans[segment.runIndex].imageSource,
+                            ref readonly RunObject picture = ref runObjects![segment.runIndex];
+                            WriteImage(quads, picture.texture, spans[segment.runIndex].imageSource,
                                        new LayoutRect(pen, baselineY - run.imageHeight, run.imageWidth, run.imageHeight),
-                                       size, rotation, alpha, z, clip);
+                                       picture.size, picture.rotation, alpha, z, clip);
                             pen += run.imageWidth;
                         }
                         continue;
@@ -737,7 +737,7 @@ namespace ArctisAurora.Core.UI
                     if (highlight != 0)
                         WriteHighlight(quads, segment, Stretched(line, segment), segmentX, lineTop, line.height, highlight, alpha, z - depthStep, clip, gradientRect);
 
-                    if (_runSheet[segment.runIndex] is SheetBox sheet)
+                    if (runObjects?[segment.runIndex].sheet is SheetBox sheet)
                     {
                         for (int k = 0; k < segment.charCount; k++)
                         {
@@ -749,7 +749,7 @@ namespace ArctisAurora.Core.UI
 
                     if (run.math)
                     {
-                        MathBox math = _runMath[segment.runIndex]!;
+                        MathBox math = runObjects![segment.runIndex].math!;
                         uint ink = math.error ? Palettes.Surface(palette ?? Palettes.Default, PaletteRole.Danger) : paint;
                         float size = run.fontSize;
                         for (int k = 0; k < segment.charCount; k++)
@@ -770,7 +770,7 @@ namespace ArctisAurora.Core.UI
                         continue;
                     }
 
-                    SyntaxToken[]? tokens = runGradient == 0 && (spans.Count == 0 || spans[segment.runIndex].colorHex == null) ? syntax : null;
+                    SyntaxToken[]? tokens = runStyle.gradient == 0 && (spans.Count == 0 || spans[segment.runIndex].colorHex == null) ? syntax : null;
                     for (int k = 0; k < segment.charCount; k++)
                     {
                         int index = segment.charStart + k;
@@ -1169,7 +1169,8 @@ namespace ArctisAurora.Core.UI
             for (int i = 0; i < _runs.Count; i++)
                 if (index >= _runs[i].charStart && index < _runs[i].charStart + _runs[i].charCount)
                 {
-                    (Vector2 size, rotation) = _runPictures[i];
+                    Vector2 size = runObjects![i].size;
+                    rotation = runObjects[i].rotation;
                     rect = new LayoutRect(box.x + (box.width - size.X) * 0.5f, box.y + (box.height - size.Y) * 0.5f, size.X, size.Y);
                     return true;
                 }
@@ -1204,7 +1205,7 @@ namespace ArctisAurora.Core.UI
                     if (index < segment.charStart || index >= segment.charStart + segment.charCount) continue;
 
                     TextMeasurer.Run run = _runs[segment.runIndex];
-                    MathBox? math = _runMath[segment.runIndex];
+                    MathBox? math = runObjects?[segment.runIndex].math;
                     if (!run.math || math == null) return false;
 
                     float x = line.left;
