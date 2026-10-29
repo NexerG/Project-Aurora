@@ -1,7 +1,9 @@
 using ArctisAurora.Core.Filing.Serialization;
 using ArctisAurora.Core.Registry;
+using ArctisAurora.Core.UI;
 using System.Globalization;
 using System.Reflection;
+using System.Text;
 using System.Xml.Linq;
 
 namespace ArctisAurora.Core.Filing
@@ -125,6 +127,14 @@ namespace ArctisAurora.Core.Filing
         [A_XSDElementProperty("RadicalKernAfterDegree", "AssetRegistry")]
         public float radicalKernAfterDegree { get; set; }
 
+        // each big operator's display-size variant, "∑ 1.4,∫ 2.22", height in em
+        [A_XSDElementProperty("DisplayOperators", "AssetRegistry")]
+        public string displayOperators { get; set; } = string.Empty;
+        private readonly Dictionary<char, float> displayHeights = new Dictionary<char, float>();
+
+        // A big operator's display-size height in em, or DisplayOperatorMinHeight when the font names no variant.
+        public float DisplayHeight(char op) => displayHeights.TryGetValue(op, out float height) ? height : displayOperatorMinHeight;
+
         // Reads a face's MathConstants subtable; null when the face has no MATH table.
         public static MathConstants Read(string fontPath, int face)
         {
@@ -133,7 +143,7 @@ namespace ArctisAurora.Core.Filing
             ushort tableCount = AssetImporter.ReadUInt16BE(reader);
             reader.BaseStream.Position += 6;
 
-            uint math = 0, head = 0;
+            uint math = 0, head = 0, cmap = 0;
             for (int i = 0; i < tableCount; i++)
             {
                 string tag = new string(reader.ReadChars(4));
@@ -142,6 +152,7 @@ namespace ArctisAurora.Core.Filing
                 reader.BaseStream.Position += 4;
                 if (tag == "MATH") math = offset;
                 else if (tag == "head") head = offset;
+                else if (tag == "cmap") cmap = offset;
             }
             if (math == 0) return null;
 
@@ -216,15 +227,72 @@ namespace ArctisAurora.Core.Filing
             c.radicalKernBeforeDegree = Value();
             c.radicalKernAfterDegree = Value();
             c.radicalDegreeBottomRaisePercent = AssetImporter.ReadInt16BE(reader);
+            if (cmap != 0) c.displayOperators = DisplayOperators(reader, math, cmap, em, c.displayOperatorMinHeight);
             return c;
+        }
+
+        // Each big operator's first vertical variant at least DisplayOperatorMinHeight tall, from the MathVariants subtable.
+        private static string DisplayOperators(BinaryReader reader, uint math, uint cmap, float em, float minHeight)
+        {
+            reader.BaseStream.Position = math + 8;
+            long variants = math + AssetImporter.ReadUInt16BE(reader);
+            reader.BaseStream.Position = variants + 2;
+            long coverage = variants + AssetImporter.ReadUInt16BE(reader);
+            reader.BaseStream.Position += 2;
+            ushort vertCount = AssetImporter.ReadUInt16BE(reader);
+
+            AuroraFont.TableEntry table = new AuroraFont.TableEntry { offset = cmap };
+            StringBuilder written = new StringBuilder();
+            foreach ((char op, bool _) in MathSymbols.bigOps.Values)
+            {
+                int index = CoverageIndex(reader, coverage, AuroraFont.GetGlyphIndex(op, reader, table));
+                if (index < 0 || index >= vertCount) continue;
+
+                reader.BaseStream.Position = variants + 10 + 2 * index;
+                long construction = variants + AssetImporter.ReadUInt16BE(reader);
+                reader.BaseStream.Position = construction + 2;
+                ushort count = AssetImporter.ReadUInt16BE(reader);
+                float height = 0f;
+                for (int v = 0; v < count && height < minHeight; v++)
+                {
+                    reader.BaseStream.Position += 2;
+                    height = AssetImporter.ReadUInt16BE(reader) / em;
+                }
+                if (height <= 0f) continue;
+                if (written.Length > 0) written.Append(',');
+                written.Append(op).Append(' ').Append(height.ToString(CultureInfo.InvariantCulture));
+            }
+            return written.ToString();
+        }
+
+        // A glyph's index in a Coverage table, or -1.
+        private static int CoverageIndex(BinaryReader reader, long at, ushort glyph)
+        {
+            reader.BaseStream.Position = at;
+            ushort format = AssetImporter.ReadUInt16BE(reader);
+            ushort count = AssetImporter.ReadUInt16BE(reader);
+            for (int i = 0; i < count; i++)
+            {
+                if (format == 1)
+                {
+                    if (AssetImporter.ReadUInt16BE(reader) == glyph) return i;
+                    continue;
+                }
+                ushort start = AssetImporter.ReadUInt16BE(reader), end = AssetImporter.ReadUInt16BE(reader), first = AssetImporter.ReadUInt16BE(reader);
+                if (glyph >= start && glyph <= end) return first + glyph - start;
+            }
+            return -1;
         }
 
         public void Save(string path)
         {
             XElement element = new XElement("MathConstants");
             foreach (MemberInfo member in XmlReflection.ScalarMembers(GetType()))
+            {
+                object value = XmlReflection.GetMember(member, this);
                 element.Add(new XAttribute(member.GetCustomAttribute<A_XSDElementPropertyAttribute>().Name,
-                    ((float)XmlReflection.GetMember(member, this)).ToString(CultureInfo.InvariantCulture)));
+                    value is float f ? f.ToString(CultureInfo.InvariantCulture) : value));
+            }
             element.Save(path);
         }
 
@@ -232,6 +300,9 @@ namespace ArctisAurora.Core.Filing
         {
             MathConstants constants = new MathConstants();
             XmlReflection.ApplyAttributes(DataFiles.LoadXml(path), constants);
+            foreach (string entry in constants.displayOperators.Split(',', StringSplitOptions.RemoveEmptyEntries))
+                if (entry.Length > 2 && float.TryParse(entry.AsSpan(2), NumberStyles.Float, CultureInfo.InvariantCulture, out float height))
+                    constants.displayHeights[entry[0]] = height;
             return constants;
         }
     }

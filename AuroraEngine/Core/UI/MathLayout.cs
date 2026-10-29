@@ -255,7 +255,7 @@ namespace ArctisAurora.Core.UI
                 MathBox natural = Glyph(symbol.ch, symbol.face, k);
                 float total = natural.height + natural.depth;
                 float grow = style == MathStyle.Display && total > 0f
-                    ? MathF.Max(1f, c.displayOperatorMinHeight * k / total) : 1f;
+                    ? MathF.Max(1f, c.DisplayHeight(symbol.ch) * k / total) : 1f;
                 MathBox op = grow == 1f ? natural : Glyph(symbol.ch, symbol.face, k * grow);
                 return OnAxis(op, k);
             }

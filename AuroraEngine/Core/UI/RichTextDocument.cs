@@ -800,6 +800,9 @@ namespace ArctisAurora.Core.UI
         [A_XSDElementProperty("LineHeight", "UI", "Line box height as a multiple of the font size.")]
         public float lineHeight { get; set; } = 1.5f;
 
+        [A_XSDElementProperty("BaselineDepth", "UI", "Every line's depth below its baseline in pixels, so baselines stand a line box apart as in TeX; 0 centres the font in its line box.")]
+        public float baselineDepth { get; set; }
+
         // Used when neither the note nor the editor scheme names a size for the type asked for.
         private const int fallbackFontSize = 18;
 
@@ -814,6 +817,9 @@ namespace ArctisAurora.Core.UI
 
         [A_XSDElementProperty("OptimalBreaks", "UI", "Break lines Knuth-Plass style over the whole paragraph instead of greedily.")]
         public bool optimalBreaks { get; set; }
+
+        [A_XSDElementProperty("WidowControl", "UI", "Never leave one line of a paragraph alone at the bottom or top of a page.")]
+        public bool widowControl { get; set; }
 
         // Empty means inherit: a note that declares no styles of its own uses the editor's. Declaring
         // even one replaces the whole set, so a note's heading scheme is read as written rather than
@@ -879,9 +885,11 @@ namespace ArctisAurora.Core.UI
             DocumentLayout copy = new DocumentLayout
             {
                 lineHeight = lineHeight,
+                baselineDepth = baselineDepth,
                 blockSpacing = blockSpacing,
                 listIndent = listIndent,
                 optimalBreaks = optimalBreaks,
+                widowControl = widowControl,
                 page = page?.Clone()
             };
             foreach (TextStyle style in textStyles)
@@ -1027,7 +1035,7 @@ namespace ArctisAurora.Core.UI
         [A_XSDElementProperty("HeadSep", "UI", "Millimetres from the bottom of the head to the top of the text.")]
         public float headSep { get; set; } = 8.8f;
 
-        [A_XSDElementProperty("FootSkip", "UI", "Millimetres from the bottom of the text to the bottom of the foot.")]
+        [A_XSDElementProperty("FootSkip", "UI", "Millimetres from the bottom of the text to the baseline of the foot.")]
         public float footSkip { get; set; } = 10.5f;
 
         [A_XSDElementProperty("Slot", "UI", "The text in each place; a place with no slot is blank.")]

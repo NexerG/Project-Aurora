@@ -36,8 +36,8 @@ namespace ArctisAurora.Core.UI
         private static string Roman => roman ?? RomanFont;
         private static string Mono => mono ?? MonoFont;
 
-        private const float Unity = 65536f;
-        private const float PxPerPt = 96f / 72.27f;
+        internal const float Unity = 65536f;
+        internal const float PxPerPt = 96f / 72.27f;
         private const float MmPerPt = 25.4f / 72.27f;
 
         // \tabcolsep, either side of a column, and the narrowest column a table takes
@@ -70,7 +70,10 @@ namespace ArctisAurora.Core.UI
             Spacing spacing = new Spacing
             {
                 indent = typesetter.parIndent * PxPerPt,
-                display = TexTypesetter.displaySkips[typesetter.sizeOption] * PxPerPt
+                display = TexTypesetter.displaySkips[typesetter.sizeOption] * PxPerPt,
+                belowShort = TexTypesetter.belowDisplayShortSkips[typesetter.sizeOption] * PxPerPt,
+                emptyLine = normal * BodyLineHeight(typesetter, normal),
+                lineHeight = BodyLineHeight(typesetter, normal)
             };
             foreach (TexNode node in typesetter.vlist)
                 LowerVertical(node, root, normal, headings, blockLines, spacing);
@@ -96,18 +99,26 @@ namespace ArctisAurora.Core.UI
         private static void Float(TexFloat f, XElement root, int normal, Dictionary<int, int> headings, List<int>? blockLines, Spacing spacing)
         {
             XElement group = new XElement("Float", new XAttribute("Kind", f.kind), new XAttribute("Placement", f.placement));
-            Spacing inFloat = new Spacing { indent = spacing.indent, display = spacing.display };
+            Spacing inFloat = new Spacing
+            {
+                indent = spacing.indent, display = spacing.display, belowShort = spacing.belowShort, emptyLine = spacing.emptyLine, lineHeight = spacing.lineHeight
+            };
             foreach (TexNode node in f.vlist)
                 LowerVertical(node, group, normal, headings, blockLines, inFloat);
             if (group.HasElements) root.Add(group);
         }
 
-        // the vertical space waiting for the next block, and \parindent and the display skip, px
+        // the vertical space waiting for the next block, \parindent, the display skips and an empty line, px; the document's line height
         private sealed class Spacing
         {
             public float pending;
+            // the last skip in pending, as TeX's \lastskip, which \addvspace compares against
+            public float last;
             public float indent;
             public float display;
+            public float belowShort;
+            public float emptyLine;
+            public float lineHeight;
 
             // the page break waiting for the next block: Page, Clear or none
             public string? pageBreak;
@@ -118,7 +129,7 @@ namespace ArctisAurora.Core.UI
         {
             if (spacing.pending != 0f) element.SetAttributeValue("SpaceBefore", Format(spacing.pending));
             if (spacing.pageBreak != null) element.SetAttributeValue("PageBreak", spacing.pageBreak);
-            spacing.pending = 0f;
+            spacing.pending = spacing.last = 0f;
             spacing.pageBreak = null;
             root.Add(element);
         }
@@ -159,10 +170,12 @@ namespace ArctisAurora.Core.UI
             float top = (typesetter.paperHeight - TexTypesetter.TextHeight * MmPerPt) / 2f;
 
             XElement layout = new XElement("DocumentLayout",
-                new XAttribute("LineHeight", Format(1.2f * typesetter.lineSpread)),
+                new XAttribute("LineHeight", Format(BodyLineHeight(typesetter, normal))),
+                new XAttribute("BaselineDepth", Format((typesetter.lineHeight - 1f) * typesetter.normalSize / Unity * PxPerPt)),
                 new XAttribute("BlockSpacing", "0"),
                 new XAttribute("ListIndent", Format(normal * 1.875f)),
                 new XAttribute("OptimalBreaks", "true"),
+                new XAttribute("WidowControl", "true"),
                 new XElement("Page",
                     new XAttribute("Mode", "Paged"),
                     new XAttribute("Size", custom ? "Custom" : a4 ? "A4" : "Letter"),
@@ -178,7 +191,7 @@ namespace ArctisAurora.Core.UI
                     new XAttribute("TextFloatSep", Format(TexTypesetter.TextFloatSep * MmPerPt)),
                     new XAttribute("InTextSep", Format(TexTypesetter.floatSeps[typesetter.sizeOption] * MmPerPt)),
                     typesetter.fitHeight is float fit ? new XAttribute("FitHeight", Format(fit)) : null,
-                    typesetter.pageStyles.Select(s => PageStyle(s.Key, s.Value))),
+                    typesetter.pageStyles.Select(s => PageStyle(s.Key, s.Value, typesetter))),
                 Style("Text", normal, Roman),
                 Style("Quote", normal, Roman),
                 Style("Code", normal, Mono));
@@ -188,9 +201,11 @@ namespace ArctisAurora.Core.UI
         }
 
         // A page style's slots as text with {page}/{leftmark}/{rightmark}, each in its first character's font.
-        private static XElement PageStyle(string name, TexPageStyle style)
+        private static XElement PageStyle(string name, TexPageStyle style, TexTypesetter typesetter)
         {
             XElement element = new XElement("PageStyle", new XAttribute("Name", name));
+            if (typesetter.headSep is float headSep) element.SetAttributeValue("HeadSep", Format(headSep));
+            if (typesetter.footSkip is float footSkip) element.SetAttributeValue("FootSkip", Format(footSkip));
             if (style.headRule > 0f) element.SetAttributeValue("HeadRule", Format(style.headRule * PxPerPt));
             if (style.footRule > 0f) element.SetAttributeValue("FootRule", Format(style.footRule * PxPerPt));
             foreach (KeyValuePair<string, TexParagraph> slot in style.slots)
@@ -239,7 +254,10 @@ namespace ArctisAurora.Core.UI
             {
                 case TexVGlue g:
                     float width = g.glue.width / Unity * PxPerPt;
-                    spacing.pending = g.merge ? MathF.Max(spacing.pending, width) : spacing.pending + width;
+                    float last = spacing.last;
+                    float added = !g.merge || last == 0f ? width : last < width ? width - last : width < 0f && last >= 0f ? width : 0f;
+                    spacing.pending += added;
+                    spacing.last = !g.merge || last == 0f ? width : last + added;
                     break;
                 case TexParagraph p:
                     List<List<TexNode>> lines = Lines(p.list);
@@ -263,8 +281,11 @@ namespace ArctisAurora.Core.UI
                             bool skips = p.style.leftSkip != 0 || p.style.rightSkip != 0, opening = i == 0 && k == 0;
                             float hang = skips && opening ? TakeLeading(pieces[k]) : 0f;
                             XElement block = Block(p, pieces[k], opening, normal, headings);
+                            LineHeight(block, p, pieces[k], spacing.lineHeight);
                             if (p.style.indent && opening && !skips) block.SetAttributeValue("Indent", Format(spacing.indent));
                             if (skips) Skips(block, p.style, opening ? (p.style.indent ? p.style.indentWidth / Unity * PxPerPt : 0f) + hang : 0f);
+                            bool starts = display && !placed;
+                            if (display) spacing.pending = starts ? spacing.pending + spacing.emptyLine : MathF.Max(spacing.pending, spacing.display);
                             if (!placed)
                             {
                                 if (p.pageStyle != null) block.SetAttributeValue("PageStyle", p.pageStyle);
@@ -272,11 +293,13 @@ namespace ArctisAurora.Core.UI
                                 if (p.markRight != null) block.SetAttributeValue("MarkRight", p.markRight);
                                 placed = true;
                             }
-                            if (k > 0) spacing.pending = MathF.Max(spacing.pending, spacing.display);
                             Place(root, block, spacing);
+                            if (display) spacing.pending = starts ? spacing.belowShort : spacing.display;
                             blockLines?.Add(p.line);
                         }
                     }
+                    if (lines.Count > 1 && lines[^1].All(n => n is TexGlueNode or TexKern or TexPenalty))
+                        spacing.pending += p.baselineSkip > 0 ? p.baselineSkip / Unity * PxPerPt : spacing.emptyLine;
                     Footnotes(p.list, root, normal, headings, blockLines);
                     foreach (TexFloat f in p.list.OfType<TexFloat>())
                         Float(f, root, normal, headings, blockLines, spacing);
@@ -335,6 +358,20 @@ namespace ArctisAurora.Core.UI
             if (s.rightSkip != 0 && s.parFillSkip != 0)
                 block.SetAttributeValue("RightIndentLast", Format(MathF.Max(0f, (s.rightSkip + s.parFillSkip) / Unity * PxPerPt)));
             if (MathF.Abs(indent) >= 0.01f) block.SetAttributeValue("Indent", Format(indent));
+        }
+
+        // The body's \baselineskip as a multiple of the whole-pixel \normalsize the runs are set in.
+        private static float BodyLineHeight(TexTypesetter typesetter, int normal) => typesetter.lineHeight * typesetter.normalSize / Unity * PxPerPt / normal;
+
+        // A piece's own line height when its \baselineskip differs from the document's: the skip over its largest font size.
+        private static void LineHeight(XElement block, TexParagraph p, List<TexNode> piece, float document)
+        {
+            int size = 0;
+            foreach (TexNode node in piece)
+                if (node is TexChar c && c.style.font.size > size) size = c.style.font.size;
+            if (size == 0 || p.baselineSkip == 0) return;
+            float multiple = p.baselineSkip / Unity * PxPerPt / Px(size);
+            if (MathF.Abs(multiple - document) > 0.005f) block.SetAttributeValue("LineHeight", Format(multiple));
         }
 
         // A line cut around its display formulas, each display a piece of its own: TeX breaks the text either side separately.
@@ -683,7 +720,7 @@ namespace ArctisAurora.Core.UI
         private static float Advance(char c, TexStyle s)
         {
             int px = Px(s.font.size);
-            if (c == TextMeasurer.SoftHyphen) return 0f;
+            if (c == TextMeasurer.SoftHyphen || c == TextMeasurer.ZeroWidthSpace) return 0f;
             if (Font(FontFor(s.font)) is not FontAsset font || c >= AtlasMetaData.AdvanceTableSize) return px * 0.5f;
             return font.atlasMetaData.TableAdvance(c, Face(font.atlasMetaData, s.font)) * px;
         }
@@ -739,12 +776,13 @@ namespace ArctisAurora.Core.UI
         private static (float width, float height) PictureSize(TexImage image)
         {
             float w = image.width > 0 ? image.width / Unity * PxPerPt : 0f, h = image.height > 0 ? image.height / Unity * PxPerPt : 0f;
-            bool scaled = image.scale > 0f && w == 0f && h == 0f, fitted = image.keepAspect && w > 0f && h > 0f;
-            if (!scaled && !fitted) return (w, h);
+            bool scaled = image.scale > 0f && w == 0f && h == 0f, fitted = image.keepAspect && w > 0f && h > 0f, oneSide = (w > 0f) != (h > 0f);
+            if (!scaled && !fitted && !oneSide) return (w, h);
 
             (int nw, int nh) = Native(image.path);
             if (nw <= 0 || nh <= 0) return (w, h);
             if (scaled) return (nw * image.scale, nh * image.scale);
+            if (oneSide) return w > 0f ? (w, w * nh / nw) : (h * nw / nh, h);
             float fit = MathF.Min(w / nw, h / nh);
             return (nw * fit, nh * fit);
         }
@@ -1030,6 +1068,12 @@ namespace ArctisAurora.Core.UI
                 ? font.italic ? FontStyle.BoldItalic : FontStyle.Bold
                 : font.italic ? FontStyle.Italic : FontStyle.Regular);
             return (int)(atlas.GetGlyph('x').Metrics(face).glyphHeight * font.size);
+        }
+
+        public int Width(string text, TexFont font)
+        {
+            TexLowering.Faces(typesetter);
+            return (int)(TexLowering.TextWidth(text, new TexStyle(font, null, false)) / TexLowering.PxPerPt * TexLowering.Unity);
         }
     }
 }

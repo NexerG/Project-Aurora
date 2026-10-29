@@ -252,6 +252,7 @@ namespace ArctisAurora.Core.UI
         private Control? marker;
         private float listIndent;
         private bool optimalBreaks;
+        private bool widowControl;
         private const float bulletSize = 6f;
         private const float numberGap = 6f;
 
@@ -287,12 +288,14 @@ namespace ArctisAurora.Core.UI
         public void ApplyLayout(DocumentLayout layout)
         {
             this.layout = layout;
-            lineHeight = layout.lineHeight;
+            lineHeight = note.lineHeight ?? layout.lineHeight;
+            baselineDepth = layout.baselineDepth;
             fontSize = layout.FontSizeFor(stylingType);
             fontName = layout.FontNameFor(stylingType) ?? "default";
 
             listIndent = note.listIndent ?? layout.listIndent;
             optimalBreaks = layout.optimalBreaks;
+            widowControl = layout.widowControl;
             ApplyInset();
             SyncMarker();
             SizeMarker();
@@ -367,6 +370,8 @@ namespace ArctisAurora.Core.UI
         protected override TextAlignment Alignment => alignment;
 
         protected override bool OptimalBreaks => optimalBreaks;
+
+        protected override bool WidowControl => widowControl;
 
         protected override float FirstLineIndent => firstIndent * textZoom;
 
@@ -538,7 +543,8 @@ namespace ArctisAurora.Core.UI
             {
                 fontName = fontName,
                 fontSize = fontSize,
-                lineHeight = lineHeight
+                lineHeight = lineHeight,
+                baselineDepth = baselineDepth
             };
             tail.CopyPaint(this);
             Edited(before);

@@ -5,6 +5,6 @@ namespace ArctisAurora.Core.Tex
     // A font selection: family, series and shape at a size in sp.
     public readonly record struct TexFont(TexFamily family, bool bold, bool italic, int size, string? face = null);
 
-    // What a character is set in.
-    public readonly record struct TexStyle(TexFont font, string? color, bool underline);
+    // What a character is set in; baselineSkip in sp, 0 takes the size command's for the font's size.
+    public readonly record struct TexStyle(TexFont font, string? color, bool underline, int baselineSkip = 0);
 }

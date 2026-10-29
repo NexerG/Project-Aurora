@@ -145,14 +145,24 @@ namespace ArctisAurora.Core.UI
         public readonly float top;
         public readonly float height;
         public readonly float stride;
+        // the first page's header, above its text
+        public readonly float header;
 
         internal const float tolerance = 0.5f;
 
-        public PageBands(float top, float height, float stride)
+        public PageBands(float top, float height, float stride, float header = 0f)
         {
             this.top = top;
             this.height = height;
             this.stride = stride;
+            this.header = header;
+        }
+
+        // Whether y is the top of its page's text, below the header on the first page.
+        public bool AtTextTop(float y)
+        {
+            int page = PageOf(y);
+            return y <= top + page * stride + (page == 0 ? header : 0f) + tolerance;
         }
 
         // Page a y falls on, counting the margins and gap below a text area as its page.
@@ -1003,7 +1013,8 @@ namespace ArctisAurora.Core.UI
             if (!OrderedSelection(out DocumentAddress from, out DocumentAddress to)) return false;
 
             DocumentFragment fragment = document.CaptureFragment(from, to);
-            string text =string.Join(Environment.NewLine, fragment.blocks.Select(block => PlainText(block, session?.path))).Replace(TextMeasurer.SoftHyphen.ToString(), string.Empty);
+            string text =string.Join(Environment.NewLine, fragment.blocks.Select(block => PlainText(block, session?.path))).Replace(TextMeasurer.SoftHyphen.ToString(), string.Empty)
+                .Replace(TextMeasurer.ZeroWidthSpace.ToString(), string.Empty);
 
             copiedText = text;
             copiedFragment = fragment;
@@ -1275,6 +1286,7 @@ namespace ArctisAurora.Core.UI
                     listLevel = at.listLevel,
                     listMarker = at.listMarker,
                     listIndent = at.note.listIndent,
+                    lineHeight = at.note.lineHeight,
                     text = clean.ToString()
                 };
 
@@ -1309,6 +1321,7 @@ namespace ArctisAurora.Core.UI
                 listLevel = destination.listLevel,
                 listMarker = destination.listMarker,
                 listIndent = destination.note.listIndent,
+                lineHeight = destination.note.lineHeight,
                 isChecked = destination.isChecked,
                 text = last.text
             };
@@ -3791,7 +3804,7 @@ namespace ArctisAurora.Core.UI
             float top = Mm(page.marginTop);
             float bottom = Mm(page.marginBottom);
             bool paged = page.mode == PageMode.Paged;
-            PageBands bands = new PageBands(top, paged ? paper.Y - top - bottom : float.PositiveInfinity, paper.Y + PageGap * zoom);
+            PageBands bands = new PageBands(top, paged ? paper.Y - top - bottom : float.PositiveInfinity, paper.Y + PageGap * zoom, headerHeight);
             if (bands.top != paginatedBands.top || bands.height != paginatedBands.height || bands.stride != paginatedBands.stride)
             {
                 from = 0;
@@ -4105,18 +4118,19 @@ namespace ArctisAurora.Core.UI
                 else if (running && i < heads.Length && page.StyleNamed(heads[i].style ?? page.style) is PageStyle style)
                 {
                     float headBottom = textTop - Mm(style.headSep);
-                    float footBottom = textBottom + Mm(style.footSkip);
+                    float footBaseline = textBottom + Mm(style.footSkip);
                     foreach (RunningSlot slot in style.slots)
                     {
                         string text = slot.text.Replace("{page}", (i + 1).ToString()).Replace("{leftmark}", heads[i].left).Replace("{rightmark}", heads[i].right);
                         FontStyle face = slot.bold ? slot.italic ? FontStyle.BoldItalic : FontStyle.Bold : slot.italic ? FontStyle.Italic : FontStyle.Regular;
                         margins.Slot(slot.place, text, slot.fontName, slot.fontSize * zoom, face, PaletteRole.Ink);
-                        margins.Place(slot.place, textLeft, textRight, slot.place <= SlotPlace.HeadRight ? headBottom : footBottom);
+                        bool head = slot.place <= SlotPlace.HeadRight;
+                        margins.Place(slot.place, textLeft, textRight, head ? headBottom : footBaseline, !head);
                     }
                     if (style.headRule > 0f)
                         margins.Rule(0, new LayoutRect(textLeft, headBottom + 2f * zoom, textRight - textLeft, MathF.Max(1f, style.headRule * zoom)));
                     if (style.footRule > 0f)
-                        margins.Rule(1, new LayoutRect(textLeft, (textBottom + footBottom) * 0.5f, textRight - textLeft, MathF.Max(1f, style.footRule * zoom)));
+                        margins.Rule(1, new LayoutRect(textLeft, (textBottom + footBaseline) * 0.5f, textRight - textLeft, MathF.Max(1f, style.footRule * zoom)));
                 }
                 foreach ((int p, float y) in footnoteRules)
                     if (p == i)
@@ -4156,8 +4170,8 @@ namespace ArctisAurora.Core.UI
             private readonly LabelControl[] slots = new LabelControl[6];
             private readonly PanelControl[] rules = new PanelControl[3];
 
-            // each slot's span across the sheet, the bottom it sits on and where in the span it aligns; each rule's rect; what this pass wrote
-            private readonly (float left, float right, float bottom, float align)[] places = new (float, float, float, float)[6];
+            // each slot's span across the sheet, the bottom (or baseline) it sits on and where in the span it aligns; each rule's rect; what this pass wrote
+            private readonly (float left, float right, float bottom, float align, bool baseline)[] places = new (float, float, float, float, bool)[6];
             private readonly LayoutRect[] ruleRects = new LayoutRect[3];
             private readonly bool[] written = new bool[9];
             private Vector2 paper;
@@ -4214,9 +4228,9 @@ namespace ArctisAurora.Core.UI
                 return label;
             }
 
-            public void Place(SlotPlace place, float left, float right, float bottom)
+            public void Place(SlotPlace place, float left, float right, float bottom, bool baseline = false)
             {
-                (float, float, float, float) at = (left, right, bottom, (int)place % 3 * 0.5f);
+                (float, float, float, float, bool) at = (left, right, bottom, (int)place % 3 * 0.5f, baseline);
                 if (places[(int)place] == at) return;
                 places[(int)place] = at;
                 InvalidateArrange();
@@ -4244,9 +4258,10 @@ namespace ArctisAurora.Core.UI
                 WriteArranged(finalRect);
                 for (int i = 0; i < slots.Length; i++)
                 {
-                    (float left, float right, float bottom, float align) = places[i];
+                    (float left, float right, float bottom, float align, bool baseline) = places[i];
                     Vector2 size = slots[i].arrange.desired;
-                    slots[i].Arrange(new LayoutRect(finalRect.x + left + (right - left - size.X) * align, finalRect.y + bottom - size.Y, size.X, size.Y));
+                    float above = baseline && slots[i].Lines is { Count: > 0 } lines ? lines[0].top + lines[0].ascent : size.Y;
+                    slots[i].Arrange(new LayoutRect(finalRect.x + left + (right - left - size.X) * align, finalRect.y + bottom - above, size.X, size.Y));
                 }
                 for (int i = 0; i < rules.Length; i++)
                 {

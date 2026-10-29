@@ -31,6 +31,10 @@ namespace ArctisAurora.Core.Tex
             \def\fnum@figure##1{##1\nobreakspace\figurename}\def\fnum@table##1{##1\nobreakspace\tablename}}%
             \captionsenglish\def\caption@font{}\def\caption@lfont{}\def\caption@tfont{}\def\caption@sep{:\space}%
             \def\newblock{\hskip .11em plus .33em minus .07em\relax}%
+            \newlength\labelwidth\newlength\labelsep\newlength\leftmargin\def\@biblabel#1{[#1]}\def\@mkbiblab#1{\hfil#1}%
+            \def\@biblabelsep{.5em}\def\@bibsetup#1{\labelsep\@biblabelsep\relax\settowidth\labelwidth{\@biblabel{#1}}\leftmargin\labelwidth
+            \advance\leftmargin\labelsep\leftskip\leftmargin\parindent0pt\relax}%
+            \def\@bibitem#1{\hskip-\leftskip\hb@xt@\labelwidth{\@mkbiblab{\@biblabel{#1}}}\hskip\labelsep\ignorespaces}%
             \newcommand\textbf[1]{{\bfseries#1}}\newcommand\textmd[1]{{\mdseries#1}}%
             \newcommand\textit[1]{{\itshape#1}}\newcommand\textsl[1]{{\slshape#1}}%
             \newcommand\textsc[1]{{\scshape#1}}\newcommand\textup[1]{{\upshape#1}}%
@@ -91,6 +95,13 @@ namespace ArctisAurora.Core.Tex
             \gdef\l@section{\@dottedtocline{1}{1.5em}{2.3em}}\gdef\l@subsection{\@dottedtocline{2}{3.8em}{3.2em}}%
             \gdef\l@subsubsection{\@dottedtocline{3}{7.0em}{4.1em}}\gdef\l@paragraph{\@dottedtocline{4}{10em}{5em}}%
             \gdef\l@subparagraph{\@dottedtocline{5}{12em}{6em}}\gdef\l@figure{\@dottedtocline{1}{1.5em}{2.3em}}\global\let\l@table\l@figure
+            """;
+
+        // biblatex: the punctuation commands a preamble's \DeclareDelimFormat code uses, and \labelalphaothers
+        public const string Biblatex = """
+            \def\addcomma{,}\def\addsemicolon{;}\def\addcolon{:}\def\addperiod{.}\def\adddot{.}\def\addslash{/}%
+            \def\addspace{\space}\def\addabbrvspace{\space}\def\adddotspace{.\space}\def\addnbspace{\nobreakspace}%
+            \def\isdot{}\def\newunitpunct{.\space}\def\labelalphaothers{+}\def\mkbibemph#1{\emph{#1}}%
             """;
 
         // tocloft: each level's indent, number width, fonts and leader as lengths and macros, set by one entry macro

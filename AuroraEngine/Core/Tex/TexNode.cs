@@ -195,6 +195,9 @@ namespace ArctisAurora.Core.Tex
         // the language it started in, which picks its hyphenation patterns
         public string language = "english";
 
+        // \baselineskip when it ended, stretched by \baselinestretch, sp
+        public int baselineSkip;
+
         public TexParagraph(TexParStyle style) => this.style = style;
     }
 

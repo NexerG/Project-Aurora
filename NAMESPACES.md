@@ -104,6 +104,7 @@ ArctisAurora.Core.Testing -> AuroraEngine/Core/Testing/TestContext.cs
 ArctisAurora.Core.Testing -> AuroraEngine/Core/Testing/TestResultsReader.cs
 ArctisAurora.Core.Testing -> AuroraEngine/Core/Testing/TestRunner.cs
 ArctisAurora.Core.Tex -> AuroraEngine/Core/Tex/ITexFontMetrics.cs
+ArctisAurora.Core.Tex -> AuroraEngine/Core/Tex/TexBiblatex.cs
 ArctisAurora.Core.Tex -> AuroraEngine/Core/Tex/TexBibliography.cs
 ArctisAurora.Core.Tex -> AuroraEngine/Core/Tex/TexCatcode.cs
 ArctisAurora.Core.Tex -> AuroraEngine/Core/Tex/TexError.cs

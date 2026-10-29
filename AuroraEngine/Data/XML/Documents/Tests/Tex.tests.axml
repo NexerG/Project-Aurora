@@ -32,11 +32,17 @@
 	<Test Action="Tex.Equations"/>
 	<Test Action="Tex.MathEnvironments"/>
 	<Test Action="Tex.Bib"/>
+	<Test Action="Tex.Biblatex"/>
+	<Test Action="Tex.BiblatexDrivers"/>
+	<Test Action="Tex.BiblatexStrings"/>
+	<Test Action="Tex.BiblatexOptions"/>
+	<Test Action="Tex.BibList"/>
 	<Test Action="Tex.Lowering.Table"/>
 	<Test Action="Tex.Lowering.Image"/>
 	<Test Action="Tex.OptimalBreaks"/>
 	<Test Action="Tex.JustifyBeforeDisplay"/>
 	<Test Action="Tex.Hyphenator"/>
+	<Test Action="Tex.UrlBreaks"/>
 	<Test Action="Tex.SoftHyphen"/>
 	<Test Action="Tex.Lowering.Hyphens"/>
 	<Test Action="Tex.Lowering.Spacing"/>
@@ -77,4 +83,13 @@
 	<Test Action="Tex.ContentsLowering"/>
 	<Test Action="Tex.LastLineRoom"/>
 	<Test Action="Tex.BlockIndents"/>
+	<Test Action="Tex.FootSkip"/>
+	<Test Action="Tex.BibItemSep"/>
+	<Test Action="Tex.CaptionSingleLine"/>
+	<Test Action="Tex.DisplayAfterPar"/>
+	<Test Action="Tex.DisplayIntegral"/>
+	<Test Action="Tex.BlockLineHeight"/>
+	<Test Action="Tex.BaselineSpacing"/>
+	<Test Action="Tex.FractionalZoom"/>
+	<Test Action="Tex.CenterLineBreak"/>
 </TestSuite>

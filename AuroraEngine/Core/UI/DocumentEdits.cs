@@ -42,6 +42,7 @@ namespace ArctisAurora.Core.UI
         public int listLevel;
         public ListMarker? listMarker;
         public float? listIndent;
+        public float? lineHeight;
         public int? listStart;
         public bool isChecked;
         public string text = string.Empty;

@@ -27,7 +27,7 @@ namespace ArctisAurora.Core.Tex
 
         private static readonly string[] monthKeys = { "jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec" };
 
-        private readonly record struct Name(List<string> first, List<string> von, List<string> last, List<string> jr);
+        internal readonly record struct Name(List<string> first, List<string> von, List<string> last, List<string> jr);
 
         #region ---- reading ----
         public static void Parse(string text, List<TexBibEntry> into, Action<string> error)
@@ -339,7 +339,7 @@ namespace ArctisAurora.Core.Tex
             return (pages.IndexOfAny(new[] { '-', ',', '+' }) >= 0 ? "pages " : "page ") + Dashed(pages);
         }
 
-        private static string Dashed(string pages) => Regex.Replace(pages, @"\s*-+\s*", "--");
+        internal static string Dashed(string pages) => Regex.Replace(pages, @"\s*-+\s*", "--");
 
         private static string? Em(string? text) => text == null ? null : "{\\em " + text + "}";
 
@@ -378,7 +378,7 @@ namespace ArctisAurora.Core.Tex
         #endregion
 
         #region ---- names ----
-        private static List<string> SplitNames(string field)
+        internal static List<string> SplitNames(string field)
         {
             List<string> names = new List<string>();
             List<string> words = Words(field, out _);
@@ -429,7 +429,7 @@ namespace ArctisAurora.Core.Tex
         }
 
         // First von Last; von Last, First; von Last, Jr, First.
-        private static Name ParseName(string text)
+        internal static Name ParseName(string text)
         {
             List<string> words = Words(text, out int commas);
             List<List<string>> parts = new List<List<string>> { new List<string>() };
@@ -481,7 +481,7 @@ namespace ArctisAurora.Core.Tex
         }
 
         // D. for Donald, J.-P. for Jean-Paul, {\'E}. for {\'E}mile.
-        private static string Initial(string word) => string.Join("-", word.Split('-').Where(p => p.Length > 0).Select(p =>
+        internal static string Initial(string word) => string.Join("-", word.Split('-').Where(p => p.Length > 0).Select(p =>
         {
             if (p[0] != '{') return p[0] + ".";
             int close = p.IndexOf('}');
@@ -565,7 +565,7 @@ namespace ArctisAurora.Core.Tex
         }
 
         // Letters, digits and spaces only, accents' commands dropped; lower case unless kept.
-        private static string Purify(string text, bool keepCase = false)
+        internal static string Purify(string text, bool keepCase = false)
         {
             StringBuilder pure = new StringBuilder();
             for (int i = 0; i < text.Length; i++)

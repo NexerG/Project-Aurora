@@ -36,7 +36,7 @@ It never throws. Problems are collected in `errors` and the run recovers the way
 
 | Member | Kind | Summary |
 | --- | --- | --- |
-| `TexTypesetter(string source, ITexFontMetrics? metrics, string? folder = null)` | constructor | Starts a run; no metrics means a fixed 10pt em and ex. `folder` is where pictures and `.bib` files are looked for. |
+| `TexTypesetter(string source, ITexFontMetrics? metrics, string? folder = null)` | constructor | Starts a run; no metrics means a fixed 10pt em and ex, and a text width of its length × size/2 (`FixedMetrics`). `folder` is where pictures and `.bib` files are looked for. |
 | `Run()` | method | Typesets the whole source, then `TypesetBibliography()` and `Resolve()`. |
 | `vlist` | field | The vertical list: paragraphs, vertical glue, penalties and rules. |
 | `footnotes` | field | The footnotes, one `TexFootnote` (id and vlist) per `\footnote`; they replace the old endnotes and are lowered to `<Footnote>` groups. |
@@ -280,7 +280,34 @@ A global `\setlength` of `\topsep`, `\itemsep` or `\parsep` is overwritten at th
 	a stretch changed after that is logged once and ignored
 	`lineSpread` = `bodyStretch`, and lowering sets the document's `LineHeight` to 1.2 × `lineSpread`
 
-The line height is one value for the whole document, so floats and footnotes are set at it where setspace would keep them single, and `\fontsize`'s second argument is not read. `\newfontface\cs{…}` defines `\cs` to set the face and then run `\selectfont`, so `\fontsize{a}{b}\cs` takes the pending size.
+The document's line height is the body `\baselineskip` over `\normalsize`, stretched by `lineSpread`; lowering writes it as the layout's `LineHeight`. A paragraph whose pitch differs gets its own `<Block LineHeight>`: floats and footnotes are single-spaced when setspace is loaded, and `\fontsize`'s second argument is read. A paragraph's pitch is the `\baselineskip` in force at paragraph end (TeX's rule), so a `\fontsize` inside a group that closes before `\par` uses the outer skip. `\newfontface\cs{…}` defines `\cs` to set the face and then run `\selectfont`, so `\fontsize{a}{b}\cs` takes the pending size.
+#### Baseline spacing and vertical skips
+A TeX line's pitch is its `\baselineskip`, not a multiple of its font size. The typesetter keeps `TexStyle.baselineSkip` (sp, 0 = the size command's `baselineSkipPoints` entry for 10/11/12pt) and stamps each paragraph with it, stretched by `lineSpread`. Lowering turns a pitch that differs from the document's into `<Block LineHeight>`.
+	`BaselineSkip(style)`
+		if `style.baselineSkip` is set
+			return it
+		return `baselineSkipPoints` entry for the style's size command and the class size
+	`EndParagraph`
+		`paragraph.baselineSkip` = `BaselineSkip` of the style in force now   // TeX reads \baselineskip at \par
+	`CenterCr(skip)`   // \\ in center, flushleft, flushright, \centering, \raggedright, \raggedleft
+		end the paragraph
+		`\addvspace{-\parskip}`
+		`\vskip skip`
+	`\\` before a blank line in justified text
+		lowering adds an empty last line   // TeX's underfull \hbox
+	`TopSkip(top, vertical)`
+		if the list or center/flush environment starts in vertical mode
+			`top` += `partopSeps` entry for the class size   // \partopsep, above and below
+	merged skip in lowering (`Spacing.last` is `\lastskip`)   // \@xaddvskip
+		if `last` is 0: add the skip
+		else if `last` < skip: raise `last` to the skip
+		else if the skip is negative and `last` is not: add the skip
+		a plain \vskip adds and becomes `last`, so a \vskip 0pt resets it
+	`\centerline`
+		a centred paragraph that keeps the outer `\baselineskip` (`\@keepskip`) and adds no `\parskip`
+	a trivlist environment's first paragraph has its `\parskip` taken back
+	a display heading adds `\parskip` after its before-skip
+Display skips: a display that starts a paragraph (a blank line before it) gets `\parskip` and one empty line above and `\belowdisplayshortskip` below; a display in mid-paragraph gets `\abovedisplayskip` and `\belowdisplayskip`; the skip below applies even when the display ends its paragraph. A caption measures its natural width with `Width(hlist)`: it is centred when it fits `\linewidth` (caption's `singlelinecheck`), else justified.
 
 #### Fonts with fontspec
 `fontspec` is a known package. Its commands record or select a font by the name the source gives, and lowering decides what that name draws in (see Font resolution below). The file keys (`Path=`, `Extension=`, `UprightFont=`) and the other options (`Ligatures=TeX`) are read and ignored, so the font is found by its family name.
@@ -359,13 +386,59 @@ The lists are not formatted in C#. `TexFormat.Prelude` holds ports of latex.ltx'
 		the page number sits in a right-aligned box of `\@pnumwidth`
 	`\cftparskip`, `\cft<L>indent`, `\cft<L>numwidth` and the `\cft<L>font`, `pagefont`, `dotsep`, `leader` hooks exist per level   // sec, subsec, subsubsec, para, subpara, fig, tab
 
+#### Bibliography and biblatex
+`biblatex` and `silence` are known packages. Without biblatex the bibliography is the BibTeX one: `TexBibliography.Format` writes a `thebibliography` source in the `\bibliographystyle`. With biblatex loaded, `TexBiblatex.Format` writes that source instead: the drivers of the standard styles are ported to C# in the document's language (English and Lithuanian string tables transcribed from biblatex's lbx files), for article, book, inproceedings, thesis, online and misc, which every other entry type uses. Both paths end in the same hanging list: a label column whose width is measured, with the entries set against `\leftskip`. Customizations that are data are honoured (strings, name delimiters, name aliases, `\labelalphaothers`); hooks that are code (`\DeclareFieldFormat`, `\renewbibmacro`, drivers, `\defbibheading`) are read, ignored and logged.
+	`Packages (biblatex, options)`
+		`BiblatexOptions (options)`   // `TexBiblatex.Option` per key: style, sorting, maxbibnames, minbibnames, maxalphanames, minalphanames, giveninits, abbreviate, sortcites, eprint, doi, url, isbn, date, urldate, autolang
+		the commands below take effect once `biblatex` is set
+	`\addbibresource[opts]{file}`
+		append the file to `bibFiles`
+	`\DefineBibliographyStrings{lang}{key = text, …}`
+		store the overrides in the settings' `strings`
+	`\DeclareDelimFormat[context]{name}{code}`
+		when no context is given, keep the code as source in `delims`   // `Source` puts a space after control words
+	`\DeclareNameAlias{default|author|editor}{given-family|family-given|family-given/given-family}`
+		store it as the settings' `nameFormat`
+	`\parencite` and `\autocite` are `\cite`
+	`\printbibliography[opts]` (`PrintBibliography`)
+		read `heading=bibintoc` and `title=`
+		`PlaceBibliography` places the mark and records `bibLanguage`
+	`TypesetBibliography`, under biblatex
+		`TexBiblatex.Format (cited, settings, language, title)`
+			`Sorted`   // alphabetic: label with a, b, c after equal labels; numeric: numbers; compared with the language's CompareInfo
+			for each entry
+				`Entry` writes the driver's units   // the `Units` tracker adds the punctuation and capitalizes at a sentence start
+		read the source with `@` a letter (`ReadCode`)
+		the heading is the language's `references` (article) or `bibliography` (report, book) string, set by `\def\refname` or `\def\bibname`   // `title=` overrides it, `abbreviate` picks the short form
+	`BeginBibliography`
+		pass `{widest}` to `\@bibsetup`
+		set `\parskip` to the list's parsep
+	`\@bibsetup{widest}`
+		`\settowidth\labelwidth{\@biblabel{widest}}`
+		`\leftmargin` = `\labelwidth` + `\labelsep`
+		`\leftskip\leftmargin`, `\parindent0pt`
+	`BibItem`
+		add topsep before the first entry and itemsep between entries
+		record `bibOrder`
+		insert `\@bibitem{label}`   // `\hskip-\leftskip` then an `\hb@xt@\labelwidth` box holding the label, then `\labelsep`; lowering folds the negative skip into a negative block `Indent`
+	`\settowidth`   // `SetToWidth`
+		typeset the text in the current font
+		`Width(hlist)` sums the characters by run through `ITexFontMetrics.Width`, glue, kerns, rules, boxes and reference text
+	`Resolve` fills a citation with `CiteText`
+		biblatex alphabetic joins the keys with "; ", numeric and BibTeX with ", "
+		`sortcites` orders the keys by their place in the bibliography
+		a label past maxalphanames shows a plain "+"
+	`\url`
+		un-escape `\%`, `\#`, `\_`, `\&`
+		insert U+200B after each character of `UrlBreaks` except the last one   // "./-_?&=:#!;,)]|@+"
+
 ### Run, the end of the document
 	typeset the body up to `\end{document}`
 		`\ref` and `\cite` leave a `TexRefNode` carrying their style
 		`\bibliography` leaves a `TexBibliographyMark`
 	`TypesetBibliography`
 		parse the `.bib` files with `TexBibliography.Parse`
-		format the cited entries in the `\bibliographystyle` with `TexBibliography.Format` into thebibliography source
+		format the cited entries in the `\bibliographystyle` with `TexBibliography.Format` into thebibliography source   // under biblatex `TexBiblatex.Format`, see Bibliography and biblatex
 		`InsertSource` pushes that source into the expander
 		typeset it into a list and splice the list in at the mark
 	`TypesetContents`   // the entries of the contents and the lists, see Table of contents and lists
@@ -484,6 +557,7 @@ A font name from fontspec becomes a font asset here. Termes and Carlito are bund
 	em is the font size
 	ex is the 'x' glyph height from the face's `atlasMetaData`
 	when the asset is missing, ex is 0.430554 of the em, the cmr10 ratio
+	`Width (text, font)` is `TexLowering.TextWidth`   // the label column of the bibliography is measured with it
 
 ## PDF export
 `File → Export PDF` in a `.tex` split view writes `<name>.pdf` beside the source, overwriting an earlier export and asking nothing. The PDF is vector: text is real selectable text in Type 3 fonts drawn from the font's own glyph outlines, pictures are the original files, and rules are vector rectangles. Colours come from the engine's `print` palette, so a dark theme does not give a dark PDF; "print" therefore also appears in the theme list.
@@ -521,7 +595,7 @@ Not exported: clickable `\href` links, bookmarks, floating pictures, gradients a
 List bullets are exported. While recording, an icon control records its name and artwork box, and the writer draws the six default bullet shapes (disc, circle, square, outlined square, triangle, outlined triangle) as filled paths from a copy of their SVG geometry, with the outlines even-odd. Any other icon is skipped. If a bullet SVG changes, the writer's copy has to follow.
 
 ## Not supported yet
-`\suppressfloats`, `placeins` and `\FloatBarrier`, `afterpage`, `tabularx`, `tabular*`, `longtable`, `\multirow`, natbib, `\autoref`, `\nameref`, subfigure, hanging indent in bibliography entries, clickable references, `\arrayrulecolor`, `\parindent` on left-aligned tables, `\numberwithin`, `subequations`, `\intertext`, `\shoveleft`, `\shoveright`, `\hdotsfor`, mathtools, `\setbox`, `\wd`, `\lastskip`, `\appendix`, clickable contents entries, tocloft's `\cftsetindents`, `\cftpagenumbersoff` and `\newlistof`, and tocloft's non-`[titles]` title formatting. There is no kerning. Vertical glue has no stretch or shrink, infinite glue vanishes except horizontal fil glue, which lowering turns into a fill run, `\tolerance`, `\pretolerance`, `\emergencystretch` and `\exhyphenpenalty` are registers that nothing reads, a `\rule` inside running text draws nothing, `\raisebox` ignores its raise, titlesec shapes other than hang and block are set as hang, `\partopsep` is not added (the skip before a list after a blank line is 27.8 pt where the thesis has 30.9), `\titlespacing`'s right argument is ignored, `\roman`, `\alph`, `\Roman` and `\Alph` are undefined inside `\the<counter>`, `\labelsep` and `\leftmargin` are not registers, setspace's `spacing`, `onehalfspace` and `doublespace` environments are missing, `\sectionbreak` runs whether or not titlesec is loaded, bibliography entries have no `\itemsep` between them, a quotation's `\listparindent` is not modelled, a `\cline` under part of a merged cell rules the whole cell, booktabs gaps do not interrupt vertical rules, a spacer never breaks a line, and display formulas inside table cells get no display skips. Hyphenation is US English only, so accented words are never hyphenated; an explicit hyphen in a word ("well-known") is not a break opportunity; `\lefthyphenmin`, `\righthyphenmin`, `\uchyph` and `\hyphenpenalty` are not read. The preview breaks a paragraph Knuth-Plass only where a break set exists at tolerance 200; the rest stay greedy. Small caps are set upright and Sans is set in Roman unless `\setsansfont` names a font. fontspec's file keys and options are ignored, a font name that resolves to nothing keeps the default face and is only logged, and `indentfirst` is not supported. The em dash and the en dash do not draw at 13 px in a note. A `\def` inside a tabular cell leaks into later cells. `\hbox to` content wider than its box overflows (TeX would shrink `\hss`; spacers never go negative). A `\label` in vertical mode with no paragraph before it (right after a mark or a table) is dropped, so a contents entry pointing there keeps "??" as its page. A starred titlesec heading loses the `\hspace` of the class's before-code (7 pt left of the thesis). Two-sided page styles (`[LE,RO]` reads only the odd entry, `\cleardoublepage` is `\clearpage`), `\pagenumbering`, `\footnotemark`, `\footnotetext`, footnotes split across pages, `\footnotesep` and `\renewcommand` of `\sectionmark` are not supported; a mid-document `\pagestyle` sets the whole document's style, and a `\label` inside display math or a table cell has no page site.
+`\suppressfloats`, `placeins` and `\FloatBarrier`, `afterpage`, `tabularx`, `tabular*`, `longtable`, `\multirow`, natbib, the biblatex commands `\textcite`, `\footcite` and `\fullcite`, biber-only features, stretch inside a `\url` (`\Urlmuskip`), `\autoref`, `\nameref`, subfigure, clickable references, `\arrayrulecolor`, `\parindent` on left-aligned tables, `\numberwithin`, `subequations`, `\intertext`, `\shoveleft`, `\shoveright`, `\hdotsfor`, mathtools, `\setbox`, `\wd`, `\lastskip`, `\appendix`, clickable contents entries, tocloft's `\cftsetindents`, `\cftpagenumbersoff` and `\newlistof`, and tocloft's non-`[titles]` title formatting. There is no kerning. Vertical glue has no stretch or shrink (`\addvspace` merges against the last skip, `Spacing.last`; mid-page `\lineskip` is not modelled), a heading is not kept with the next paragraph, an over-wide tabular fits the text width instead of sticking into the margin, infinite glue vanishes except horizontal fil glue, which lowering turns into a fill run, `\tolerance`, `\pretolerance`, `\emergencystretch` and `\exhyphenpenalty` are registers that nothing reads, a `\rule` inside running text draws nothing, `\raisebox` ignores its raise, titlesec shapes other than hang and block are set as hang, `\titlespacing`'s right argument is ignored, `\roman`, `\alph`, `\Roman` and `\Alph` are undefined inside `\the<counter>`, `\labelsep` and `\leftmargin` are not registers, setspace's `spacing`, `onehalfspace` and `doublespace` environments are missing, `\sectionbreak` runs whether or not titlesec is loaded, bibliography entries have no `\itemsep` between them, a quotation's `\listparindent` is not modelled, a `\cline` under part of a merged cell rules the whole cell, booktabs gaps do not interrupt vertical rules, a spacer never breaks a line, and display formulas inside table cells get no display skips. Hyphenation is US English only, so accented words are never hyphenated; an explicit hyphen in a word ("well-known") is not a break opportunity; `\lefthyphenmin`, `\righthyphenmin`, `\uchyph` and `\hyphenpenalty` are not read. The preview breaks a paragraph Knuth-Plass only where a break set exists at tolerance 200; the rest stay greedy. Small caps are set upright and Sans is set in Roman unless `\setsansfont` names a font. fontspec's file keys and options are ignored, a font name that resolves to nothing keeps the default face and is only logged, and `indentfirst` is not supported. The em dash and the en dash do not draw at 13 px in a note. A `\def` inside a tabular cell leaks into later cells. `\hbox to` content wider than its box overflows (TeX would shrink `\hss`; spacers never go negative). A `\label` in vertical mode with no paragraph before it (right after a mark or a table) is dropped, so a contents entry pointing there keeps "??" as its page. A starred titlesec heading loses the `\hspace` of the class's before-code (7 pt left of the thesis). Two-sided page styles (`[LE,RO]` reads only the odd entry, `\cleardoublepage` is `\clearpage`), `\pagenumbering`, `\footnotemark`, `\footnotetext`, footnotes split across pages, `\footnotesep` and `\renewcommand` of `\sectionmark` are not supported; a mid-document `\pagestyle` sets the whole document's style, and a `\label` inside display math or a table cell has no page site.
 
 ## Related
 - [[Tex Expander]] — the tokens this reads

@@ -77,6 +77,9 @@ namespace ArctisAurora.Core.UI
         public ListMarker? listMarker;
         public float? listIndent;
 
+        // the block's own line height as a multiple of its font size; null takes the layout's
+        public float? lineHeight;
+
         // the number this item restarts its list at; null counts on from the item above
         public int? listStart;
 
@@ -145,7 +148,8 @@ namespace ArctisAurora.Core.UI
                 listKind = listKind,
                 listLevel = listLevel,
                 listMarker = listMarker,
-                listIndent = listIndent
+                listIndent = listIndent,
+                lineHeight = lineHeight
             };
 
             StyleSpan carried = run.StyleAt(offset);
@@ -193,6 +197,7 @@ namespace ArctisAurora.Core.UI
                 listLevel = listLevel,
                 listMarker = listMarker,
                 listIndent = listIndent,
+                lineHeight = lineHeight,
                 listStart = listStart,
                 isChecked = isChecked,
                 text = (run.text ?? string.Empty)[from..to]
@@ -250,6 +255,7 @@ namespace ArctisAurora.Core.UI
             listLevel = kind.listLevel;
             listMarker = kind.listMarker;
             listIndent = kind.listIndent;
+            lineHeight = kind.lineHeight;
             listStart = kind.listStart;
             isChecked = kind.isChecked;
         }

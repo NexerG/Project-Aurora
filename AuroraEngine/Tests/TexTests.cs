@@ -245,6 +245,132 @@ namespace ArctisAurora.Tests
             yield break;
         }
 
+        #region ---- L10g: the thesis against its reference ----
+        [A_XSDActionDependency("Tex.FootSkip", "Test")]
+        private static IEnumerator<int> FootSkip(TestContext t)
+        {
+            XElement document = TexLowering.Compile("\\documentclass{article}\\usepackage[footskip=1.5cm,headsep=5mm]{geometry}\\begin{document}x\\end{document}",
+                out List<TexError> errors);
+            XElement? style = document.Descendants("PageStyle").FirstOrDefault();
+            t.Check(errors.Count == 0 && style != null && Near((float)style.Attribute("FootSkip")!, 15f) && Near((float)style.Attribute("HeadSep")!, 5f),
+                $"geometry's footskip and headsep reach the page styles: {style}");
+            yield break;
+        }
+
+        [A_XSDActionDependency("Tex.BibItemSep", "Test")]
+        private static IEnumerator<int> BibItemSep(TestContext t)
+        {
+            string folder = Folder(("refs.bib", "@misc{a, title={First}, year={2020}}\n@misc{b, title={Second}, year={2021}}\n"));
+            TexTypesetter typesetter = new TexTypesetter("\\documentclass{article}\\usepackage[style=numeric]{biblatex}\\addbibresource{refs.bib}"
+                + "\\setlength{\\parskip}{3pt}\\begin{document}\\cite{a,b}\\printbibliography\\end{document}", null, folder);
+            typesetter.Run();
+            Directory.Delete(folder, true);
+            List<TexNode> v = typesetter.vlist;
+            List<TexParagraph> pars = Pars(typesetter);
+            int first = v.IndexOf(pars[^2]), second = v.IndexOf(pars[^1]);
+            float gap = 0f;
+            for (int i = first + 1; i < second; i++)
+                if (v[i] is TexVGlue g) gap += Pt(g.glue.width);
+            t.Check(typesetter.errors.Count == 0 && pars.Count >= 3 && gap == 4f, $"biblatex entries stand \\bibitemsep apart with no \\parskip: {gap}pt");
+            yield break;
+        }
+
+        [A_XSDActionDependency("Tex.CaptionSingleLine", "Test")]
+        private static IEnumerator<int> CaptionSingleLine(TestContext t)
+        {
+            string longText = string.Concat(Enumerable.Repeat("a caption that runs on ", 12));
+            TexTypesetter typesetter = Typeset("\\documentclass{article}\\begin{document}\\begin{figure}\\caption{Short}\\end{figure}"
+                + "\\begin{figure}\\caption{" + longText + "}\\end{figure}\\end{document}", out List<TexError> errors);
+            List<TexParagraph> captions = Pars(typesetter).Where(p => Line(p).Contains("Short") || Line(p).Contains("runs on")).ToList();
+            t.Check(errors.Count == 0 && captions.Count == 2 && captions[0].style.align == TexAlign.Center && captions[1].style.align == TexAlign.Justify,
+                $"a caption that fits is centred, a longer one justified: {string.Join(", ", captions.Select(c => c.style.align))}");
+            yield break;
+        }
+
+        [A_XSDActionDependency("Tex.DisplayAfterPar", "Test")]
+        private static IEnumerator<int> DisplayAfterPar(TestContext t)
+        {
+            float px = 96f / 72.27f;
+            List<XElement> after = TexLowering.Compile("\\documentclass{article}\\begin{document}Text\n\n\\begin{equation}x\\end{equation}\n\nMore\\end{document}",
+                out List<TexError> errors).Elements("Block").ToList();
+            t.Check(errors.Count == 0 && after.Count == 3 && Near((float?)after[1].Attribute("SpaceBefore") ?? 0f, 12f * px, 0.05f)
+                && Near((float?)after[2].Attribute("SpaceBefore") ?? 0f, 6f * px, 0.05f),
+                $"a display after a blank line: an empty line above, \\belowdisplayshortskip below: {string.Join(" / ", after.Select(b => b.Attribute("SpaceBefore")?.Value))}");
+
+            List<XElement> inside = TexLowering.Compile("\\documentclass{article}\\begin{document}Text \\[x\\] more\n\nNext\\end{document}", out errors)
+                .Elements("Block").ToList();
+            t.Check(errors.Count == 0 && inside.Count == 4 && Near((float?)inside[1].Attribute("SpaceBefore") ?? 0f, 10f * px, 0.05f)
+                && Near((float?)inside[2].Attribute("SpaceBefore") ?? 0f, 10f * px, 0.05f),
+                $"a display inside a paragraph: \\abovedisplayskip and \\belowdisplayskip: {string.Join(" / ", inside.Select(b => b.Attribute("SpaceBefore")?.Value))}");
+            yield break;
+        }
+
+        [A_XSDActionDependency("Tex.DisplayIntegral", "Test")]
+        private static IEnumerator<int> DisplayIntegral(TestContext t)
+        {
+            MathConstants? math = AssetRegistries.GetRegistryByValueType<string, FontAsset>(typeof(FontAsset))[TexLowering.MathFont].mathConstants;
+            t.Check(math != null && Near(math.DisplayHeight('∫'), 2.223f, 0.005f) && Near(math.DisplayHeight('∑'), 1.401f, 0.005f),
+                $"display operators take the MATH table's variant heights: ∫ {math?.DisplayHeight('∫')} ∑ {math?.DisplayHeight('∑')}");
+            t.Check(math != null && math.DisplayHeight('x') == math.displayOperatorMinHeight, "anything else falls back to DisplayOperatorMinHeight");
+            yield break;
+        }
+
+        [A_XSDActionDependency("Tex.BlockLineHeight", "Test")]
+        private static IEnumerator<int> BlockLineHeight(TestContext t)
+        {
+            XElement document = TexLowering.Compile("\\documentclass{article}\\usepackage{setspace}\\setstretch{2}\\begin{document}Body\n\n"
+                + "{\\fontsize{14pt}{20pt}\\selectfont Big\\par}\n\n\\begin{figure}\\caption{Single}\\end{figure}\\end{document}", out List<TexError> errors);
+            bool Holds(XElement block, string text) => block.Elements("Run").Any(r => ((string?)r.Attribute("Text") ?? "").Replace("­", "").Contains(text));
+            XElement? big = document.Elements("Block").FirstOrDefault(b => Holds(b, "Big"));
+            XElement? caption = document.Descendants("Block").FirstOrDefault(b => Holds(b, "Single"));
+            float px = 96f / 72.27f;
+            t.Check(errors.Count == 0 && big != null && Near((float)big.Attribute("LineHeight")!, 2f * 20f * px / 19f, 0.002f),
+                $"\\fontsize's \\baselineskip, stretched, over the 19 px it is set in: {big?.Attribute("LineHeight")?.Value}");
+            t.Check(caption != null && Near((float)caption.Attribute("LineHeight")!, 12f * px / 13f, 0.002f),
+                $"setspace leaves floats single-spaced: {caption?.Attribute("LineHeight")?.Value}");
+            yield break;
+        }
+
+        [A_XSDActionDependency("Tex.BaselineSpacing", "Test")]
+        private static IEnumerator<int> BaselineSpacing(TestContext t)
+        {
+            XElement layout = TexLowering.Compile("\\documentclass{article}\\begin{document}x\\end{document}", out _).Element("DocumentLayout")!;
+            t.Check(Near((float)layout.Attribute("BaselineDepth")!, 2f * 96f / 72.27f, 0.002f) && (string?)layout.Attribute("WidowControl") == "true",
+                $"the depth is \\baselineskip less \\topskip, and widow control is on: {layout.Attribute("BaselineDepth")?.Value}");
+
+            IGlyphMetrics metrics = new FontAssetGlyphMetrics();
+            AtlasMetaData atlas = AssetRegistries.GetRegistryByValueType<string, FontAsset>(typeof(FontAsset))["default"].atlasMetaData;
+            List<TextMeasurer.Run> runs = new List<TextMeasurer.Run> { new TextMeasurer.Run("Line", 0, 4, "default", atlas, 16, FontStyle.Regular) };
+            TextLine line = TextMeasurer.MeasureBlock(runs, 500f, metrics, 1.5f, baselineDepth: 5f).lines[0];
+            t.Check(line.descent == 5f && line.ascent == 19f, $"a fixed depth: every line's descent is it, the rest of the box above: {line.ascent}+{line.descent}");
+            yield break;
+        }
+
+        [A_XSDActionDependency("Tex.FractionalZoom", "Test")]
+        private static IEnumerator<int> FractionalZoom(TestContext t)
+        {
+            IGlyphMetrics metrics = new FontAssetGlyphMetrics();
+            AtlasMetaData atlas = AssetRegistries.GetRegistryByValueType<string, FontAsset>(typeof(FontAsset))["default"].atlasMetaData;
+            List<TextMeasurer.Run> runs = new List<TextMeasurer.Run> { new TextMeasurer.Run("Line", 0, 4, "default", atlas, 16f * 0.9f, FontStyle.Regular) };
+            TextLine line = TextMeasurer.MeasureBlock(runs, 500f, metrics, 1.5f).lines[0];
+            t.Check(Near(line.ascent + line.descent, 16f * 0.9f * 1.5f, 0.001f),
+                $"a zoomed size stays fractional, so the preview paginates as the export does: {line.ascent + line.descent}");
+            yield break;
+        }
+
+        [A_XSDActionDependency("Tex.CenterLineBreak", "Test")]
+        private static IEnumerator<int> CenterLineBreak(TestContext t)
+        {
+            List<XElement> blocks = TexLowering.Compile("\\documentclass{article}\\setlength{\\parskip}{3pt}\\begin{document}\\begin{center}a\\\\[2pt]b\\\\\nc\\end{center}"
+                + "\\end{document}", out List<TexError> errors).Elements("Block").ToList();
+            float px = 96f / 72.27f;
+            t.Check(errors.Count == 0 && blocks.Count == 3 && Near((float?)blocks[1].Attribute("SpaceBefore") ?? 0f, 2f * px, 0.02f)
+                && blocks[2].Attribute("SpaceBefore") == null,
+                $"\\\\ in centred text ends the paragraph and takes its \\parskip back: {string.Join(" / ", blocks.Select(b => b.Attribute("SpaceBefore")?.Value))}");
+            yield break;
+        }
+        #endregion
+
         #region ---- typesetting ----
         private static TexTypesetter Typeset(string source, out List<TexError> errors)
         {
@@ -441,7 +567,7 @@ namespace ArctisAurora.Tests
 
             XElement[] expected =
             {
-                new XElement("Block", new XAttribute("StylingType", "Heading1"), new XAttribute("SpaceBefore", "20.038"),
+                new XElement("Block", new XAttribute("StylingType", "Heading1"), new XAttribute("LineHeight", "1.258"), new XAttribute("SpaceBefore", "20.038"),
                     new XElement("Run", new XAttribute("Text", "1"), new XAttribute("Bold", "true")),
                     new XElement("Run", new XAttribute("Text", "\u00A0"), new XAttribute("Bold", "true"), new XAttribute("Space", "19.128")),
                     new XElement("Run", new XAttribute("Text", "In\u00ADtro"), new XAttribute("Bold", "true"))),
@@ -674,7 +800,7 @@ namespace ArctisAurora.Tests
                 TexTypesetter typesetter = new TexTypesetter(Doc(style), null, folder);
                 typesetter.Run();
                 errors = typesetter.errors;
-                return Pars(typesetter).Select(p => System.Text.RegularExpressions.Regex.Replace(Line(p), " {2,}", " ")).ToList();
+                return Pars(typesetter).Select(BoxLine).ToList();
             }
 
             List<string> plain = Typeset("plain");
@@ -700,6 +826,175 @@ namespace ArctisAurora.Tests
             TexBibliography.Parse("@misc{x, title = \"Say {\"}hi{\"}\" # {!}, note = undefinedname, year 1}", entries, problems.Add);
             t.Check(entries.Single().fields["title"] == "Say {\"}hi{\"}!", $"quotes with braced quotes, #: {entries.Single().fields["title"]}");
             t.Check(problems.Any(p => p.Contains("undefinedname")) && problems.Any(p => p.Contains("expecting a field name")), $"parse problems: {string.Join("; ", problems)}");
+            Directory.Delete(folder, true);
+            yield break;
+        }
+
+        // A paragraph's text with its boxes' text, URL break marks left out, spaces collapsed.
+        private static string BoxLine(TexParagraph p) => Regex.Replace(BoxText(p.list).Replace("\u200B", ""), " {2,}", " ").Trim();
+
+        // The paragraphs of a document typeset with a .bib beside it, as BoxLine reads them.
+        private static List<string> BibLines(string source, string bib, out List<TexError> errors)
+        {
+            string folder = Folder(("refs.bib", bib));
+            TexTypesetter typesetter = new TexTypesetter(source, null, folder);
+            typesetter.Run();
+            errors = typesetter.errors;
+            List<string> lines = new List<string>(16);
+            foreach (TexParagraph p in Pars(typesetter))
+                lines.Add(BoxLine(p));
+            Directory.Delete(folder, true);
+            return lines;
+        }
+
+        // The line that is the entry after its [label], or null.
+        private static string? Entry(List<string> lines, string text)
+        {
+            foreach (string line in lines)
+                if (line.StartsWith('[') && line.EndsWith("] " + text, StringComparison.Ordinal)) return line;
+            return null;
+        }
+
+        [A_XSDActionDependency("Tex.Biblatex", "Test")]
+        private static IEnumerator<int> Biblatex(TestContext t)
+        {
+            const string bib = "@online{apple, author = {{Apple Inc.}}, title = {Metal}, year = 2025}\n" +
+                "@online{dotnet, author = {{dotnet}}, title = {Silk}, year = 2025}\n" +
+                "@online{deepl, author = {{DeepL GmbH}}, title = {Translator}, year = 2024}\n" +
+                "@misc{sph, author = {Haofeng Huang and Li Yi}, title = {SPH}, year = 2024}\n" +
+                "@online{vries, author = {Joey de Vries}, title = {Coordinates}, year = 2023}\n" +
+                "@online{nexa, author = {{NexerG}}, title = {Project Aurora}, year = 2025}\n" +
+                "@online{nexb, author = {{NexerG}}, title = {RadianceCascades2D.cs}, year = 2025}\n" +
+                "@online{nexc, author = {{NexerG}}, title = {RadianceCascades2D Shaders}, year = 2025}\n" +
+                "@book{four, author = {Ann One and Ben Two and Cid Three and Dan Four}, title = {Many}, year = 1999}\n" +
+                "@online{tmp, author = {{tmpvar}}, title = {Cascades}, date = {2023-05-07}}\n";
+            string Doc(string options) => $"\\documentclass{{article}}\\usepackage[style=alphabetic,minalphanames=3{options}]{{biblatex}}\\addbibresource{{refs.bib}}\n" +
+                "\\begin{document}\nSee \\cite{nexc,apple} and \\nocite{*}.\n\\printbibliography\n\\end{document}\n";
+
+            List<string> lines = BibLines(Doc(",sortcites"), bib, out List<TexError> errors);
+            List<string> labels = new List<string>(16);
+            foreach (string line in lines)
+                if (line.StartsWith('[')) labels.Add(line[1..line.IndexOf(']')]);
+            string order = string.Join(" ", labels);
+            t.Check(order == "App25 Dee24 dot25 HY24 Nex25a Nex25b Nex25c OTT+99 tmp23 Vri23",
+                $"labels: three letters of one family, braced names whole, initials of two or three, + past three, a b c in anyt order: {order}");
+            t.Check(lines[0] == "See [App25; Nex25b] and .", $"a citation's labels sorted and joined by a semicolon: {lines[0]}");
+            t.Check(lines[1] == "References", $"the heading: {lines[1]}");
+            t.Check(errors.Count == 0, $"no errors: {string.Join("; ", errors)}");
+
+            List<string> unsorted = BibLines(Doc(",maxalphanames=4"), bib, out _);
+            t.Check(unsorted[0] == "See [Nex25b; App25] and ." && Entry(unsorted, "Ann One et al. Many. 1999.") is string four && four.StartsWith("[OTTF99]"),
+                $"citation order without sortcites, four initials under maxalphanames=4, et al. past maxnames: {unsorted[0]} / {string.Join(" / ", unsorted)}");
+            yield break;
+        }
+
+        [A_XSDActionDependency("Tex.BiblatexDrivers", "Test")]
+        private static IEnumerator<int> BiblatexDrivers(TestContext t)
+        {
+            const string bib = "@online{deepl, author = {{DeepL GmbH}}, title = {DeepL Translator}, year = {2024}, url = {https://www.deepl.com/translator},\n" +
+                "  note = {[Online]}, organization = {DeepL}, urldate = {2025-05-06}}\n" +
+                "@online{quat, author = {{Game Dev}}, title = {What is a quaternion?}, note = {[Online]}, year = 2015}\n" +
+                "@article{lit, author = {Donald E. Knuth and Leslie Lamport}, title = {Literate Programming}, journal = {The Computer Journal},\n" +
+                "  volume = 27, number = 2, pages = {97-111}, year = 1984}\n" +
+                "@book{texbook, author = {Donald E. Knuth}, title = {The {\\TeX}book}, publisher = {Addison-Wesley}, address = {Reading}, edition = 2, year = 1986}\n" +
+                "@phdthesis{things, author = {Ann Bee}, title = {On Things}, school = {MIT}, year = 2001}\n" +
+                "@inproceedings{talk, author = {Ann Bee}, title = {Talk}, booktitle = {Proc. X}, editor = {Carl Dee}, pages = {1-2}, publisher = {ACM}, year = 2002}\n" +
+                "@misc{sph, author = {Haofeng Huang and Li Yi}, title = {SPH}, eprint = {2403.11156}, archivePrefix = {arXiv}, primaryClass = {physics.flu-dyn}, year = 2024}\n";
+            List<string> lines = BibLines("\\documentclass{article}\\usepackage[giveninits=true,alldates=iso]{biblatex}\\addbibresource{refs.bib}\n" +
+                "\\begin{document}\n\\nocite{*}\n\\printbibliography\n\\end{document}\n", bib, out List<TexError> errors);
+
+            foreach ((string text, string what) in new[]
+                     {
+                         ("DeepL GmbH. DeepL Translator. [Online]. DeepL. 2024. URL: https://www.deepl.com/translator (visited on 2025-05-06).", "online: note, organization, date, url and urldate"),
+                         ("Game Dev. What is a quaternion? [Online]. 2015.", "no period after a question mark"),
+                         ("D. E. Knuth and L. Lamport. “Literate Programming”. In: The Computer Journal 27.2 (1984), pp. 97–111.", "article: quoted title, In:, volume.number (date), pages"),
+                         ("D. E. Knuth. The TeXbook. 2nd ed. Reading: Addison-Wesley, 1986.", "book: edition, location: publisher, date"),
+                         ("A. Bee. “On Things”. PhD thesis. MIT, 2001.", "thesis: its type's string, institution, date"),
+                         ("A. Bee. “Talk”. In: Proc. X. Ed. by C. Dee. ACM, 2002, pp. 1–2.", "inproceedings: booktitle, editor, publisher, pages"),
+                         ("H. Huang and L. Yi. SPH. 2024. arXiv: 2403.11156 [physics.flu-dyn].", "misc: date, then the eprint")
+                     })
+                t.Check(Entry(lines, text) != null, $"{what}: {string.Join(" / ", lines)}");
+            t.Check(lines[0] == "References" && Entry(lines, "A. Bee. “On Things”. PhD thesis. MIT, 2001.")!.StartsWith("[1]"),
+                $"numeric labels, sorted by name, title, year: {string.Join(" / ", lines)}");
+            t.Check(errors.Count == 0, $"no errors: {string.Join("; ", errors)}");
+            yield break;
+        }
+
+        [A_XSDActionDependency("Tex.BiblatexStrings", "Test")]
+        private static IEnumerator<int> BiblatexStrings(TestContext t)
+        {
+            const string bib = "@online{a, author = {Ann Bee and Carl Dee}, title = {Page}, url = {https://a.lt/x}, urldate = {2025-05-06}, year = 2025}\n" +
+                "@article{b, author = {Ann Bee}, title = {Straipsnis}, journal = {Žurnalas}, year = 2020}\n";
+            string Doc(string print) => "\\documentclass{article}\\usepackage{polyglossia}\\setmainlanguage{lithuanian}\n" +
+                "\\usepackage[style=alphabetic,abbreviate=false,alldates=iso]{biblatex}\\addbibresource{refs.bib}\\usepackage[nottoc]{tocbibind}\n" +
+                "\\DefineBibliographyStrings{lithuanian}{urlseen = {žiūrėta}, in = {iš}}\n" +
+                $"\\begin{{document}}\n\\tableofcontents\n\\section{{Įvadas}}\n\\nocite{{*}}\n{print}\n\\end{{document}}\n";
+
+            List<string> lines = BibLines(Doc("\\printbibliography[heading=bibintoc]"), bib, out List<TexError> errors);
+            t.Check(lines.Contains("Literatūros sąrašas"), $"the heading is the references string in the document's language: {string.Join(" / ", lines)}");
+            t.Check(lines.Exists(l => l.StartsWith("Literatūros sąrašas") && l != "Literatūros sąrašas"), $"and its contents entry: {string.Join(" / ", lines)}");
+            t.Check(Entry(lines, "Ann Bee ir Carl Dee. Page. 2025. URL: https://a.lt/x (žiūrėta 2025-05-06).") != null,
+                $"Lithuanian and, \\DefineBibliographyStrings for urlseen: {string.Join(" / ", lines)}");
+            t.Check(Entry(lines, "Ann Bee. „Straipsnis“. Iš: Žurnalas (2020).") != null, $"in capitalized where a sentence starts, Lithuanian quotes: {string.Join(" / ", lines)}");
+            t.Check(errors.Count == 0, $"no errors: {string.Join("; ", errors)}");
+
+            List<string> titled = BibLines(Doc("\\printbibliography[title={Šaltiniai}]"), bib, out _);
+            t.Check(titled.Contains("Šaltiniai") && !titled.Contains("Literatūros sąrašas"), $"title= replaces the heading: {string.Join(" / ", titled)}");
+            yield break;
+        }
+
+        [A_XSDActionDependency("Tex.BiblatexOptions", "Test")]
+        private static IEnumerator<int> BiblatexOptions(TestContext t)
+        {
+            const string bib = "@misc{sph, author = {Haofeng Huang and Li Yi}, title = {SPH}, year = 2024}\n" +
+                "@misc{knuth, author = {Donald E. Knuth}, title = {Book}, year = 1984}\n" +
+                "@misc{three, author = {Ann One and Ben Two and Cid Three}, title = {Three}, year = 2000}\n";
+            string Doc(string preamble) => "\\documentclass{article}\\usepackage[maxnames=2,minnames=1,giveninits]{biblatex}\\addbibresource{refs.bib}\n" +
+                preamble + "\n\\begin{document}\n\\nocite{*}\n\\printbibliography\n\\end{document}\n";
+
+            List<string> lines = BibLines(Doc("\\DeclareDelimFormat{finalnamedelim}{\\addcomma\\space}" +
+                "\\DeclareFieldFormat{doi}{\\url{#1}}\\DeclareFieldFormat[online]{title}{#1}\\renewbibmacro*{medium-type}{\\printfield{x}}" +
+                "\\DeclareBibliographyDriver{misc}{x}\\defbibheading{h}[t]{x}\\WarningFilter{biblatex}{File not found!}"), bib, out List<TexError> errors);
+            t.Check(Entry(lines, "H. Huang, L. Yi. SPH. 2024.") != null, $"\\DeclareDelimFormat's finalnamedelim: {string.Join(" / ", lines)}");
+            t.Check(Entry(lines, "A. One et al. Three. 2000.") != null, $"maxnames=2 shortens three names to one and et al.: {string.Join(" / ", lines)}");
+            t.Check(lines.Count == 4 && errors.Count == 0, $"the ignored commands print nothing and raise nothing: {string.Join(" / ", lines)}; {string.Join("; ", errors)}");
+
+            List<string> reversed = BibLines(Doc("\\DeclareNameAlias{default}{family-given}"), bib, out _);
+            t.Check(Entry(reversed, "Knuth, D. E. Book. 1984.") != null && Entry(reversed, "Huang, H. and Yi, L. SPH. 2024.") != null,
+                $"\\DeclareNameAlias family-given: {string.Join(" / ", reversed)}");
+            yield break;
+        }
+
+        [A_XSDActionDependency("Tex.BibList", "Test")]
+        private static IEnumerator<int> BibList(TestContext t)
+        {
+            string folder = Folder(("refs.bib", "@misc{wide, author = {{WWW}}, title = {Wide}, year = 2025}\n@misc{thin, author = {{iiii}}, title = {Thin}, year = 2025}\n" +
+                "@misc{long, author = {Ann Bee}, title = {A title long enough that this entry has to wrap onto a second line of the bibliography}, year = 2025}\n"));
+            TexStyle normal = new TexStyle(new TexFont(TexFamily.Roman, false, false, 10 * 65536), null, false);
+            float px = 96f / 72.27f;
+
+            XElement Hanging(XElement document)
+            {
+                foreach (XElement block in document.Elements("Block"))
+                    if ((float?)block.Attribute("LeftIndent") is > 0f) return block;
+                return new XElement("Block");
+            }
+
+            XElement plain = TexLowering.Compile("\\documentclass{article}\\begin{document}\\nocite{*}\\bibliographystyle{plain}\\bibliography{refs}\\end{document}",
+                out List<TexError> errors, null, folder);
+            float margin = TexLowering.TextWidth("[3]", normal) + 5f * px;
+            XElement entry = Hanging(plain);
+            t.Check(Near((float?)entry.Attribute("LeftIndent") ?? 0f, margin, 0.1f) && Near((float?)entry.Attribute("Indent") ?? 0f, -margin, 0.1f),
+                $"thebibliography hangs at the widest label's width plus \\labelsep: {entry.ToString(SaveOptions.DisableFormatting)}, margin {margin}");
+            t.Check(errors.Count == 0, $"no errors: {string.Join("; ", errors)}");
+
+            XElement alpha = TexLowering.Compile("\\documentclass{article}\\usepackage[style=alphabetic]{biblatex}\\addbibresource{refs.bib}" +
+                "\\begin{document}\\nocite{*}\\printbibliography\\end{document}", out errors, null, folder);
+            float widest = MathF.Max(TexLowering.TextWidth("[WWW25]", normal), TexLowering.TextWidth("[iii25]", normal));
+            XElement alphaEntry = Hanging(alpha);
+            t.Check(Near((float?)alphaEntry.Attribute("LeftIndent") ?? 0f, widest + 10f * px, 0.1f),
+                $"biblatex's list hangs at the widest label measured plus \\biblabelsep: {alphaEntry.ToString(SaveOptions.DisableFormatting)}, margin {widest + 10f * px}");
+            t.Check(errors.Count == 0, $"no errors: {string.Join("; ", errors)}");
             Directory.Delete(folder, true);
             yield break;
         }
@@ -782,7 +1077,7 @@ namespace ArctisAurora.Tests
             t.Check(errors.Count == 0 && pictures.Count == 2, $"two pictures: {string.Join("; ", errors.Select(e => e.message))}");
             t.Check((string?)pictures[0].Attribute("Image") == Path.GetFullPath(Path.Combine(folder, "pic.png")), "the path is found and absolute");
             float half = 0.5f * 345f * 96f / 72.27f;
-            t.Check(Math.Abs((float)pictures[0].Attribute("Width")! - half) < 0.5f && pictures[0].Attribute("Height") == null,
+            t.Check(Math.Abs((float)pictures[0].Attribute("Width")! - half) < 0.5f && Math.Abs((float)pictures[0].Attribute("Height")! - half / 2f) < 0.5f,
                 $"width=0.5\\textwidth: {pictures[0].Attribute("Width")?.Value}");
             t.Check((string?)pictures[1].Attribute("Width") == "80" && (string?)pictures[1].Attribute("Height") == "40" && (string?)pictures[1].Attribute("Rotation") == "-90",
                 "scale from the picture's own size, angle turned clockwise");
@@ -875,6 +1170,38 @@ namespace ArctisAurora.Tests
                 t.Check(Word("hyphenation") == "hy-phen-ation" && Word("table") == "ta-ble" && Word("present") == "present",
                     $"US English: {Word("hyphenation")} {Word("table")} {Word("present")}");
                 t.Check(Word("democrat") == "de-mo-c-rat", $"the patterns' documented TeX result, bug included: {Word("democrat")}");
+            }
+            yield break;
+        }
+
+        [A_XSDActionDependency("Tex.UrlBreaks", "Test")]
+        private static IEnumerator<int> UrlBreaks(TestContext t)
+        {
+            List<TexChar> chars = Chars("\\url{https://a.lt/x-y\\%20z}");
+            StringBuilder typed = new StringBuilder();
+            foreach (TexChar c in chars)
+                typed.Append(c.ch == '\u200B' ? '|' : c.ch);
+            t.Check(typed.ToString() == "https:|/|/|a.|lt/|x-|y%20z", $"\\url breaks after the url package's characters, \\% read as %: {typed}");
+
+            IGlyphMetrics metrics = new FontAssetGlyphMetrics();
+            AtlasMetaData atlas = AssetRegistries.GetRegistryByValueType<string, FontAsset>(typeof(FontAsset))["default"].atlasMetaData;
+            const string text = "see aaaaaaaa/\u200Bbbbbbbbb/\u200Bcccccccc";
+            TextMeasurer.Run run = new TextMeasurer.Run(text, 0, text.Length, "default", atlas, 16, FontStyle.Regular);
+            List<TextMeasurer.Run> runs = new List<TextMeasurer.Run> { run };
+            float slash = TextMeasurer.MeasureAdvance('/', run), a = TextMeasurer.MeasureAdvance('a', run), b = TextMeasurer.MeasureAdvance('b', run);
+            t.Check(TextMeasurer.MeasureAdvance(TextMeasurer.ZeroWidthSpace, run) == 0f, "a zero-width space takes no room");
+            float fits = 8f * a + slash + 8f * b + slash + 1f;
+            foreach (bool optimal in new[] { false, true })
+            {
+                BlockLayout layout = TextMeasurer.MeasureBlock(runs, fits, metrics, 1.5f, optimal: optimal);
+                int ends = 0;
+                foreach (TextLine line in layout.lines)
+                {
+                    LineSegment end = line.segments[^1];
+                    if (text[end.charStart + end.charCount - 1] == TextMeasurer.ZeroWidthSpace && line.hyphen == 0f) ends++;
+                    t.Check(line.width <= fits, $"{(optimal ? "Knuth-Plass" : "greedy")}: every line fits: {line.width} of {fits}");
+                }
+                t.Check(layout.lines.Count >= 2 && ends >= 1, $"{(optimal ? "Knuth-Plass" : "greedy")}: the URL breaks after a slash with no hyphen: {layout.lines.Count} lines, {ends} ending at a break");
             }
             yield break;
         }
@@ -1804,7 +2131,7 @@ namespace ArctisAurora.Tests
             TexTypesetter typesetter = new TexTypesetter("\\documentclass{article}\\bibliography{refs}\\begin{document}\\cite{a}\n"
                 + "\\printbibliography[heading=bibintoc]\n\\end{document}\n", null, folder);
             typesetter.Run();
-            string[] lines = Pars(typesetter).Select(p => Line(p).Trim()).ToArray();
+            string[] lines = Pars(typesetter).Select(BoxLine).ToArray();
             t.Check(lines.Length == 3 && lines[0] == "[1]" && lines[1] == "References" && lines[2].StartsWith("[1] Title"),
                 $"\\bibliography in the preamble names the files, \\printbibliography[…] sets the list: {string.Join(" / ", lines)}");
             t.Check(typesetter.errors.Count == 0, $"no errors: {string.Join("; ", typesetter.errors)}");
@@ -1827,7 +2154,7 @@ namespace ArctisAurora.Tests
                 fold(v.Skip(v.IndexOf(pars[from]) + 1).Take(v.IndexOf(pars[to]) - v.IndexOf(pars[from]) - 1).OfType<TexVGlue>().Select(g => Pt(g.glue.width)).DefaultIfEmpty(0f));
             float between = Gap(1, 2, g => g.Sum()), above = Gap(0, 1, g => g.Max()), below = Gap(2, 3, g => g.Max());
             t.Check(between == 5f, $"\\itemsep 0 leaves \\parsep between items: {between}pt");
-            t.Check(above == 10f && below == 10f, $"\\topsep set inside the list changes neither skip: {above}pt above, {below}pt below");
+            t.Check(above == 13f && below == 13f, $"\\topsep set inside the list changes neither skip, \\partopsep after a blank line: {above}pt above, {below}pt below");
             yield break;
         }
 
@@ -1870,9 +2197,9 @@ namespace ArctisAurora.Tests
             const string source = "\\documentclass[12pt]{article}\\usepackage{setspace}\\setstretch{1.2}\\begin{document}\\onehalfspacing\nText\n\n\\doublespacing\nMore\\end{document}";
             TexTypesetter spaced = Typeset(source, out List<TexError> errors);
             t.Check(errors.Count == 0 && spaced.lineSpread == 1.241f, $"the stretch the first paragraph ends under holds: {spaced.lineSpread} {string.Join("; ", errors)}");
-            t.Check((string?)TexLowering.Compile(source, out _).Element("DocumentLayout")!.Attribute("LineHeight") == "1.489", "and scales the line height");
-            t.Check((string?)TexLowering.Compile("\\documentclass{article}\\begin{document}x\\end{document}", out _).Element("DocumentLayout")!.Attribute("LineHeight") == "1.2",
-                "no setspace keeps 1.2");
+            t.Check((string?)TexLowering.Compile(source, out _).Element("DocumentLayout")!.Attribute("LineHeight") == "1.494", "and scales the line height");
+            t.Check((string?)TexLowering.Compile("\\documentclass{article}\\begin{document}x\\end{document}", out _).Element("DocumentLayout")!.Attribute("LineHeight") == "1.226",
+                "no setspace keeps \\baselineskip 12pt, against the 13 px \\normalsize");
             t.Check(Typeset("\\documentclass{article}\\begin{document}\\doublespacing x\\end{document}", out _).lineSpread == 1.667f, "\\doublespacing at 10pt");
             TexChar a = Chars("\\documentclass{article}\\newfontface\\sectionfont{Calibri}\\begin{document}{\\large\\fontsize{11pt}{13pt}\\sectionfont A}\\end{document}")[0];
             t.Check(Pt(a.style.font.size) == 11f, $"a \\newfontface command selects the pending \\fontsize: {Pt(a.style.font.size)}pt");

@@ -196,6 +196,8 @@ namespace ArctisAurora.Core.UI
         public List<StyleSpan> spans => data.spans;
         public FontStyle style = FontStyle.Regular;
         public float lineHeight = 1.5f;
+        // every line's descent, px; 0 centres the font in its line box
+        public float baselineDepth;
 
         // multiplies every font size at layout; the authored sizes are untouched
         internal float textZoom = 1f;
@@ -346,7 +348,7 @@ namespace ArctisAurora.Core.UI
                 }
                 else if (spans[i].IsSheet)
                 {
-                    int size = Zoomed(spanSize);
+                    float size = Zoomed(spanSize);
                     TextMeasurer.Run plain = new TextMeasurer.Run(s, start, count, spanFont, font.atlasMetaData, size, spans[i].style);
                     SheetBox box = SheetLinks.Layout(NotePath(), spans[i].sheetRef, plain, metrics.GetLineMetrics(spanFont), textZoom);
                     float w = box.range && float.IsFinite(wrapWidth) && wrapWidth < float.MaxValue ? wrapWidth : box.width;
@@ -450,13 +452,15 @@ namespace ArctisAurora.Core.UI
             return (w * textZoom, h * textZoom);
         }
 
-        private int Zoomed(int size) => textZoom == 1f ? size : Math.Max(1, (int)MathF.Round(size * textZoom));
+        private float Zoomed(int size) => size * textZoom;
 
         protected virtual string FontFor(in StyleSpan span) => span.fontName ?? fontName;
 
         protected virtual TextAlignment Alignment => TextAlignment.Left;
 
         protected virtual bool OptimalBreaks => false;
+
+        protected virtual bool WidowControl => false;
 
         protected virtual float FirstLineIndent => 0f;
 
@@ -625,7 +629,7 @@ namespace ArctisAurora.Core.UI
 
             Profiling.Zone.Start("Text.MeasureBlock");
             _layout = TextMeasurer.MeasureBlock(_runs, wrapWidth, metrics, lineHeight, FirstLineIndent, reuse: _layout, optimal: OptimalBreaks,
-                                                ragged: Alignment != TextAlignment.Justify, lastExtra: LastLineExtra);
+                                                ragged: Alignment != TextAlignment.Justify, lastExtra: LastLineExtra, baselineDepth: baselineDepth * textZoom);
             laidAround = false;
             Profiling.Zone.End("Text.MeasureBlock");
             _wrapWidth = wrapWidth;
@@ -644,7 +648,8 @@ namespace ArctisAurora.Core.UI
         {
             if (_layout == null) return 0f;
 
-            _layout = TextMeasurer.MeasureBlock(_runs, _wrapWidth, metrics, lineHeight, FirstLineIndent, slots, _layout, lastExtra: LastLineExtra);
+            _layout = TextMeasurer.MeasureBlock(_runs, _wrapWidth, metrics, lineHeight, FirstLineIndent, slots, _layout, lastExtra: LastLineExtra,
+                                                baselineDepth: baselineDepth * textZoom);
             laidAround = slots != null;
             Align();
             return _layout.height;
@@ -798,6 +803,7 @@ namespace ArctisAurora.Core.UI
                                                   pen, baselineY, z, clip, gradientRect);
                             continue;
                         }
+                        if (s[index] == TextMeasurer.ZeroWidthSpace) continue;
                         uint ink = tokens != null && index < tokens.Length && tokens[index] != SyntaxToken.Plain
                             ? Palettes.Code(palette ?? Palettes.Default, tokens[index]) : paint;
                         pen += WriteGlyph(quads, s[index] == TextMeasurer.NoBreakSpace ? ' ' : s[index], run.style, ink, alpha, font, run.fontSize,
@@ -1231,12 +1237,32 @@ namespace ArctisAurora.Core.UI
             if (_layout == null) return 0f;
 
             List<(int offset, string id)>? anchors = space == null ? null : Anchors();
+            List<TextLine> lines = _layout.lines;
+            bool keep = WidowControl && lines.Count > 1;
             float y = blockTop;
-            foreach (TextLine line in _layout.lines)
+            for (int i = 0; i < lines.Count; i++)
             {
-                y = space == null ? bands.Push(y, line.height) : space.PushLine(bands, y, line.height, AnchorsIn(anchors!, line));
-                line.top = y - blockTop;
-                y += line.height;
+                TextLine line = lines[i];
+                float at = space == null ? bands.Push(y, line.height) : space.PushLine(bands, y, line.height, AnchorsIn(anchors!, line));
+                if (keep && i > 0 && at > y + PageBands.tolerance && bands.PageOf(at) > bands.PageOf(y))
+                {
+                    // a club line left behind or a widow carried over: the lines before it follow onto the new page
+                    int from = i == lines.Count - 1 ? i - 1 : i;
+                    if (from <= 1) from = 0;
+                    if (from < i && !HasAnchors(anchors, lines, from, i))
+                    {
+                        float top = at;
+                        for (int j = from; j < i; j++)
+                        {
+                            lines[j].top = top - blockTop;
+                            top += lines[j].height;
+                        }
+                        at = space == null ? bands.Push(top, line.height) : space.PushLine(bands, top, line.height, AnchorsIn(anchors!, line));
+                    }
+                }
+                if (line.ink > line.ascent && bands.AtTextTop(at)) at += line.ink - line.ascent;
+                line.top = at - blockTop;
+                y = at + line.height;
             }
             return y - blockTop;
         }
@@ -1252,6 +1278,14 @@ namespace ArctisAurora.Core.UI
                 offset += span.count;
             }
             return anchors;
+        }
+
+        private static bool HasAnchors(List<(int offset, string id)>? anchors, List<TextLine> lines, int from, int to)
+        {
+            if (anchors == null) return false;
+            for (int j = from; j < to; j++)
+                if (AnchorsIn(anchors, lines[j]) != null) return true;
+            return false;
         }
 
         private static List<string>? AnchorsIn(List<(int offset, string id)> anchors, TextLine line)

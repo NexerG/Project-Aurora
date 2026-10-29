@@ -167,6 +167,7 @@ namespace ArctisAurora.Core.UI
             if (marker != null && Enum.TryParse(marker.Value, true, out ListMarker style))
                 block.listMarker = style;
             block.listIndent = (float?)element.Attribute("ListIndent");
+            block.lineHeight = (float?)element.Attribute("LineHeight");
             block.listStart = (int?)element.Attribute("Start");
 
             foreach (XElement child in element.Elements())
@@ -451,6 +452,8 @@ namespace ArctisAurora.Core.UI
                 element.SetAttributeValue("Marker", block.listMarker.Value.ToString());
             if (block.listIndent.HasValue)
                 element.SetAttributeValue("ListIndent", Format(block.listIndent.Value));
+            if (block.lineHeight.HasValue)
+                element.SetAttributeValue("LineHeight", Format(block.lineHeight.Value));
             if (block.listStart.HasValue)
                 element.SetAttributeValue("Start", block.listStart.Value);
 

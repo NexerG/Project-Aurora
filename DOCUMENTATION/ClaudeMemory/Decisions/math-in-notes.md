@@ -5,6 +5,12 @@
 
 **Status: LANDED** — M1 (the font), M2 (parser + layout), M3 (notes hold, draw, save and copy formulas) and M4 (insert and edit) landed, and M5 (environments, `\tag`, amsmath commands) landed 2026-10-06 together with LaTeX L6; plan in [../Context/math-plan.md](../Context/math-plan.md). M4 scope: `FormulaPopup`, `MathEdit`, `DocumentControl` region `formulas` (`SelectedMath`, `StoredMath`, `SetMath`, `PlaceMath`, `RecordPlaced`, `RecordMath`, `RemovePlaced`, `MathAnchor`), `BlockControl.SetMath`, `TextRunControl` (`MathAt`, `MathBox`), `DocumentEditorControl` (`InsertFormula`, `EditFormula`), `TextBoxControl.onEdited`, `TextInputActions` (`Math.Insert`, `Math.InsertDisplay`, `Math.Edit`).
 
+## Display operator sizes from the MATH table (2026-10-29, LaTeX L10g-F4)
+- `MathConstants.DisplayOperators` (string attribute, e.g. `"∑ 1.401,∫ 2.223,…"`) holds each big operator's display height, read from the OpenType MATH MathVariants subtable (first variant at or above `DisplayOperatorMinHeight`); `DisplayHeight(char)` returns it. `MathLayout.Symbol` grows a display operator to that height.
+- Still drawn by scaling the base glyph, so variant glyph ids never enter the atlas.
+- Consequence: notes math in Cambria grows too (display ∑ 1.91 em, ∫ 1.35 em, as Word draws it); goldens `TextInput.MathDraws` and `TextInput.MathArrays` re-approved. LM Math: ∫ 2.223 em (reference 26.6 pt at 12pt), ∑ 1.401 em.
+- Rejected: a hardcoded per-operator table.
+
 ## M5 — amsmath environments, `\tag`, ams commands (2026-10-06, landed as LaTeX L6)
 - The parser and layout are shared with the LaTeX typesetter, so notes get everything except automatic numbering: notes never number (as in Obsidian), only `\tag` shows. Forks L6-F1 to L6-F4, equation numbering and the typesetter side: [[latex-editor]] § L6.
 - `MathParser` reads `\begin{…}…\end{…}`: the matrix family, `cases`, `array`, the aligned family, `gathered`, `multline`, the top-level align/gather/flalign/alignat/multline/equation and their starred forms. Also `\tag`, `\substack`, `\binom`/`\dbinom`/`\tbinom`, `\overset`/`\underset`, `\boxed`, `\operatorname(*)`. `\notag`, `\nonumber` and `\label{…}` are accepted and dropped.

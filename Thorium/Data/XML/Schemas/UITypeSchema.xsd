@@ -570,9 +570,11 @@
   </xs:complexType>
   <xs:attributeGroup name="DocumentLayout.Attributes">
     <xs:attribute name="LineHeight" type="xs:float" />
+    <xs:attribute name="BaselineDepth" type="xs:float" />
     <xs:attribute name="BlockSpacing" type="xs:float" />
     <xs:attribute name="ListIndent" type="xs:float" />
     <xs:attribute name="OptimalBreaks" type="xs:boolean" />
+    <xs:attribute name="WidowControl" type="xs:boolean" />
   </xs:attributeGroup>
   <xs:element name="DocumentLayout" type="types:DocumentLayout" />
   <xs:complexType name="DocumentLayout">
